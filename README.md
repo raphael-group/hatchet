@@ -15,17 +15,21 @@ The simulated data, the results of all the methods considered in the comparison,
 ## Contents ##
 
 1. [Overview](#overview)
-  - [Algorithm](#algorithm)
-  - [Software](#software)
+    - [Algorithm](#algorithm)
+    - [Software](#software)
+
 2. [Setup](#setup)
-  - [Dependencies](#dependencies)
-  - [Compilation](#compilation)
-  - [Required data](#requireddata)
+    - [Dependencies](#dependencies)
+    - [Compilation](#compilation)
+    - [Required data](#requireddata)
+
 3. [Usage](#usage)
-  - [Full pipeline and tutorial](#fullpipelineandtutorial)
-  - [Detailed steps](#detailedsteps)
-  - [Tips and reccomendations](#tipsandreccomendations)
+    - [Full pipeline and tutorial](#fullpipelineandtutorial)
+    - [Detailed steps](#detailedsteps)
+    - [Tips and reccomendations](#tipsandreccomendations)
+
 4. [Current issues](#currentissues)
+
 5. [Contacts](#contacts)
 
 ## Overview
