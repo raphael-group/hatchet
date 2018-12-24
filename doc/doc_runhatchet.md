@@ -157,7 +157,8 @@ deBAF call germline SNPs from the matched-normal sample `${NORMAL}` and computes
 The same reference genome used for the BAM files has to be specified by `${REF}`.
 Minimum and maximum thresholds for the read counts of germline SNPs to consider are fixed between 4 and 300.
 GATK best practices suggest that the maximum should be at least twice the expected average coverage to avoid mapping artifacts.
-Also, an increasing in the minimum threshold allow to imporve the quality of the estimated BAF, while a decreasing allow to consider more SNPs.
+Observe that WES generally requires higher thresholds (e.g. 100 and 3000).
+Also, an increasing in the minimum threshold allow to improve the quality of the estimated BAF, while a decreasing allow to consider more SNPs.
 Several simple parameters are specified including: number of parallel threads, read/allele/variant standard-quality values at 20, output filenames, verbosity of log, and the log filename of this step.
 
 ## comBBo

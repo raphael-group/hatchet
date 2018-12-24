@@ -17,19 +17,15 @@ The simulated data, the results of all the methods considered in the comparison,
 1. [Overview](#overview)
     - [Algorithm](#algorithm)
     - [Software](#software)
-
 2. [Setup](#setup)
     - [Dependencies](#dependencies)
     - [Compilation](#compilation)
     - [Required data](#requireddata)
-
 3. [Usage](#usage)
     - [Full pipeline and tutorial](#fullpipelineandtutorial)
     - [Detailed steps](#detailedsteps)
     - [Tips and reccomendations](#tipsandreccomendations)
-
 4. [Current issues](#currentissues)
-
 5. [Contacts](#contacts)
 
 ## Overview
@@ -167,7 +163,10 @@ The descrition of each step also includes the details of the corresponding input
   - *Increase specificity*. HATCHet is based on a criterion of parsimony and tumor clones characterized by small CNAs or very low clone proportions may be missed. If one wants to investigate the presence of such clones (especially with small CNAs), the user can vary the corresponding parameter in [*hatchet*](doc/doc_hatchet.md) (see also [tutorial](doc/doc_runhatchet.md)). Observe that the parameter shall be decreased to increase the sensitivity.
   - *Non-decreasing objective function*. There are two possible explanations for observing values of the objective function for increasing number of clones which do not decrease or decrease only when considering a single tumor clone: (1) there is a single tumor clone, (2) the heuristic of HATCHet identified wrong tumor-clonal clusters. While (1) can be assessed by varying the corresponding parameter in [*hatchet*](doc/doc_hatchet.md) (see also [tutorial](doc/doc_runhatchet.md)), (2) has to be excluded. In particular, the heuristic of HATCHet may fail to identify a second tumor-clonal cluster required with a WGD in very noisy datasets or the ones only comprising low-purity samples. One can verifies the identification by using the informative plots from BBot (e.g. BB command) and can correct potential errors by either (1) changing the parameters of the related heuristic of HATCHet (see [*hatchet*](doc/doc_hatchet.md)) or by manually identifying this second cluster by using the informative plots (the second and additional clusters can be manually specified).
 - *Control clustering*. The global clustering is a crucial feature of HATCHet and the quality of the final results is affected by the quality of the clustering. The default parameters allow to deal with most of the datasets, however the user can validate the results and improve it. In particular there are 2 parameters to control the clustering and 2 parameters to refine the clusters (see [*cluBB*](doc/doc_clubb.md)). These parameters can be used to obtain the best result. The user can repeat cluBB with different settings and choose the best results considering the plots, especially BB plots, produced by BBot.
-- *WGS/WES data*. While a size of 50kb is standard for CNA analysis when considering whole-genome sequencing (WGS) data, data from whole-exome sequencing (WES) generally require to use large bin sizes in order to guarantee each bin contains a sufficient number of heterozygous germline SNPs. Indeed, having a sufficient number of germline SNPs is needed to have good estimations for the B-allele frequency (BAF) of each bin. As such, more appropriate bin sizes to consider may be 200kb or 250kb. However, one can use the informative plots to test different bin sizes and obtain the smallest size that allows low-variance estimates of BAF.
+  - *WGS/WES data*. The default values used by HATCHet are for analyzing whole-genome sequencing (WGS) data. However, when considering whole-exome sequencing (WES) data some of the parameters need to be adjusted due to the different features of this kind of data. More specifically, there are 3 main points to consider when analyzing WES data:
+    - *Larger bin sizes*. While a size of 50kb is standard for CNA analysis when considering whole-genome sequencing (WGS) data, data from whole-exome sequencing (WES) generally require to use large bin sizes in order to guarantee that each bin contains a sufficient number of heterozygous germline SNPs. Indeed, having a sufficient number of germline SNPs is needed to have good estimations for the B-allele frequency (BAF) of each bin. As such, more appropriate bin sizes to consider may be 200kb or 250k when analyzing WES data. However, one can use the informative plots to test different bin sizes and obtain the smallest size that allows low-variance estimates of BAF.
+    - *Read-count thresholds*. As suggested in the GATK best practices, deBAF requires two parameters -c (the minimum coverage for SNPs) and -C (the maximum coverage for SNPs) to reliably call SNPs and exclude those in regions with artifacts. GATK suggests to consider a value of -C that is at least twice larger than the average coverage and -c should be large enough to exclude non-sequenced regions. For example, `-c of 50 and -C 3000` are values previously used but the user should ideally pick values according to the considered data.
+    - *Bootstrapping for clustering*. WES has much less data points than WGS. As such, the global clustering of cluBB may generally benefit from the integrated bootstrapping approach. This approach allow to generate a certain number of synthetic bins from the real ones to increase the power of the clustering. For example, the fllowing cluBB parameters `-u 20 -dR 0.002 -dB 0.002` allow to activate the bootstraping which introduces 20 synthetic bins for each real bin with low variances.
 - *SNP calling from scratch*. HATCHet allows to provide to deBAF a list of known germline SNPs. This allows to significantly improve the performance. However, running deBAF without this list results in deBAF calling germline SNPs along the genome and allowing to identify private germline SNPs and increase the total number. The user can consider this trade-off.
 
 ## Current issues
