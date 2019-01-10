@@ -46,7 +46,7 @@ PS4='[\t]'
 The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluBB`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
-${CLUBB} demo-wgs-cancer.bb -by /n/fs/ragr-code/general/bnpy-dev/ -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
+${CLUBB} demo-wgs-cancer.bb -by ${BNPY} -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 

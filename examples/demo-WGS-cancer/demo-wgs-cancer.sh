@@ -1,7 +1,7 @@
 # Demo for WGS data from a cancer patient
 : ex: set ft=markdown ;:<<'```shell' #
 
-The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 samples (A12-A, A12-C, and A12-D)) of metastatic patient A12, previously published in (Gundem et al., Nature, 2015)). For simplicity, the demo starts from a BB file `demo-WGS-cancer.bb` (included in this demo at `examples/demo-WGS-cancer/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. binBAM, deBAF, and comBBo) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of binBAM, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
+The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 samples (A12-A, A12-C, and A12-D) of metastatic patient A12, previously published in (Gundem et al., Nature, 2015)). For simplicity, the demo starts from a BB file `demo-wgs-cancer.bb` (included in this demo at `examples/demo-WGS-cancer/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. `binBAM`, `deBAF`, and `comBBo`) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of binBAM, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
 
 ## Requirements and set up
 
@@ -38,14 +38,14 @@ PS4='[\t]'
 The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluBB`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
-${CLUBB} demo-wgs-cancer.bb -by /n/fs/ragr-code/general/bnpy-dev/ -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
+${CLUBB} demo-wgs-cancer.bb -by ${BNPY} -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
 For different type of data it is essential to assess the quality of the clustering because this is performed by a Dirichlet process and it is affected by varying degrees of noise. To do this, we use `BBot`, i.e. the HATCHet's component designed for the analysis of the data, and produce the cluster plot using the `CBB` command. To help we use the following options:
 - `--xmin 0.5` and `--xmax 4` allow to zoom in and to focus the figure on the same RDR (x-axis) range for every sample.
 - `--colwrap 3` allows to have the 3 plots of the 3 samples on the same figure row
-- `-tS 0.005` asks to plot only the clusters which cover at least the `0.5%` of the genome. This is usefule to clean the figure and focus on the main components.
+- `-tS 0.005` asks to plot only the clusters which cover at least the `0.5%` of the genome. This is useful to clean the figure and focus on the main components.
 To trace all steps, we also move the figure to `tR015-cbb.pdf`.
 
 ```shell
@@ -63,7 +63,7 @@ We can easily notice that the clustering is not ideal and is clearly overfitting
 Since Dirichlet clustering is not ad-hoc for this application, it can often result in overclustering. For this reason, cluBB additionally provides a procedure to merge clusters which are very likely to be part of a single cluster. However this procedure requires two maximum thresholds for doing this, one is the maximum shift for RDR (`-tR 0.15`) and one is the maximum shift for BAF (`-tB 0.03`). The default values allow to work with most of the datasets, however datasets of high variance require to tune these parameters. In our example, while the BAF of the clusters appears to be consistent with the default threshold, RDR appears to have much higher variance; in fact, the clusters that are always adjacent span much more than 0.15 of RDR in the x-axis. Therefore, by looking at the plot, we can see that a value of `-tR 0.5` fit much better the noise of RDR in our data and we repeat the clustering with this value.
 
 ```shell
-${CLUBB} demo-wgs-cancer.bb -by /n/fs/ragr-code/general/bnpy-dev/ -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.5 -d 0.08
+${CLUBB} demo-wgs-cancer.bb -by ${BNPY} -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.5 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
