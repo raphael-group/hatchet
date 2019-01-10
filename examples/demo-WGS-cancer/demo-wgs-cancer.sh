@@ -168,5 +168,5 @@ The second `intratumor-clones-allelecn.pdf` similarly represents the allele-spec
 ![intratumor-clones-allelecn.pdf](allelecn.png)
 
 The third `intratumor-profiles.pdf` represents both the clone proportions and the total copy numbers of every clone in genomic regions.
-![intratumor-clones-allelecn.pdf](.png)
+![intratumor-clones-allelecn.pdf](profiles.png)
 The main heatmap in the right side of the figure represent the total copy number of every clone (i.e. a row) for every genomic region (which are partition into chromosomes as described at the top of the heatmap) such that grey color indicate regions with base copy number not affected by CNAs (but they can be affected by a WGD when this occurrs), blue colors indicates deletions, and red colors indicate amplifications; in general, the stronger the color the smaller/higher the corresponding aberration. The smaller heatmap in the left side describes the clone proportion of each clone in each sample such that the lightest color correspond to absence while darker colors indicate higher clone proportions. Last, in the left-most part there is a dendogram which hierarchically clusters the tumor clones based on similiraity.
