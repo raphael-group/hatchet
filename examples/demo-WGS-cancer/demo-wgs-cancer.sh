@@ -77,7 +77,7 @@ mv bb_clustered.pdf cbb.pdf
 
 We thus obtain the following clustering:
 
-![Bad clustering with default values](tR05-cbb.png)
+![Better clustering with default values](tR05-cbb.png)
 
 In this clustering the previously-described condition is met and all the different clusters are clearly distinct in at least one sample.
 

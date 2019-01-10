@@ -1,4 +1,4 @@
-# Demo for WGS data from a cancer patient
+# Demo for WES data from a cancer patient
 : ex: set ft=markdown ;:<<'```shell' #
 
 The following HATCHet's demo represents a guided example starting from WES (whole-exome sequencing) data from 2 samples of the same patient. WES data are an interesting case to consider as they are typically characterize by a larger variance, especially for RDR. For simplicity, the demo starts from a BB file `demo-wes.bb` (included in this demo at `examples/demo-WES/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. binBAM, deBAF, and comBBo) have already been executed by running standard configuration for WES data (bin size of 250kb through -b 250kb of binBAM, and the allele counts for germline heterozygous SNPs have been selected between 30 and 400 through `-c 30 -C 400` of `deBAF` as the average coverage is 180x).
@@ -8,8 +8,8 @@ The following HATCHet's demo represents a guided example starting from WES (whol
 The demo requires that HATCHet has been succesfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
-HATCHET="../../../hatchet" # This is the full path to this HATCHet's repository. When executing the demo from the related directory, the default value of `../../` can be used.
-BNPY="/n/fs/ragr-code/general/bnpy-dev/" # This is the full path to the BNPY's home
+HATCHET="../../" # This is the full path to this HATCHet's repository. When executing the demo from the related directory, the default value of `../../` can be used.
+BNPY="" # This is the full path to the BNPY's home
 PY="python2" # This id the full path to the version of PYTHON2.7 which contains the required modules. When this corresponds to the standard version, the user can keep the given value of `python2`
 :<<'```shell' # Ignore this line
 ```
@@ -77,7 +77,7 @@ mv bb_clustered.pdf cbb.pdf
 
 We thus obtain the following clustering:
 
-![Better clustering with default values](tR05-cbb.png)
+![Better clustering with default values](cbb.png)
 
 In this clustering the previously-described condition is met and all the different clusters are clearly distinct in at least one sample.
 
