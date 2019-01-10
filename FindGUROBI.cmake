@@ -1,14 +1,17 @@
 # Simply provide the home of gurobi within the double apices here below
-# REQUIREMENT: Gurobi's home must have a name similar to "gurobiXXX" where XXX is the version and must contain the corresponding `lib` and `include` directories
-set(GUROBI_HOME "/n/fs/ragr-code/general/gurobi810" )
+# REQUIREMENT 1: Gurobi's home must have a name similar to "gurobiXXX" where XXX is the version.
+# REQUIREMENT 2: Gurobi's must contain either (1) `lib` and `include` directories, (2) a folder named either `linux64` or `mac64` which correspondingly contains `lib` and `include` directories
+
+set(GUROBI_HOME "" )
+
+
+
 
 if(EXISTS ${GUROBI_HOME} )
     message( "-- Gurobi's home is set to: " ${GUROBI_HOME} )
 
-    execute_process (
-	COMMAND bash -c "echo ${GUROBI_HOME} | grep -oP '(?<=/gurobi)[^/]*'"
-	OUTPUT_VARIABLE GUROBI_VER
-    )
+    string( REGEX MATCH "gurobi[0-9][0-9][0-9]" GUROBI_VER_FULL ${GUROBI_HOME} )
+    string( REGEX MATCH "[0-9][0-9][0-9]" GUROBI_VER ${GUROBI_VER_FULL} )
 
     ## If the previous process fails to find the correct version of Gurobi in variable GUROBI_VER (e.g. 702, 751, 801) please provide the correct version here below by properly setting the version instead of XXX and uncommented the command
     ## set(GUROBI_VER "XXX")
@@ -37,19 +40,6 @@ if(EXISTS ${GUROBI_HOME} )
 	endif()
     endif()
 
-    # if(NOT EXISTS ${GUROBI_HOME}/linux64/lib/libgurobi${GUROBI_VER_LIB}.so )
-    #    if(NOT EXISTS ${GUROBI_HOME}/mac64/lib/libgurobi${GUROBI_VER_LIB}.so )
-    #       if(NOT EXISTS ${GUROBI_HOME}/lib/libgurobi${GUROBI_VER_LIB}.so )
-    #    	      message( FATAL_ERROR "libgurobi" ${GUROBI_VER_LIB} ".so not found either in " ${GUROBI_HOME} "/linux64/lib/ or " ${GUROBI_HOME} "/mac64/lib/ or " ${GUROBI_HOME} "/lib, please check the file exists and provide the correct PATH or manually set Gurobi's vcersion. CMake will exit." )
-    # 	  else()
-    # 	       message( "-- Gurobi library libgurobi" ${GUROBI_VER_LIB} ".so found in " ${GUROBI_HOME} "/lib/" )
-    # 	  endif()
-    #    else()
-    # 	      message( "-- Gurobi library libgurobi" ${GUROBI_VER_LIB} ".so found in " ${GUROBI_HOME} "/mac64/lib/" )
-    #    endif()
-    # else()
-    #    message( "-- Gurobi library libgurobi" ${GUROBI_VER_LIB} ".so found in " ${GUROBI_HOME} "/linux64/lib/" )
-    # endif()
 endif()
 
 FIND_PATH(GUROBI_INCLUDE_DIR
