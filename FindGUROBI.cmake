@@ -1,5 +1,5 @@
 # Simply provide the home of gurobi within the double apices here below
-# REQUIREMENT 1: Gurobi's home must have a name similar to "gurobiXXX" where XXX is the version.
+# REQUIREMENT 1: Full path to Gurobi's home which must have a name similar to "gurobiXXX" where XXX is the version.
 # REQUIREMENT 2: Gurobi's must contain either (1) `lib` and `include` directories, (2) a folder named either `linux64` or `mac64` which correspondingly contains `lib` and `include` directories
 
 set(GUROBI_HOME "" )
