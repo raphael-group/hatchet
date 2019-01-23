@@ -156,11 +156,18 @@ void ArgParse::setClonalCluster(const CNAssignCluster& inferred)
 
 void ArgParse::parse()
 {
+    for(int i = 0; i < _argc; ++i)                                                                                                                                                                                                                       
+    {                                                                                                                                                                                                                                                    
+        std::cerr << "Given parsing: " << _argv[i] << std::endl;                                                                                                                                                                                     
+    }
+    
     for(int idx = 1; idx < _argc; ++idx)
     {
         std::string arg = std::string(_argv[idx]);
+        std::cerr << "Reading: " << arg << std::endl;
         if(_args.find(arg) != _args.end())
         {
+            std::cerr << "Argument: " << arg << std::endl;
             if (arg == "-h") {
                 parseOptional(arg, "");
             }else if (arg == "-f") {
@@ -171,6 +178,7 @@ void ArgParse::parse()
                 throw "Missing argument values!";
             }
         } else {
+            std::cerr << "Input: " << arg << std::endl;
             if((*_required.find("input")).second)
             {
                 throw "Multiple default arguments found! Please specify only one default argument as input file!";
@@ -221,6 +229,13 @@ void ArgParse::parse()
 
 void ArgParse::parseOptional(const std::string &arg, const std::string &value)
 {
+    std::cerr << "Parsing: " << arg << " with value: " << value << std::endl;
+    if (arg == "-n")
+    {
+        std::cerr << "Already present: " << (*_required.find(arg)).second  << std::endl;
+    } else {
+        std::cerr << "Already present: " << (*_optional.find(arg)).second  << std::endl;
+    }
     if(arg == "-h")
     {
         _h =  true;
