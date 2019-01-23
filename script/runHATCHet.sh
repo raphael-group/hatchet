@@ -47,7 +47,7 @@ cd ${XDIR}
 
 \time -v python2 ${UTILS}comBBo.py -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
 
-\time -v python2 ${UTILS}cluBB.py ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -u 20 -e 12 -dR 0.002 -dB 0.002 -tB 0.04 -tR 0.15 -d 0.08
+\time -v python2 ${UTILS}cluBB.py ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -e 12 -tB 0.04 -tR 0.15 -d 0.08
 
 cd ${ANA}
 \time -v python2 ${UTILS}BBot.py -c RD --figsize 6,3 ${BBC}bulk.bbc &
@@ -58,8 +58,8 @@ cd ${ANA}
 wait
 
 cd ${RES}
-\time -v python2 ${HATCHET} ${SOLVER} -i ${BBC}bulk -n2,8 -p 400 -j 50 -v 3 -u 0.03 -r 12 -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 |& tee hatchet.log
+\time -v python2 ${HATCHET} ${SOLVER} -i ${BBC}bulk -n2,8 -p 400 -v 3 -u 0.03 -r 12 -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 |& tee hatchet.log
 
 cd ${EVA}
-\time -v python ${UTILS}BBeval.py ${RES}/best.bbc.ucn -rC 10 -rG 1
+\time -v python ${UTILS}BBeval.py ${RES}/best.bbc.ucn
 
