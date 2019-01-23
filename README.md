@@ -165,11 +165,11 @@ The user can simply use the script for every execution of HATCHet on different d
 
 Each demo is an exemplary and guided execution of HATCHet on a dataset included in the corresponding demo's folder of this repository (inside `examples`). The demos are meant to illustrate how the user should apply HATCHet on different datasets characterized by different features, noise, and kind of data. In fact, the default parameters of HATCHet allow to succesfully analyze most of the datasets but some of these may be characterized by special features or higher-than-expected variance of the data. Understanding the functioning of HATCHet, assessing the quality of the results, and tuning the few parameters needed to fit the unique features of the considered data thus become crucial to guarantee to always obtain the best-quality results. These are the goals of these demos. More specifically, each demo is simultaneously a guided description of the entire example and a BASH script, which can be directly executed to run the complete demo after setting the few required paths at the beginning of the file. As such, the user can both read the guided description as a web page and run the same script to execute the demo. At this time the following demos are available (more demos will be added in the near future):
 
-| Name | Demo | Folder | Description |
-|------|------|--------|-------------|
-| `demo-WGS-sim` | [demo-wgs-sim](examples/demo-WGS-sim/demo-wgs-sim.sh) | [demo-WGS-sim](examples/demo-WGS-sim/) | A demo on a typical WGS (whole-genome sequencing) multi-sample dataset with standard noise and variance of the data |
-| `demo-WGS-cancer` | [demo-wgs-cancer](examples/demo-WGS-cancer/demo-wgs-cancer.sh) | [demo-WGS-cancer](examples/demo-WGS-cancer/) | A demo on a cancer WGS (whole-genome sequencing) multi-sample dataset with high noise and variance of the data |
-| `demo-WES` | [demo-wes](examples/demo-WES/demo-wes.sh) | [demo-WES](examples/demo-WES/) | A demo on a cancer WES (whole-exome sequencing) multi-sample dataset, which is typycally characterized by very high variance of RDR |
+| Name | Demo | Description |
+|------|------|-------------|
+| [demo-WGS-sim](examples/demo-WGS-sim/) | [demo-wgs-sim](examples/demo-WGS-sim/demo-wgs-sim.sh) | A demo on a typical WGS (whole-genome sequencing) multi-sample dataset with standard noise and variance of the data |
+| [demo-WGS-cancer](examples/demo-WGS-cancer/) | [demo-wgs-cancer](examples/demo-WGS-cancer/demo-wgs-cancer.sh) | A demo on a cancer WGS (whole-genome sequencing) multi-sample dataset with high noise and variance of the data |
+| [demo-WES](examples/demo-WES/) | [demo-wes](examples/demo-WES/demo-wes.sh) | A demo on a cancer WES (whole-exome sequencing) multi-sample dataset, which is typycally characterized by very high variance of RDR |
 
 ### Custom pipelines
 <a name="custompipelines"></a>
