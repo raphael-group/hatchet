@@ -27,6 +27,7 @@ This repository includes a quick overview of the HATCHet's algorithm and softwar
 3. [Usage](#usage)
     - [Full pipeline and tutorial](#fullpipelineandtutorial)
     - [Demos](#demos)
+    - [Custom pipelines](#custompipelines)
     - [Detailed steps](#detailedsteps)
     - [Tips and reccomendations](#tipsandreccomendations)
 4. [Current issues](#currentissues)
@@ -40,8 +41,8 @@ This repository includes a quick overview of the HATCHet's algorithm and softwar
 
 ![](doc/hatchet-cartoon.png "HATCHet algorithm")
 
-**Overview of \hatchetFull (\hatchet) algorithm.**
-**(A)** HATCHet analyzes the read-depth ratio (RDR) and the B-allele frequency (BAF) in bins of the reference genome (black squares) jointly from multiple tumor samples. Here, we show two tumor samples *p* and *q*. **(B)** HATCHet globally clusters the bins based on RDR and BAF along the entire genome and jointly across samples *p* and *q*. Each cluster (color) includes bins with the same copy-number state within each clone present in *p* or *q*. **(C)** HATCHet estimates the fractional copy number of each cluster. If there is no WGD, the identification of the cluster (magenta) with copy-number state *(1, 1)* is sufficient and RDRs are scaled correspondingly. If a WGD occurs, HATCHet finds the cluster with copy-number state _(2, 2)_ (same magenta cluster) and a second cluster having an identical copy-number state in all tumor clones. **(D)** HATCHet factorizes the allele-specific fractional copy numbers *F^A, F^B* into the allele-specific copy numbers *A, B*, respectively, and the clone proportions *U*. Here there is a normal clone and 3 tumor clones. **(E)** HATCHet's model selection criterion identifies the matrices *A*, *B* and *U* in the factorization while evaluating the fit according to both the inferred number of clones and presence/absence of a WGD. **(F)** Clusters are classified by their inferred copy-number states in each sample. *Sample-clonal clusters* have a unique copy-number state in the sample and correspond to evenly-spaced positions in the scaled RDR-BAF plot (vertical grid lines in each plot). *Sample-subclonal clusters* (e.g. cyan in *p*) have different copy-number states in a sample and thus correspond to intermediate positions in the scaled RDR-BAF plot. *Tumor-clonal clusters* have identical copy-number states in all tumor clones -- thus they are sample-clonal clusters in every sample and preserve their relative positions in scaled-RDR-BAF plots. In contrast, *tumor-subclonal clusters* have different copy-number states in different tumor clones and their relative positions in the scaled RDR-BAF plot varies across samples (e.g. purple cluster).
+**Overview of HATCHet algorithm.**
+**(A)** HATCHet analyzes the read-depth ratio (RDR) and the B-allele frequency (BAF) in bins of the reference genome (black squares) jointly from multiple tumor samples. Here, we show two tumor samples *p* and *q*. **(B)** HATCHet globally clusters the bins based on RDR and BAF along the entire genome and jointly across samples *p* and *q*. Each cluster (color) includes bins with the same copy-number state within each clone present in *p* or *q*. **(C)** HATCHet estimates the fractional copy number of each cluster. If there is no WGD, the identification of the cluster (magenta) with copy-number state _(1, 1)_ is sufficient and RDRs are scaled correspondingly. If a WGD occurs, HATCHet finds the cluster with copy-number state _(2, 2)_ (same magenta cluster) and a second cluster having an identical copy-number state in all tumor clones. **(D)** HATCHet factorizes the allele-specific fractional copy numbers *F^A, F^B* into the allele-specific copy numbers *A, B*, respectively, and the clone proportions *U*. Here there is a normal clone and 3 tumor clones. **(E)** HATCHet's model selection criterion identifies the matrices *A*, *B* and *U* in the factorization while evaluating the fit according to both the inferred number of clones and presence/absence of a WGD. **(F)** Clusters are classified by their inferred copy-number states in each sample. *Sample-clonal clusters* have a unique copy-number state in the sample and correspond to evenly-spaced positions in the scaled RDR-BAF plot (vertical grid lines in each plot). *Sample-subclonal clusters* (e.g. cyan in *p*) have different copy-number states in a sample and thus correspond to intermediate positions in the scaled RDR-BAF plot. *Tumor-clonal clusters* have identical copy-number states in all tumor clones -- thus they are sample-clonal clusters in every sample and preserve their relative positions in scaled-RDR-BAF plots. In contrast, *tumor-subclonal clusters* have different copy-number states in different tumor clones and their relative positions in the scaled RDR-BAF plot varies across samples (e.g. purple cluster).
 
 
 ### Software
@@ -147,6 +148,7 @@ HATCHet requires 3 input data:
 The repository includes all the components that are required to cover every step of the entire HATCHet's pipeline, starting from the processing of raw data reported in a BAM file through the analysis of the final results.
 We  provide a script representing the [full pipeline](#fullpipelineandtutorial) of HATCHet and we describe in details the whole script through a tutorial with instructions for usage.
 In addition we provide some [demos](#demos) which correspond to guided executions of HATCHet os some small examples and explain in detail the usage of HATCHet when considering standard datasets, real datasets with high noise, and different kind of data.
+The repository also includes [custom pipelines](#custompipelines) which adapts the full HATCHet's pipeline to special condition or integrates pre-processed data belonging to different pipeline.
 Moreover, the implementation of HATCHet is highly modular and one can replace any HATCHet's module with any other method to obtain the required results (especially for the pre-processing modules).
 As such, we also provide here an overview of the entire pipeline and we describe the [details of each step](#detailedsteps) in a dedicated section of the manual.
 Last, we provide some tips and suggestions which allow users to apply HATCHet on datasets with different features.
@@ -164,11 +166,20 @@ The user can simply use the script for every execution of HATCHet on different d
 
 Each demo is an exemplary and guided execution of HATCHet on a dataset included in the corresponding demo's folder of this repository (inside `examples`). The demos are meant to illustrate how the user should apply HATCHet on different datasets characterized by different features, noise, and kind of data. In fact, the default parameters of HATCHet allow to succesfully analyze most of the datasets but some of these may be characterized by special features or higher-than-expected variance of the data. Understanding the functioning of HATCHet, assessing the quality of the results, and tuning the few parameters needed to fit the unique features of the considered data thus become crucial to guarantee to always obtain the best-quality results. These are the goals of these demos. More specifically, each demo is simultaneously a guided description of the entire example and a BASH script, which can be directly executed to run the complete demo after setting the few required paths at the beginning of the file. As such, the user can both read the guided description as a web page and run the same script to execute the demo. At this time the following demos are available (more demos will be added in the near future):
 
-| Name | Demo | Folder | Description |
-|------|------|--------|-------------|
-| `demo-WGS-sim` | [demo-wgs-sim](examples/demo-WGS-sim/demo-wgs-sim.sh) | [demo-WGS-sim](examples/demo-WGS-sim/) | A demo on a typical WGS (whole-genome sequencing) multi-sample dataset with standard noise and variance of the data |
-| `demo-WGS-cancer` | [demo-wgs-cancer](examples/demo-WGS-cancer/demo-wgs-cancer.sh) | [demo-WGS-cancer](examples/demo-WGS-cancer/) | A demo on a cancer WGS (whole-genome sequencing) multi-sample dataset with high noise and variance of the data |
-| `demo-WES` | [demo-wes](examples/demo-WES/demo-wes.sh) | [demo-WES](examples/demo-WES/) | A demo on a cancer WES (whole-exome sequencing) multi-sample dataset, which is typycally characterized by very high variance of RDR |
+| Name | Demo | Description |
+|------|------|-------------|
+| [demo-WGS-sim](examples/demo-WGS-sim/) | [demo-wgs-sim](examples/demo-WGS-sim/demo-wgs-sim.sh) | A demo on a typical WGS (whole-genome sequencing) multi-sample dataset with standard noise and variance of the data |
+| [demo-WGS-cancer](examples/demo-WGS-cancer/) | [demo-wgs-cancer](examples/demo-WGS-cancer/demo-wgs-cancer.sh) | A demo on a cancer WGS (whole-genome sequencing) multi-sample dataset with high noise and variance of the data |
+| [demo-WES](examples/demo-WES/) | [demo-wes](examples/demo-WES/demo-wes.sh) | A demo on a cancer WES (whole-exome sequencing) multi-sample dataset, which is typycally characterized by very high variance of RDR |
+
+### Custom pipelines
+<a name="custompipelines"></a>
+
+The repository includes custom pipelines which have been designed to adapt the complete pipeline of HATCHet to special conditions or to integrate the processed data produced by other pipelines. Each custom pipeline is a variation of the main HATCHet's pipeline, we thus recommend the user to always first carefully understand the main [BASH script](script/runHATCHet.sh) through the corresponding guided [tutorial](doc/doc_runhatchet.md) and to carefully understand the provided [demos](#demos) to properly apply HATCHet for best-quality results. Each custom pipeline also includes a specific demo which represent a guided and executable example on example data.
+
+| Name | Description | Script | Demo | Variations |
+|------|-------------|--------|------|------------|
+| [GATK4-CNV](custom/GATK4-CNV) | Custom pipeline for segmented files from GATK4 CNV pipeline | [custom-gatk4-cnv.sh](custom/GATK4-CNV/custom-gatk4-cnv.sh) | [demo-gatk4-cnv.sh](custom/GATK4-CNV/demo-gatk4-cnv.sh) | This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet (`binBAM`, `deBAF`, and `comBBo`) are not needed; for this reason, the following depdencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case. |
 
 ### Detailed steps
 <a name="detailedsteps"></a>
