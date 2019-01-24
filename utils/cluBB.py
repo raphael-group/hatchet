@@ -26,7 +26,7 @@ def main():
         clouds = generateClouds(points=points, density=args["cloud"], seed=args["seed"], sdeven=args["ratiodeviation"], sdodd=args["bafdeviation"])
 
     sp.log(msg="# Clustering bins by RD and BAF across tumor samples\n", level="STEP")
-    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, output=args["outsegments"], samples=samples, clouds=clouds, K=args["initclusters"], sf=args["tuning"], bnpydir=args["bnpydir"])
+    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, output=args["outsegments"], samples=samples, clouds=clouds, K=args["initclusters"], sf=args["tuning"], restarts=args['restarts'], bnpydir=args["bnpydir"])
 
     if args['rdtol'] > 0.0 or args['baftol'] > 0.0:
         sp.log(msg="# Refining clustering using given tolerances\n", level="STEP")
@@ -107,7 +107,7 @@ def getPoints(data, samples):
     return points, bintoidx
 
 
-def cluster(points, output, samples, clouds=None, K=15, sf=0.01, bnpydir=None):
+def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10, bnpydir=None):
     """
     Clusters a set of data points lying in an arbitrary number of clusters.
     Arguments:
@@ -147,11 +147,7 @@ def cluster(points, output, samples, clouds=None, K=15, sf=0.01, bnpydir=None):
     if Data.X.shape[0] < K:
 	    K = Data.X.shape[0]
 
-#        hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=1, K=K, moves='birth,merge', targetMaxSize=500, ECovMat='eye', mergeStartLap=10, sF=sf, doWriteStdOut=False)
-#        hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', moves='birth,merge', sF=0.0001, doWriteStdOut=False)
-#        hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nTask=1, K=K, moves='birth,merge', sF=sf, doWriteStdOut=False)
-
-    hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=1, K=K, moves='birth,merge', targetMaxSize=500, ECovMat='eye', mergeStartLap=10, sF=sf, doWriteStdOut=False)
+    hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
 
     observationModel = hmodel.obsModel
     numClusters = observationModel.K

@@ -290,8 +290,9 @@ def parse_clubb_args():
     parser.add_argument("-e","--seed", type=int, required=False, default=0, help='Random seed used for the normal distributions used in the clouds (default: 0)')
     parser.add_argument("-K","--initclusters", type=int, required=False, default=15, help="The initial number of clusters (default: 15)")
     parser.add_argument("-sf","--tuning", type=float, required=False, default=0.01, help="Tuning parameter for clustering; used to determine initial size of distribution covariances. Small sf indicates a belief that clusters are of small size (default: 0.01)")
+    parser.add_argument("-R","--restarts", type=int, required=False, default=20, help="Number of restarts performed by the clustering to choose the best (default: 20)")
     parser.add_argument("-v","--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
-    parser.add_argument("-r","--disablebar", action='store_true', default=False, required=False, help="Disable progress bar")
+    parser.add_argument("--disablebar", action='store_true', default=False, required=False, help="Disable progress bar")
     args = parser.parse_args()
 
     if not os.path.isfile(args.BBFILE):
@@ -316,6 +317,8 @@ def parse_clubb_args():
         raise ValueError(sp.error("Init-cluster parameter must be positive!"))
     if args.tuning < 0:
         raise ValueError(sp.error("Tuning parameter must be positive!"))
+    if args.restarts < 0:
+        raise ValueError(sp.error("Number of restarts must be positive!"))
 
     if not os.path.isdir(os.path.join(args.bnpy, "bnpy")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/HModel.py")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/Run.py")):
         raise ValueError(sp.error("The specified root path for BNPY do not contain a BNPY folder!"))
@@ -331,6 +334,7 @@ def parse_clubb_args():
             "seed" : args.seed,
             "initclusters" : args.initclusters,
             "tuning" : args.tuning,
+            "restarts" : args.restarts,
             "verbose" : args.verbose,
             "disable" : args.disablebar,
             "outsegments" : args.outsegments,
