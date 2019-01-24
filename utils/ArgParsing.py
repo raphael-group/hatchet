@@ -290,7 +290,7 @@ def parse_clubb_args():
     parser.add_argument("-e","--seed", type=int, required=False, default=0, help='Random seed used for the normal distributions used in the clouds (default: 0)')
     parser.add_argument("-K","--initclusters", type=int, required=False, default=15, help="The initial number of clusters (default: 15)")
     parser.add_argument("-sf","--tuning", type=float, required=False, default=0.01, help="Tuning parameter for clustering; used to determine initial size of distribution covariances. Small sf indicates a belief that clusters are of small size (default: 0.01)")
-    parser.add_argument("-R","--restarts", type=int, required=False, default=20, help="Number of restarts performed by the clustering to choose the best (default: 20)")
+    parser.add_argument("-R","--restarts", type=int, required=False, default=10, help="Number of restarts performed by the clustering to choose the best (default: 10)")
     parser.add_argument("-v","--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
     parser.add_argument("--disablebar", action='store_true', default=False, required=False, help="Disable progress bar")
     args = parser.parse_args()
