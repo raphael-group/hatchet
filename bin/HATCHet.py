@@ -30,7 +30,7 @@ def parsing_arguments():
     parser.add_argument("-td","--maxneutralshift", type=float, required=False, default=0.1, help="Maximum BAF shift for neutral cluster used to automatically infer the diploid/tetraploid cluster (default: 0.1)")
     parser.add_argument("--merge", action='store_true', default=False, required=False, help="Merge the clusters (default: false)")
     parser.add_argument("-mR","--mergeRDR", type=float, required=False, default=0.1, help="RDR tolerance used for finding the clonal copy numbers (default: 0.1)")
-    parser.add_argument("-mB","--mergeBAF", type=float, required=False, default=0.05, help="BAF tolerance used for finding the clonal copy numbers (default: 0.03)")
+    parser.add_argument("-mB","--mergeBAF", type=float, required=False, default=0.03, help="BAF tolerance used for finding the clonal copy numbers (default: 0.03)")
     parser.add_argument("-l", "--limitinc", type=float, required=False, default=None, help="Upper bound to the relative increase of objective function. When there are significant small CNAs, their effect on the objective function may be confounded by only larger events, use this value to limit the relative increase of OBJ so that fitting small CNAs is more considered (default: None)")
     parser.add_argument("-g", "--ghostprop", type=float, required=False, default=0.3, help="Increasing proportion used to compute the value of the first ghost point added in the solution selection (default: 0.3)")
     parser.add_argument("-tR","--toleranceRDR", type=float, required=False, default=0.06, help="RDR tolerance used for finding the clonal copy numbers (default: 0.06)")
@@ -480,10 +480,12 @@ def findClonalClusters(fseg, neutral, size, tB, tR, samples, v):
             # if sum(abs(fseg[cluster][p]['baf'] - fseg[neutral][p]['baf']) <= tB for p in samples) == len(samples):
             #     options = [(4, 4)] + options
         elif leftpos == len(samples):
-            if level[cluster] == 'top':
+            if level[cluster] == 'top' and location[cluster] == 'top':
+                options = [(2, 0)]
+            elif level[cluster] == 'top':
                 options = [(2, 0), (2, 1)]
             elif level[cluster] == 'bot':
-                options = [(2, 1), (2, 0)]
+                options = [(2, 1)]
             else:
                 assert False
             # if sum(abs(fseg[cluster][p]['baf'] - fseg[neutral][p]['baf']) <= tB for p in samples) == len(samples):

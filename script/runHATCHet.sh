@@ -6,7 +6,7 @@ BCF="/path/to/bcftools-home/bin/"
 BNPY="/path/to/bnpy-dev/"
 
 HATCHET_HOME="/path/to/hatchet_home"
-HATCHET="${HATCHET_HOME}/bin/hatchet.py"
+HATCHET="${HATCHET_HOME}/bin/HATCHet.py"
 UTILS="${HATCHET_HOME}/utils/"
 SOLVER="${HATCHET_HOME}/build/solve"
 
