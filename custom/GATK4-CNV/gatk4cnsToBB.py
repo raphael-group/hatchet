@@ -42,7 +42,7 @@ def parse_args():
             size = int(args.binsize)
     except:
         raise ValueError("Size must be a number, optionally ending with either \"kb\" or \"Mb\"!")
-            
+
     if args.devRDR < 0.0:
         raise ValueError("ERROR: deviation of RDR must be grater or equal than 0.0!")
 
@@ -86,9 +86,9 @@ def main():
                      for b in sorted(bins[c])
                      for p in sorted(bins[c][b])])
 
-    
+
 def read_segs(samples):
-    
+
     def read_sample(s):
         d = {}
         with open(s, 'r') as i:
@@ -98,18 +98,19 @@ def read_segs(samples):
                     if p[0] != 'CONTIG':
                         h = p[0]
                         seg = (int(p[1]), int(p[2]))
-                        rdr = math.pow(2.0, float(p[6]))
-                        if rdr < 0.0:
-                            raise ValueError("ERROR: the log of RDR expected to be positive but value {} found!".format(rdr))
-                        baf = float(p[9])
-                        if not 0.0 <= baf <= 0.5:
-                            raise ValueError("ERROR: BAF expected to be in [0, 0.5] but value {} found!".format(baf))
-                        if h not in d:
-                            d[h] = {}
-                        assert seg not in d[h], 'ERROR: Found a duplicate segment {}:{}-{}'.format(h, seg[0], seg[1])
-                        check = (lambda b : (b[0] <= b[1] <= seg[0]) or(seg[1] <= b[0] <= b[1]))
-                        assert False not in set(check(b) for b in d[h]), 'ERROR: found overlapping segment {}:{}-{}'.format(h, seg[0], seg[1])
-                        d[h][seg] = {'RDR' : rdr, 'BAF' : baf}
+                        if p[6].upper() not in ['NAN', 'NONE'] and p[9].upper() not in ['NAN', 'NONE']:
+                            rdr = math.pow(2.0, float(p[6]))
+                            if rdr < 0.0:
+                                raise ValueError("ERROR: the log of RDR expected to be positive but value {} found!".format(rdr))
+                            baf = float(p[9])
+                            if not 0.0 <= baf <= 0.5:
+                                raise ValueError("ERROR: BAF expected to be in [0, 0.5] but value {} found!".format(baf))
+                            if h not in d:
+                                d[h] = {}
+                            assert seg not in d[h], 'ERROR: Found a duplicate segment {}:{}-{}'.format(h, seg[0], seg[1])
+                            check = (lambda b : (b[0] <= b[1] <= seg[0]) or(seg[1] <= b[0] <= b[1]))
+                            assert False not in set(check(b) for b in d[h]), 'ERROR: found overlapping segment {}:{}-{}'.format(h, seg[0], seg[1])
+                            d[h][seg] = {'RDR' : rdr, 'BAF' : baf}
         return d
 
     return {s : read_sample(samples[s]) for s in samples}
@@ -143,7 +144,7 @@ def jsegmentation(segs):
     log('##Coverage from joint segmentation is {0:.2f}%'.format(float(100.0 * cov) / tot))
 
     res = {p : {c : {s : segs[p][c][bmap[p][c][s]] for s in tak[c]} for c in tak} for p in segs}
-    
+
     chrs = set(c for p in res for c in res[p])
     pos = {c : set(s for p in res for s in res[p][c]) for c in chrs}
 
@@ -166,7 +167,7 @@ def jsegmentation(segs):
             join[p][c][l, r] = val[p]
 
     assert False not in set(cov == sum(s[1] - s[0] for c in join[p] for s in join[p][c]) for p in res)
-        
+
     return join
 
 
@@ -206,7 +207,7 @@ def splitBAF(baf, scale):
     estimations = [float(a) / float(a+b) if a+b>0 else 1.0 for (a, b) in roundings]
     diff = [abs(est - BAF) for est in estimations]
     best = np.argmin(diff)
-    
+
     return roundings[best][0], roundings[best][1]
 
 
