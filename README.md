@@ -157,11 +157,11 @@ HATCHet requires 3 input data:
 
 The repository includes all the components that are required to cover every step of the entire HATCHet's pipeline, starting from the processing of raw data reported in a BAM file through the analysis of the final results.
 We  provide a script representing the [full pipeline](#fullpipelineandtutorial) of HATCHet and we describe in details the whole script through a tutorial with instructions for usage.
-In addition we provide some [demos](#demos) which correspond to guided executions of HATCHet os some small examples and explain in detail the usage of HATCHet when considering standard datasets, real datasets with high noise, and different kind of data.
-The repository also includes [custom pipelines](#custompipelines) which adapts the full HATCHet's pipeline to special condition or integrates pre-processed data belonging to different pipeline.
+In addition we provide some [demos](#demos) which correspond to guided executions of HATCHet on some examples and explain in detail the usage of HATCHet when considering standard datasets, real datasets with high noise, and different kind of data.
+The repository also includes [custom pipelines](#custompipelines) which adapts the full HATCHet's pipeline to special condition or integrates pre-processed data belonging to different pipelines.
 Moreover, the implementation of HATCHet is highly modular and one can replace any HATCHet's module with any other method to obtain the required results (especially for the pre-processing modules).
 As such, we also provide here an overview of the entire pipeline and we describe the [details of each step](#detailedsteps) in a dedicated section of the manual.
-Last, we provide some tips and suggestions which allow users to apply HATCHet on datasets with different features.
+Last, we provide [reccomendations](#reccomentations), especially for noisy datasets or with deifferent features, to guide the user in the interpration of HATCHet's inference, explain how to perform quality control to guarantee the best-quality results, and describe how the user can control and tune some of the parameters to obtain the best-fitting results.
 
 
 ### Full pipeline and tutorial
