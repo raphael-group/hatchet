@@ -200,6 +200,12 @@ The descrition of each step also includes the details of the corresponding input
 ### Tips and reccomendations
 <a name="tipsandreccomendations"></a>
 
+All the components of HATCHet's pipeline use some basic parameters that allow to deal with data characterized by different features. The default values of these parameters allow one to succesfully apply HATCHet on most datasets. However, special or noisy datasets may require to tune some parameters. The user can deal with these cases by following the reccomendations reported here, reading the descriptions of the various steps, and using the informative plots to verify the results. In the following guides and recommentations, we guide the user in the interpration of HATCHet's inference, we explain how to perform quality control to guarantee the best-quality results, and we describe how the user can control and tune some of the parameters to obtain the best-fitting results. We thus split the reccomendations into distinct topics with dedicated descriptions.
+
+| Reccomendation | Description |
+|----------------|-------------|
+| [Analyze HATCHet inference](doc/recommendation_inference.md) | Assesment of the inference quality, verification of identified clonal cluster, and investigate alternative solutions. |
+
 - All the components of HATCHet's pipeline depend on some basic parameters that allow to deal with data characterized by different features. The default values of these parameters allow one to succesfully apply HATCHet on most datasets. However, special or noisy datasets may require some tuning of the parameters. The user can deal with these cases by following the suggestions reported here, reading the descriptions of the various steps, and using the informative plots to verify the results. In particular:
   - *Overfitting of minimum clone proportion*. If the results contain several clone proportions equal to the given minimum clone proportion, try to consider increasing values of this threshold as this mya indicate potential overfitting.
   - *Increase specificity*. HATCHet is based on a criterion of parsimony and tumor clones characterized by small CNAs or very low clone proportions may be missed. If one wants to investigate the presence of such clones (especially with small CNAs), the user can vary the corresponding parameter in [*hatchet*](doc/doc_hatchet.md) (see also [tutorial](doc/doc_runhatchet.md)). Observe that the parameter shall be decreased to increase the sensitivity.
