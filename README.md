@@ -115,6 +115,16 @@ Compilation is required to be executed only once for the core modules of HATCHet
     $ make
     ```
 
+**NOTE**: some users experienced a failure of compilation with an error message similar to _undefined reference to symbol 'pthread_create@@GLIBC_2.2.5'_. To solve this issue, simply substitute the following line in the CMakeLists.txt file:
+```cmake
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
+```
+with the following:
+```cmake
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread" )
+```
+by simply adding  `-pthread`. After this, simply re-compile from scratch.
+
 When the compilation process fail or when the enviroment has special requirements, the user can manually specify the required paths to Gurobi by following the [detailed intructions](doc/doc_compilation.md).
 
 ### Using Gurobi
