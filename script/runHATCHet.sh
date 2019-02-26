@@ -47,7 +47,7 @@ cd ${XDIR}
 
 \time -v python2 ${UTILS}comBBo.py -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
 
-\time -v python2 ${UTILS}cluBB.py ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -e 12 -tB 0.04 -tR 0.15 -d 0.08
+\time -v python2 ${UTILS}cluBB.py ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -e ${RANDOM} -tB 0.04 -tR 0.15 -d 0.08
 
 cd ${ANA}
 \time -v python2 ${UTILS}BBot.py -c RD --figsize 6,3 ${BBC}bulk.bbc &
@@ -58,7 +58,12 @@ cd ${ANA}
 wait
 
 cd ${RES}
-\time -v python2 ${HATCHET} ${SOLVER} -i ${BBC}bulk -n2,8 -p 400 -v 3 -u 0.03 -r 12 -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 |& tee hatchet.log
+\time -v python2 ${HATCHET} ${SOLVER} -i ${BBC}bulk -n2,8 -p 400 -v 3 -u 0.03 -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.4 &> >(tee >(grep -v Progress > hatchet.log))
+
+## Increase -l to 0.6 to decrease the sensitivity in high-variance or noisy samples, and decrease it to -l 0.3 in low-variance samples to increase the sensitivity and explore multiple solutions with more clones.
+## Increase -u if solutions have clone proportions equal to the minimum threshold -u
+## Decrease the number of restarts to 200 or 100 for fast runs, as well as user can decrease the number of clones to -n 2,6 when appropriate or when previous runs suggest fewer clones.
+## Increase the single-clone confidence to `-c 0.6` to increase the confidence in the presence of a single tumor clone and further increase this value when interested in a single clone.
 
 cd ${EVA}
 \time -v python ${UTILS}BBeval.py ${RES}/best.bbc.ucn
