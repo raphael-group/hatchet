@@ -110,6 +110,7 @@ It is very important that the user verifies the results in different steps to gu
 - User can assess the joint inference of number of clones and WGD by analyzing the values of the objective function and the related scores.
 
 There are some typical suspicious and warning cases that the user can identify from the analysis of the LOG of the `HATCHet` step:
+- Many diploid solutions have high scores.
 - Objective function of tetraploid solutions (i.e. with WGD) does not almost decrease/vary when increasing the number of clones. Even if this can occur because a single tetraploid tumor clone is present, this typically occurrs when the heuristic of HATCHet failed to identify a correct clonal cluster. This case is even more suspicious when the chosen number of diploid clones is much higher or when the objective function of tetraploid solutions is hugely higher that those of diploid solutions.
 - Inferred clone proportions are identical to the minimum clone proportion `-u` and tumor clones are present in all samples with very small proportions. Also, higher maximum copy numbers are needed when these result in much lower objective functions.
 - Huge difference between the number of clones inferred with and without a WGD, especially when the chosen diploid solution has a much lower number of clones than the chosen tetraploid solution.
@@ -117,9 +118,9 @@ There are some typical suspicious and warning cases that the user can identify f
 - Score of 2 clones with a WGD is much higher then score of 2 clones without a WGD. This typically requires to increase the single-clone confidence of HATCHet `-g` to investigate the presence of a single tumor clone.
 
 The user can consider the following parameters to investigate alternative solutions and better fitting:
+- Sensitivity `-l` controls how much the variance of data and clusters influence the choice of the number of clones. The user should increase the sensitivity (by decreasing the value of `-l` to 0.4, or 0.45, 0.5, or 0.3) when having high-purity or low variance samples to better investigate multiple solutions, especially when there are multiple solutions with higher scores (and especially when there are many diploid solutions with high scores) and when considering small CNAs.
 - Minimum clone proportion `-u`, we suggest to increase this value whenever obtaing solutions with clone proportions idetical to `-u` or clones present in all samples with very small proportions.
 - Maximum copy numbers, both standard values and those inferred from fractional copy numbers (by providing `-eD 0 -eT 0`) should be investigated.
-- `-l` controls the sensitivity for small CNAs and it is particularly interesting when the user wants to investigate solutions with higher number of clones.
 - `-g` controls the confidence in the presence of a single tumor clone.
 - Higher values of `-tR` and `-tR` allow to increase the thresholds for the inferred clonal clusters in case of high noise in the data, while lower values allow to decrease error in case of low noise data.
 - `-ts` determines a thresholds for the clusters to consider as potential clonal clusters, higher values allow to improve accuracy while lower values include more information especially when small CNAs are present.
