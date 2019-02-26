@@ -97,7 +97,7 @@ HATCHet selects the best solution under each of the two assumptions through a mo
     
 The user should analyze the scores as HATCHet provides the following two parameters (controlling different hypotheses) to investigate alternative solutions with also high scores: 
 - **Sensitivity to small CNAs `-l`**: this parameter controls the sensitivity of HATCHet to small CNAs, whose typical values are 0.5-0.6. The user should decrease this value, e.g. 0.2-0.3, to investigate solutions with more clones and smaller CNAs, while it should increase the value, e.g. 1.0-1.5, to give more confidence to large CNAs and less to small CNAs.
-- **Confidence in a single tumor clone `-g`**: this parameter controls the confidence in the presence of a single tumor clone, whose typical values are 0.2-0.3. The user should increase the value to increase the confidence, e.g. 0.4-0.5, in the presence of a single tumor clone, while lower values, e.g. 0.0-0.1, decrease the confidenze and favor the presence of more clones.
+- **Confidence in a single tumor clone `-g`**: this parameter controls the confidence in the presence of a single tumor clone, whose typical values are 0.2-0.3. The user should increase the value to increase the confidence, e.g. 0.4-0.5, in the presence of a single tumor clone, while lower values, e.g. 0.0-0.1, decrease the confidenze and favor the presence of more clones. The value should be increase especially in 2 cases: (1) when the score of 2 clones is particularly high with or without a WGD (e.g. a value close to 0.0), and especially (2) when the score of 2 clones is significantly higher with a WGD than the score of 2 clones without a WGD; the latter may indeed indicate the presence of a single tetraploid clone.
 
 The final best solution, according to prediction of the presence or absence of a WGD, is made based on a trade-off between the number of clones and WGD; more specifically, the diploid solution is chosen when it has the same or lower number of clones than the tetraploid solution, otherwise the tetraploid solution is chosen.
 
@@ -114,6 +114,7 @@ There are some typical suspicious and warning cases that the user can identify f
 - Inferred clone proportions are identical to the minimum clone proportion `-u` and tumor clones are present in all samples with very small proportions. Also, higher maximum copy numbers are needed when these result in much lower objective functions.
 - Huge difference between the number of clones inferred with and without a WGD, especially when the chosen diploid solution has a much lower number of clones than the chosen tetraploid solution.
 - Objective function that keeps decreasing significantly and objective function with very small values.
+- Score of 2 clones with a WGD is much higher then score of 2 clones without a WGD. This typically requires to increase the single-clone confidence of HATCHet `-g` to investigate the presence of a single tumor clone.
 
 The user can consider the following parameters to investigate alternative solutions and better fitting:
 - Minimum clone proportion `-u`, we suggest to increase this value whenever obtaing solutions with clone proportions idetical to `-u` or clones present in all samples with very small proportions.
