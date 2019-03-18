@@ -670,7 +670,7 @@ def select(diploid, tetraploid, v, rundir, g, limit):
 
         for i, tet in enumerate(tetraploid):
             if i == 0:
-                tscores[tet[0]] = forward(tetraploid, i, g, limit)
+                tscores[tet[0]] = estimate_forward(tetraploid, i, diploid, limit)
             elif i == len(tetraploid) - 1:
                 tscores[tet[0]] = backward(tetraploid, i, g, limit)
             else:
@@ -756,8 +756,6 @@ def selectDiploid(diploid, v, rundir, g, limit):
 
 
 def selectTetraploid(tetraploid, v, rundir, g):
-    assert len(diploid) == len(tetraploid), error("The number of diploid and tetraploid results must be the same")
-    dscores = {}
     tscores = {}
 
     if len(tetraploid) == 1 or len(tetraploid) == 2:
@@ -801,6 +799,14 @@ def forward(f, i, g, limit):
         left = g
     else:
         left = min(g, limit)
+    right = float(max(f[i][1] - f[i + 1][1], 0.0) / f[i][1])
+    return left - right
+
+
+def estimate_forward(f, i, knw, limit):
+    left = float(max(knw[i][1] - knw[i + 1][1], 0.0) / knw[i][1]) 
+    if limit is not None:
+        left = min(left, limit)
     right = float(max(f[i][1] - f[i + 1][1], 0.0) / f[i][1])
     return left - right
 
