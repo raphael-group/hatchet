@@ -167,7 +167,7 @@ def pp(tumor, clones, props, args):
         counter = []
         for sample in props[patient]:
             purity = sum(float(props[patient][sample][i]) for i in props[patient][sample] if i != 'normal')
-            scaled = {i : props[patient][sample][i] / purity for i in props[patient][sample] if i != 'normal'}
+            scaled = {i : (props[patient][sample][i] / purity) if purity > 0.0 else 0.0 for i in props[patient][sample] if i != 'normal'}
             length = sum(float(s[1] - s[0]) for c in tumor[patient] for s in tumor[patient][c])
             ploidy = sum(float(sum(tumor[patient][c][s][i])) * float(s[1] - s[0]) * scaled[i] for c in tumor[patient] for s in tumor[patient][c] for i in scaled) / length
             wgd = 2 if ploidy < args['threshold'] else 4
@@ -407,7 +407,7 @@ def gridprofiles(tumor, base, clones, props, args, out):
     de = set()
 
     data = []
-    for c in sorted([i for i in clones if i != 'normal']):
+    for c in sorted([i for i in clones]):
         for x, s in enumerate(pos):
             cn = sum(proj[s[0]][s[1]][c])
             data.append({'Clone' : c, 'Genome' : x, 'Amp-Del' : cn})
@@ -453,7 +453,7 @@ def gridprofilesreduced(tumor, base, clones, props, args, out):
     row_colors = {}
 
     data = []
-    for c in sorted([i for i in clones if i != 'normal']):
+    for c in sorted([i for i in clones]):
         for x, s in enumerate(pos):
             data.append({'Clone' : c, 'Genome' : x, 'Amp-Del' : red[s[0]][s[1]][c]})
             col_colors[x] = chr_colors[s[0]]
