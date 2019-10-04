@@ -81,7 +81,9 @@ def parse_baf_arguments():
     if args.regions != None and not os.path.isfile(args.regions):
         raise ValueError(sp.error("The BED file of regions does not exist"))
     elif args.regions is None:
-        sp.log(msg="In case of WES data a BED file specified by --regions is REQUIRED, this is not needed for WGS data\n", level="WARN")
+        sp.log(msg="In case of WES data a BED file specified by --regions is REQUIRED, or the mincov parameter should be increased sufficiently to discard off-target regions\n", level="WARN")
+    if args.snps != None and args.regions != None:
+        raise ValueError(sp.error("Both SNP list and genomic regions have been provided, please provide only one of these!"))
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples, args.reference)
@@ -135,7 +137,7 @@ def parse_bin_arguments():
     parser.add_argument("-S","--samples", required=False, default=None, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
     parser.add_argument("-st","--samtools", required=False, default="", type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-r","--regions", required=False, default=None, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
-    parser.add_argument("-g","--referencename", required=False, default=None, type=str, help="Name of a reference genome in \"{hg18, hg19, hg38}\" to extract the maximum chromosome lengths when regions are not specified (defulat: hg19)")
+    parser.add_argument("-g","--reference", required=False, default=None, type=str, help="Reference genome, note that reference must be indexed and the dictionary must exist in the same directory with the same name and .dict extension")
     parser.add_argument("-j", "--processes", required=False, default=2, type=int, help="Number of available parallel processes (default: 2)")
     parser.add_argument("-q", "--readquality", required=False, default=0, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
     parser.add_argument("-O", "--outputnormal", required=False, default=None, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
@@ -186,11 +188,14 @@ def parse_bin_arguments():
         raise ValueError(sp.error("Size must be a number, optionally ending with either \"kb\" or \"Mb\"!"))
 
     # Check that either region file or available reference name are available
-    if args.referencename is None and args.regions is None:
+    if args.reference is None and args.regions is None:
         raise ValueError(sp.error("Please either provide a BED file of regions or specify a name of an available references for inferring maximum-chromosome lengths"))
-    if args.referencename is not None and args.referencename not in ["hg18", "hg19", "hg38"]:
-        raise ValueError(sp.error("Please specifies a reference name among \"hg18, hg19, hg38\". This will be used only to estimate the maximum length of chromosomes"))
-
+    if args.reference is not None and not os.path.isfile(args.reference):
+        raise ValueError(sp.error("The specified reference genome does not exist!"))
+    refdict = os.path.splitext(args.reference)[0] + '.dict'
+    if args.reference is not None and not os.path.isfile(refdict):
+        raise ValueError(sp.error("The dictionary of the refence genome has not been found! Reference genome must be indeced and its dictionary must exist in the same directory with same name but extension .dict"))
+    
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples)
 
@@ -203,7 +208,8 @@ def parse_bin_arguments():
             "samtools" : samtools,
             "regions" : args.regions,
             "size" : size,
-            "referencename" : args.referencename,
+            "reference" : args.reference,
+            "refdict" : refdict,
             "j" : args.processes,
             "q" : args.readquality,
             "outputNormal" : args.outputnormal,
@@ -447,9 +453,9 @@ def extractChromosomes(samtools, normal, tumors, reference=None):
         if stderr is not None:
             raise ValueError("Error in reading the reference: {}".format(reference))
         else:
-            ref = set(c[1:] for c in stdout.strip().split('\n'))
+            ref = set(c[1:].strip().split()[0] for c in stdout.strip().split('\n'))
         if not(chromosomes <= ref):
-            raise ValueError("The given reference cannot be used because the chromosome names are inconsistent!")
+            raise ValueError("The given reference cannot be used because the chromosome names are inconsistent!\nChromosomes found in BAF files: {}\nChromosomes with the same name found in reference genome: {}".format(chromosomes, ref))
 
     return sorted(list(chromosomes), key=sp.numericOrder)
 
@@ -482,7 +488,7 @@ def parseRegions(region_file, chromosomes):
             split = line.strip().split()
             chro = split[0]
             if chro in chromosomes:
-                res[chro].append((split[1], split[2]))
+                res[chro].append((int(split[1]), int(split[2])))
             else:
                 nofound.add(chro)
 

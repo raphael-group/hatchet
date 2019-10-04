@@ -18,21 +18,17 @@ def main():
 
     if args["regions"] is None:
         log(msg="# Retrieving genomic regions to consider from maximum chromosome length\n", level="STEP")
-        regions = knownRegions(args["referencename"], args["chromosomes"])
+        regions = knownRegions(args["refdict"], args["chromosomes"])
     else:
         log(msg="# Checking the consistency of the given regions\n", level="STEP")
-        regions = parseRegions(args["regions"], args["chromosomes"])
+        regions = ap.parseRegions(args["regions"], args["chromosomes"])
 
     if args["verbose"]:
-        msg = " Regions:\n"
-        for c in args["chromosomes"]:
-            msg += "\t{}: {}\n".format(c, regions[c])
-    else:
         msg = "regions: "
         for c in args["chromosomes"]:
             msg += " {}: {}".format(c, regions[c])
         msg += "\n"
-    log(msg=msg, level="INFO")
+        log(msg=msg, level="INFO")
 
     log(msg="# Binning and counting the normal sample\n", level="STEP")
     normal_bins = bb.bin(samtools=args["samtools"], samples=[args["normal"]], chromosomes=args["chromosomes"],
@@ -85,21 +81,25 @@ def main():
             f.write("{}\t{}\n".format(sample[1], total[sample[1]]))
 
 
-def knownRegions(referencename, chromosomes):
-    ends = []
-    if referencename == "hg18":
-        ends = [-1, 247249719, 242951149, 199501827, 191273063, 180857866, 170899992, 158821424, 146274826, 140273252, 135374737, 134452384, 132349534, 114142980, 106368585, 100338915, 88827254, 78774742, 76117153, 63811651, 62435964, 46944323, 49691432]
-    elif referencename == "hg19":
-        ends = [-1, 249250621, 243199373, 198022430, 191154276, 180915260, 171115067, 159138663, 146364022, 141213431, 135534747, 135006516, 133851895, 115169878, 107349540, 102531392, 90354753, 81195210, 78077248, 59128983, 63025520, 48129895, 51304566]
-    elif referencename == "hg38":
-        ends = [-1, 248956422, 242193529, 198295559, 190214555, 181538259, 170805979, 159345973, 145138636, 138394717, 133797422, 135086622, 133275309, 114364328, 107043718, 101991189, 90338345, 83257441, 80373285, 58617616, 64444167, 46709983, 50818468]
-    else:
-        raise ValueError(error("The given reference name is not recognized!"))
+def knownRegions(refdict, chromosomes):
+    ends = {c : None for c in chromosomes}
+    assert os.path.isfile(refdict)
+    with open(refdict, 'r') as i:
+        for l in i:
+            if '@SQ' in l:
+                assert 'SN:' in l and 'LN:' in l
+                c = l.split('SN:')[1].split()[0]
+                if c in chromosomes:
+                    end = int(l.split('LN:')[1].split()[0])
+                    ends[c] = end
+    if None in ends.values():
+        log(msg="The following chromosomes have not been found in the dictionary of the reference genome: \n\t{}".format(','.join([c for c in ends if ends[c] == None])), level="WARN")
+
     res = {}
     for c in chromosomes:
-        res[c] = [(0, ends[int(digits(c))])]
+        res[c] = [(0, ends[c])]
+        
     return res
-
 
 
 def logArgs(args, width):
