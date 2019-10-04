@@ -8,7 +8,7 @@ import ProgressBar as pb
 
 
 
-def call(samtools, bcftools, reference, samples, chromosomes, num_workers, q, Q, qual, mincov, dp, E, snplist=None, verbose=False):
+def call(samtools, bcftools, reference, samples, chromosomes, num_workers, q, Q, qual, mincov, dp, E, regions, snplist=None, verbose=False):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
     counter = Value('i', 0)
@@ -26,7 +26,7 @@ def call(samtools, bcftools, reference, samples, chromosomes, num_workers, q, Q,
             jobs_count += 1
 
     # Setting up the workers
-    workers = [SNPCaller(tasks, results, progress_bar, samtools, bcftools, reference, q, Q, qual, mincov, dp, E, snplist, verbose) for i in range(min(num_workers, jobs_count))]
+    workers = [SNPCaller(tasks, results, progress_bar, samtools, bcftools, reference, q, Q, qual, mincov, dp, E, snplist, regions, verbose) for i in range(min(num_workers, jobs_count))]
 
     # Add a poison pill for each worker
     for i in range(len(workers)):
@@ -60,7 +60,7 @@ def call(samtools, bcftools, reference, samples, chromosomes, num_workers, q, Q,
 
 class SNPCaller(Process):
 
-    def __init__(self, task_queue, result_queue, progress_bar, samtools, bcftools, reference, q, Q, qual, mincov, dp, E, snplist=None, verbose=False):
+    def __init__(self, task_queue, result_queue, progress_bar, samtools, bcftools, reference, q, Q, qual, mincov, dp, E, snplist=None, regions=None, verbose=False):
         Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -75,6 +75,7 @@ class SNPCaller(Process):
         self.dp = dp
         self.E = E
         self.snplist = snplist
+        self.regions = regions
         self.verbose = verbose
 
     def run(self):
@@ -99,8 +100,11 @@ class SNPCaller(Process):
         cmd_query = "{} query -f '%CHROM,%POS,%AD{},%AD{}\n' -i 'AN==2 & AC==1 & %QUAL>={} & DP<={} & SUM(AD)>={}'".format(self.bcftools,"{0}","{1}", self.qual, self.dp, self.mincov)
         if chromosome is not None:
             cmd_mpileup += " -r {}".format(chromosome)
+        assert not (self.snplist != None and self.regions != None), "SNP list and regions cannot be both provided!"
         if self.snplist is not None:
             cmd_mpileup += " -l {}".format(self.snplist)
+        if self.regions is not None:
+            cmd_mpileup += " -l {}".format(self.regions)
         if self.E:
             cmd_mpileup += " -E"
         if self.verbose:
@@ -114,9 +118,3 @@ class SNPCaller(Process):
         err.close()
 
         return [(samplename, el[0], el[1], int(el[2]), int(el[3])) for el in (tuple(line.split(',')) for line in stdout.strip().split('\n') if line != "")]
-
-# Another useful metrics is sequencing depth (DP bigger than twice the average depth indicates problematic regions and is often enriched for artefacts); the minimum number o
-# f high-quality non-reference reads (DV); proximity to indels (-g), etc. To give a concrete example, the following filter seemed to work quite well for one particular dataset (human data, exomes):
-# bcftools filter -sLowQual -g3 -G10 \
-# -e'%QUAL<10 || (RPB<0.1 && %QUAL<15) || (AC<2 && %QUAL<15) || %MAX(DV)<=3 || %MAX(DV)/%MAX(DP)<=0.3' \
-# calls.vcf.gz
