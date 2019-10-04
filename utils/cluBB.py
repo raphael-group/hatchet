@@ -133,7 +133,7 @@ def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10, bn
     os.environ["BNPYOUTDIR"] = tmp
     sys.path.append(bnpydir)
     import bnpy
-
+    
     sp.log(msg="## Clustering...\n", level="INFO")
     total = list(points)
     if clouds is not None:
@@ -143,11 +143,15 @@ def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10, bn
     Data.name = "Clustering tumor samples by RD and BAF"
     Data.summary = "Clustering the following samples: {}".format(",".join(samples))
 
-    ##K = 15
     if Data.X.shape[0] < K:
-	    K = Data.X.shape[0]
+	K = Data.X.shape[0]
 
-    hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
+    if hasattr(bnpy.learnalg, "MOVBBirthMergeAlg"):
+        hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
+    elif hasattr(bnpy.learnalg, "MemoVBMovesAlg"):
+        hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'memoVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
+    else:
+        raise ValueError(sp.error("BNPY learnalg module does not contain either MOVBBirthMergeAlg or MemoVBMovesAlg, please use the right version!"))
 
     observationModel = hmodel.obsModel
     numClusters = observationModel.K
