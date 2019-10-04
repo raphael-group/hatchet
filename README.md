@@ -82,7 +82,7 @@ These modules have the following dependencies, which need to be installed once:
 |---------------|----------|-------|----------|
 | subprocess and multiprocess |  REQUIRED | Multiprocessing and threading  | Standard python modules  |
 | [SAMtools and BCFtools](http://www.htslib.org/doc/)  | REQUIRED | reading BAM files, read counting, allele counting, and SNP calling | **CURRENT ISSUE**: Unfortunately, HATCHet currently support only the following versions of these softwares: 1.5, 1.6, and 1.7 |
-| [BNPY-dev](https://bitbucket.org/michaelchughes/bnpy-dev) | REQUIRED  | Non-parametric Bayesian clustering algorithm | We highly reccomend to install BNPY by simply cloning the repository in a specific directory and verify the related dependencies (Section `Installing *bnpy*` in the [installation instructions](https://bitbucket.org/michaelchughes/bnpy-dev/wiki/Installation.md)). We also suggest to install the additional C++ libraries to improve the performance (Section `Optional: Fast C++ libraries for HMM inference` in the [installation instructions](https://bitbucket.org/michaelchughes/bnpy-dev/wiki/Installation.md)) |
+| [BNPY-dev](https://bitbucket.org/michaelchughes/bnpy-dev) or [BNPY](https://github.com/bnpy/bnpy) | REQUIRED  | Non-parametric Bayesian clustering algorithm | We highly reccomend to install BNPY by simply cloning the repository in a specific directory and verify the related dependencies (Section `Installing *bnpy*` in the [installation instructions](https://bitbucket.org/michaelchughes/bnpy-dev/wiki/Installation.md)). We also suggest to install the additional C++ libraries to improve the performance (Section `Optional: Fast C++ libraries for HMM inference` in the [installation instructions](https://bitbucket.org/michaelchughes/bnpy-dev/wiki/Installation.md)) |
 | [pandas](https://pandas.pydata.org/), [matplotlib](https://matplotlib.org/), [seaborn](https://seaborn.pydata.org/) | OPTIONAL | Plotting | Required only for plotting modules. Seaborn has been tested with version 0.8.1. While all these packages can be easily installed using standard package managment tools (e.g. `pip`) for the default python version on your OS, we suggest the usage of python virtual enviroments created directly through python or (reccomended) using [Anaconda](https://www.anaconda.com/). In addition to packages with better perfomance, these enviroments guarantee to keep the same version of all pacjkages without affecting the standard installation of python on your OS. An enviroment specific for HATCHet can be created with the suggested versions of all required packages; the enviroment needs to be activated before every run or explicitly included in the pipeline script. |
 
 
@@ -149,7 +149,7 @@ As a valid license needs to be available for every run, user can simply add the 
 HATCHet requires 3 input data:
 1. One or more BAM files containing DNA sequencing reads obtained from tumor samples of a single patient. Every BAM file contains the sequencing reads from a sample ad needs to be indexed and sorted. For example, each BAM file can be easily indexed and sorted using [SAMtools](http://www.htslib.org/workflow/#mapping_to_variant). In addition, one can improve the quality of the data by processing the BAM files according to the [GATK Best Practices](https://software.broadinstitute.org/gatk/best-practices/).
 2. A BAM file containg DNA sequecing reads obtained from a matched-normal sample of the same patient of the considered tumor samples. The BAM file needs to be indexed and sorted as the tumor BAM files. Also, the BAM files can be processed as the tumor BAM files.
-3. A human reference genome. Ideally, one should consider the same human reference genome used to align the sequencing reads in the given BAM files. The most-used human reference genome are available at [GRC](https://www.ncbi.nlm.nih.gov/grc/human) or [UCSC](http://hgdownload.cse.ucsc.edu/downloads.html#human). Observe that human reference genomes use two different notations for chromosomes: either `1, 2, 3, 4, 5 ...` or `chr1, chr2, chr3, chr4, chr5 ...`. One needs to make sure all BAM files and reference genome share that same chromosome notation. When this is not the case, one needs to change the reference to guarantee consistency and needs to re-index the new reference (e.g. using [SAMtools](http://www.htslib.org/workflow/#mapping_to_variant)). Also, HATCHet currently requires the name of the chromosomes in the reference genome is exact and exactly equal to the one in the BAM files, no other labels should be present having `>1 ... \n>2 ... \n>3 ...` or `>chr1 ... \n>chr2 ... \n>chr3`.
+    3. A human reference genome. Ideally, one should consider the same human reference genome used to align the sequencing reads in the given BAM files. The most-used human reference genome are available at [GRC](https://www.ncbi.nlm.nih.gov/grc/human) or [UCSC](http://hgdownload.cse.ucsc.edu/downloads.html#human). Observe that human reference genomes use two different notations for chromosomes: either `1, 2, 3, 4, 5 ...` or `chr1, chr2, chr3, chr4, chr5 ...`. One needs to make sure all BAM files and reference genome share that same chromosome notation. When this is not the case, one needs to change the reference to guarantee consistency and needs to re-index the new reference (e.g. using [SAMtools](http://www.htslib.org/workflow/#mapping_to_variant)). Also, HATCHet requires that the name of each chromosome is the first word in each ID such that `>1 [ANYTHING] ... \n>2 [ANYTHING] ... \n>3 [ANYTHING] ...` or `>chr1 [ANYTHING] ... \n>chr2 [ANYTHING] ... \n>chr3 [ANYTHING]`.
 
 
 ## Usage
@@ -226,9 +226,13 @@ All the components of HATCHet's pipeline use some basic parameters that allow to
 HATCHet is in active development, please report any issue or question as this could help the devolment and imporvement of HATCHet. Current known issues with current version are reported here below:
 
 - HATCHet currently only supports versions 1.5 -- 1.6 -- 1.7 of SAMtools and BCFtools
-- HATCHet currently only supports dev-bitbucket version of BNPY
+- ~HATCHet currently only supports dev-bitbucket version of BNPY~
 - The allele-swapping feature of comBBo has been temporarily disabled due to conflicts with recent SAMtools versions
-- Binaries will be available soon
+
+A list of the major recent updates:
+- HATCHet accepts now any reference genome (including non humans)
+- HATCHet now supports both the `dev` and new GitHub version of `BNPY`
+- HATCHet now handles genomic regions properly, reccomended for WES data
 
 ## Contacts
 <a name="contacts"></a>
