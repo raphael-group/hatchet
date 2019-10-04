@@ -1,5 +1,6 @@
 # Temp
 *~
+*.ucn*
 
 # Build directory
 build/
@@ -21,6 +22,7 @@ build/
 *.so
 *.dylib
 *.dll
+*.pyc
 
 # Fortran module files
 *.mod
