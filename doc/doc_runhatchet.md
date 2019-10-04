@@ -132,7 +132,7 @@ To avoid condlicts, user should make sure the running directory is an empty dire
 
 ```shell
 \time -v python2 ${UTILS}binBAM.py -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
-                                   -b 50kb -g hg19 -j ${J} \
+                                   -b 50kb -g ${REF} -j ${J} \
                                    -q 20 -O ${BIN}normal.bin -o ${BIN}bulk.bin -v &> ${BIN}bins.log
 ```
 
@@ -140,7 +140,7 @@ binBAM computes the read counts in genomic bins of the reference genome from the
 The size of genomic bins depend on the size of the CNAs that user aims to infer and on the noise in the data.
 More specifically, shorter genomic bins allow to infer more refined CNAs, while larger genomic bins allow to better estimate the values of read-depth ratio (RDR) and B-allele frequency (BAF) for every bin.
 The standard size 50kb typically represents a good compromise in whole-genome sequencing (WGS) data, while larger size (e.g. `200kb` or `250kb`) are better suited for whole-exome sequencing (WES) where we expect a sparser distribution of germline SNPs.
-The name of the reference genome is given as `hg19`; the name is only used to estimate the chromosome's lengths and `hg19` can be used even if the name of the used reference genome is unavailable.
+The reference genome `${REF}` is provided and `${REF}` must be properly indeced such that in the same folder there is a corresponding dictionary with the same name but `.dict` extenion; this is used to know the length of the sequenced chromosomes.
 A standard read quality of 20 is considered and simple parameters are specified including: number of parallel threads, output filenames, verbosity of log, and the log filename of this step.
 
 ## deBAF
