@@ -30,15 +30,11 @@ def defaultMode(args):
     log(msg="# Inferring SNPs from the normal sample\n", level="STEP")
     snps = SNPCalling.call(samtools=args["samtools"], bcftools=args["bcftools"], reference=args["reference"], samples=[args["normal"]],
                            chromosomes=args["chromosomes"], num_workers=args["j"], snplist=args["snps"], q=args["q"], Q=args["Q"],
-                           qual=args["qual"], mincov=args["mincov"], dp=args["maxcov"], E=args["E"], verbose=args["verbose"])
+                           qual=args["qual"], mincov=args["mincov"], dp=args["maxcov"], E=args["E"], regions=args["regions"], verbose=args["verbose"])
     if not snps: sp.close("No SNPs found in the normal!\n")
 
     log(msg="# Selecting heterozygous SNPs\n", level="STEP")
     hetSNPs = selectHetSNPs(counts=snps, gamma=args["gamma"], maxshift=args["maxshift"], verbose=args["verbose"])
-
-    if args["regions"] is not None:
-        log("# Filtering heterozygous SNPs over specified regions\n", level="STEP")
-        hetSNPs = filterSNPs(hetSNPs, args["chromosomes"], args["regions"])
     if not hetSNPs: sp.close("No heterozygous SNPs found in the selected regions of the normal!\n")
 
     log(msg="# Writing the list of selected SNPs, covered and heterozygous in the normal sample\n", level="STEP")
@@ -75,22 +71,18 @@ def defaultMode(args):
         for sample in args["samples"]:
             for chro in args["chromosomes"]:
                 if (sample[1], chro) in counts:
-                    for count in counts[sample[1], chro]: sys.stdoutput.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
+                    for count in counts[sample[1], chro]: sys.stdout.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
 
 
 def naiveMode(args):
     log(msg="# Inferring SNPs from the normal sample\n", level="STEP")
     snps = AlleleCounting.naiveCount(samtools=args["samtools"], samples=[args["normal"]], chromosomes=args["chromosomes"], num_workers=args["j"],
-                                     snplist=args["snps"], q=args["q"], Q=args["Q"], E=args["E"], verbose=args["verbose"])
+                                     snplist=args["snps"], q=args["q"], Q=args["Q"], E=args["E"], regions=args["regions"], verbose=args["verbose"])
     if not snps: sp.close("No SNPs found in the normal!\n")
 
     log("# Selecting heterozygous SNPs\n", level="STEP")
     hetSNPs = selectNaiveHetSNPs(counts=snps, chromosomes=args["chromosomes"], mincov=args["mincov"], maxcov=args["maxcov"],
                                  gamma=args["gamma"], maxshift=args["maxshift"], verbose=args["verbose"])
-
-    if args["regions"] is not None:
-        log("# Filtering heterozygous SNPs over specified regions\n", level="STEP")
-        hetSNPs = filterSNPs(hetSNPs, args["chromosomes"], args["regions"])
     if not hetSNPs: sp.close("No heterozygous SNPs found in the selected regions of the normal!\n")
 
     log("# Writing the list of selected SNPs, covered and heterozygous in the normal sample\n", level="STEP")
