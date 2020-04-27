@@ -228,6 +228,7 @@ HATCHet is in active development, please report any issue or question as this co
 - HATCHet currently only supports versions 1.5 -- 1.6 -- 1.7 of SAMtools and BCFtools
 - ~HATCHet currently only supports dev-bitbucket version of BNPY~
 - The allele-swapping feature of comBBo has been temporarily disabled due to conflicts with recent SAMtools versions
+- HATCHet has not been yet test on Windows OS
 
 A list of the major recent updates:
 - HATCHet accepts now any reference genome (including non humans)
