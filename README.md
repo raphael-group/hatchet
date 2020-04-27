@@ -136,7 +136,7 @@ Every run of HATCHet (especially, the `hatchet` step) needs to use Gurobi which 
     ```shell
     export GRB_LICENSE_FILE="/path/to/gurobi.lic"
     ```
-2. **Multi-use license**. This license can be used by multiple users on any machine in a cluster. This license can be obtained [easily](http://www.gurobi.com/academia/academia-center) but needs to be requested by the IT staff of the user's institution. This license is tipically used in a machine cluster and typically only requires the following command (where the name of gurobi module can slightly change):
+2. **Multi-use license**. This license can be used by multiple users on any machine in a cluster. This [license](http://www.gurobi.com/academia/academia-center) can be obtained but needs to be requested by the IT staff of the user's institution. This license is tipically used in a machine cluster and only requires the following command (where the name of gurobi module can slightly change):
     ```shell
     module load gurobi
     ```
@@ -228,7 +228,7 @@ HATCHet is in active development, please report any issue or question as this co
 - HATCHet currently only supports versions 1.5 -- 1.6 -- 1.7 of SAMtools and BCFtools
 - ~HATCHet currently only supports dev-bitbucket version of BNPY~
 - The allele-swapping feature of comBBo has been temporarily disabled due to conflicts with recent SAMtools versions
-- HATCHet has not been yet test on Windows OS
+- HATCHet has not been tested on Windows OS yet
 
 A list of the major recent updates:
 - HATCHet accepts now any reference genome (including non humans)
