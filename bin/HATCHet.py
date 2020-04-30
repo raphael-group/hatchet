@@ -221,12 +221,15 @@ def main():
     	    sys.stderr.write(log("# Parsing given clonal copy numbers\n"))
             clonal, scale = parseClonalClusters(clonal=args['clonal'], fseg=fseg, neutral=neutral, size=size, samples=samples, v=args['v'])
 
+    	if len(clonal) > 0:
+            sys.stderr.write(log("# Running tetraploid\n"))
+            tetraploidObjs = runningTetraploid(clonal=clonal, scale=scale, size=size, args=args)
 
-        sys.stderr.write(log("# Running diploid\n"))
-        diploidObjs = runningTetraploid(clonal=clonal, scale=scale, size=size, args=args)
-
-        sys.stderr.write(log("# Selecting best diploid solution\n"))
-        selectTetraploid(tetraploid=tetraploidObjs, v=args['v'], rundir=args['x'], g=args["g"], limit=args['limit'])
+            sys.stderr.write(log("# Selecting best tetraploid solution\n"))
+            selectTetraploid(tetraploid=tetraploidObjs, v=args['v'], rundir=args['x'], g=args["g"], limit=args['limit'])
+        else:
+            sys.stderr.write(warning("# No potential clonal patterns found, the input is likely to be diploid.\n If the heuristic failed to identify a clonal cluster due to high noisy in the data, there are two main parameters which user may tune:\n\t1. Increase the values of tB and tR which define the thresholds to predict the RDR and BAF of clonal clusters.\n\t2. Decrease the value of -ts which define the minimum coverage of the genome for clusters to be considered potentially clonal. As such, more clusters will be considered. \nLast, please assess the quality of the clustering through cluBB and increase the corresponding thresholds (-tR and -tB) to avoid overfitting of the data and overclustering.\n"))
+            
 
 
 
@@ -755,7 +758,7 @@ def selectDiploid(diploid, v, rundir, g, limit):
     sys.stderr.write(info('# The chosen solution is diploid with {} clones and is written in {} and {}\n'.format(dchosen[0], bbest, sbest)))
 
 
-def selectTetraploid(tetraploid, v, rundir, g):
+def selectTetraploid(tetraploid, v, rundir, g, limit):
     tscores = {}
 
     if len(tetraploid) == 1 or len(tetraploid) == 2:
