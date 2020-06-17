@@ -417,7 +417,11 @@ def gridprofiles(tumor, base, clones, props, args, out):
                 de.add(cn)
             col_colors[x] = chr_colors[s[0]]
             row_colors[c] = {sam : pal_sample[min(9, int(round(props[sam][c] * 10)))] for sam in props}
-
+    if len(am) == 0:
+        am.add(base)
+    if len(de) == 0:
+        de.add(base)
+            
     df = pd.DataFrame(data)
     table = pd.pivot_table(df, values='Amp-Del', columns=['Genome'], index=['Clone'], aggfunc='first')
 

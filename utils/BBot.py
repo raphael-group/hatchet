@@ -254,11 +254,11 @@ def clubb(bbc, clusters, args, out):
     #    for sample, group in df.groupby(g):
     #sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
     if args['colwrap'] > 1:
-        sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=args['cmap'], fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, col=g, col_wrap=args['colwrap'])
+        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=args['cmap'], fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, col=g, col_wrap=args['colwrap'])
     else:
-        sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=args['cmap'], fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, row=g)
+        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=args['cmap'], fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, row=g)
     #plt.title("{}".format(sample))
-    coordinates(args)
+    coordinates(args, g)
     #pdf.savefig(bbox_inches='tight')
     plt.savefig(out, bbox_inches='tight')
     plt.close()
@@ -423,11 +423,10 @@ def coordinates(args, g=None):
             plt.xlim(xmax=args['xmax'])
         if args['ymin'] is not None:
             plt.ylim(ymin=args['ymin'])
-        if args['xmin'] is not None:
+        if args['ymax'] is not None:
             plt.ylim(ymax=args['ymax'])
     else:
-        g.set(xlim=(args['xmin'], args['xmax']))
-        g.set(ylim=(args['ymin'], args['ymax']))
+        g.set(xlim=(args['xmin'], args['xmax']), ylim=(args['ymin'], args['ymax']))
 
 
 def sortchr(x):
