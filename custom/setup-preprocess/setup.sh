@@ -1,4 +1,4 @@
-# Demo for WGS data from a cancer patient
+# Automatic installation for HATCHet's preprocessing
 : ex: set ft=markdown ;:<<'```shell' #
 
 The following script allows the user to setup all the required requisites for running the preprocessing steps of HATCHet.
