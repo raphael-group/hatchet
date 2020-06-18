@@ -116,7 +116,7 @@ def main():
     cmd = cmd.format(get_comp('binBAM.py'), args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), args['size'], args['ref'], args['J'], args['phred'], nbin, tbin)
     if args['samtools'] is not None:
         cmd += " --samtools {}".format(args['samtools'])
-    runcmd(cmd, drdr, log="bins.log")
+    runcmd(cmd, drdr, log="bins.log", rundir=args['rundir'])
 
     log('Computing BAFs\n', level='PROGRESS')
     cmd = 'python2 {} -N {} -T {} -S {} -r {} -j {} -q {} -Q {} -U {} -c {} -C {} -O {} -o {}'
@@ -127,14 +127,14 @@ def main():
         cmd += " --samtools {}".format(args['samtools'])
     if args['bcftools'] is not None:
         cmd += " --bcftools {}".format(args['bcftools'])
-    runcmd(cmd, dbaf, log="bafs.log")
+    runcmd(cmd, dbaf, log="bafs.log", rundir=args['rundir'])
 
     log('Combining RDRs and BAFs\n', level='PROGRESS')
     cmd = 'python2 {} -c {} -C {} -B {} -m MIRROR'
     cmd = cmd.format(get_comp('comBBo.py'), nbin, tbin, tbaf)
     if args['seed'] is not None:
         cmd += " -e {}".format(args['seed'])
-    runcmd(cmd, dbb, out='bulk.bb', log="combo.log")
+    runcmd(cmd, dbb, out='bulk.bb', log="combo.log", rundir=args['rundir'])
 
 
 def setup(args):
@@ -153,13 +153,12 @@ def setup(args):
     return dbaf, drdr, dbb
 
 
-def runcmd(cmd, xdir, out=None, log="log"):
-    print cmd
+def runcmd(cmd, xdir, out=None, log="log", rundir=None):
     j = os.path.join
     tmp = log + '_TMP'
     sout = open(j(xdir, out), 'w') if out is not None else sp.PIPE
     with open(j(xdir, tmp), 'w') as serr:
-        proc = sp.Popen(shlex.split(cmd), stdout=sout, stderr=sp.PIPE)
+        proc = sp.Popen(shlex.split(cmd), stdout=sout, stderr=sp.PIPE, cwd=rundir)
         for line in iter(lambda : proc.stderr.read(1), ''):
             sys.stderr.write(line)
             serr.write(line)
