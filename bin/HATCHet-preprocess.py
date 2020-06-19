@@ -48,8 +48,8 @@ def parse_args():
         names = set(t for t in args.samplenames.split())
         if len(names) != len(tumor):
             raise ValueError("A different number of samples names has been provided compared to the number of BAM files, remember to add the list within quotes!")
-    
-
+        
+    tumor = set(os.path.abspath(t) for t in tumor)
     if not os.path.isdir(args.rundir):
         raise ValueError("Running directory does not exists: {}".format(args.rundir))
     if not os.path.isfile(args.normal):
@@ -81,8 +81,8 @@ def parse_args():
 
     return {
         "tumor" : list(tumor),
-        "normal" : args.normal,
-        "ref" : args.reference,
+        "normal" : os.path.abspath(args.normal),
+        "ref" : os.path.abspath(args.reference),
         "names" : list(names),
         "size" : size,
         "samtools" : args.samtools,
@@ -91,7 +91,7 @@ def parse_args():
         "minreads" : args.minreads,
         "maxreads" : args.maxreads,
         "phred" : args.phred,
-        "rundir" : args.rundir,
+        "rundir" : os.path.abspath(args.rundir),
         "seed" : args.seed
     }
 
