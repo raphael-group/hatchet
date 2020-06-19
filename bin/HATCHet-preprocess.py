@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument("-s","--samplenames", required=False, type=str, default=None, help="Tumor sample names in a white-space separated list in the same order as the corresponding BAM files (default: file names are used as names)")
     parser.add_argument("-b","--size", type=str, required=False, default="250kb", help="Bin size, with or without \"kb\" or \"Mb\" (default: 250kb)")
     parser.add_argument("-c","--minreads", type=int, required=False, default=8, help="Minimum read counts for heterozygous germline SNPs (default: 8)")
-    parser.add_argument("-C","--maxreads", type=int, required=False, default=400, help="Maximum read counts for heterozygous germline SNPs (default: 400)")
+    parser.add_argument("-C","--maxreads", type=int, required=False, default=1000, help="Maximum read counts for heterozygous germline SNPs (default: 1000)")
     parser.add_argument("-p","--phred", type=int, required=False, default=11, help="Phred quality score (default: 11)")
     parser.add_argument("-x","--rundir", required=False, default='./', type=str, help="Running directory (default: current directory)")
     parser.add_argument("--bcftools", required=False, default=None, type=str, help="Path to the directory to \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
