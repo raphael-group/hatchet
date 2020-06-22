@@ -130,8 +130,9 @@ def main():
     runcmd(cmd, dbaf, log="bafs.log", rundir=args['rundir'])
 
     log('Combining RDRs and BAFs\n', level='PROGRESS')
-    cmd = 'python2 {} -c {} -C {} -B {} -m MIRROR'
-    cmd = cmd.format(get_comp('comBBo.py'), nbin, tbin, tbaf)
+    ctot = os.path.join(args['rundir'], 'total_read.counts')
+    cmd = 'python2 {} -c {} -C {} -B {} -m MIRROR -t {}'
+    cmd = cmd.format(get_comp('comBBo.py'), nbin, tbin, tbaf, ctot)
     if args['seed'] is not None:
         cmd += " -e {}".format(args['seed'])
     runcmd(cmd, dbb, out='bulk.bb', log="combo.log", rundir=args['rundir'])
