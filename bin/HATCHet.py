@@ -500,7 +500,8 @@ def findClonalClusters(fseg, neutral, size, tB, tR, samples, v):
         if v >= 3:
             sys.stderr.write(debug("### Potential clonal cluster {} with copy numbers {}\n".format(cluster, options)))
 
-        calcPurity = (lambda d, c, r : float(2 * d - 2 * r) / float(2 * r + 2 * d - c * d))
+        regPurity = (lambda v : 1.0 if 1.0 <= v <= 1.05 else (0.0 if -0.05 <= v <= 0.0 else v))
+        calcPurity = (lambda d, c, r : regPurity(float(2 * d - 2 * r) / float(2 * r + 2 * d - c * d)))
         calcScalingFactor = (lambda p, d : float(2.0 + 2.0 * p) / float(d))
         calcFraction = (lambda p, cn : float(2.0 * (1.0 - p) + sum(cn) * p))
         calcRDR = (lambda p, cn, s : calcFraction(p, cn) / float(s) )

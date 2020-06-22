@@ -217,6 +217,15 @@ DoubleMatrix scaleReadDepth(const DoubleMatrix &R, const CNAssignCluster &cn, co
         for(int p = 0; p < k; ++p)
         {
             double purity = (2.0 * R[s1][p] - 2.0 * R[s2][p]) / (2.0 * R[s1][p] - c2 * R[s1][p] - 2.0 * R[s2][p] + c1 * R[s2][p]);
+	    if(1.0 <= purity && purity <= 1.05)
+	    {
+	      purity = 1.0;
+	    }
+	    if(-0.05 <= purity && purity <= 0.0)
+	    {
+	      purity = 0.0;
+	    }
+	      
             cscale[p] = (2.0 - 2.0 * purity + purity * c1) / R[s1][p];
             
             if(purity < 0 || purity > 1 || cscale[p] < 0)
