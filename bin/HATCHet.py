@@ -5,6 +5,7 @@ import sys
 import argparse
 import shutil
 import subprocess
+import multiprocessing as mp
 import shlex
 from collections import Counter
 
@@ -36,7 +37,7 @@ def parsing_arguments():
     parser.add_argument("-tR","--toleranceRDR", type=float, required=False, default=0.08, help="RDR tolerance used for finding the clonal copy numbers (default: 0.08)")
     parser.add_argument("-tB","--toleranceBAF", type=float, required=False, default=0.04, help="BAF tolerance used for finding the clonal copy numbers (default: 0.04)")
     parser.add_argument("-p","--seeds", type=int, required=False, default=400, help="Number of seeds for coordinate-descent method (default: 400)")
-    parser.add_argument("-j","--jobs", type=int, required=False, default=None, help="Number of parallel jobs (default: maximum available on the machine)")
+    parser.add_argument("-j","--jobs", type=int, required=False, default=mp.cpu_count(), help="Number of parallel jobs (default: maximum available on the machine)")
     parser.add_argument("-r","--randomseed", type=int, required=False, default=None, help="Random seed (default: None)")
     parser.add_argument("-s","--timelimit", type=int, required=False, default=None, help="Time limit for each ILP run (default: None)")
     parser.add_argument("-m","--memlimit", type=int, required=False, default=None, help="Memory limit for each ILP run (default: None)")
@@ -463,7 +464,7 @@ def findClonalClusters(fseg, neutral, size, tB, tR, samples, v):
     
     for cluster in clusters:
         rightpos = sum( (fseg[cluster][p]['rdr'] - fseg[neutral][p]['rdr']) > tR for p in samples)
-        leftpos = sum( (fseg[cluster][p]['rdr'] - fseg[neutral][p]['rdr']) < tR for p in samples)
+        leftpos = sum( (fseg[cluster][p]['rdr'] - fseg[neutral][p]['rdr']) < -tR for p in samples)
 
         eqbaf = (lambda p : abs(fseg[cluster][p]['baf'] - fseg[neutral][p]['baf']) <= tB)
         eqrdr = (lambda p : abs(fseg[cluster][p]['rdr'] - fseg[neutral][p]['rdr']) <= tR)
