@@ -1,0 +1,10 @@
+name: 'hatchet'
+
+channels:
+  - defaults
+
+dependencies:
+  - pip
+  - python=2.7
+  - pip:
+    - -r requirements.txt
