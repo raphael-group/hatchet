@@ -1,9 +1,0 @@
-biopython==1.76
-matplotlib
-matplotlib-venn
-opencv-python
-pandas
-psutil
-seaborn
-scikit-learn
-scipy

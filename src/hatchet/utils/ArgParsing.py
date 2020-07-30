@@ -124,7 +124,7 @@ def parse_baf_arguments():
             "verbose" : args.verbose}
 
 
-def parse_bin_arguments():
+def parse_bin_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -144,7 +144,7 @@ def parse_bin_arguments():
     parser.add_argument("-o", "--outputtumors", required=False, default=None, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
     parser.add_argument("-t", "--outputtotal", required=False, default="total_read.counts", type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
     parser.add_argument("-v", "--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     normalbaf = args.normal

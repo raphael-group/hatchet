@@ -4,16 +4,16 @@ import sys
 import os.path
 import argparse
 
-import BAMBinning as bb
+import BAMBinning2 as bb
 import TotalCounting as tc
 import ArgParsing as ap
 from Supporting import *
 
 
 
-def main():
+def main(args=None):
     log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = ap.parse_bin_arguments()
+    args = ap.parse_bin_arguments(args)
     logArgs(args, 80)
 
     if args["regions"] is None:

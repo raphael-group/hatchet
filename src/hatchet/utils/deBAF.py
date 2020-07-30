@@ -31,6 +31,7 @@ def defaultMode(args):
     snps = SNPCalling.call(samtools=args["samtools"], bcftools=args["bcftools"], reference=args["reference"], samples=[args["normal"]],
                            chromosomes=args["chromosomes"], num_workers=args["j"], snplist=args["snps"], q=args["q"], Q=args["Q"],
                            qual=args["qual"], mincov=args["mincov"], dp=args["maxcov"], E=args["E"], regions=args["regions"], verbose=args["verbose"])
+    print "BLAGG"
     if not snps: sp.close("No SNPs found in the normal!\n")
 
     log(msg="# Selecting heterozygous SNPs\n", level="STEP")
@@ -95,12 +96,12 @@ def naiveMode(args):
     if args["outputNormal"] is not None:
         with open(args["outputNormal"], 'w') as f:
             for chro in args["chromosomes"]:
-                if (agrs["normal"][1], chro) in hetSNPs:
+                if (args["normal"][1], chro) in hetSNPs:
                     for count in hetSNPs[args["normal"][1], chro]:
                         f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[4], count[5], count[6], count[7]))
     else:
         for chro in args["chromosomes"]:
-            if (agrs["normal"][1], chro) in hetSNPs:
+            if (args["normal"][1], chro) in hetSNPs:
                 for count in hetSNPs[agrs["normal"][1], chro]:
                     sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[4], count[5], count[6], count[7]))
 
