@@ -1,3 +1,7 @@
+# This whole script can be replaced by
+# samtools faidx hg19.fa
+# samtools view -H -ht hg19.fa.fai /dev/null > hg19.dict
+
 import gzip
 from Bio import SeqIO
 

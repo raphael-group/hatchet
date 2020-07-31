@@ -36,3 +36,7 @@ add_executable ( solve
 )
 target_include_directories( solve PUBLIC "src" ${GUROBI_INCLUDE_DIR} )
 target_link_libraries( solve ${GUROBI_LIBRARIES} )
+
+install(TARGETS solve
+    DESTINATION "${CMAKE_INSTALL_PREFIX}"
+)

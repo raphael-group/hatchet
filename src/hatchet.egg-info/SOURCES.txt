@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+setup.py
+src/hatchet/__init__.py
+src/hatchet.egg-info/PKG-INFO
+src/hatchet.egg-info/SOURCES.txt
+src/hatchet.egg-info/dependency_links.txt
+src/hatchet.egg-info/not-zip-safe
+src/hatchet.egg-info/requires.txt
+src/hatchet.egg-info/top_level.txt

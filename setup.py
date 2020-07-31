@@ -13,7 +13,6 @@ class CMakeExtension(Extension):
     def __init__(self, name, sourcedir=''):
         Extension.__init__(self, name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)
-        self.builddir = 'build'
 
 
 class CMakeBuild(build_ext):
@@ -34,7 +33,8 @@ class CMakeBuild(build_ext):
 
     def build_extension(self, ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-        cmake_args = ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
+        cmake_args = ['-DCMAKE_INSTALL_PREFIX=' + extdir,
+                      '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
                       '-DPYTHON_EXECUTABLE=' + sys.executable]
 
         cfg = 'Debug' if self.debug else 'Release'
@@ -54,18 +54,20 @@ class CMakeBuild(build_ext):
                                                               self.distribution.get_version())
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
-        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=ext.builddir, env=env)
-        subprocess.check_call(['cmake', '--build', '.'] + build_args, cwd=ext.builddir)
+        subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
+        subprocess.check_call(['cmake', '--build', '.', '--target', 'install'] + build_args, cwd=self.build_temp)
 
 
 setup(
     name='hatchet',
     version='0.0.1',
-    packages=['hatchet'],
+    packages=['hatchet', 'hatchet.utils'],
     package_dir={'': 'src'},
-    ext_modules=[CMakeExtension('hatchet.ext')],
+    ext_modules=[CMakeExtension('hatchet.solve')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
+
+    python_requires='~=2.7',
 
     install_requires=[
         'biopython==1.76',
