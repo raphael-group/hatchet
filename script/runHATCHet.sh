@@ -7,8 +7,8 @@ BNPY="/home/vineetb/git_checkouts/bnpy"
 
 HATCHET_HOME="/home/vineetb/git_checkouts/hatchet"
 HATCHET="${HATCHET_HOME}/bin/HATCHet.py"
-UTILS="${HATCHET_HOME}/hatchet/utils/"
-SOLVER="${HATCHET_HOME}/build/solve"
+UTILS="${HATCHET_HOME}/src/hatchet/utils/"
+SOLVER="${HATCHET_HOME}/src/hatchet/solve"
 
 XDIR="/media/vineetb/t5-vineetb/raphael-group/hatchet/out/"
 NORMAL="/media/vineetb/t5-vineetb/raphael-group/data/hatchet/SRR5906250.sorted.bam"
@@ -41,7 +41,7 @@ mkdir -p ${EVA}
 
 cd ${XDIR}
 
-# \time -v python2 ${UTILS}binBAM.py -st ${SAM} -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -q 11 -O ${BIN}normal.bin -o ${BIN}bulk.bin -v &> ${BIN}bins.log
+\time -v python2 ${UTILS}binBAM.py -st ${SAM} -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -q 11 -O ${BIN}normal.bin -o ${BIN}bulk.bin -v &> ${BIN}bins.log
 
 \time -v python2 ${UTILS}deBAF.py -bt ${BCF} -st ${SAM} -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -q 11 -Q 11 -U 11 -c 8 -C 300 -O ${BAF}normal.baf -o ${BAF}bulk.baf -v &> ${BAF}bafs.log
 
