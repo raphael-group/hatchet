@@ -37,7 +37,8 @@ class CMakeBuild(build_ext):
                       '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
                       '-DPYTHON_EXECUTABLE=' + sys.executable]
 
-        cfg = 'Debug' if self.debug else 'Release'
+        # TODO: "Release" generates a solve binary that coredumps on Linux - investigate.
+        cfg = 'Debug' if self.debug else ''  # else 'Release'
         build_args = ['--config', cfg]
 
         if platform.system() == "Windows":
