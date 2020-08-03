@@ -30,4 +30,4 @@ jobs:
         run: pip install tox
       - name: Run Tox
         # Run tox using the version of Python in `PATH`
-        run: GUROBI_HOME=${{ env.GUROBI_HOME }}tox -e py
+        run: GUROBI_HOME=${{ env.GUROBI_HOME }} tox -e py
