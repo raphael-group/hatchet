@@ -2,8 +2,7 @@
 # REQUIREMENT 1: Full path to Gurobi's home which must have a name similar to "gurobiXXX" where XXX is the version.
 # REQUIREMENT 2: Gurobi's must contain either (1) `lib` and `include` directories, (2) a folder named either `linux64` or `mac64` which correspondingly contains `lib` and `include` directories
 
-set(GUROBI_HOME "/opt/raphael-group/gurobi902" )
-
+set(GUROBI_HOME "" CACHE STRING "Path where Gurobi is installed")
 
 
 
@@ -60,4 +59,3 @@ FIND_LIBRARY(GUROBI_LIB
 set(GUROBI_LIBRARIES ${GUROBI_CPP_LIB} ${GUROBI_LIB})
 
 set(GUROBI_FOUND TRUE)
-

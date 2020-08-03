@@ -35,6 +35,7 @@ class CMakeBuild(build_ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = ['-DCMAKE_INSTALL_PREFIX=' + extdir,
                       '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir,
+                      '-DGUROBI_HOME=' + os.environ.get('GUROBI_HOME', ''),
                       '-DPYTHON_EXECUTABLE=' + sys.executable]
 
         # TODO: "Release" generates a solve binary that coredumps on Linux - investigate.
