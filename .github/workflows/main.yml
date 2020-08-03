@@ -21,7 +21,7 @@ jobs:
           wget https://packages.gurobi.com/9.0/gurobi9.0.2_linux64.tar.gz -O - | tar -xz
           (cd gurobi902/linux64/src/build && make)
           (cd gurobi902/linux64/lib && ln -f -s ../src/build/libgurobi_c++.a libgurobi_c++.a)
-          export GUROBI_HOME=$(realpath gurobi902)
+          echo ::set-env name=GUROBI_HOME::$(realpath gurobi902)
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
@@ -30,4 +30,4 @@ jobs:
         run: pip install tox
       - name: Run Tox
         # Run tox using the version of Python in `PATH`
-        run: GUROBI_HOME=${GUROBI_HOME} tox -e py
+        run: GUROBI_HOME=${{ env.GUROBI_HOME }}tox -e py
