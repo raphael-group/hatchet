@@ -38,7 +38,8 @@ jobs:
 
       - name: Download and index hg19.fa
         run: |
-          wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz -O - | tar -xz
+          wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
+          gunzip hg19.fa.gz
           $SAMTOOLS_PATH/samtools faidx hg19.fa
           $SAMTOOLS_PATH/samtools view -H -ht hg19.fa.fai /dev/null > hg19.dict
           echo ::set-env name=HG19_FILE::$(realpath hg19.fa)
