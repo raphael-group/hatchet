@@ -5,6 +5,7 @@ from io import BytesIO as StringIO
 from mock import patch
 import hashlib
 import shutil
+import bnpy
 
 import hatchet
 from hatchet.utils.binBAM import main as binBAM
@@ -17,6 +18,9 @@ from hatchet.bin.HATCHet import main as main
 this_dir = os.path.dirname(__file__)
 DATA_FOLDER = os.path.join(this_dir, 'data')
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
+
+# The cluBB.py script wants a path to the parent of the bnpy folder, which is now listed as a dependency for our code
+BNPY_FOLDER = os.path.abspath(os.path.join(os.path.dirname(bnpy.__file__), '..'))
 
 
 @pytest.fixture(scope='module')
@@ -92,7 +96,9 @@ def test_script(_, output_folder):
 
     cluBB(args=[
         os.path.join(output_folder, 'bb/bulk.bb'),
-        '-by', '',  # Note: Since bnpy is installed as a dependency for Hatchet, passing in
+        # Note: Since bnpy is installed as a dependency for Hatchet
+        # The cluBB script should be modified to not worry about this argument at all
+        '-by', BNPY_FOLDER,
         '-o', os.path.join(output_folder, 'bbc/bulk.seg'),
         '-O', os.path.join(output_folder, 'bbc/bulk.bbc'),
         '-e', '22171',  # random seed

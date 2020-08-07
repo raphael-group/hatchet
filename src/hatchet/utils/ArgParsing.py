@@ -326,8 +326,8 @@ def parse_clubb_args(args=None):
     if args.restarts < 0:
         raise ValueError(sp.error("Number of restarts must be positive!"))
 
-    # if not os.path.isdir(os.path.join(args.bnpy, "bnpy")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/HModel.py")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/Run.py")):
-    #     raise ValueError(sp.error("The specified root path for BNPY do not contain a BNPY folder!"))
+    if not os.path.isdir(os.path.join(args.bnpy, "bnpy")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/HModel.py")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/Run.py")):
+        raise ValueError(sp.error("The specified root path for BNPY do not contain a BNPY folder!"))
 
     return {"bbfile" : args.BBFILE,
             "bnpydir" : args.bnpy,

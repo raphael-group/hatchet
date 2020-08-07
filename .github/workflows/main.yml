@@ -26,13 +26,13 @@ jobs:
 
       - name: Install SAMtools
         run: |
-          wget https://github.com/samtools/samtools/releases/download/1.10/samtools-1.10.tar.bz2 -O - | tar -xj
+          wget wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O - | tar -xj
           (cd samtools-1.10 && ./configure && make)
           echo ::set-env name=SAMTOOLS_PATH::$(realpath samtools-1.10)
 
       - name: Install BCFTools
         run: |
-          wget https://github.com/samtools/bcftools/releases/download/1.10.2/bcftools-1.10.2.tar.bz2 -O - | tar -xj
+          wget https://sourceforge.net/projects/samtools/files/samtools/1.7/bcftools-1.7.tar.bz2/download -O - | tar -xj
           (cd bcftools-1.10.2 && ./configure && make)
           echo ::set-env name=BCFTOOLS_PATH::$(realpath bcftools-1.10.2)
 
