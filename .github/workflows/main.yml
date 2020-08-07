@@ -27,14 +27,14 @@ jobs:
       - name: Install SAMtools
         run: |
           wget wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O - | tar -xj
-          (cd samtools-1.10 && ./configure && make)
-          echo ::set-env name=SAMTOOLS_PATH::$(realpath samtools-1.10)
+          (cd samtools-1.7 && ./configure && make)
+          echo ::set-env name=SAMTOOLS_PATH::$(realpath samtools-1.7)
 
       - name: Install BCFTools
         run: |
           wget https://sourceforge.net/projects/samtools/files/samtools/1.7/bcftools-1.7.tar.bz2/download -O - | tar -xj
-          (cd bcftools-1.10.2 && ./configure && make)
-          echo ::set-env name=BCFTOOLS_PATH::$(realpath bcftools-1.10.2)
+          (cd bcftools-1.7 && ./configure && make)
+          echo ::set-env name=BCFTOOLS_PATH::$(realpath bcftools-1.7)
 
       - name: Download and index hg19.fa
         run: |
