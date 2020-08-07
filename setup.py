@@ -63,7 +63,7 @@ class CMakeBuild(build_ext):
 setup(
     name='hatchet',
     version='0.0.1',
-    packages=['hatchet', 'hatchet.utils'],
+    packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
     package_dir={'': 'src'},
     ext_modules=[CMakeExtension('hatchet.solve')],
     cmdclass=dict(build_ext=CMakeBuild),
@@ -73,9 +73,12 @@ setup(
 
     install_requires=[
         'biopython==1.76',
+        'bnpy',
+        'cython',
         'futures',
         'matplotlib',
         'matplotlib-venn',
+        'munkres<=1.0.12',
         'opencv-python',
         'pandas',
         'psutil',

@@ -16,18 +16,41 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Install Gurobi
         run: |
           wget https://packages.gurobi.com/9.0/gurobi9.0.2_linux64.tar.gz -O - | tar -xz
           (cd gurobi902/linux64/src/build && make)
           (cd gurobi902/linux64/lib && ln -f -s ../src/build/libgurobi_c++.a libgurobi_c++.a)
           echo ::set-env name=GUROBI_HOME::$(realpath gurobi902)
+
+      - name: Install SAMtools
+        run: |
+          wget https://github.com/samtools/samtools/releases/download/1.10/samtools-1.10.tar.bz2 -O - | tar -xj
+          (cd samtools-1.10 && ./configure && make)
+          echo ::set-env name=SAMTOOLS_PATH::$(realpath samtools-1.10)
+
+      - name: Install BCFTools
+        run: |
+          wget https://github.com/samtools/bcftools/releases/download/1.10.2/bcftools-1.10.2.tar.bz2 -O - | tar -xj
+          (cd bcftools-1.10.2 && ./configure && make)
+          echo ::set-env name=BCFTOOLS_PATH::$(realpath bcftools-1.10.2)
+
+      - name: Download and index hg19.fa
+        run: |
+          wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz -O - | tar -xz
+          $SAMTOOLS_PATH/samtools faidx hg19.fa
+          $SAMTOOLS_PATH/samtools view -H -ht hg19.fa.fai /dev/null > hg19.dict
+          echo ::set-env name=HG19_FILE::$(realpath hg19.fa)
+
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python }}
+
       - name: Install Tox and any other packages
         run: pip install tox
+
       - name: Run Tox
         # Run tox using the version of Python in `PATH`
-        run: GUROBI_HOME=${{ env.GUROBI_HOME }} tox -e py
+        run: GUROBI_HOME=${{ env.GUROBI_HOME }} SAMTOOLS_PATH=${{ env.SAMTOOLS_PATH }} BCFTOOLS_PATH=${{ env.BCFTOOLS_PATH }} HG19_FILE=${{ env.HG19_FILE }} tox -e py

@@ -6,7 +6,7 @@ BCF="/opt/raphael-group/bcftools/bin/"
 BNPY="/home/vineetb/git_checkouts/bnpy"
 
 HATCHET_HOME="/home/vineetb/git_checkouts/hatchet"
-HATCHET="${HATCHET_HOME}/bin/HATCHet.py"
+HATCHET="${HATCHET_HOME}/src/hatchet/bin/HATCHet.py"
 UTILS="${HATCHET_HOME}/src/hatchet/utils/"
 SOLVER="${HATCHET_HOME}/src/hatchet/solve"
 

@@ -1,7 +1,7 @@
-from hatchet.utils.BAMBinning2 import bin
+from hatchet.utils.BAMBinning import bin
 
 
-def test_bins():
+def _test_bins():
     bins = bin(
         samtools='/opt/raphael-group/samtools/bin/samtools',
         samples=[('/media/vineetb/t5-vineetb/raphael-group/data/hatchet/SRR5906250.sorted.bam', 'Normal')],

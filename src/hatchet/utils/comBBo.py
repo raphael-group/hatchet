@@ -11,9 +11,9 @@ import Supporting as sp
 from ArgParsing import parse_combbo_args
 
 
-def main():
+def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = parse_combbo_args()
+    args = parse_combbo_args(args)
     np.random.seed(seed=args["seed"])
     sp.log(msg="# Reading and checking the bin count files for computing read-depth ratios\n", level="STEP")
     normalbins, tumorbins, chromosomes, normal1, samples1 = readBINs(normalbins=args["normalbins"], tumorbins=args["tumorbins"])

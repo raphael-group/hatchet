@@ -10,9 +10,9 @@ from ArgParsing import parse_clubb_args
 import Supporting as sp
 
 
-def main():
+def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = parse_clubb_args()
+    args = parse_clubb_args(args)
 
     sp.log(msg="# Reading the combined BB file\n", level="STEP")
     combo, samples = readBB(args["bbfile"])
