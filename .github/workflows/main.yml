@@ -27,7 +27,7 @@ jobs:
 
       - name: Install SAMtools
         run: |
-          wget wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O samtools-1.7.tar.bz2
+          wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O samtools-1.7.tar.bz2
           tar xvjf samtools-1.7.tar.bz2
           (cd samtools-1.7 && ./configure && make)
           echo ::set-env name=SAMTOOLS_PATH::$(realpath samtools-1.7)
