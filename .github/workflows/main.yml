@@ -20,7 +20,7 @@ jobs:
       - name: Install Gurobi
         run: |
           wget https://packages.gurobi.com/9.0/gurobi9.0.2_linux64.tar.gz -O gurobi9.0.2_linux64.tar.gz
-          tar -xz gurobi9.0.2_linux64.tar.gz
+          tar xvzf gurobi9.0.2_linux64.tar.gz
           (cd gurobi902/linux64/src/build && make)
           (cd gurobi902/linux64/lib && ln -f -s ../src/build/libgurobi_c++.a libgurobi_c++.a)
           echo ::set-env name=GUROBI_HOME::$(realpath gurobi902)
@@ -28,14 +28,14 @@ jobs:
       - name: Install SAMtools
         run: |
           wget wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O samtools-1.7.tar.bz2
-          tar -xj samtools-1.7.tar.bz2
+          tar xvjf samtools-1.7.tar.bz2
           (cd samtools-1.7 && ./configure && make)
           echo ::set-env name=SAMTOOLS_PATH::$(realpath samtools-1.7)
 
       - name: Install BCFTools
         run: |
           wget https://sourceforge.net/projects/samtools/files/samtools/1.7/bcftools-1.7.tar.bz2/download -O bcftools-1.7.tar.bz2
-          tar -xj bcftools-1.7.tar.bz2
+          tar xvjf bcftools-1.7.tar.bz2
           (cd bcftools-1.7 && ./configure && make)
           echo ::set-env name=BCFTOOLS_PATH::$(realpath bcftools-1.7)
 
