@@ -26,7 +26,7 @@ BNPY_FOLDER = os.path.abspath(os.path.join(os.path.dirname(bnpy.__file__), '..')
 @pytest.fixture(scope='module')
 def output_folder():
     out = os.path.join(this_dir, 'out')
-    shutil.rmtree(out)
+    shutil.rmtree(out, ignore_errors=True)
     for sub_folder in ('bin', 'baf', 'bb', 'bbc', 'results', 'evaluation', 'analysis'):
         os.makedirs(os.path.join(out, sub_folder))
     return out
