@@ -1,4 +1,5 @@
 import os
+import hashlib
 import pysam
 
 
@@ -8,4 +9,5 @@ DATA_FOLDER = os.path.join(this_dir, 'data')
 
 def test_pysam():
     samfile = os.path.join(DATA_FOLDER, 'SRR5906250-chr22.sorted.bam')
-    sam = pysam.AlignmentFile(samfile, 'rb')
+    assert hashlib.md5(samfile).hexdigest() == '5a7beb6deb0beabfcf64108ee10fa690'
+    # sam = pysam.AlignmentFile(samfile, 'rb')
