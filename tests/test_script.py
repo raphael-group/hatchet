@@ -36,7 +36,7 @@ def output_folder():
 @pytest.mark.skipif(not os.getenv('SAMTOOLS_PATH'), reason='SAMTOOLS_PATH not set')
 @pytest.mark.skipif(not os.getenv('BCFTOOLS_PATH'), reason='BCFTOOLS_PATH not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
-def test_script(_, output_folder):
+def _test_script(_, output_folder):
 
     hg19_file = os.getenv('HG19_FILE')
     samtools_path = os.getenv('SAMTOOLS_PATH')
