@@ -72,14 +72,14 @@ setup(
     python_requires='~=2.7',
 
     install_requires=[
+        'cython',  # should be listed before bnpy to build it correctly
         'biopython==1.76',
         'bnpy',
-        'cython',
         'futures',
         'matplotlib',
         'matplotlib-venn',
         'munkres<=1.0.12',
-        'opencv-python',
+        'opencv-python<=4.3.0.36',
         'pandas',
         'psutil',
         'pysam',
