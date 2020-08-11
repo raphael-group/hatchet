@@ -19,9 +19,6 @@ jobs:
         with:
           lfs: true
 
-      - name: Checkout LFS objects
-        run: git lfs checkout
- 
       - name: Install Gurobi
         run: |
           wget https://packages.gurobi.com/9.0/gurobi9.0.2_linux64.tar.gz -O gurobi9.0.2_linux64.tar.gz
