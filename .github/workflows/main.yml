@@ -31,3 +31,36 @@ jobs:
         run: |
           (cd gurobi902/linux64/bin && ./grbgetkey -q ${{ secrets.GUROBI_KEYCODE }})
 
+      - name: Install SAMtools
+        run: |
+          wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O samtools-1.7.tar.bz2
+          tar xvjf samtools-1.7.tar.bz2
+          (cd samtools-1.7 && ./configure && make)
+          echo ::set-env name=HATCHET_PATHS_SAMTOOLS::$(realpath samtools-1.7)
+
+      - name: Install BCFTools
+        run: |
+          wget https://sourceforge.net/projects/samtools/files/samtools/1.7/bcftools-1.7.tar.bz2/download -O bcftools-1.7.tar.bz2
+          tar xvjf bcftools-1.7.tar.bz2
+          (cd bcftools-1.7 && ./configure && make)
+          echo ::set-env name=HATCHET_PATHS_BCFTOOLS::$(realpath bcftools-1.7)
+
+      - name: Download and index hg19.fa
+        run: |
+          wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
+          gunzip hg19.fa.gz
+          $HATCHET_PATHS_SAMTOOLS/samtools faidx hg19.fa
+          $HATCHET_PATHS_SAMTOOLS/samtools view -H -ht hg19.fa.fai /dev/null > hg19.dict
+          echo ::set-env name=HATCHET_PATHS_HG19::$(realpath hg19.fa)
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install Tox and any other packages
+        run: pip install tox
+
+      - name: Run Tox
+        # Run tox using the version of Python in `PATH`
+        run: GUROBI_HOME=${{ env.GUROBI_HOME }} HATCHET_PATHS_SAMTOOLS=${{ env.HATCHET_PATHS_SAMTOOLS }} HATCHET_PATHS_BCFTOOLS=${{ env.HATCHET_PATHS_BCFTOOLS }} HATCHET_PATHS_HG19=${{ env.HATCHET_PATHS_HG19 }} tox -e py
