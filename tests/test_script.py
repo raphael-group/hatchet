@@ -8,6 +8,7 @@ import shutil
 import bnpy
 
 import hatchet
+from hatchet import config
 from hatchet.utils.binBAM import main as binBAM
 from hatchet.utils.deBAF import main as deBAF
 from hatchet.utils.comBBo import main as comBBo
@@ -32,24 +33,20 @@ def output_folder():
     return out
 
 
-@pytest.mark.skipif(not os.getenv('HG19_FILE'), reason='HG19_FILE not set')
-@pytest.mark.skipif(not os.getenv('SAMTOOLS_PATH'), reason='SAMTOOLS_PATH not set')
-@pytest.mark.skipif(not os.getenv('BCFTOOLS_PATH'), reason='BCFTOOLS_PATH not set')
+@pytest.mark.skipif(not config.paths.hg19, reason='paths.hg19 not set')
+@pytest.mark.skipif(not config.paths.samtools, reason='paths.samtools not set')
+@pytest.mark.skipif(not config.paths.bcftools, reason='paths.bcftools not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
-def _test_script(_, output_folder):
-
-    hg19_file = os.getenv('HG19_FILE')
-    samtools_path = os.getenv('SAMTOOLS_PATH')
-    bcftools_path = os.getenv('BCFTOOLS_PATH')
+def test_script(_, output_folder):
 
     binBAM(args=[
         '-N', os.path.join(DATA_FOLDER, 'SRR5906250-chr22.sorted.bam'),
         '-T', os.path.join(DATA_FOLDER, 'SRR5906251-chr22.sorted.bam'),
               os.path.join(DATA_FOLDER, 'SRR5906253-chr22.sorted.bam'),
         '-b', '50kb',
-        '-st', samtools_path,
+        '-st', config.paths.samtools,
         '-S', 'Normal', 'TumorOP', 'Tumor2',
-        '-g', hg19_file,
+        '-g', config.paths.hg19,
         '-j', '12',
         '-q', '11',
         '-O', os.path.join(output_folder, 'bin/normal.bin'),
@@ -58,13 +55,13 @@ def _test_script(_, output_folder):
     ])
 
     deBAF(args=[
-        '-bt', bcftools_path,
-        '-st', samtools_path,
+        '-bt', config.paths.bcftools,
+        '-st', config.paths.samtools,
         '-N', os.path.join(DATA_FOLDER, 'SRR5906250-chr22.sorted.bam'),
         '-T', os.path.join(DATA_FOLDER, 'SRR5906251-chr22.sorted.bam'),
               os.path.join(DATA_FOLDER, 'SRR5906253-chr22.sorted.bam'),
         '-S', 'Normal', 'TumorOP', 'Tumor2',
-        '-r', hg19_file,
+        '-r', config.paths.hg19,
         '-j', '12',
         '-q', '11',
         '-Q', '11',

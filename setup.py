@@ -65,6 +65,7 @@ setup(
     version='0.0.1',
     packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
     package_dir={'': 'src'},
+    package_data={'hatchet': ['hatchet.ini']},
     ext_modules=[CMakeExtension('hatchet.solve')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
