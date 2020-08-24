@@ -77,6 +77,7 @@ setup(
         'biopython==1.76',
         'bnpy',
         'futures',
+        'importlib_resources>=1.0.2',
         'matplotlib',
         'matplotlib-venn',
         'munkres<=1.0.12',
