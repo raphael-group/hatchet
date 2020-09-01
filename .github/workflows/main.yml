@@ -30,6 +30,7 @@ jobs:
       - name: Activate Gurobi License
         run: |
           (cd gurobi902/linux64/bin && ./grbgetkey -q ${{ secrets.GUROBI_KEYCODE }})
+        continue-on-error: true
 
       - name: Install SAMtools
         run: |
