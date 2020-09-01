@@ -37,13 +37,13 @@ jobs:
           wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O samtools-1.7.tar.bz2
           tar xvjf samtools-1.7.tar.bz2
           (cd samtools-1.7 && ./configure && make)
-          echo ::set-env name=HATCHET_PATHS_SAMTOOLS::$(realpath samtools-1.7)
+          echo ::set-env name=HATCHET_PATHS_SAMTOOLS::$(realpath samtools-1.7/bin)
       - name: Install BCFTools
         run: |
           wget https://sourceforge.net/projects/samtools/files/samtools/1.7/bcftools-1.7.tar.bz2/download -O bcftools-1.7.tar.bz2
           tar xvjf bcftools-1.7.tar.bz2
           (cd bcftools-1.7 && ./configure && make)
-          echo ::set-env name=HATCHET_PATHS_BCFTOOLS::$(realpath bcftools-1.7)
+          echo ::set-env name=HATCHET_PATHS_BCFTOOLS::$(realpath bcftools-1.7/bin)
       - name: Download and index hg19.fa
         run: |
           wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
