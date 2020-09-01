@@ -57,7 +57,7 @@ def main(args=None):
     else: outsegments = open(args["outsegments"], 'w')
     outsegments.write("#ID\tSAMPLE\t#BINS\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n")
     for key in sorted(segments):
-        for sample in segments[key]:
+        for sample in sorted(segments[key]):
             record = segments[key][sample]
             outsegments.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key, sample, record[0], record[1], record[2], record[3], record[4], record[5], record[6]))
 
