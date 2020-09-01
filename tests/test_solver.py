@@ -1,5 +1,6 @@
 import os
 import subprocess
+import pytest
 import hatchet
 
 this_dir = os.path.dirname(__file__)
@@ -7,7 +8,8 @@ DATA_FOLDER = os.path.join(this_dir, 'data')
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
-def _test_solver():
+@pytest.mark.skip(reason="Not testing solver")
+def test_solver():
     cmd = [
         SOLVE,
         os.path.join(DATA_FOLDER, 'bulk')
