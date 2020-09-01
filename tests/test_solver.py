@@ -7,7 +7,7 @@ DATA_FOLDER = os.path.join(this_dir, 'data')
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
-def test_solver():
+def _test_solver():
     cmd = [
         SOLVE,
         os.path.join(DATA_FOLDER, 'bulk')
