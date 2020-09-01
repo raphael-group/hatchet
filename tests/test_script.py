@@ -104,7 +104,11 @@ def test_script(_, output_folder):
         '-d', '0.4'  # 0.08 in script
     ])
 
-    assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg')).read()).hexdigest() == \
+    with open(os.path.join(output_folder, 'bbc/bulk.seg'), 'r') as f:
+        for line in f.readlines():
+            print(line)
+
+    assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg'), 'rb').read()).hexdigest() == \
            '4204e4c4eb561fc1732e5a010d231abe'
 
     # main(args=[
