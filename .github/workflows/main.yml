@@ -61,5 +61,5 @@ jobs:
 
       - name: Run Tox
         # Run tox using the version of Python in `PATH`
-        run: GUROBI_HOME=${{ env.GUROBI_HOME }} HATCHET_PATHS_SAMTOOLS=${{ env.HATCHET_PATHS_SAMTOOLS }} HATCHET_PATHS_BCFTOOLS=${{ env.HATCHET_PATHS_BCFTOOLS }} HATCHET_PATHS_HG19=${{ env.HATCHET_PATHS_HG19 }} tox -e py
+        run: tox -e py
 
