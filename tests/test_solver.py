@@ -8,7 +8,7 @@ DATA_FOLDER = os.path.join(this_dir, 'data')
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
-@pytest.mark.skip(reason="Not testing solver")
+# @pytest.mark.skip(reason="Not testing solver")
 def test_solver():
     cmd = [
         SOLVE,
