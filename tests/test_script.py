@@ -104,24 +104,21 @@ def test_script(_, output_folder):
         '-d', '0.4'  # 0.08 in script
     ])
 
-    assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg'), 'rb').read()).hexdigest() == \
-           '4204e4c4eb561fc1732e5a010d231abe'
+    main(args=[
+        SOLVE,
+        '-x', os.path.join(output_folder, 'results'),
+        '-i', os.path.join(output_folder, 'bbc/bulk'),
+        '-n2',  # -n2,8 in script
+        '-p', '400',
+        '-v', '3',
+        '-u', '0.03',
+        '-r', '6700',  # random seed
+        '-j', '8',
+        '-eD', '6',
+        '-eT', '12',
+        '-g', '0.35',
+        '-l', '0.6'
+    ])
 
-    # main(args=[
-    #     SOLVE,
-    #     '-x', os.path.join(output_folder, 'results'),
-    #     '-i', os.path.join(output_folder, 'bbc/bulk'),
-    #     '-n2',  # -n2,8 in script
-    #     '-p', '400',
-    #     '-v', '3',
-    #     '-u', '0.03',
-    #     '-r', '6700',  # random seed
-    #     '-j', '8',
-    #     '-eD', '6',
-    #     '-eT', '12',
-    #     '-g', '0.35',
-    #     '-l', '0.6'
-    # ])
-    #
-    # assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
-    #        'da20c70188fa1fa9be430b7182c301e5'
+    assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
+           '87fabc8a40db6c14ea9d251f81ba0e2b'

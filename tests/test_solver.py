@@ -1,6 +1,5 @@
 import os
 import subprocess
-import pytest
 import hatchet
 
 this_dir = os.path.dirname(__file__)
@@ -8,7 +7,6 @@ DATA_FOLDER = os.path.join(this_dir, 'data')
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
-# @pytest.mark.skip(reason="Not testing solver")
 def test_solver():
     cmd = [
         SOLVE,
@@ -19,5 +17,4 @@ def test_solver():
 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     p.communicate()
-
     assert p.returncode == 0
