@@ -73,7 +73,7 @@ setup(
     python_requires='~=2.7',
 
     install_requires=[
-        'cython',  # should be listed before bnpy to build it correctly
+        'cython',
         'biopython==1.76',
         'bnpy',
         'futures',

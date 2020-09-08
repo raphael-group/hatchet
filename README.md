@@ -1,3 +1,6 @@
+![CI](https://github.com/vineetbansal/hatchet3/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/vineetbansal/hatchet3/branch/develop/graph/badge.svg)](https://codecov.io/gh/vineetbansal/hatchet3)
+
 # HATCHet <br/> <sub><u>H</u>olistic <u>A</u>llele-specific <u>T</u>umor <u>C</u>opy-number <u>Het</u>erogeneity</sub> #
 
 HATCHet is an algorithm to infer allele and clone-specific copy-number aberrations (CNAs), clone proportions, and whole-genome duplications (WGD) for several tumor clones jointly from multiple bulk-tumor samples of the same patient or from a single bulk-tumor sample. HATCHet has been designed and developped by Simone Zaccaria in the group of prof. Ben Raphael at Princeton University. The full description of the algorithm, the comparison with previous state-of-the-art methods, and its application on published cancer datasets are described in
@@ -58,20 +61,71 @@ The current implementation of HATCHet is composed of two sets of modules:
 <a name="setup"></a>
 
 The setup process is composed of 4 steps:
-1. [Dependencies](#dependencies): the installation of all the required dependecies; this is a one-time process.
-2. [Compilation](#compilation): the compilation of HATCHet; this is a one-time process.
-3. [Using Gurobi](#usinggurobi): the requirements to run Gurobi; these need to be satisfied before every run.
-4. [Required data](#requireddata): the requirements for considered data; these need to be satisfied whenever using new data.
+1. [Installation](#installation): the compilation and installation of Hatchet and its dependencies; this is a one-time process.
+2. [Using Gurobi](#usinggurobi): the requirements to run Gurobi; these need to be satisfied before every run.
+3. [Required data](#requireddata): the requirements for considered data; these need to be satisfied whenever using new data.
 
-### Dependencies
-<a name="dependencies"></a>
-
-#### > Core
+### Installation
+<a name="installation"></a>
 
 The core module of HATCHet is written in C++11 and thus require a modern C++ compiler that is supporting this (GCC >= 4.8.1, or Clang).
-In addition, the core module has the following dependencies:
-- [CMake](https://cmake.org/) (>= 3.0), this is needed to drive the compilation. OPTIONAL: we suggest the use of CCMake to facilitate the specifications of other dependencies.
-- [Gurobi](http://www.gurobi.com/) (>= 6.0), this is used becase the coordinate-method applied by HATCHet is based on several integer linear programming (ILP) formulations. Gurobi is a commercial ILP solver with two licensing options: (1) a single-host license where the license is tied to a single computer and (2) a network license for use in a compute cluster (using a license server in the cluster). Both options are freely and easily available for users in academia [here](http://www.gurobi.com/academia/academia-center).
+As long as you have a recent version of GCC or Clang installed, `setuptools` should automatically be able to download a recent version of `cmake` and compile the Hatchet code into a working package.
+
+The installation process can be broken down into the following steps:
+
+1. **Get [Gurobi](http://www.gurobi.com/)** (>= 6.0):
+The coordinate-method applied by HATCHet is based on several integer linear programming (ILP) formulations. Gurobi is a commercial ILP solver with two licensing options: (1) a single-host license where the license is tied to a single computer and (2) a network license for use in a compute cluster (using a license server in the cluster). Both options are freely and easily available for users in academia [here](http://www.gurobi.com/academia/academia-center).
+Download Gurobi from https://www.gurobi.com/downloads/gurobi-optimizer-eula for your specific platform.
+
+2. **Set GUROBI_HOME environment variable**:
+    ```shell
+    $ export GUROBI_HOME /path/to/gurobiXXX
+    ```
+    Set `GUROBI_HOME` to where you download Gurobi.
+
+3. **Build Gurobi**: These steps assume that Gurobi's home is `/path/to/gurobiXXX`, where `XXX` is the 3-digit version and `YYYYY64` is equal to either `linux64` or `mac64` when a subfolder is present):
+    ```shell
+    $ cd "${GUROBI_HOME}"
+    $ cd YYYYY64/src/build/
+    $ make
+    $ cp libgurobi_c++.a ../../lib
+    ```
+
+4. **Create a new venv/conda environment for Hatchet**
+
+`Hatchet` is a Python 2.7 package. Unless you want to compile/install it in your default Python 2 environment, you will
+want to create either a new Conda environment for Python 2.7 and activate it:
+```
+conda create --name hatchet python=2.7
+conda activate hatchet
+```
+or use `venv` through `pip`:
+```
+python2 -m pip venv env
+source env/bin/activate
+```
+    
+5. **Build and install HATCHet**: Execute the following commands from the root of HATCHet's repository.
+    ```shell
+    $ python setup.py install
+    ```
+
+**NOTE**: If you experience a failure of compilation with an error message like:
+```
+_undefined reference to symbol 'pthread_create@@GLIBC_2.2.5'_.
+```
+
+simply substitute the following line in the CMakeLists.txt file:
+```cmake
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
+```
+with the following:
+```cmake
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread" )
+```
+by simply adding  `-pthread`. After this, re-run the `python setup.py install` command.
+
+When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed intructions](doc/doc_compilation.md).
 
 #### > Utilities
 
@@ -80,59 +134,14 @@ These modules have the following dependencies, which need to be installed once:
 
 | Name and link | REQUIRED | Usage | Comments |
 |---------------|----------|-------|----------|
-| subprocess and multiprocess |  REQUIRED | Multiprocessing and threading  | Standard python modules  |
 | [SAMtools and BCFtools](http://www.htslib.org/doc/)  | REQUIRED | reading BAM files, read counting, allele counting, and SNP calling | **CURRENT ISSUE**: Unfortunately, HATCHet currently support only the following versions of these softwares: 1.5, 1.6, and 1.7 |
-| [BNPY-dev](https://bitbucket.org/michaelchughes/bnpy-dev) or [BNPY](https://github.com/bnpy/bnpy) | REQUIRED  | Non-parametric Bayesian clustering algorithm | We highly reccomend to install BNPY by simply cloning the repository in a specific directory and verify the related dependencies (Section `Installing *bnpy*` in the [installation instructions](https://bitbucket.org/michaelchughes/bnpy-dev/wiki/Installation.md)). We also suggest to install the additional C++ libraries to improve the performance (Section `Optional: Fast C++ libraries for HMM inference` in the [installation instructions](https://bitbucket.org/michaelchughes/bnpy-dev/wiki/Installation.md)) |
-| [pandas](https://pandas.pydata.org/), [matplotlib](https://matplotlib.org/), [seaborn](https://seaborn.pydata.org/) | OPTIONAL | Plotting | Required only for plotting modules. Seaborn has been tested with version 0.8.1. While all these packages can be easily installed using standard package managment tools (e.g. `pip`) for the default python version on your OS, we suggest the usage of python virtual enviroments created directly through python or (reccomended) using [Anaconda](https://www.anaconda.com/). In addition to packages with better perfomance, these enviroments guarantee to keep the same version of all pacjkages without affecting the standard installation of python on your OS. An enviroment specific for HATCHet can be created with the suggested versions of all required packages; the enviroment needs to be activated before every run or explicitly included in the pipeline script. |
-
-
-### Compilation
-<a name="compilation"></a>
-
-Compilation is required to be executed only once for the core modules of HATCHet, while all the other modules are ready to use after the installation of the required packages and dependecies. This repository includes an automatic compilation process which requires only 4 simple steps.
-
-1. **Get [Gurobi](http://www.gurobi.com/)**: user simply needs to unpack Gurobi (Linux version, no other step is required) or to install it (Mac version, standard installation is in `/Library/`).
-2. **Build Gurobi**: user only needs to build Gurobi when using newer GXX compilers (>= 5.0) on Linux or having linking issues by following these steps (assuming Gurobi's home is `/path/to/gurobiXXX` where `XXX` is the 3-digit version and `YYYYY64` is equal to either `linux64` or `mac64` when a subfolder is present present):
-    ```shell
-    $ cd /path/to/gurobiXXX/YYYYY64/src/build/
-    $ make
-    $ cp libgurobi_c++.a ../../lib/
-    ```
-3. **Link HATCHet to Gurobi**: substitute the following line at the beginning of `FindGUROBI.cmake`
-    ```shell
-    set(GUROBI_HOME "" )
-    ```
-    with
-    ```shell
-    set(GUROBI_HOME "/path/to/gurobiXXX" )
-    ```
-    to link HATCHet with Gurobi.
-4. **Build HATCHet**: execute the following commands from the root of HATCHet's repository.
-    ```shell
-    $ mkdir build
-    $ cd build/
-    $ ccmake ..
-    $ make
-    ```
-
-**NOTE**: some users experienced a failure of compilation with an error message similar to _undefined reference to symbol 'pthread_create@@GLIBC_2.2.5'_. To solve this issue, simply substitute the following line in the CMakeLists.txt file:
-```cmake
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
-```
-with the following:
-```cmake
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread" )
-```
-by simply adding  `-pthread`. After this, simply re-compile from scratch.
-
-When the compilation process fail or when the enviroment has special requirements, the user can manually specify the required paths to Gurobi by following the [detailed intructions](doc/doc_compilation.md).
 
 ### Using Gurobi
 <a name="usinggurobi"></a>
 
 Every run of HATCHet (especially, the `hatchet` step) needs to use Gurobi which requires a valid license pointed by the enviromental variable `GRB_LICENSE_FILE`. This can be easily obtained depending on the type of free academic license available:
 
-1. **Individual license**. This license can be obtained [easily](http://www.gurobi.com/academia/academia-center) by any academic user with an istitutional email. This license is user and machine-specific, meaning that the user needs to require a different license for every used machine. Assuming the license is stored at `/path/to/gurobi.lic`, the user can easily use it by the following command:
+1. **Individual license**. This license can be obtained [easily](http://www.gurobi.com/academia/academia-center) by any academic user with an institutional email. This license is user and machine-specific, meaning that the user needs to require a different license for every used machine. Assuming the license is stored at `/path/to/gurobi.lic`, the user can easily use it by the following command:
     ```shell
     export GRB_LICENSE_FILE="/path/to/gurobi.lic"
     ```
@@ -141,15 +150,13 @@ Every run of HATCHet (especially, the `hatchet` step) needs to use Gurobi which 
     module load gurobi
     ```
 
-As a valid license needs to be available for every run, user can simply add the required command to the pipeline script used to run HATCHet, instead of executing it before every new access to a machine.
-
 ### Required data
 <a name="requireddata"></a>
 
-HATCHet requires 3 input data:
+HATCHet requires 3 input data files:
 1. One or more BAM files containing DNA sequencing reads obtained from tumor samples of a single patient. Every BAM file contains the sequencing reads from a sample ad needs to be indexed and sorted. For example, each BAM file can be easily indexed and sorted using [SAMtools](http://www.htslib.org/workflow/#mapping_to_variant). In addition, one can improve the quality of the data by processing the BAM files according to the [GATK Best Practices](https://software.broadinstitute.org/gatk/best-practices/).
 2. A BAM file containg DNA sequecing reads obtained from a matched-normal sample of the same patient of the considered tumor samples. The BAM file needs to be indexed and sorted as the tumor BAM files. Also, the BAM files can be processed as the tumor BAM files.
-    3. A human reference genome. Ideally, one should consider the same human reference genome used to align the sequencing reads in the given BAM files. The most-used human reference genome are available at [GRC](https://www.ncbi.nlm.nih.gov/grc/human) or [UCSC](http://hgdownload.cse.ucsc.edu/downloads.html#human). Observe that human reference genomes use two different notations for chromosomes: either `1, 2, 3, 4, 5 ...` or `chr1, chr2, chr3, chr4, chr5 ...`. One needs to make sure all BAM files and reference genome share that same chromosome notation. When this is not the case, one needs to change the reference to guarantee consistency and needs to re-index the new reference (e.g. using [SAMtools](http://www.htslib.org/workflow/#mapping_to_variant)). Also, HATCHet requires that the name of each chromosome is the first word in each ID such that `>1 [ANYTHING] ... \n>2 [ANYTHING] ... \n>3 [ANYTHING] ...` or `>chr1 [ANYTHING] ... \n>chr2 [ANYTHING] ... \n>chr3 [ANYTHING]`.
+3. A human reference genome. Ideally, one should consider the same human reference genome used to align the sequencing reads in the given BAM files. The most-used human reference genome are available at [GRC](https://www.ncbi.nlm.nih.gov/grc/human) or [UCSC](http://hgdownload.cse.ucsc.edu/downloads.html#human). Observe that human reference genomes use two different notations for chromosomes: either `1, 2, 3, 4, 5 ...` or `chr1, chr2, chr3, chr4, chr5 ...`. One needs to make sure all BAM files and reference genome share that same chromosome notation. When this is not the case, one needs to change the reference to guarantee consistency and needs to re-index the new reference (e.g. using [SAMtools](http://www.htslib.org/workflow/#mapping_to_variant)). Also, HATCHet requires that the name of each chromosome is the first word in each ID such that `>1 [ANYTHING] ... \n>2 [ANYTHING] ... \n>3 [ANYTHING] ...` or `>chr1 [ANYTHING] ... \n>chr2 [ANYTHING] ... \n>chr3 [ANYTHING]`.
 
 
 ## Usage
@@ -169,7 +176,7 @@ Last, we provide [reccomendations](#reccomentations), especially for noisy datas
 
 We provide an exemplary [BASH script](script/runHATCHet.sh) that implements the entire pipeline of HATCHet.
 This script and its usage are described in detailed in a guided [tutorial](doc/doc_runhatchet.md).
-The user can simply use the script for every execution of HATCHet on different data by copying the script inside the running directory and changing the corresponding paths of the required data and dependecies at the beginning of the script, as described in the guided [tutorial](doc/doc_runhatchet.md).
+The user can simply use the script for every execution of HATCHet on different data by copying the script inside the running directory and changing the corresponding paths of the required data and dependencies at the beginning of the script, as described in the guided [tutorial](doc/doc_runhatchet.md).
 
 ### Demos
 <a name="demos"></a>
