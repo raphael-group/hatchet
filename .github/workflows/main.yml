@@ -69,7 +69,6 @@ jobs:
           tox
         env:
           PLATFORM: ${{ matrix.python }}
-          OMP_NUM_THREADS: 12
 
       - name: Convert coverage
         run: |
