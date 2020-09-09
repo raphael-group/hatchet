@@ -2,8 +2,8 @@
 <a name="fullpipelineandtutorial"></a>
 
 We provide an example [BASH script](script/runHATCHet.sh) that implements the entire pipeline of HATCHet.
-This script and its usage are described in detailed in a guided [tutorial](doc/doc_runhatchet.md).
-The user can simply use the script for every execution of HATCHet on different data by copying the script inside the running directory and changing the corresponding paths of the required data and dependencies at the beginning of the script, as described in the guided [tutorial](doc/doc_runhatchet.md).
+This script and its usage are described in detailed in a guided [tutorial](doc_runhatchet.md).
+The user can simply use the script for every execution of HATCHet on different data by copying the script inside the running directory and changing the corresponding paths of the required data and dependencies at the beginning of the script, as described in the guided [tutorial](doc_runhatchet.md).
 
 ## Demos
 <a name="demos"></a>
@@ -33,7 +33,7 @@ time the following demos are available (more demos will be added in the near fut
 The repository includes custom pipelines which have been designed to adapt the complete pipeline of HATCHet to special
 conditions or to integrate the processed data produced by other pipelines. Each custom pipeline is a variation of the
 main HATCHet's pipeline, we thus recommend the user to always first carefully understand the main
-[BASH script](script/runHATCHet.sh) through the corresponding guided [tutorial](doc/doc_runhatchet.md) and to carefully
+[BASH script](script/runHATCHet.sh) through the corresponding guided [tutorial](doc_runhatchet.md) and to carefully
 understand the provided [demos](#demos) to properly apply HATCHet for best-quality results. Each custom pipeline also
 includes a specific demo which represent a guided and executable example on example data.
 
@@ -50,13 +50,13 @@ one wants to replace or change some of the steps in the pipeline while guarantee
 
 | Order | Step | Description |
 |-------|------|-------------|
-| (1)   | [*binBAM*](doc/doc_binbam.md)   | This step splits the human reference genome into bins, i.e. fixed-size small genomic regions, and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample. |
-| (2)   | [*deBAF*](doc/doc_debaf.md)     | This step calls heterozygous germline SNPs from the matched-normal sample and counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample. |
-| (3)   | [*comBBo*](doc/doc_combbo.md)   | This step combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin. |
-| (4)   | [*cluBB*](doc/doc_clubb.md)     | This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample. |
-| (5)   | [*BBot*](doc/doc_bbot.md)       | This step produces informative plots concerning the computed RDRs, BAFs, and clusters. The information produced by this step are important to validate the compute clusters of genomic regions. |
-| (6)   | [*hatchet*](doc/doc_hatchet.md) | This step computes allele-specific fractional copy numbers, solves a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions, and deploys a model-selection criterion select the number of clone by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication. |
-| (7)   | [*BBeval*](doc/doc_bbeval.md)   | This step analyzes the inferred copy-number states and clone proportions and produces informative plots jointly considering all samples from the same patient. In addition, this step can also combine results obtained for different patients and perform integrative analysis. |
+| (1)   | [*binBAM*](doc_binbam.md)   | This step splits the human reference genome into bins, i.e. fixed-size small genomic regions, and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample. |
+| (2)   | [*deBAF*](doc_debaf.md)     | This step calls heterozygous germline SNPs from the matched-normal sample and counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample. |
+| (3)   | [*comBBo*](doc_combbo.md)   | This step combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin. |
+| (4)   | [*cluBB*](doc_clubb.md)     | This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample. |
+| (5)   | [*BBot*](doc_bbot.md)       | This step produces informative plots concerning the computed RDRs, BAFs, and clusters. The information produced by this step are important to validate the compute clusters of genomic regions. |
+| (6)   | [*hatchet*](doc_hatchet.md) | This step computes allele-specific fractional copy numbers, solves a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions, and deploys a model-selection criterion select the number of clone by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication. |
+| (7)   | [*BBeval*](doc_bbeval.md)   | This step analyzes the inferred copy-number states and clone proportions and produces informative plots jointly considering all samples from the same patient. In addition, this step can also combine results obtained for different patients and perform integrative analysis. |
 
 ## Recommendations and quality control
 <a name="recommendations"></a>
@@ -65,7 +65,7 @@ All the components of HATCHet's pipeline use some basic parameters that allow to
 
 | Recommendation | Description |
 |----------------|-------------|
-| [Analyze HATCHet inference](doc/recommendation_inference.md) | Interpret HATCHet's inference, quality and error control, and investigate alternative solutions. |
-| [Analyze global clustering](doc/recommendation_clustering.md) | Interprent global clustering, quality and error control, and parameter tuning |
-| [Analyze different type of data](doc/recommendation_datatype.md) | Tuning parameters to better analyzing different type of data as those from WES |
-| [Improve running time](doc/recommendation_runtime.md)| Tips for improving running time of the whole pipeline |
+| [Analyze HATCHet inference](recommendation_inference.md) | Interpret HATCHet's inference, quality and error control, and investigate alternative solutions. |
+| [Analyze global clustering](recommendation_clustering.md) | Interprent global clustering, quality and error control, and parameter tuning |
+| [Analyze different type of data](recommendation_datatype.md) | Tuning parameters to better analyzing different type of data as those from WES |
+| [Improve running time](recommendation_runtime.md)| Tips for improving running time of the whole pipeline |
