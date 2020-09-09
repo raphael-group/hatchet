@@ -179,7 +179,7 @@ We provide:
   The implementation of HATCHet is highly modular and one can replace any HATCHet's module with any other method to obtain the required results (especially for the pre-processing modules).
 As such, we also provide here an overview of the entire pipeline and we describe the <a name="detailedsteps"></a> [details of each step](doc/doc_fullpipeline.md#detailedsteps) in a dedicated section of the manual.
 
-- <a name="recommendations"></a> [Recommendations](doc/doc_fullpipeline.md#recommentations), especially for noisy datasets or with different features, to guide the user in the interpretation of HATCHet's inference. We explain how to perform quality control to guarantee the best-quality results, and describe how the user can control and tune some of the parameters to obtain the best-fitting results.
+- <a name="recommendations"></a> [Recommendations](doc/doc_fullpipeline.md#recommendations), especially for noisy datasets or with different features, to guide the user in the interpretation of HATCHet's inference. We explain how to perform quality control to guarantee the best-quality results, and describe how the user can control and tune some of the parameters to obtain the best-fitting results.
 
 ## Current issues
 <a name="currentissues"></a>
