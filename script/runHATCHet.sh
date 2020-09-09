@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 
-REF="/media/vineetb/t5-vineetb/raphael-group/hg19.fa"
-SAM="/opt/raphael-group/samtools/bin/"
-BCF="/opt/raphael-group/bcftools/bin/"
-BNPY="/home/vineetb/git_checkouts/bnpy"
+REF="/path/to/reference.fa"
+SAM="/path/to/samtools-home/bin/"
+BCF="/path/to/bcftools-home/bin/"
+BNPY="/path/to/bnpy-dev/"
 
-HATCHET_HOME="/home/vineetb/git_checkouts/hatchet"
-HATCHET="${HATCHET_HOME}/src/hatchet/bin/HATCHet.py"
-UTILS="${HATCHET_HOME}/src/hatchet/utils/"
-SOLVER="${HATCHET_HOME}/src/hatchet/solve"
+HATCHET_HOME="/path/to/hatchet_home"
+HATCHET="${HATCHET_HOME}/bin/HATCHet.py"
+UTILS="${HATCHET_HOME}/utils/"
+SOLVER="${HATCHET_HOME}/build/solve"
 
-XDIR="/media/vineetb/t5-vineetb/raphael-group/hatchet/out/"
-NORMAL="/media/vineetb/t5-vineetb/raphael-group/data/hatchet/SRR5906250.sorted.bam"
-BAMS="/media/vineetb/t5-vineetb/raphael-group/data/hatchet/SRR5906251.sorted.bam /media/vineetb/t5-vineetb/raphael-group/data/hatchet/SRR5906253.sorted.bam"
-ALLNAMES="Normal TumorOP Tumor2"
-NAMES="TumorOP Tumor2"
-J=8
+XDIR="/path/to/running-dir/"
+NORMAL="/path/to/matched-normal.bam"
+BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
+ALLNAMES="Normal Primary Met"
+NAMES="Primary Met"
+J=22
 
 set -e
 set -o xtrace

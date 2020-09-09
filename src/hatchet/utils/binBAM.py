@@ -4,7 +4,7 @@ import sys
 import os.path
 import argparse
 
-import BAMBinning2 as bb
+import BAMBinning as bb
 import TotalCounting as tc
 import ArgParsing as ap
 from Supporting import *
