@@ -35,4 +35,4 @@ jobs:
 
       - name: check envvar
         run: |
-          echo $GRB_LICENSE_FILE
+          echo $GUROBI_HOME
