@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master, develop, py3 ]
+    branches: [ master, develop, py3, ci ]
   pull_request:
-    branches: [ master, develop, py3 ]
+    branches: [ master, develop, py3, ci ]
 
 jobs:
   build:
@@ -33,48 +33,6 @@ jobs:
           echo ::set-env name=GRB_LICENSE_FILE::/home/runner/gurobi.lic
         continue-on-error: true
 
-      - name: Install SAMtools
-        run: |
-          wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O samtools-1.7.tar.bz2
-          tar xvjf samtools-1.7.tar.bz2
-          (cd samtools-1.7 && ./configure && make)
-          echo ::set-env name=HATCHET_PATHS_SAMTOOLS::$(realpath samtools-1.7)
-
-      - name: Install BCFTools
-        run: |
-          wget https://sourceforge.net/projects/samtools/files/samtools/1.7/bcftools-1.7.tar.bz2/download -O bcftools-1.7.tar.bz2
-          tar xvjf bcftools-1.7.tar.bz2
-          (cd bcftools-1.7 && ./configure && make)
-          echo ::set-env name=HATCHET_PATHS_BCFTOOLS::$(realpath bcftools-1.7)
-
-      - name: Download and index hg19.fa
-        run: |
-          wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
-          gunzip hg19.fa.gz
-          $HATCHET_PATHS_SAMTOOLS/samtools faidx hg19.fa
-          $HATCHET_PATHS_SAMTOOLS/samtools view -H -ht hg19.fa.fai /dev/null > hg19.dict
-          echo ::set-env name=HATCHET_PATHS_HG19::$(realpath hg19.fa)
-
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install Tox and any other packages
-        run: |
-          python -m pip install coverage tox tox-gh-actions
-
-      - name: Test with tox
-        run: |
-          tox
-        env:
-          PLATFORM: ${{ matrix.python }}
-
-      - name: Convert coverage
-        run: |
-          python -m coverage xml
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
-        with:
-          fail_ci_if_error: true
+     - name: check envvar
+       run: |
+           echo $GRB_LICENSE_FILE
