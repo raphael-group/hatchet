@@ -20,9 +20,6 @@ this_dir = os.path.dirname(__file__)
 DATA_FOLDER = os.path.join(this_dir, 'data')
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
-# The cluBB.py script wants a path to the parent of the bnpy folder, which is now listed as a dependency for our code
-BNPY_FOLDER = os.path.abspath(os.path.join(os.path.dirname(bnpy.__file__), '..'))
-
 
 @pytest.fixture(scope='module')
 def output_folder():
@@ -93,9 +90,6 @@ def test_script(_, output_folder):
 
     cluBB(args=[
         os.path.join(output_folder, 'bb/bulk.bb'),
-        # Note: Since bnpy is installed as a dependency for Hatchet
-        # The cluBB script should be modified to not worry about this argument at all
-        '-by', BNPY_FOLDER,
         '-o', os.path.join(output_folder, 'bbc/bulk.seg'),
         '-O', os.path.join(output_folder, 'bbc/bulk.bbc'),
         '-e', '22171',  # random seed

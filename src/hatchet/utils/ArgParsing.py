@@ -284,7 +284,6 @@ def parse_clubb_args(args=None):
     description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("BBFILE", help="A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)")
-    parser.add_argument("-by","--bnpy", required=True, type=str, help="Path to the directory to \"bnpy\" libraries")
     parser.add_argument("-o", "--outsegments", required=False, default=None, type=str, help="Output filename for the segments computed by clustering bins (default: stdout)")
     parser.add_argument("-O", "--outbins", required=False, default=None, type=str, help="Output filename for a BB file adding the clusters (default: stdout)")
     parser.add_argument("-d","--diploidbaf", type=float, required=False, default=None, help="Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the cluster inside this threshold accordingly (default: None, scaling is not performed)")
@@ -303,8 +302,6 @@ def parse_clubb_args(args=None):
 
     if not os.path.isfile(args.BBFILE):
         raise ValueError(sp.error("The specified BB file does not exist!"))
-    if not os.path.isdir(args.bnpy):
-        raise ValueError(sp.error("The specified bnpy path does not exist!"))
     if args.diploidbaf != None and not 0.0 <= args.diploidbaf <= 0.5:
         raise ValueError(sp.error("The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]"))
     if args.tolerancerdr < 0:
@@ -326,11 +323,7 @@ def parse_clubb_args(args=None):
     if args.restarts < 0:
         raise ValueError(sp.error("Number of restarts must be positive!"))
 
-    if not os.path.isdir(os.path.join(args.bnpy, "bnpy")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/HModel.py")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/Run.py")):
-        raise ValueError(sp.error("The specified root path for BNPY do not contain a BNPY folder!"))
-
     return {"bbfile" : args.BBFILE,
-            "bnpydir" : args.bnpy,
             "cloud" : args.bootclustering,
             "diploidbaf" : args.diploidbaf,
             "rdtol" : args.tolerancerdr,

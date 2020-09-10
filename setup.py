@@ -88,5 +88,10 @@ setup(
         'seaborn',
         'scikit-learn',
         'scipy'
-    ]
+    ],
+
+    extras_require = {
+        'dev': ['pytest', 'mock']
+    }
+
 )
