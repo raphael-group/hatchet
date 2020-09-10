@@ -19,6 +19,7 @@ from hatchet.utils.binBAM import main as binBAM
 from hatchet.utils.deBAF import main as deBAF
 from hatchet.utils.comBBo import main as comBBo
 from hatchet.utils.cluBB import main as cluBB
+from hatchet.utils.BBot import main as BBot
 from hatchet.bin.HATCHet import main as solve
 from hatchet.utils.BBeval import main as BBeval
 
@@ -27,7 +28,7 @@ solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 if __name__ == '__main__':
 
-    commands = ('binBAM', 'deBAF', 'comBBo', 'cluBB', 'solve', 'BBeval')
+    commands = ('binBAM', 'deBAF', 'comBBo', 'cluBB', 'BBot', 'solve', 'BBeval')
     if len(sys.argv) < 2:
         print 'Usage: python -m hatchet <command> <arguments ..>'
         sys.exit(0)

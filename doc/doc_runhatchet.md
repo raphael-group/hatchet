@@ -9,7 +9,7 @@ The tutorial is subdivided into some subsections and each of these describes seq
 5. [comBBo](#combbo)
 6. [cluBB](#clubb)
 7. [BBot](#bbot)
-8. [hatchet](#hatchet)
+8. [solve](#solve)
 9. [BBeval](#bbeval)
 
 We suggest to make a copy of the script, place the script into the designated running directory, and follow the tutorial.
@@ -21,12 +21,6 @@ We suggest to make a copy of the script, place the script into the designated ru
 REF="/path/to/reference.fa"
 SAM="/path/to/samtools-home/bin/"
 BCF="/path/to/bcftools-home/bin/"
-BNPY="/path/to/bnpy-dev/"
-
-HATCHET_HOME="/path/to/hatchet_home"
-HATCHET="${HATCHET_HOME}/bin/hatchet.py"
-UTILS="${HATCHET_HOME}/utils/"
-SOLVER="${HATCHET_HOME}/build/solve"
 
 XDIR="/path/to/running-dir/"
 NORMAL="/path/to/matched-normal.bam"
@@ -51,21 +45,9 @@ This preliminary part of the script contains all the preliminary information tha
 REF="/path/to/reference.fa"
 SAM="/path/to/samtools-home/bin/"
 BCF="/path/to/bcftools-home/bin/"
-BNPY="/path/to/bnpy-dev/"
 ```
 
-First, one needs to specify the full path to the reference genome with the variable `${REF}`, to the home directory of SAMtools with the variable `${SAM}`, to the home directory of BCFtools with the variable `${BCF}`, and the to the home directory to BNPY with the variable `${BNPY}`. Simply, substitute the value of each variable with the corresponding full path between double apices `"..."`.
-
-***
-
-```shell
-HATCHET_HOME="/path/to/hatchet_home"
-HATCHET="${HATCHET_HOME}/bin/hatchet.py"
-UTILS="${HATCHET_HOME}/utils/"
-SOLVER="${HATCHET_HOME}/build/solve"
-```
-
-Second, the scripts set the paths to the directories containing the different HATCHet's components. The user only needs to specify the full path to HATCHet's repository with `${HATCHET_HOME}`.
+First, one needs to specify the full path to the reference genome with the variable `${REF}`, to the home directory of SAMtools with the variable `${SAM}`, and to the home directory of BCFtools with the variable `${BCF}`. Simply, substitute the value of each variable with the corresponding full path between double apices `"..."`.
 
 ***
 
@@ -76,7 +58,7 @@ BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
 ALLNAMES="Normal Primary Met"
 ```
 
-Third, the user needs to specify the full paths to the running directory where all the files/directories produced by this run of HATCHet will be made with variable `${XDIR}` and the full paths to the required data:
+Second, the user needs to specify the full paths to the running directory where all the files/directories produced by this run of HATCHet will be made with variable `${XDIR}` and the full paths to the required data:
 1. `${NORMAL}` is the full path to the BAM file of matched-normal samples
 2. `${BAMS}` is a white-space separated list of the BAM files for the multiple tumor samples from the considered patient.
 
@@ -95,10 +77,10 @@ export PATH=$PATH:${BCF}
 #source /path/to/virtualenv-python2.7/bin/activate
 ```
 
-Fourth, three commands activate the log trace for the script which terminates in case of error and add time stamps to this.
+Third, three commands activate the log trace for the script which terminates in case of error and add time stamps to this.
 The next two commands add the paths to SAMtools and BCFtools directly in `${PATH}`; this is optional and the paths could be explicitly specified in the corresponding steps.
-Last, there is an example command which activates a corresponding python enviroment.
-The usage of virtual enviroment or anaconda's enviroments (which command would replace this) is recommended.
+Last, there is an example command which activates a corresponding python environment.
+The usage of virtual environment or anaconda's environments (which command would replace this) is recommended.
 
 ***
 
@@ -131,7 +113,7 @@ To avoid condlicts, user should make sure the running directory is an empty dire
 <a name="binbam"></a>
 
 ```shell
-\time -v python2 ${UTILS}binBAM.py -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
+\time -v python2 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
                                    -b 50kb -g ${REF} -j ${J} \
                                    -q 20 -O ${BIN}normal.bin -o ${BIN}bulk.bin -v &> ${BIN}bins.log
 ```
@@ -147,7 +129,7 @@ A standard read quality of 20 is considered and simple parameters are specified 
 <a name="debaf"></a>
 
 ```shell
-\time -v python2 ${UTILS}deBAF.py -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
+\time -v python2 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
                                   -r ${REF} -j ${J} -q 20 -Q 20 -U 20 -c 4 \
                                   -C 300 -O ${BAF}normal.baf -o ${BAF}bulk.baf -v \
                                   &> ${BAF}bafs.log
@@ -165,7 +147,7 @@ Several simple parameters are specified including: number of parallel threads, r
 <a name="combbo"></a>
 
 ```shell
-\time -v python2 ${UTILS}comBBo.py -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
+\time -v python2 -m hatchet comBBo -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
 ```
 
 comBBo estimates the RDR and BAF from the read counts of all genomic bins from matched-normal sample in `${BIN}normal.bin`, from the read counts of all genomic bins from all tumor samples in `${BIN}bulk.bin`, and germline SNPs allele counts in `${BAF}bulk.baf`.
@@ -176,9 +158,9 @@ The output from standard output is correspondingly written in a BB file `${BB}bu
 <a name="clubb"></a>
 
 ```shell
-\time -v python2 ${UTILS}cluBB.py ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
+\time -v python2 -m hatchet cluBB ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
                                                -e 12 -tB 0.04 -tR 0.15 -d 0.08
-#\time -v python2 ${UTILS}cluBB.py ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
+#\time -v python2 -m hatchet cluBB ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
 #                                               -e 12 -tB 0.04 -tR 0.15 -d 0.08 \
 #                                               -u 20 -e 12 -dR 0.002 -dB 0.002
 ```
@@ -208,11 +190,11 @@ A total of `20` synthetic genomic bins are added only for the clustering by boot
 
 ```shell
 cd ${ANA}
-\time -v python2 ${UTILS}BBot.py -c RD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python2 ${UTILS}BBot.py -c CRD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python2 ${UTILS}BBot.py -c BAF --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python2 ${UTILS}BBot.py -c BB ${BBC}bulk.bbc &
-\time -v python2 ${UTILS}BBot.py -c CBB ${BBC}bulk.bbc &
+\time -v python2 -m hatchet BBot -c RD --figsize 6,3 ${BBC}bulk.bbc &
+\time -v python2 -m hatchet BBot -c CRD --figsize 6,3 ${BBC}bulk.bbc &
+\time -v python2 -m hatchet BBot -c BAF --figsize 6,3 ${BBC}bulk.bbc &
+\time -v python2 -m hatchet BBot -c BB ${BBC}bulk.bbc &
+\time -v python2 -m hatchet BBot -c CBB ${BBC}bulk.bbc &
 wait
 ```
 
@@ -220,17 +202,17 @@ BBot produces informative plots which are described [here](doc_bbot.md).
 Many of these plots can be very useful to assess the performance of the various steps of HATCHet, especially in the case of noisy datasets.
 The different plots are generated in parallel; this feature can be disabled by removing `&` from the end of each command and removing `wait`.
 
-## hatchet
-<a name="hatchet"></a>
+## solve
+<a name="solve"></a>
 
 ```shell
 cd ${RES}
-\time -v python2 ${HATCHET} ${SOLVER} -i ${BBC}bulk -n2,8 -p 400 -v 3 \
-                                      -u 0.03 -r 12 -j ${J} -eD 6 -eT 12
-                                      -g 0.35 -l 0.6 |& tee hatchet.log
+\time -v python2 -m hatchet solve -i ${BBC}bulk -n2,8 -p 400 -v 3 \
+                                  -u 0.03 -r 12 -j ${J} -eD 6 -eT 12
+                                  -g 0.35 -l 0.6 |& tee hatchet.log
 ```
 
-hatchet computes the fractional copy numbers, factorize these into allele and clone-specific copy numbers and clone proportions, and applies a model-selection step to jointly infer the number of clones and predict a whole-genome duplication (WGD).
+solve computes the fractional copy numbers, factorize these into allele and clone-specific copy numbers and clone proportions, and applies a model-selection step to jointly infer the number of clones and predict a whole-genome duplication (WGD).
 This step requires the common prefix `${BBC}bulk` of the cluster and clustered bins files.
 Some basic parameter include:
 - the interval `2,8`  specifying the minimum and maximum number of clones which can be increased as much as wanted. User can start to use this interval and increasing if the number of clones appear to be higher or close to the maximum.
@@ -252,7 +234,7 @@ The details of these parameters are the following:
 
 ```shell
 cd ${EVA}
-\time -v python ${UTILS}BBeval.py ${RES}/best.bbc.ucn -rC 10 -rG 1
+\time -v python -m hatchet BBeval ${RES}/best.bbc.ucn -rC 10 -rG 1
 ```
 
 BBeval produces informative and summary plots for the inferred results.
