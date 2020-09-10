@@ -33,6 +33,6 @@ jobs:
           echo ::set-env name=GRB_LICENSE_FILE::/home/runner/gurobi.lic
         continue-on-error: true
 
-     - name: check envvar
-       run: |
-           echo $GRB_LICENSE_FILE
+      - name: check envvar
+        run: |
+          echo $GRB_LICENSE_FILE
