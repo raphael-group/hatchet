@@ -69,6 +69,7 @@ jobs:
           tox
         env:
           PLATFORM: ${{ matrix.python }}
+          CXXFLAGS: -pthread
 
       - name: Convert coverage
         run: |

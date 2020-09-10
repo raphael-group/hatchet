@@ -3,6 +3,7 @@ import re
 import sys
 import platform
 import subprocess
+import shutil
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
@@ -54,8 +55,10 @@ class CMakeBuild(build_ext):
         env = os.environ.copy()
         env['CXXFLAGS'] = '{} -DVERSION_INFO=\\"{}\\"'.format(env.get('CXXFLAGS', ''),
                                                               self.distribution.get_version())
-        if not os.path.exists(self.build_temp):
-            os.makedirs(self.build_temp)
+        if os.path.exists(self.build_temp):
+            shutil.rmtree(self.build_temp)
+        os.makedirs(self.build_temp)
+
         subprocess.check_call(['cmake', ext.sourcedir] + cmake_args, cwd=self.build_temp, env=env)
         subprocess.check_call(['cmake', '--build', '.', '--target', 'install'] + build_args, cwd=self.build_temp)
 

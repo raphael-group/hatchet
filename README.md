@@ -123,15 +123,10 @@ want to create either a new Conda environment for Python 2.7 and activate it:
     _undefined reference to symbol 'pthread_create@@GLIBC_2.2.5'_.
     ```
 
-    simply substitute the following line in the CMakeLists.txt file:
-    ```cmake
-    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
+    you may need to set `CXXFLAGS` to `-pthread` before invoking the command:
+    ```shell
+    $ CXXFLAGS=-pthread python setup.py install
     ```
-    with:
-    ```cmake
-    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread" )
-    ```
-    by simply adding  `-pthread`. After this, re-run the `python setup.py install` command.
 
     When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed intructions](doc/doc_compilation.md).
 
