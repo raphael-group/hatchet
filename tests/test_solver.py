@@ -1,5 +1,6 @@
 import os
 import subprocess
+import pytest
 import hatchet
 
 this_dir = os.path.dirname(__file__)
@@ -7,6 +8,7 @@ DATA_FOLDER = os.path.join(this_dir, 'data')
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
+@pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
 def test_solver():
     cmd = [
         SOLVE,
