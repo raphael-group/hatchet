@@ -40,7 +40,7 @@ The following paths are consequently obtained to point to the required component
 CLUBB="${PY} -m hatchet cluBB"
 BBOT="${PY} -m hatchet BBot"
 INFER="${PY} -m hatchet solve"
-BBEVAL="${PY} -m BBeval"
+BBEVAL="${PY} -m hatchet BBeval"
 GATK4CNSTOBB="${PY} gatk4cnsToBB.py"
 :<<'```shell' # Ignore this line
 ```
