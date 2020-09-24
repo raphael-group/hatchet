@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [3.8]
+        python: [2.7]
 
     steps:
       - uses: actions/checkout@v2
@@ -29,8 +29,8 @@ jobs:
       - name: Download Testing Data
         if: steps.cache-test-data.outputs.cache-hit != 'true'
         run: |
-          pip install zenodo-get
-          python -m zenodo_get 10.5281/zenodo.4046906 --output-dir=/testdata
+          pip3 install zenodo-get
+          python3 -m zenodo_get 10.5281/zenodo.4046906 --output-dir=/testdata
 
       - name: Set Testing Data Envvar
         run: |
