@@ -23,7 +23,7 @@ jobs:
         id: cache-test-data
         uses: actions/cache@v2
         with:
-          path: /testdata
+          path: testdata
           key: testdata
 
       - name: Download Testing Data
@@ -32,11 +32,11 @@ jobs:
           pip3 install wheel
           pip3 install setuptools
           pip3 install zenodo-get
-          python3 -m zenodo_get 10.5281/zenodo.4046906 --output-dir=/testdata
+          python3 -m zenodo_get 10.5281/zenodo.4046906 --output-dir=testdata
 
       - name: Set Testing Data Envvar
         run: |
-          echo ::set-env name=HATCHET_TESTS_BAM_DIRECTORY::/testdata
+          echo ::set-env name=HATCHET_TESTS_BAM_DIRECTORY::$(realpath testdata)
 
       - name: Install Gurobi
         run: |
