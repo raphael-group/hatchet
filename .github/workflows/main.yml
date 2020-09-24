@@ -25,12 +25,14 @@ jobs:
         with:
           path: /testdata
           key: testdata
-        run: |
-          echo ::set-env name=HATCHET_TESTS_BAM_DIRECTORY::/testdata
 
       - name: Download Testing Data
         if: steps.cache-test-data.outputs.cache-hit != 'true'
         run: python -m zenodo_get 10.5281/zenodo.4046906 --output-dir=/testdata
+
+      - name: Set Testing Data Envvar
+        run: |
+          echo ::set-env name=HATCHET_TESTS_BAM_DIRECTORY::/testdata
 
       - name: Install Gurobi
         run: |
