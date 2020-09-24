@@ -1,11 +1,11 @@
 import pytest
 import sys
 import os
+import glob
 from io import BytesIO as StringIO
 from mock import patch
 import hashlib
 import shutil
-import bnpy
 
 import hatchet
 from hatchet import config
@@ -17,8 +17,20 @@ from hatchet.bin.HATCHet import main as main
 
 
 this_dir = os.path.dirname(__file__)
-DATA_FOLDER = os.path.join(this_dir, 'data')
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
+
+
+@pytest.fixture(scope='module')
+def bams():
+    bam_directory = config.tests.bam_directory
+    normal_bam = os.path.join(bam_directory, 'normal.bam')
+    if not os.path.exists(normal_bam):
+        pytest.skip('File not found: {}/{}'.format(bam_directory, normal_bam))
+    tumor_bams = [f for f in glob.glob(bam_directory + '/*.bam') if os.path.basename(f) != 'normal.bam']
+    if not tumor_bams:
+        pytest.skip('No tumor bams found in {}'.format(bam_directory))
+
+    return normal_bam, tumor_bams
 
 
 @pytest.fixture(scope='module')
@@ -34,41 +46,46 @@ def output_folder():
 @pytest.mark.skipif(not config.paths.samtools, reason='paths.samtools not set')
 @pytest.mark.skipif(not config.paths.bcftools, reason='paths.bcftools not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
-def test_script(_, output_folder):
+def test_script(_, bams, output_folder):
+    normal_bam, tumor_bams = bams
 
-    binBAM(args=[
-        '-N', os.path.join(DATA_FOLDER, 'SRR5906250-chr22.sorted.bam'),
-        '-T', os.path.join(DATA_FOLDER, 'SRR5906251-chr22.sorted.bam'),
-              os.path.join(DATA_FOLDER, 'SRR5906253-chr22.sorted.bam'),
-        '-b', '50kb',
-        '-st', config.paths.samtools,
-        '-S', 'Normal', 'TumorOP', 'Tumor2',
-        '-g', config.paths.hg19,
-        '-j', '12',
-        '-q', '11',
-        '-O', os.path.join(output_folder, 'bin/normal.bin'),
-        '-o', os.path.join(output_folder, 'bin/bulk.bin'),
-        '-v'
-    ])
+    binBAM(
+        args=[
+            '-N', normal_bam,
+            '-T'
+        ] + tumor_bams + [
+            '-b', '50kb',
+            '-st', config.paths.samtools,
+            '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
+            '-g', config.paths.hg19,
+            '-j', '12',
+            '-q', '11',
+            '-O', os.path.join(output_folder, 'bin/normal.bin'),
+            '-o', os.path.join(output_folder, 'bin/bulk.bin'),
+            '-v'
+        ]
+    )
 
-    deBAF(args=[
-        '-bt', config.paths.bcftools,
-        '-st', config.paths.samtools,
-        '-N', os.path.join(DATA_FOLDER, 'SRR5906250-chr22.sorted.bam'),
-        '-T', os.path.join(DATA_FOLDER, 'SRR5906251-chr22.sorted.bam'),
-              os.path.join(DATA_FOLDER, 'SRR5906253-chr22.sorted.bam'),
-        '-S', 'Normal', 'TumorOP', 'Tumor2',
-        '-r', config.paths.hg19,
-        '-j', '12',
-        '-q', '11',
-        '-Q', '11',
-        '-U', '11',
-        '-c', '8',
-        '-C', '300',
-        '-O', os.path.join(output_folder, 'baf/normal.baf'),
-        '-o', os.path.join(output_folder, 'baf/bulk.baf'),
-        '-v'
-    ])
+    deBAF(
+        args=[
+            '-bt', config.paths.bcftools,
+            '-st', config.paths.samtools,
+            '-N', normal_bam,
+            '-T'
+        ] + tumor_bams + [
+            '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
+            '-r', config.paths.hg19,
+            '-j', '12',
+            '-q', '11',
+            '-Q', '11',
+            '-U', '11',
+            '-c', '8',
+            '-C', '300',
+            '-O', os.path.join(output_folder, 'baf/normal.baf'),
+            '-o', os.path.join(output_folder, 'baf/bulk.baf'),
+            '-v'
+        ]
+    )
 
     _stdout = sys.stdout
     sys.stdout = StringIO()
@@ -99,7 +116,7 @@ def test_script(_, output_folder):
     ])
 
     assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg'), 'rb').read()).hexdigest() == \
-           '4204e4c4eb561fc1732e5a010d231abe'
+           '08d2476f20db90505f275ef02d2526c6'
 
     if os.getenv('GRB_LICENSE_FILE') is not None:
         main(args=[
@@ -119,4 +136,4 @@ def test_script(_, output_folder):
         ])
 
         assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
-               '87fabc8a40db6c14ea9d251f81ba0e2b'
+               'b18b60808083fd07948c1bfb5dc1a4b3'

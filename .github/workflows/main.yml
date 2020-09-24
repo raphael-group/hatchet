@@ -19,6 +19,19 @@ jobs:
         with:
           lfs: true
 
+      - name: Cache Testing Data
+        id: cache-test-data
+        uses: actions/cache@v2
+        with:
+          path: /testdata
+          key: testdata
+        run: |
+          echo ::set-env name=HATCHET_TESTS_BAM_DIRECTORY::/testdata
+
+      - name: Download Testing Data
+        if: steps.cache-test-data.outputs.cache-hit != 'true'
+        run: python -m zenodo_get 10.5281/zenodo.4046906 --output-dir=/testdata
+
       - name: Install Gurobi
         run: |
           wget https://packages.gurobi.com/9.0/gurobi9.0.2_linux64.tar.gz -O gurobi9.0.2_linux64.tar.gz
@@ -78,4 +91,4 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
-          fail_ci_if_error: true
+          fail_ci_if_error: false
