@@ -65,7 +65,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.0.1',
+    version='0.1.0',
     packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini']},

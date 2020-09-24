@@ -112,18 +112,18 @@ def test_script(_, bams, output_folder):
         '-e', '22171',  # random seed
         '-tB', '0.04',
         '-tR', '0.15',
-        '-d', '0.4'  # 0.08 in script
+        '-d', '0.4'
     ])
 
     assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg'), 'rb').read()).hexdigest() == \
-           '08d2476f20db90505f275ef02d2526c6'
+           'df4245b616422ce0dc36d6ee3ac0ce88'
 
     if os.getenv('GRB_LICENSE_FILE') is not None:
         main(args=[
             SOLVE,
             '-x', os.path.join(output_folder, 'results'),
             '-i', os.path.join(output_folder, 'bbc/bulk'),
-            '-n2',  # -n2,8 in script
+            '-n2',
             '-p', '400',
             '-v', '3',
             '-u', '0.03',
@@ -136,4 +136,4 @@ def test_script(_, bams, output_folder):
         ])
 
         assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
-               'b18b60808083fd07948c1bfb5dc1a4b3'
+               'c85f8436fea10c1577d48b0a277d25ff'

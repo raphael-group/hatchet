@@ -1,5 +1,6 @@
-![CI](https://github.com/vineetbansal/hatchet3/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/vineetbansal/hatchet3/branch/develop/graph/badge.svg)](https://codecov.io/gh/vineetbansal/hatchet3)
+![CI](https://github.com/raphael-group/hatchet/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/raphael-group/hatchet/branch/master/graph/badge.svg)](https://codecov.io/gh/raphael-group/hatchet)
+
 
 # HATCHet <br/> <sub><u>H</u>olistic <u>A</u>llele-specific <u>T</u>umor <u>C</u>opy-number <u>Het</u>erogeneity</sub> #
 
