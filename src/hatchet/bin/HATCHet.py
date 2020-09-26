@@ -10,7 +10,7 @@ import shlex
 from collections import Counter
 
 
-def parsing_arguments():
+def parsing_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -47,7 +47,7 @@ def parsing_arguments():
     parser.add_argument("--diploid", action='store_true', default=False, required=False, help="Force the tumor clones to be diploid without WGD (default: false)")
     parser.add_argument("--tetraploid", action='store_true', default=False, required=False, help="Force the tumor clones to be tetraploid with an occured WGD (default: false)")
     parser.add_argument("-v","--verbosity", type=int, required=False, default=2, help="Level of verbosity among: none (0), essential (1), verbose (2), and debug (3) (default: 1)")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     if not os.path.isfile(args.SOLVER):
         raise ValueError(error("Solver not found in {}!".format(args.SOLVER)))
@@ -160,9 +160,9 @@ def parsing_arguments():
             "v" : args.verbosity}
 
 
-def main():
+def main(args=None):
     sys.stderr.write(log("# Checking and parsing input arguments\n"))
-    args = parsing_arguments()
+    args = parsing_arguments(args)
     if args['v'] >= 2:
         sys.stdout.write(info("\n".join(["## {}:\t{}".format(key, args[key]) for key in args]) + '\n'))
 

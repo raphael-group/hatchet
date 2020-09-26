@@ -15,9 +15,9 @@ from Supporting import *
 import Supporting as sp
 
 
-def main():
+def main(args=None):
     log(msg="# Parsing the input arguments, checking the consistency of given files, and extracting required information\n", level="STEP")
-    args = ap.parse_baf_arguments()
+    args = ap.parse_baf_arguments(args)
     logArgs(args, 80)
 
     if args["reference"] is not None:
@@ -95,19 +95,19 @@ def naiveMode(args):
     if args["outputNormal"] is not None:
         with open(args["outputNormal"], 'w') as f:
             for chro in args["chromosomes"]:
-                if (agrs["normal"][1], chro) in hetSNPs:
+                if (args["normal"][1], chro) in hetSNPs:
                     for count in hetSNPs[args["normal"][1], chro]:
                         f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[4], count[5], count[6], count[7]))
     else:
         for chro in args["chromosomes"]:
-            if (agrs["normal"][1], chro) in hetSNPs:
-                for count in hetSNPs[agrs["normal"][1], chro]:
+            if (args["normal"][1], chro) in hetSNPs:
+                for count in hetSNPs[args["normal"][1], chro]:
                     sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[4], count[5], count[6], count[7]))
 
     log("# Counting the alleles of tumor samples for selected SNPs\n", level="STEP")
     snps = AlleleCounting.naiveCount(samtools=args["samtools"], samples=args["samples"], chromosomes=args["chromosomes"], num_workers=args["j"],
                                      snplist=args["outputSnps"], q=args["q"], Q=args["Q"], E=args["E"], verbose=args["verbose"])
-    if not counts: sp.close("The selected SNPs are not covered in the tumors!\n")
+    if not snps: sp.close("The selected SNPs are not covered in the tumors!\n")
 
     log("# Writing the allele counts of tumor samples for selected SNPs\n", level="STEP")
     if args["outputTumors"] is not None:

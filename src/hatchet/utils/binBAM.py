@@ -11,9 +11,9 @@ from Supporting import *
 
 
 
-def main():
+def main(args=None):
     log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = ap.parse_bin_arguments()
+    args = ap.parse_bin_arguments(args)
     logArgs(args, 80)
 
     if args["regions"] is None:
@@ -72,7 +72,7 @@ def main():
         total = {sample[1] : sum(total_counts[sample[1], chromosome] for chromosome in args["chromosomes"]) for sample in args["samples"]}
         total[args["normal"][1]] = sum(total_counts[args["normal"][1], chromosome] for chromosome in args["chromosomes"])
     except:
-        raise KyeError(sp.error("Either a chromosome or a sample has not been considered in the total counting!"))
+        raise KeyError(error("Either a chromosome or a sample has not been considered in the total counting!"))
 
     log(msg="# Writing the total read counts for all samples in {}\n".format(args["outputTotal"]), level="STEP")
     with open(args["outputTotal"], 'w') as f:

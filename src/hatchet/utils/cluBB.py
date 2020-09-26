@@ -10,9 +10,9 @@ from ArgParsing import parse_clubb_args
 import Supporting as sp
 
 
-def main():
+def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = parse_clubb_args()
+    args = parse_clubb_args(args)
 
     sp.log(msg="# Reading the combined BB file\n", level="STEP")
     combo, samples = readBB(args["bbfile"])
@@ -26,7 +26,7 @@ def main():
         clouds = generateClouds(points=points, density=args["cloud"], seed=args["seed"], sdeven=args["ratiodeviation"], sdodd=args["bafdeviation"])
 
     sp.log(msg="# Clustering bins by RD and BAF across tumor samples\n", level="STEP")
-    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, output=args["outsegments"], samples=samples, clouds=clouds, K=args["initclusters"], sf=args["tuning"], restarts=args['restarts'], bnpydir=args["bnpydir"])
+    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, output=args["outsegments"], samples=samples, clouds=clouds, K=args["initclusters"], sf=args["tuning"], restarts=args['restarts'])
 
     if args['rdtol'] > 0.0 or args['baftol'] > 0.0:
         sp.log(msg="# Refining clustering using given tolerances\n", level="STEP")
@@ -57,7 +57,7 @@ def main():
     else: outsegments = open(args["outsegments"], 'w')
     outsegments.write("#ID\tSAMPLE\t#BINS\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n")
     for key in sorted(segments):
-        for sample in segments[key]:
+        for sample in sorted(segments[key]):
             record = segments[key][sample]
             outsegments.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key, sample, record[0], record[1], record[2], record[3], record[4], record[5], record[6]))
 
@@ -107,7 +107,7 @@ def getPoints(data, samples):
     return points, bintoidx
 
 
-def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10, bnpydir=None):
+def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10):
     """
     Clusters a set of data points lying in an arbitrary number of clusters.
     Arguments:
@@ -131,7 +131,6 @@ def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10, bn
         shutil.rmtree(tmp)
     os.makedirs(tmp)
     os.environ["BNPYOUTDIR"] = tmp
-    sys.path.append(bnpydir)
     import bnpy
     
     sp.log(msg="## Clustering...\n", level="INFO")
@@ -144,7 +143,7 @@ def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10, bn
     Data.summary = "Clustering the following samples: {}".format(",".join(samples))
 
     if Data.X.shape[0] < K:
-	K = Data.X.shape[0]
+        K = Data.X.shape[0]
 
     if hasattr(bnpy.learnalg, "MOVBBirthMergeAlg"):
         hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
@@ -168,8 +167,8 @@ def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10, bn
 
     numPoints = []
     for i in range(numClusters):
-		currX = np.array([Data.X[j] for j in range(len(Data.X)) if fullAssignments[j] == i])
-		numPoints.append(currX.shape[0])
+        currX = np.array([Data.X[j] for j in range(len(Data.X)) if fullAssignments[j] == i])
+        numPoints.append(currX.shape[0])
 
     return mus, sigmas, targetAssignments, numPoints, numClusters
 

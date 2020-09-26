@@ -30,8 +30,6 @@ Two example segmented files in this format for two tumor samples from the same p
 The demo requires that HATCHet has been succesfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
-HATCHET="../.." # This is the full path to this HATCHet's repository. When executing the demo from the related directory, the default value of `../..` can be used.
-BNPY="/n/fs/ragr-code/general/bnpy-dev" # This is the full path to the BNPY's home
 PY="python2" # This id the full path to the version of PYTHON2.7 which contains the required modules. When this corresponds to the standard version, the user can keep the given value of `python2`
 :<<'```shell' # Ignore this line
 ```
@@ -39,12 +37,11 @@ PY="python2" # This id the full path to the version of PYTHON2.7 which contains 
 The following paths are consequently obtained to point to the required components of HATCHet
 
 ```shell
-CLUBB=${PY}" "${HATCHET}/utils/cluBB.py
-BBOT=${PY}" "${HATCHET}/utils/BBot.py
-INFER=${PY}" "${HATCHET}/bin/HATCHet.py
-SOLVE=${HATCHET}/build/solve # This is the full path to the HATCHet's `solve` which is created in the build directory after succesfull compilation
-BBEVAL=${PY}" "${HATCHET}/utils/BBeval.py
-GATK4CNSTOBB=${PY}" "${HATCHET}/custom/GATK4-CNV/gatk4cnsToBB.py
+CLUBB="${PY} -m hatchet cluBB"
+BBOT="${PY} -m hatchet BBot"
+INFER="${PY} -m hatchet solve"
+BBEVAL="${PY} -m hatchet BBeval"
+GATK4CNSTOBB="${PY} gatk4cnsToBB.py"
 :<<'```shell' # Ignore this line
 ```
 

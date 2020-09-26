@@ -37,7 +37,7 @@ plt.rcParams["font.family"] = "Times New Roman"
 #mpl.rcParams['font.serif'] = 'Computer Modern'
 
 
-def parsing_arguments():
+def parsing_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -60,7 +60,7 @@ def parsing_arguments():
     parser.add_argument("--ymin", required=False, default=None, type=int, help='Minimum values in y-axis (default: automatically inferred)"')
     parser.add_argument("--clonepalette", required=False, default='Set1', type=str, help='Palette for coloring the clones among Set1, Set2, Set3, Paired (default: Set1)"')
     parser.add_argument("--linkage", required=False, default='single', type=str, help='Linkage method used for clustering (default: single, available \{single, complete, average, weighted, centroid, median, ward\} from SciPy)"')
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     if len(args.INPUT.split()) == 0:
         raise ValueError(error("Please specify at least one sample as input!"))
@@ -134,9 +134,9 @@ def parsing_arguments():
             'clonepalette' : pal}
 
 
-def main():
+def main(args=None):
     sys.stderr.write(log("# Checking and parsing input arguments\n"))
-    args = parsing_arguments()
+    args = parsing_arguments(args)
     sys.stdout.write(info("\n".join(["## {}:\t{}".format(key, args[key]) for key in args]) + '\n'))
 
     sys.stderr.write(log("# Read BBC.UCN files\n"))
@@ -150,7 +150,7 @@ def main():
         sys.stderr.write(info('\n'.join(["## {}: {}".format(b, infbase[b]) for b in infbase]) + '\n'))
         base = infbase
     else:
-        base = {pat : args['base'] for pat in tumor}
+        base = {pat : args['base'] for pat in tumors}
 
     if len(tumors) == 1:
         sys.stderr.write(log("# Intra-tumor analysis\n"))

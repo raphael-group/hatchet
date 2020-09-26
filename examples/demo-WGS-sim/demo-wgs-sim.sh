@@ -1,7 +1,7 @@
 # Demo for standard WGS data 
 : ex: set ft=markdown ;:<<'```shell' #
 
-The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 simulated samples obtained from the same tumor. This represents an exemplary case of executing HATCHet on a typical dataset with standard noise. For simplicity, the demo starts from a BB file `demo-WGS-cancer.bb` (included in this demo at `examples/demo-WGS-cancer/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. binBAM, deBAF, and comBBo) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of binBAM, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
+The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 simulated samples obtained from the same tumor. This represents an exemplary case of executing HATCHet on a typical dataset with standard noise. For simplicity, the demo starts from a BB file `demo-WGS-sim.bb` (included in this demo at `examples/demo-WGS-sim/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. binBAM, deBAF, and comBBo) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of binBAM, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
 
 Specifically, the tumor is composed of 2 tumor clones (clone0 and clone1) and a normal diploid clone (normal). The clonal composition of every sample is described in the following table:
 
@@ -13,23 +13,20 @@ Specifically, the tumor is composed of 2 tumor clones (clone0 and clone1) and a 
 
 ## Requirements and set up
 
-The demo requires that HATCHet has been succesfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
+The demo requires that HATCHet has been successfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
-HATCHET="../../" # This is the full path to this HATCHet's repository. When executing the demo from the related directory, the default value of `../../` can be used.
-BNPY="" # This is the full path to the BNPY's home
-PY="python2" # This id the full path to the version of PYTHON2.7 which contains the required modules. When this corresponds to the standard version, the user can keep the given value of `python2`
+PY="python2" # This id the full path to the version of PYTHON2.7 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python2`
 :<<'```shell' # Ignore this line
 ```
 
 The following paths are consequently obtained to point to the required components of HATCHet
 
 ```shell
-CLUBB=${PY}" "${HATCHET}/utils/cluBB.py
-BBOT=${PY}" "${HATCHET}/utils/BBot.py
-INFER=${PY}" "${HATCHET}/bin/HATCHet.py
-SOLVE=${HATCHET}/build/solve # This is the full path to the HATCHet's `solve` which is created in the build directory after succesfull compilation
-BBEVAL=${PY}" "${HATCHET}/utils/BBeval.py
+CLUBB="${PY} -m hatchet cluBB"
+BBOT="${PY} -m hatchet BBot"
+INFER="${PY} -m hatchet solve"
+BBEVAL="${PY} -m hatchet BBeval"
 :<<'```shell' # Ignore this line
 ```
 
@@ -41,12 +38,12 @@ PS4='[\t]'
 :<<'```shell' # Ignore this line
 ```
 
-## Global custering
+## Global clustering
 
 The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluBB`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
-${CLUBB} demo-wgs-cancer.bb -by ${BNPY} -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
+${CLUBB} demo-wgs-sim.bb -o demo-wgs-sim.seg -O demo-wgs-sim.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
@@ -71,7 +68,7 @@ Next we apply `hatchet`, i.e. the component of HATCHet which estimates fractiona
 We apply the last step with default parameters and, for simplicity of this demo, we consider 8 clones, which can be easily considered by HATCHet in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
 
 ```shell
-${INFER} ${SOLVE} -i demo-wgs-sim -n2,8 -p 100 -v 2 -u 0.03 -r 12 -eD 6 -eT 12 -l 0.5 |& tee hatchet.log
+${INFER} -i demo-wgs-sim -n2,8 -p 100 -v 2 -u 0.03 -r 12 -eD 6 -eT 12 -l 0.5 |& tee hatchet.log
 :<<'```shell' # Ignore this line
 ```
 

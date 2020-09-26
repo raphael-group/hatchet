@@ -5,23 +5,20 @@ The following HATCHet's demo represents a guided example starting from WGS (whol
 
 ## Requirements and set up
 
-The demo requires that HATCHet has been succesfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
+The demo requires that HATCHet has been successfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
-HATCHET="../../" # This is the full path to this HATCHet's repository. When executing the demo from the related directory, the default value of `../../` can be used.
-BNPY="" # This is the full path to the BNPY's home
-PY="python2" # This id the full path to the version of PYTHON2.7 which contains the required modules. When this corresponds to the standard version, the user can keep the given value of `python2`
+PY="python2" # This id the full path to the version of PYTHON2.7 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python2`
 :<<'```shell' # Ignore this line
 ```
 
 The following paths are consequently obtained to point to the required components of HATCHet
 
 ```shell
-CLUBB=${PY}" "${HATCHET}/utils/cluBB.py
-BBOT=${PY}" "${HATCHET}/utils/BBot.py
-INFER=${PY}" "${HATCHET}/bin/HATCHet.py
-SOLVE=${HATCHET}/build/solve # This is the full path to the HATCHet's `solve` which is created in the build directory after succesfull compilation
-BBEVAL=${PY}" "${HATCHET}/utils/BBeval.py
+CLUBB="${PY} -m hatchet cluBB"
+BBOT="${PY} -m hatchet BBot"
+INFER="${PY} -m hatchet solve"
+BBEVAL="${PY} -m hatchet BBeval"
 :<<'```shell' # Ignore this line
 ```
 
@@ -33,12 +30,12 @@ PS4='[\t]'
 :<<'```shell' # Ignore this line
 ```
 
-## Global custering
+## Global clustering
 
 The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluBB`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
-${CLUBB} demo-wgs-cancer.bb -by ${BNPY} -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
+${CLUBB} demo-wgs-cancer.bb -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
@@ -63,7 +60,7 @@ We can easily notice that the clustering is not ideal and is clearly overfitting
 Since Dirichlet clustering is not ad-hoc for this application, it can often result in overclustering. For this reason, cluBB additionally provides a procedure to merge clusters which are very likely to be part of a single cluster. However this procedure requires two maximum thresholds for doing this, one is the maximum shift for RDR (`-tR 0.15`) and one is the maximum shift for BAF (`-tB 0.03`). The default values allow to work with most of the datasets, however datasets of high variance require to tune these parameters. In our example, while the BAF of the clusters appears to be consistent with the default threshold, RDR appears to have much higher variance; in fact, the clusters that are always adjacent span much more than 0.15 of RDR in the x-axis. Therefore, by looking at the plot, we can see that a value of `-tR 0.5` fit much better the noise of RDR in our data and we repeat the clustering with this value.
 
 ```shell
-${CLUBB} demo-wgs-cancer.bb -by ${BNPY} -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.5 -d 0.08
+${CLUBB} demo-wgs-cancer.bb -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.5 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 

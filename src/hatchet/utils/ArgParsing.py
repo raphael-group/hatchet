@@ -8,7 +8,7 @@ import Supporting as sp
 
 
 
-def parse_baf_arguments():
+def parse_baf_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -36,7 +36,7 @@ def parse_baf_arguments():
     parser.add_argument("-o", "--outputtumors", required=False, default=None, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
     parser.add_argument("-l", "--outputsnps", required=False, default="selectedSNPs.csv", type=str, help="Output filename for list of selected SNPs (default: selectedSNPs.txt)")
     parser.add_argument("-v", "--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     normalbaf = args.normal
@@ -124,7 +124,7 @@ def parse_baf_arguments():
             "verbose" : args.verbose}
 
 
-def parse_bin_arguments():
+def parse_bin_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -144,7 +144,7 @@ def parse_bin_arguments():
     parser.add_argument("-o", "--outputtumors", required=False, default=None, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
     parser.add_argument("-t", "--outputtotal", required=False, default="total_read.counts", type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
     parser.add_argument("-v", "--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     normalbaf = args.normal
@@ -218,7 +218,7 @@ def parse_bin_arguments():
             "verbose" : args.verbose}
 
 
-def parse_combbo_args():
+def parse_combbo_args(args=None):
     """
     Parse command line arguments
     Returns:
@@ -238,7 +238,7 @@ def parse_combbo_args():
     parser.add_argument("-dB","--bafdeviation", type=float, required=False, default=0.02, help='Standard deviation of the BAFs used to generate the points in the clouds (default: 0.002)')
     parser.add_argument("-v", "--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
     parser.add_argument("-r", "--disablebar", action='store_true', default=False, required=False, help="Disable progress bar")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     if not os.path.isfile(args.normalbins):
         raise ValueError(sp.error("The specified file for normal bin counts does not exist!"))
@@ -276,7 +276,7 @@ def parse_combbo_args():
             "disable" : args.disablebar}
 
 
-def parse_clubb_args():
+def parse_clubb_args(args=None):
     """
     Parse command line arguments
     Returns:
@@ -284,7 +284,6 @@ def parse_clubb_args():
     description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("BBFILE", help="A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)")
-    parser.add_argument("-by","--bnpy", required=True, type=str, help="Path to the directory to \"bnpy\" libraries")
     parser.add_argument("-o", "--outsegments", required=False, default=None, type=str, help="Output filename for the segments computed by clustering bins (default: stdout)")
     parser.add_argument("-O", "--outbins", required=False, default=None, type=str, help="Output filename for a BB file adding the clusters (default: stdout)")
     parser.add_argument("-d","--diploidbaf", type=float, required=False, default=None, help="Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the cluster inside this threshold accordingly (default: None, scaling is not performed)")
@@ -299,12 +298,10 @@ def parse_clubb_args():
     parser.add_argument("-R","--restarts", type=int, required=False, default=10, help="Number of restarts performed by the clustering to choose the best (default: 10)")
     parser.add_argument("-v","--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
     parser.add_argument("--disablebar", action='store_true', default=False, required=False, help="Disable progress bar")
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     if not os.path.isfile(args.BBFILE):
         raise ValueError(sp.error("The specified BB file does not exist!"))
-    if not os.path.isdir(args.bnpy):
-        raise ValueError(sp.error("The specified bnpy path does not exist!"))
     if args.diploidbaf != None and not 0.0 <= args.diploidbaf <= 0.5:
         raise ValueError(sp.error("The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]"))
     if args.tolerancerdr < 0:
@@ -326,11 +323,7 @@ def parse_clubb_args():
     if args.restarts < 0:
         raise ValueError(sp.error("Number of restarts must be positive!"))
 
-    if not os.path.isdir(os.path.join(args.bnpy, "bnpy")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/HModel.py")) or not os.path.isfile(os.path.join(args.bnpy, "bnpy/Run.py")):
-        raise ValueError(sp.error("The specified root path for BNPY do not contain a BNPY folder!"))
-
     return {"bbfile" : args.BBFILE,
-            "bnpydir" : args.bnpy,
             "cloud" : args.bootclustering,
             "diploidbaf" : args.diploidbaf,
             "rdtol" : args.tolerancerdr,
@@ -347,7 +340,7 @@ def parse_clubb_args():
             "outbins" : args.outbins}
 
 
-def parse_bbot_args():
+def parse_bbot_args(args=None):
     """
     Parse command line arguments
     Returns:
@@ -370,7 +363,7 @@ def parse_bbot_args():
     parser.add_argument("--colwrap", required=False, default=2, type=int, help='Wrapping the plots in this number of columnes (default: 2)')
     parser.add_argument("--fontscale", required=False, default=1, type=float, help='Font scale (default: 1)')
     parser.add_argument("-x","--rundir", required=False, default='./', type=str, help='Running dirrectory where output the results (default: current directory)')
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     if not os.path.isfile(args.INPUT):
         raise ValueError(sp.error("The specified BB file does not exist!"))
@@ -381,7 +374,7 @@ def parse_bbot_args():
     if args.colormap not in {"Set1", "Set2", "Set3", "Paired", "Accent", "Dark2", "tab10", "tab20", "husl", "hls", "muted", "colorblind", "Pastel1", "Pastel2"}:
         raise ValueError(sp.error("Unrecognized colormap!"))
     if args.resolution is not None and args.resolution < 1:
-        raise ValueError(error("Resolution must be greater than 1!"))
+        raise ValueError(sp.error("Resolution must be greater than 1!"))
     if args.chrthreshold is not None and not( 0 <= args.chrthreshold <= 22):
         raise ValueError(sp.error("The chromosome threshold must be a integer in \{0, ..., 22\}!"))
     if args.colwrap < 1:

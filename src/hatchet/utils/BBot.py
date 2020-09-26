@@ -24,9 +24,9 @@ plt.style.use('ggplot')
 sns.set_style("whitegrid")
 
 
-def main():
+def main(args=None):
     sys.stderr.write(log("# Parsing and checking input arguments\n"))
-    args = parse_bbot_args()
+    args = parse_bbot_args(args)
     sys.stdout.write(info("\n".join(["## {}:\t{}".format(key, args[key]) for key in args]) + '\n'))
 
     sys.stderr.write(log("# Reading input BBC file\n"))
