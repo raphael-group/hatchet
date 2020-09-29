@@ -65,7 +65,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.1.0',
+    version='0.1.1',
     packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini']},
@@ -76,7 +76,14 @@ setup(
     python_requires='~=2.7',
 
     install_requires=[
+        'configparser',
+
+        # cython is a build-dependency for bnpy, and doesn't technically belong here.
+        # We'll keep this here till bnpy fixes this on their end.
+        # Note that this is not foolproof - installation of bnpy would fail if pip
+        # tried to install it before cython anyway.
         'cython',
+
         'biopython==1.76',
         'bnpy',
         'futures',
@@ -93,7 +100,7 @@ setup(
         'scipy'
     ],
 
-    extras_require = {
+    extras_require={
         'dev': ['pytest', 'mock']
     }
 
