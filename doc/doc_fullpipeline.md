@@ -1,7 +1,7 @@
 ## Full pipeline and tutorial
 <a name="fullpipelineandtutorial"></a>
 
-We provide an example [BASH script](script/runHATCHet.sh) that implements the entire pipeline of HATCHet.
+We provide an example [BASH script](../script/runHATCHet.sh) that implements the entire pipeline of HATCHet.
 This script and its usage are described in detailed in a guided [tutorial](doc_runhatchet.md).
 The user can simply use the script for every execution of HATCHet on different data by copying the script inside the running directory and changing the corresponding paths of the required data and dependencies at the beginning of the script, as described in the guided [tutorial](doc_runhatchet.md).
 
@@ -23,9 +23,9 @@ time the following demos are available (more demos will be added in the near fut
 
 | Name | Demo | Description |
 |------|------|-------------|
-| [demo-WGS-sim](examples/demo-WGS-sim/) | [demo-wgs-sim](examples/demo-WGS-sim/demo-wgs-sim.sh) | A demo on a typical WGS (whole-genome sequencing) multi-sample dataset with standard noise and variance of the data |
-| [demo-WGS-cancer](examples/demo-WGS-cancer/) | [demo-wgs-cancer](examples/demo-WGS-cancer/demo-wgs-cancer.sh) | A demo on a cancer WGS (whole-genome sequencing) multi-sample dataset with high noise and variance of the data |
-| [demo-WES](examples/demo-WES/) | [demo-wes](examples/demo-WES/demo-wes.sh) | A demo on a cancer WES (whole-exome sequencing) multi-sample dataset, which is typycally characterized by very high variance of RDR |
+| [demo-WGS-sim](../examples/demo-WGS-sim/) | [demo-wgs-sim](../examples/demo-WGS-sim/demo-wgs-sim.sh) | A demo on a typical WGS (whole-genome sequencing) multi-sample dataset with standard noise and variance of the data |
+| [demo-WGS-cancer](../examples/demo-WGS-cancer/) | [demo-wgs-cancer](../examples/demo-WGS-cancer/demo-wgs-cancer.sh) | A demo on a cancer WGS (whole-genome sequencing) multi-sample dataset with high noise and variance of the data |
+| [demo-WES](../examples/demo-WES/) | [demo-wes](../examples/demo-WES/demo-wes.sh) | A demo on a cancer WES (whole-exome sequencing) multi-sample dataset, which is typycally characterized by very high variance of RDR |
 
 ## Custom pipelines
 <a name="custompipelines"></a>
@@ -33,13 +33,13 @@ time the following demos are available (more demos will be added in the near fut
 The repository includes custom pipelines which have been designed to adapt the complete pipeline of HATCHet to special
 conditions or to integrate the processed data produced by other pipelines. Each custom pipeline is a variation of the
 main HATCHet's pipeline, we thus recommend the user to always first carefully understand the main
-[BASH script](script/runHATCHet.sh) through the corresponding guided [tutorial](doc_runhatchet.md) and to carefully
+[BASH script](../script/runHATCHet.sh) through the corresponding guided [tutorial](doc_runhatchet.md) and to carefully
 understand the provided [demos](#demos) to properly apply HATCHet for best-quality results. Each custom pipeline also
 includes a specific demo which represent a guided and executable example on example data.
 
 | Name | Description | Script | Demo | Variations |
 |------|-------------|--------|------|------------|
-| [GATK4-CNV](custom/GATK4-CNV) | Custom pipeline for segmented files from GATK4 CNV pipeline | [custom-gatk4-cnv.sh](custom/GATK4-CNV/custom-gatk4-cnv.sh) | [demo-gatk4-cnv.sh](custom/GATK4-CNV/demo-gatk4-cnv.sh) | This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet (`binBAM`, `deBAF`, and `comBBo`) are not needed; for this reason, the following depdencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case. |
+| [GATK4-CNV](../custom/GATK4-CNV) | Custom pipeline for segmented files from GATK4 CNV pipeline | [custom-gatk4-cnv.sh](../custom/GATK4-CNV/custom-gatk4-cnv.sh) | [demo-gatk4-cnv.sh](../custom/GATK4-CNV/demo-gatk4-cnv.sh) | This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet (`binBAM`, `deBAF`, and `comBBo`) are not needed; for this reason, the following depdencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case. |
 
 ## Detailed steps
 <a name="detailedsteps"></a>
