@@ -66,74 +66,74 @@ def test_script(_, bams, output_folder):
         ]
     )
 
-    # deBAF(
-    #     args=[
-    #         '-bt', config.paths.bcftools,
-    #         '-st', config.paths.samtools,
-    #         '-N', normal_bam,
-    #         '-T'
-    #     ] + tumor_bams + [
-    #         '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
-    #         '-r', config.paths.hg19,
-    #         '-j', '12',
-    #         '-q', '11',
-    #         '-Q', '11',
-    #         '-U', '11',
-    #         '-c', '8',
-    #         '-C', '300',
-    #         '-O', os.path.join(output_folder, 'baf/normal.baf'),
-    #         '-o', os.path.join(output_folder, 'baf/bulk.baf'),
-    #         '-v'
-    #     ]
-    # )
-    #
-    # _stdout = sys.stdout
-    # sys.stdout = StringIO()
-    #
-    # comBBo(args=[
-    #     '-c', os.path.join(output_folder, 'bin/normal.bin'),
-    #     '-C', os.path.join(output_folder, 'bin/bulk.bin'),
-    #     '-B', os.path.join(output_folder, 'baf/bulk.baf'),
-    #     '-m', 'MIRROR',
-    #     '-e', '12'
-    # ])
-    #
-    # out = sys.stdout.getvalue()
-    # sys.stdout.close()
-    # sys.stdout = _stdout
-    #
-    # with open(os.path.join(output_folder, 'bb/bulk.bb'), 'w') as f:
-    #     f.write(out)
-    #
-    # cluBB(args=[
-    #     os.path.join(output_folder, 'bb/bulk.bb'),
-    #     '-o', os.path.join(output_folder, 'bbc/bulk.seg'),
-    #     '-O', os.path.join(output_folder, 'bbc/bulk.bbc'),
-    #     '-e', '22171',  # random seed
-    #     '-tB', '0.04',
-    #     '-tR', '0.15',
-    #     '-d', '0.4'
-    # ])
-    #
-    # assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg'), 'rb').read()).hexdigest() == \
-    #        'df4245b616422ce0dc36d6ee3ac0ce88'
-    #
-    # if os.getenv('GRB_LICENSE_FILE') is not None:
-    #     main(args=[
-    #         SOLVE,
-    #         '-x', os.path.join(output_folder, 'results'),
-    #         '-i', os.path.join(output_folder, 'bbc/bulk'),
-    #         '-n2',
-    #         '-p', '400',
-    #         '-v', '3',
-    #         '-u', '0.03',
-    #         '-r', '6700',  # random seed
-    #         '-j', '8',
-    #         '-eD', '6',
-    #         '-eT', '12',
-    #         '-g', '0.35',
-    #         '-l', '0.6'
-    #     ])
-    #
-    #     assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
-    #            'c85f8436fea10c1577d48b0a277d25ff'
+    deBAF(
+        args=[
+            '-bt', config.paths.bcftools,
+            '-st', config.paths.samtools,
+            '-N', normal_bam,
+            '-T'
+        ] + tumor_bams + [
+            '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
+            '-r', config.paths.hg19,
+            '-j', '12',
+            '-q', '11',
+            '-Q', '11',
+            '-U', '11',
+            '-c', '8',
+            '-C', '300',
+            '-O', os.path.join(output_folder, 'baf/normal.baf'),
+            '-o', os.path.join(output_folder, 'baf/bulk.baf'),
+            '-v'
+        ]
+    )
+
+    _stdout = sys.stdout
+    sys.stdout = StringIO()
+
+    comBBo(args=[
+        '-c', os.path.join(output_folder, 'bin/normal.bin'),
+        '-C', os.path.join(output_folder, 'bin/bulk.bin'),
+        '-B', os.path.join(output_folder, 'baf/bulk.baf'),
+        '-m', 'MIRROR',
+        '-e', '12'
+    ])
+
+    out = sys.stdout.getvalue()
+    sys.stdout.close()
+    sys.stdout = _stdout
+
+    with open(os.path.join(output_folder, 'bb/bulk.bb'), 'w') as f:
+        f.write(out)
+
+    cluBB(args=[
+        os.path.join(output_folder, 'bb/bulk.bb'),
+        '-o', os.path.join(output_folder, 'bbc/bulk.seg'),
+        '-O', os.path.join(output_folder, 'bbc/bulk.bbc'),
+        '-e', '22171',  # random seed
+        '-tB', '0.04',
+        '-tR', '0.15',
+        '-d', '0.4'
+    ])
+
+    assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg'), 'rb').read()).hexdigest() == \
+           'df4245b616422ce0dc36d6ee3ac0ce88'
+
+    if os.getenv('GRB_LICENSE_FILE') is not None:
+        main(args=[
+            SOLVE,
+            '-x', os.path.join(output_folder, 'results'),
+            '-i', os.path.join(output_folder, 'bbc/bulk'),
+            '-n2',
+            '-p', '400',
+            '-v', '3',
+            '-u', '0.03',
+            '-r', '6700',  # random seed
+            '-j', '8',
+            '-eD', '6',
+            '-eT', '12',
+            '-g', '0.35',
+            '-l', '0.6'
+        ])
+
+        assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
+               'c85f8436fea10c1577d48b0a277d25ff'
