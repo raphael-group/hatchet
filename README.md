@@ -106,17 +106,25 @@ want to create either a new Conda environment for Python 2.7 and activate it:
     conda create --name hatchet python=2.7
     conda activate hatchet
     ```
-    or use `venv` through `pip`:
+    or use `virtualenv` through `pip`:
     ```
-    python2 -m pip venv env
+    python2 -m pip virtualenv env
     source env/bin/activate
     ```
+
+5. **Install basic packages**
+
+    It is **highly recommended** that you upgrade your `pip` and `setuptools` versions to the latest, using:
+    ```shell
+    pip install -U pip
+    pip install -U setuptools
+    ```
     
-5. **Build and install HATCHet**
+6. **Build and install HATCHet**
 
     Execute the following commands from the root of HATCHet's repository.
     ```shell
-    $ python setup.py install
+    $ pip install .
     ```
 
     **NOTE**: If you experience a failure of compilation with an error message like:
@@ -126,12 +134,12 @@ want to create either a new Conda environment for Python 2.7 and activate it:
 
     you may need to set `CXXFLAGS` to `-pthread` before invoking the command:
     ```shell
-    $ CXXFLAGS=-pthread python setup.py install
+    $ CXXFLAGS=-pthread pip install .
     ```
 
     When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed intructions](doc/doc_compilation.md).
 
-6. **Install required utilities**
+7. **Install required utilities**
 
     For reading BAM files, read counting, allele counting, and SNP calling, you need to install [SAMtools and BCFtools](http://www.htslib.org/doc/).
     *Currently, HATCHet support only the following versions of these software: 1.5, 1.6, 1.7*
@@ -161,6 +169,17 @@ HATCHet requires 3 input data files:
 
 3. A human reference genome. Ideally, one should consider the same human reference genome used to align the sequencing reads in the given BAM files. The most-used human reference genome are available at [GRC](https://www.ncbi.nlm.nih.gov/grc/human) or [UCSC](http://hgdownload.cse.ucsc.edu/downloads.html#human). Observe that human reference genomes use two different notations for chromosomes: either `1, 2, 3, 4, 5 ...` or `chr1, chr2, chr3, chr4, chr5 ...`. One needs to make sure all BAM files and reference genome share that same chromosome notation. When this is not the case, one needs to change the reference to guarantee consistency and needs to re-index the new reference (e.g. using [SAMtools](http://www.htslib.org/workflow/#mapping_to_variant)). Also, HATCHet requires that the name of each chromosome is the first word in each ID such that `>1 [ANYTHING] ... \n>2 [ANYTHING] ... \n>3 [ANYTHING] ...` or `>chr1 [ANYTHING] ... \n>chr2 [ANYTHING] ... \n>chr3 [ANYTHING]`.
 
+   For the reference genome, HATCHet requires the existence of a a sequence dictionary (`.dict`), which is part of all standard pipelines for sequencing data, see for example [GATK](https://gatk.broadinstitute.org/hc/en-us/articles/360035531652-FASTA-Reference-genome-format) or [Galaxy](https://galaxyproject.org/admin/data-preparation/). Please note that the sequence dictionary is **NOT** the reference index `.fai`, which is a different structure, has a different function, and it is also recommended.
+   
+   The dictionary of a reference genome is often included in the available bundles for the reference genomes, see the [example for hg19](ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg19) from Broad Institute. However, the dictionary can also be generated in seconds using either [SAMtools](http://www.htslib.org/doc/samtools-dict.html) or [Picard tools](https://gatk.broadinstitute.org/hc/en-us/articles/360036729911-CreateSequenceDictionary-Picard-).
+   
+   In the folder where you want to download and index the human genome, the steps would typically be:
+   
+   ```script
+   curl -L https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz | gzip -d > hg19.fa
+   samtools faidx hg19.fa
+   samtools dict hg19.fa > hg19.dict
+   ```
 
 ## Usage
 <a name="usage"></a>
