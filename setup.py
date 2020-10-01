@@ -1,3 +1,14 @@
+# The first version of setuptools capable of dealing with a pyproject.toml
+# See https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
+
+# We *could* in addition, specify the first version of pip capable of recognizing `python_requires` (9.0.1)
+# See https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
+# But that fails under a conda environment (as does any approach that does `import pip`)
+# so this is best we can do for now.
+
+import pkg_resources
+pkg_resources.require(['setuptools >= 40.8.0'])
+
 import os
 import re
 import sys
@@ -65,7 +76,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.1.0',
+    version='0.1.3',
     packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini']},
@@ -76,7 +87,7 @@ setup(
     python_requires='~=2.7',
 
     install_requires=[
-        'cython',
+        'configparser',
         'biopython==1.76',
         'bnpy',
         'futures',
@@ -93,7 +104,7 @@ setup(
         'scipy'
     ],
 
-    extras_require = {
+    extras_require={
         'dev': ['pytest', 'mock']
     }
 
