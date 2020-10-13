@@ -119,8 +119,15 @@ want to create either a new Conda environment for Python 2.7 and activate it:
     pip install -U pip
     pip install -U setuptools
     ```
+
+6. **Install cython**
+
+    `cython` is currently needed to compile some of the dependencies of `hatchet`.
+    ```shell
+    pip install cython
+    ```
     
-6. **Build and install HATCHet**
+7. **Build and install HATCHet**
 
     Execute the following commands from the root of HATCHet's repository.
     ```shell
@@ -139,7 +146,7 @@ want to create either a new Conda environment for Python 2.7 and activate it:
 
     When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed intructions](doc/doc_compilation.md).
 
-7. **Install required utilities**
+8. **Install required utilities**
 
     For reading BAM files, read counting, allele counting, and SNP calling, you need to install [SAMtools and BCFtools](http://www.htslib.org/doc/).
     *Currently, HATCHet support only the following versions of these software: 1.5, 1.6, 1.7*
