@@ -4,6 +4,7 @@ import TotalCounting as tc
 import ArgParsing as ap
 from Supporting import *
 import Supporting as sp
+from hatchet import config
 
 
 def parse_arguments(args=None):
@@ -11,7 +12,7 @@ def parse_arguments(args=None):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("-b", "--bams", required=True, type=str, nargs='+',
                         help="BAM files to process")
-    parser.add_argument("-st", "--samtools", required=False, default="", type=str,
+    parser.add_argument("-st", "--samtools", required=False, default=config.paths.samtools, type=str,
                         help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-r","--regions", required=False, default=None, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
     parser.add_argument("-j", "--processes", required=False, default=2, type=int,
@@ -53,15 +54,24 @@ def main(args=None):
     log(msg="# Parsing and checking input arguments\n", level="STEP")
     args = parse_arguments(args)
 
-    total_counts = tc.tcount(samtools=args["samtools"], samples=args["bams"],
-                             chromosomes=args["chromosomes"],
-                             num_workers=args["j"], q=args["q"], verbose=args["verbose"])
-
-    total = {bam[1]: sum(total_counts[bam[1], chromosome] for chromosome in args["chromosomes"]) for bam in
-             args["bams"]}
-
-    log(msg="# Writing the total read counts for all samples in {}\n".format(args["outputTotal"]), level="STEP")
     with open(args["outputTotal"], 'w') as f:
+        f.write(str(args) + '\n\n')
+
+        for bamfile, _ in args['bams']:
+            folder = os.path.dirname(bamfile)
+            for file in os.listdir(folder):
+                f.write(file + '\n')
+
+        f.write('\n\n')
+
+        total_counts = tc.tcount(samtools=args["samtools"], samples=args["bams"],
+                                 chromosomes=args["chromosomes"],
+                                 num_workers=args["j"], q=args["q"], verbose=args["verbose"])
+
+        total = {bam[1]: sum(total_counts[bam[1], chromosome] for chromosome in args["chromosomes"]) for bam in
+                 args["bams"]}
+
+        log(msg="# Writing the total read counts for all samples in {}\n".format(args["outputTotal"]), level="STEP")
         for bam in args["bams"]:
             f.write("{}\t{}\n".format(bam[1], total[bam[1]]))
 

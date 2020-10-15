@@ -1,0 +1,60 @@
+name: hatchet
+description: Run hatchet on one or more files
+
+# Define the resources needed for this pipeline.
+resources:
+  zones:
+  - us-central1-a
+  - us-central1-b
+  - us-central1-c
+  - us-central1-f
+  - us-east1-b
+  - us-east1-c
+  - us-east1-d
+
+  # Create a data disk that is attached to the VM and destroyed when the
+  # pipeline terminates.
+  disks:
+  - name: datadisk
+    autoDelete: True
+
+    # Within the Docker container, specify a mount point for the disk.
+    mountPoint: /mnt/data
+
+# Specify the Docker image to use along with the command
+docker:
+  imageName: gcr.io/driven-nature-292423/hatchet
+
+  # The Pipelines API will create the input directory when localizing files,
+  # but does not create the output directory.
+  cmd: >
+    mkdir /mnt/data/output &&
+    find /mnt/data/input &&
+    for file in $(/bin/ls /mnt/data/input/*.bam); do
+       python -m hatchet count -b ${file} -t /mnt/data/output/out.txt;
+    done
+
+# The Pipelines API currently supports GCS paths, along with patterns (globs),
+# but it doesn't directly support a list of files being passed as a single input
+# parameter ("gs://bucket/foo.bam gs://bucket/bar.bam").
+inputParameters:
+- name: bam
+  description: Cloud Storage path of BAM file
+  localCopy:
+    path: input/
+    disk: datadisk
+- name: bai
+  description: Cloud Storage path of BAI file
+  localCopy:
+    path: input/
+    disk: datadisk
+
+# By specifying an outputParameter, we instruct the pipelines API to
+# copy /mnt/data/output/* to the Cloud Storage location specified in
+# the pipelineArgs (see below).
+outputParameters:
+- name: outputPath
+  description: Cloud Storage path for output
+  localCopy:
+    path: output/*
+    disk: datadisk
