@@ -799,37 +799,41 @@ def selectTetraploid(tetraploid, v, rundir, g, limit):
     sys.stderr.write(info('# The chosen solution is tetraploid with {} clones and is written in {} and {}\n'.format(tchosen[0], bbest, sbest)))
 
 
+def safediv(v):
+    return v if v > 0 else 1.0
+
+
 def forward(f, i, g, limit):
     if limit is None:
         left = g
     else:
         left = min(g, limit)
-    right = float(max(f[i][1] - f[i + 1][1], 0.0) / f[i][1])
+    right = float(max(f[i][1] - f[i + 1][1], 0.0) / safediv(f[i][1]))
     return left - right
 
 
 def estimate_forward(f, i, g, knw, limit):
-    left = max(g, float(max(knw[i][1] - knw[i + 1][1], 0.0) / knw[i][1]))
+    left = max(g, float(max(knw[i][1] - knw[i + 1][1], 0.0) / safediv(knw[i][1])))
     if limit is not None:
         left = min(left, limit)
-    right = float(max(f[i][1] - f[i + 1][1], 0.0) / f[i][1])
+    right = float(max(f[i][1] - f[i + 1][1], 0.0) / safediv(f[i][1]))
     return left - right
 
 
 def central(f, i, g, limit):
     if limit is None:
-        left = float(max(f[i - 1][1] - f[i][1], 0.0) / f[i - 1][1])
+        left = float(max(f[i - 1][1] - f[i][1], 0.0) / safediv(f[i - 1][1]))
     else:
-        left = min(limit, float(max(f[i - 1][1] - f[i][1], 0.0) / f[i - 1][1]))
-    right = float(max(f[i][1] - f[i + 1][1], 0.0) / f[i][1])
+        left = min(limit, float(max(f[i - 1][1] - f[i][1], 0.0) / safediv(f[i - 1][1])))
+    right = float(max(f[i][1] - f[i + 1][1], 0.0) / safediv(f[i][1]))
     return left - right
     
 
 def backward(f, i, g, limit):
     if limit is None:
-        left = float(max(f[i - 1][1] - f[i][1], 0.0) / f[i - 1][1])
+        left = float(max(f[i - 1][1] - f[i][1], 0.0) / safediv(f[i - 1][1]))
     else:
-        left = min(limit, float(max(f[i - 1][1] - f[i][1], 0.0) / f[i - 1][1]))
+        left = min(limit, float(max(f[i - 1][1] - f[i][1], 0.0) / safediv(f[i - 1][1])))
     right = g
     return left - right
 

@@ -363,6 +363,8 @@ def parse_bbot_args(args=None):
     parser.add_argument("--colwrap", required=False, default=2, type=int, help='Wrapping the plots in this number of columnes (default: 2)')
     parser.add_argument("--fontscale", required=False, default=1, type=float, help='Font scale (default: 1)')
     parser.add_argument("-x","--rundir", required=False, default='./', type=str, help='Running dirrectory where output the results (default: current directory)')
+    parser.add_argument("--pdf", action='store_true', default=False, required=False, help="Output the bb_clustered figure in PDF format (default: PNG)")
+    parser.add_argument("--dpi", required=False, default=900, type=int, help='DPI of PNG images (default: 900)')
     args = parser.parse_args(args)
 
     if not os.path.isfile(args.INPUT):
@@ -409,7 +411,10 @@ def parse_bbot_args(args=None):
             "figsize" : figsize,
             "markersize" : args.markersize,
             "colwrap" : args.colwrap,
-            "fontscale" : args.fontscale}
+            "fontscale" : args.fontscale,
+            "pdf" : args.pdf,
+            "dpi" : args.dpi
+    }
 
 
 def extractChromosomes(samtools, normal, tumors, reference=None):

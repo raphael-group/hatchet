@@ -69,7 +69,7 @@ def main(args=None):
         bb(bbc, clusters, args, out)
 
     if args['command'] is None or args['command'] == 'CBB':
-        out = os.path.join(args['x'], 'bb_clustered.pdf')
+        out = os.path.join(args['x'], 'bb_clustered.pdf' if args['pdf'] else 'bb_clustered.png')
         sys.stderr.write(log("# [CBB] Plotting clustered RDR-BB for all samples in {}\n".format(out)))
         clubb(bbc, clusters, args, out)
 
@@ -204,12 +204,12 @@ def clubaf(bbc, clusters, args, out):
 
 def bb(bbc, clusters, args, out):
     pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
-    lx = 'RDR'
-    ly = '0.5 - BAF'
+    ly = 'RDR'
+    lx = '0.5 - BAF'
     g = 'Sample'
-    data = [{lx : bbc[b[0]][b[1]][p]['RDR'], ly : 0.5 - bbc[b[0]][b[1]][p]['BAF'], g : p} for b in pos for p in bbc[b[0]][b[1]]]
+    data = [{ly : bbc[b[0]][b[1]][p]['RDR'], lx : 0.5 - bbc[b[0]][b[1]][p]['BAF'], g : p} for b in pos for p in bbc[b[0]][b[1]]]
     df = pd.DataFrame(data)
-    figsize = args['figsize'] if args['figsize'] is not None else (16, 8)
+    figsize = args['figsize'] if args['figsize'] is not None else (16, 10)
     s = args['markersize'] if args['markersize'] > 0 else 10
 
     with PdfPages(out) as pdf:
@@ -239,17 +239,17 @@ def bb(bbc, clusters, args, out):
 
 def clubb(bbc, clusters, args, out):
     pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
-    lx = 'RDR'
-    ly = '0.5 - BAF'
+    ly = 'RDR'
+    lx = '0.5 - BAF'
     g = 'Sample'
     lh = 'Cluster'
     size = {i : float(sum(clusters[b[0]][b[1]] == i for b in pos)) for i in set(clusters[b[0]][b[1]] for b in pos)}
-    data = [{lx : bbc[b[0]][b[1]][p]['RDR'], ly : 0.5 - bbc[b[0]][b[1]][p]['BAF'], g : p, lh : clusters[b[0]][b[1]], 'size' : size[clusters[b[0]][b[1]]]} for b in pos for p in bbc[b[0]][b[1]]]
+    data = [{ly : bbc[b[0]][b[1]][p]['RDR'], lx : 0.5 - bbc[b[0]][b[1]][p]['BAF'], g : p, lh : clusters[b[0]][b[1]], 'size' : size[clusters[b[0]][b[1]]]} for b in pos for p in bbc[b[0]][b[1]]]
     df = pd.DataFrame(data)
     order = sorted(set(df[lh]), key=(lambda x : size[x]), reverse=True)
-    figsize = args['figsize'] if args['figsize'] is not None else (8, 1.5)
-    s = args['markersize'] if args['markersize'] > 0 else 20
-
+    figsize = args['figsize'] if args['figsize'] is not None else (10, 1.1)
+    s = args['markersize'] if args['markersize'] > 0 else 7
+    
     #with PdfPages(out) as pdf:
     #    for sample, group in df.groupby(g):
     #sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
@@ -260,13 +260,16 @@ def clubb(bbc, clusters, args, out):
     #plt.title("{}".format(sample))
     coordinates(args, g)
     #pdf.savefig(bbox_inches='tight')
-    plt.savefig(out, bbox_inches='tight')
+    if args['pdf']:
+        plt.savefig(out, bbox_inches='tight')
+    else:
+        plt.savefig(out, bbox_inches='tight', dpi=args['dpi'])
     plt.close()
 
 
 def clus(seg, args, out):
-    lx = 'Read-depth ratio (RDR)'
-    ly = '0.5 - B-allele frequency (BAF)'
+    ly = 'Read-depth ratio (RDR)'
+    lx = '0.5 - B-allele frequency (BAF)'
     g = 'Sample'
     lh = 'Cluster'
     samples = set(seg[list(seg)[0]])
@@ -280,7 +283,7 @@ def clus(seg, args, out):
         for p in samples:
             sys.stderr.write(info("## Plotting for {}..\n".format(p)))
             for idx in seg:
-                plt.scatter(seg[idx][p]['RDR'], 0.5 - seg[idx][p]['BAF'], c=col[idx], s=(seg[idx][p]['SIZE']**0.5)*20, alpha=0.8)
+                plt.scatter(0.5 - seg[idx][p]['BAF'], seg[idx][p]['RDR'], c=col[idx], s=(seg[idx][p]['SIZE']**0.5)*20, alpha=0.8)
             plt.title("{}".format(p))
             coordinates(args)
             pdf.savefig(bbox_inches='tight')

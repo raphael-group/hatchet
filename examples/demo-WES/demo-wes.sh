@@ -46,8 +46,8 @@ For different type of data it is essential to assess the quality of the clusteri
 To trace all steps, we also move the figure to `tR015-cbb.pdf`.
 
 ```shell
-${BBOT} -c CBB demo-wes.bbc --xmin 0 --xmax 2 -tS 0.005
-mv bb_clustered.pdf tR015-cbb.pdf
+${BBOT} -c CBB demo-wes.bbc --ymin 0 --ymax 2 -tS 0.005
+mv bb_clustered.png tR015-cbb.png
 :<<'```shell' # Ignore this line
 ```
 
@@ -67,8 +67,8 @@ ${CLUBB} demo-wes.bb -o demo-wes.seg -O demo-wes.bbc -e 12 -tB 0.03 -tR 0.5 -d 0
 We assess again the clustering using `BBot` as before.
 
 ```shell
-${BBOT} -c CBB demo-wes.bbc --xmin 0 --xmax 2 -tS 0.005
-mv bb_clustered.pdf cbb.pdf
+${BBOT} -c CBB demo-wes.bbc --ymin 0 --ymax 2 -tS 0.005
+mv bb_clustered.png cbb.png
 :<<'```shell' # Ignore this line
 ```
 
