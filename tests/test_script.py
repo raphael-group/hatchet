@@ -26,7 +26,7 @@ def bams():
     normal_bam = os.path.join(bam_directory, 'normal.bam')
     if not os.path.exists(normal_bam):
         pytest.skip('File not found: {}/{}'.format(bam_directory, normal_bam))
-    tumor_bams = [f for f in glob.glob(bam_directory + '/*.bam') if os.path.basename(f) != 'normal.bam']
+    tumor_bams = sorted([f for f in glob.glob(bam_directory + '/*.bam') if os.path.basename(f) != 'normal.bam'])
     if not tumor_bams:
         pytest.skip('No tumor bams found in {}'.format(bam_directory))
 
@@ -42,7 +42,7 @@ def output_folder():
     return out
 
 
-@pytest.mark.skipif(not config.paths.hg19, reason='paths.hg19 not set')
+@pytest.mark.skipif(not config.paths.reference, reason='paths.reference not set')
 @pytest.mark.skipif(not config.paths.samtools, reason='paths.samtools not set')
 @pytest.mark.skipif(not config.paths.bcftools, reason='paths.bcftools not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
@@ -57,7 +57,7 @@ def test_script(_, bams, output_folder):
             '-b', '50kb',
             '-st', config.paths.samtools,
             '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
-            '-g', config.paths.hg19,
+            '-g', config.paths.reference,
             '-j', '12',
             '-q', '11',
             '-O', os.path.join(output_folder, 'bin/normal.bin'),
@@ -74,7 +74,7 @@ def test_script(_, bams, output_folder):
             '-T'
         ] + tumor_bams + [
             '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
-            '-r', config.paths.hg19,
+            '-r', config.paths.reference,
             '-j', '12',
             '-q', '11',
             '-Q', '11',
@@ -137,3 +137,4 @@ def test_script(_, bams, output_folder):
 
         assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
                'c85f8436fea10c1577d48b0a277d25ff'
+

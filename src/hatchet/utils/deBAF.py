@@ -63,12 +63,12 @@ def defaultMode(args):
     log(msg="# Writing the allele counts of tumor samples for selected SNPs\n", level="STEP")
     if args["outputTumors"] is not None:
         with open(args["outputTumors"], 'w') as f:
-            for sample in args["samples"]:
+            for sample in sorted(args["samples"]):
                 for chro in args["chromosomes"]:
                     if (sample[1], chro) in counts:
                         for count in counts[sample[1], chro]: f.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
     else:
-        for sample in args["samples"]:
+        for sample in sorted(args["samples"]):
             for chro in args["chromosomes"]:
                 if (sample[1], chro) in counts:
                     for count in counts[sample[1], chro]: sys.stdout.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
@@ -112,13 +112,13 @@ def naiveMode(args):
     log("# Writing the allele counts of tumor samples for selected SNPs\n", level="STEP")
     if args["outputTumors"] is not None:
         with open(args["outputTumors"], 'w') as f:
-            for sample in args["samples"]:
+            for sample in sorted(args["samples"]):
                 for chro in args["chromosomes"]:
                     if (sample[1], chro) in snps:
                         for count in snps[sample[1], chro]:
                             f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[4], count[5], count[6], count[7]))
     else:
-        for sample in args["samples"]:
+        for sample in sorted(args["samples"]):
             for chro in args["chromosomes"]:
                 for count in hetSNPs[snps, chro]:
                     if (sample[1], chro) in snps:

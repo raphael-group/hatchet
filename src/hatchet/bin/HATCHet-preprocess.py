@@ -14,8 +14,7 @@ if not os.path.isdir(utils):
     raise ValueError("utils directory not found in HATCHet's home directory i.e. {}, is anything been moved?".format(utils))
 sys.path.append(utils)
 from Supporting import *
-
-
+from hatchet import config
 
 
 def parse_args():
@@ -24,16 +23,16 @@ def parse_args():
     parser.add_argument("-t","--tumor", required=True, type=str, help="White-space separated list of input tumor BAM files, corresponding to multiple samples from the same patient (list must be within quotes)")
     parser.add_argument("-n","--normal", required=True, type=str, help="Matched-normal BAM file")
     parser.add_argument("-r","--reference", type=str, required=True, help="Reference genome")
-    parser.add_argument("-s","--samplenames", required=False, type=str, default=None, help="Tumor sample names in a white-space separated list in the same order as the corresponding BAM files (default: file names are used as names)")
-    parser.add_argument("-b","--size", type=str, required=False, default="250kb", help="Bin size, with or without \"kb\" or \"Mb\" (default: 250kb)")
-    parser.add_argument("-c","--minreads", type=int, required=False, default=8, help="Minimum read counts for heterozygous germline SNPs (default: 8)")
-    parser.add_argument("-C","--maxreads", type=int, required=False, default=1000, help="Maximum read counts for heterozygous germline SNPs (default: 1000)")
-    parser.add_argument("-p","--phred", type=int, required=False, default=11, help="Phred quality score (default: 11)")
-    parser.add_argument("-x","--rundir", required=False, default='./', type=str, help="Running directory (default: current directory)")
-    parser.add_argument("--bcftools", required=False, default=None, type=str, help="Path to the directory to \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
-    parser.add_argument("--samtools", required=False, default=None, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
-    parser.add_argument("--seed", required=False, type=int, default=None, help="Random seed for replication (default: None)")
-    parser.add_argument("-j","--jobs", required=False, type=int, default=0, help="Number of parallele jobs to use (default: equal to number of available processors)")
+    parser.add_argument("-s","--samplenames", required=False, type=str, default=config.preprocess.samplenames, help="Tumor sample names in a white-space separated list in the same order as the corresponding BAM files (default: file names are used as names)")
+    parser.add_argument("-b","--size", type=str, required=False, default=config.preprocess.size, help="Bin size, with or without \"kb\" or \"Mb\" (default: 250kb)")
+    parser.add_argument("-c","--minreads", type=int, required=False, default=config.preprocess.minreads, help="Minimum read counts for heterozygous germline SNPs (default: 8)")
+    parser.add_argument("-C","--maxreads", type=int, required=False, default=config.preprocess.maxreads, help="Maximum read counts for heterozygous germline SNPs (default: 1000)")
+    parser.add_argument("-p","--phred", type=int, required=False, default=config.preprocess.phred, help="Phred quality score (default: 11)")
+    parser.add_argument("-x","--rundir", required=False, default=config.preprocess.rundir, type=str, help="Running directory (default: current directory)")
+    parser.add_argument("--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory to \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
+    parser.add_argument("--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
+    parser.add_argument("--seed", required=False, type=int, default=config.preprocess.seed, help="Random seed for replication (default: None)")
+    parser.add_argument("-j","--jobs", required=False, type=int, default=config.preprocess.jobs, help="Number of parallele jobs to use (default: equal to number of available processors)")
     args = parser.parse_args()
 
     tumor = set(t for t in args.tumor.split())
