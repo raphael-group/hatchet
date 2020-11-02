@@ -26,6 +26,8 @@ from collections import deque
 import itertools
 from itertools import cycle
 
+from hatchet import config
+
 plt.style.use('ggplot')
 sns.set_style("whitegrid")
 plt.rcParams["font.family"] = "Times New Roman"
@@ -45,21 +47,21 @@ def parsing_arguments(args=None):
     description = ""
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("INPUT", help="A single file or multiple files between apices in CN_BBC format")
-    parser.add_argument("-n","--patientnames", required=False, default=None, type=str, help='Names of patients between apices (default: inferred from filenames)')
-    parser.add_argument("-u","--minu", required=False, default=0.2, type=float, help='Minimum proportion of a CNA to be considered subclonal (default: 0.2)"')
-    parser.add_argument("-x","--rundir", required=False, default='./', type=str, help='Running directory (default: current directory)')
-    parser.add_argument("-b","--baseCN", required=False, default=None, type=str, help='Base copy number (default: inferred from tumor ploidy)')
-    parser.add_argument("-sC","--figsizeclones", required=False, default="(12, 3)", type=str, help='Size of clone plots in the form "(X-SIZE, Y-SIZE)"')
-    parser.add_argument("-sP","--figsizecn", required=False, default="(16, 4)", type=str, help='Size of CN plots in the form "(X-SIZE, Y-SIZE)"')
-    parser.add_argument("-sG","--figsizegrid", required=False, default="(20, 10)", type=str, help='Size of grid plots in the form "(X-SIZE, Y-SIZE)"')
-    parser.add_argument("-rC","--resolutionclones", required=False, default=100, type=int, help='Number of bins to merge together for plotting clone profiles (default: 100)"')
-    parser.add_argument("-rP","--resolutioncn", required=False, default=500, type=int, help='Number of bins to merge together for plotting proportions (default: 500)"')
-    parser.add_argument("-rG","--resolutiongrid", required=False, default=100, type=int, help='Number of bins to merge together in grids (default: 100)"')
-    parser.add_argument("-e","--threshold", required=False, default=3.0, type=float, help='Threshold used to classify a tumor into either diploid or tetraploid (default: 3.0)"')
-    parser.add_argument("--ymax", required=False, default=None, type=int, help='Maximum values in y-axis (default: automatically inferred)"')
-    parser.add_argument("--ymin", required=False, default=None, type=int, help='Minimum values in y-axis (default: automatically inferred)"')
-    parser.add_argument("--clonepalette", required=False, default='Set1', type=str, help='Palette for coloring the clones among Set1, Set2, Set3, Paired (default: Set1)"')
-    parser.add_argument("--linkage", required=False, default='single', type=str, help='Linkage method used for clustering (default: single, available \{single, complete, average, weighted, centroid, median, ward\} from SciPy)"')
+    parser.add_argument("-n","--patientnames", required=False, default=config.bbeval.patientnames, type=str, help='Names of patients between apices (default: inferred from filenames)')
+    parser.add_argument("-u","--minu", required=False, default=config.bbeval.minu, type=float, help='Minimum proportion of a CNA to be considered subclonal (default: 0.2)"')
+    parser.add_argument("-x","--rundir", required=False, default=config.bbeval.rundir, type=str, help='Running directory (default: current directory)')
+    parser.add_argument("-b","--baseCN", required=False, default=config.bbeval.baseCN, type=str, help='Base copy number (default: inferred from tumor ploidy)')
+    parser.add_argument("-sC","--figsizeclones", required=False, default=config.bbeval.figsizeclones, type=str, help='Size of clone plots in the form "(X-SIZE, Y-SIZE)"')
+    parser.add_argument("-sP","--figsizecn", required=False, default=config.bbeval.figsizecn, type=str, help='Size of CN plots in the form "(X-SIZE, Y-SIZE)"')
+    parser.add_argument("-sG","--figsizegrid", required=False, default=config.bbeval.figsizegrid, type=str, help='Size of grid plots in the form "(X-SIZE, Y-SIZE)"')
+    parser.add_argument("-rC","--resolutionclones", required=False, default=config.bbeval.resolutionclones, type=int, help='Number of bins to merge together for plotting clone profiles (default: 100)"')
+    parser.add_argument("-rP","--resolutioncn", required=False, default=config.bbeval.resolutioncn, type=int, help='Number of bins to merge together for plotting proportions (default: 500)"')
+    parser.add_argument("-rG","--resolutiongrid", required=False, default=config.bbeval.resolutiongrid, type=int, help='Number of bins to merge together in grids (default: 100)"')
+    parser.add_argument("-e","--threshold", required=False, default=config.bbeval.threshold, type=float, help='Threshold used to classify a tumor into either diploid or tetraploid (default: 3.0)"')
+    parser.add_argument("--ymax", required=False, default=config.bbeval.ymax, type=int, help='Maximum values in y-axis (default: automatically inferred)"')
+    parser.add_argument("--ymin", required=False, default=config.bbeval.ymin, type=int, help='Minimum values in y-axis (default: automatically inferred)"')
+    parser.add_argument("--clonepalette", required=False, default=config.bbeval.clonepalette, type=str, help='Palette for coloring the clones among Set1, Set2, Set3, Paired (default: Set1)"')
+    parser.add_argument("--linkage", required=False, default=config.bbeval.linkage, type=str, help='Linkage method used for clustering (default: single, available \{single, complete, average, weighted, centroid, median, ward\} from SciPy)"')
     args = parser.parse_args(args)
 
     if len(args.INPUT.split()) == 0:
