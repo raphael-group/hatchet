@@ -46,7 +46,7 @@ def output_folder():
 @pytest.mark.skipif(not config.paths.samtools, reason='paths.samtools not set')
 @pytest.mark.skipif(not config.paths.bcftools, reason='paths.bcftools not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
-def test_script(_, bams, output_folder):
+def _test_script(_, bams, output_folder):
     normal_bam, tumor_bams = bams
 
     binBAM(
