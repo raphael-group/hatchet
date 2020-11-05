@@ -19,6 +19,25 @@ jobs:
         with:
           lfs: true
 
+      - name: Cache Testing Data
+        id: cache-test-data
+        uses: actions/cache@v2
+        with:
+          path: testdata
+          key: testdata
+
+      - name: Download Testing Data
+        if: steps.cache-test-data.outputs.cache-hit != 'true'
+        run: |
+          pip3 install wheel
+          pip3 install setuptools
+          pip3 install zenodo-get
+          python3 -m zenodo_get 10.5281/zenodo.4046906 --output-dir=testdata
+
+      - name: Set Testing Data Envvar
+        run: |
+          echo ::set-env name=HATCHET_TESTS_BAM_DIRECTORY::$(realpath testdata)
+
       - name: Install Gurobi
         run: |
           wget https://packages.gurobi.com/9.0/gurobi9.0.2_linux64.tar.gz -O gurobi9.0.2_linux64.tar.gz
@@ -26,6 +45,34 @@ jobs:
           (cd gurobi902/linux64/src/build && make)
           (cd gurobi902/linux64/lib && ln -f -s ../src/build/libgurobi_c++.a libgurobi_c++.a)
           echo ::set-env name=GUROBI_HOME::$(realpath gurobi902)
+
+      - name: Activate Gurobi License
+        run: |
+          (cd gurobi902/linux64/bin && ./grbgetkey -q ${{ secrets.GUROBI_KEYCODE }} --path ${GUROBI_HOME})
+          echo ::set-env name=GRB_LICENSE_FILE::${GUROBI_HOME}/gurobi.lic
+        continue-on-error: true
+
+      - name: Install SAMtools
+        run: |
+          wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O samtools-1.7.tar.bz2
+          tar xvjf samtools-1.7.tar.bz2
+          (cd samtools-1.7 && ./configure && make)
+          echo ::set-env name=HATCHET_PATHS_SAMTOOLS::$(realpath samtools-1.7)
+
+      - name: Install BCFTools
+        run: |
+          wget https://sourceforge.net/projects/samtools/files/samtools/1.7/bcftools-1.7.tar.bz2/download -O bcftools-1.7.tar.bz2
+          tar xvjf bcftools-1.7.tar.bz2
+          (cd bcftools-1.7 && ./configure && make)
+          echo ::set-env name=HATCHET_PATHS_BCFTOOLS::$(realpath bcftools-1.7)
+
+      - name: Download and index hg19.fa
+        run: |
+          wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
+          gunzip hg19.fa.gz
+          $HATCHET_PATHS_SAMTOOLS/samtools faidx hg19.fa
+          $HATCHET_PATHS_SAMTOOLS/samtools dict hg19.fa > hg19.dict
+          echo ::set-env name=HATCHET_PATHS_HG19::$(realpath hg19.fa)
 
       - name: Setup Python
         uses: actions/setup-python@v2
