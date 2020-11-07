@@ -90,6 +90,12 @@ jobs:
           PLATFORM: ${{ matrix.python }}
           CXXFLAGS: -pthread
 
+      - name: Save Pytest Output Data
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-results
+          path: tests/out
+
       - name: Convert coverage
         run: |
           python -m coverage xml
