@@ -66,11 +66,6 @@ def test_script(_, bams, output_folder):
         ]
     )
 
-    # assert hashlib.md5(open(os.path.join(output_folder, 'bin/normal.bin'), 'rb').read()).hexdigest() == \
-    #        '2e18f476eceb9903c30b4ddeece9ec27'
-    # assert hashlib.md5(open(os.path.join(output_folder, 'bin/bulk.bin'), 'rb').read()).hexdigest() == \
-    #        'e4da520dbc97917e55d36efc386eaee3'
-
     deBAF(
         args=[
             '-bt', config.paths.bcftools,
@@ -92,11 +87,6 @@ def test_script(_, bams, output_folder):
         ]
     )
 
-    # assert hashlib.md5(open(os.path.join(output_folder, 'baf/normal.baf'), 'rb').read()).hexdigest() == \
-    #        '95f12660871126fb8fd859301a106381'
-    # assert hashlib.md5(open(os.path.join(output_folder, 'baf/bulk.baf'), 'rb').read()).hexdigest() == \
-    #        '5faed25e9333228a0330aa42db4f9589'
-
     _stdout = sys.stdout
     sys.stdout = StringIO()
 
@@ -115,9 +105,6 @@ def test_script(_, bams, output_folder):
     with open(os.path.join(output_folder, 'bb/bulk.bb'), 'w') as f:
         f.write(out)
 
-    # assert hashlib.md5(open(os.path.join(output_folder, 'bb/bulk.bb'), 'rb').read()).hexdigest() == \
-    #        '99ed9c2480a6453a73dc29f45a9a30fa'
-
     cluBB(args=[
         os.path.join(output_folder, 'bb/bulk.bb'),
         '-o', os.path.join(output_folder, 'bbc/bulk.seg'),
@@ -128,10 +115,8 @@ def test_script(_, bams, output_folder):
         '-d', '0.4'
     ])
 
-    # assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg'), 'rb').read()).hexdigest() == \
-    #        'df4245b616422ce0dc36d6ee3ac0ce88'
-    # assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.bbc'), 'rb').read()).hexdigest() == \
-    #        '5ff83aadbe247cb45d42358e7d3055aa'
+    assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg'), 'rb').read()).hexdigest() == \
+           'df4245b616422ce0dc36d6ee3ac0ce88'
 
     if os.getenv('GRB_LICENSE_FILE') is not None:
         main(args=[
@@ -150,7 +135,6 @@ def test_script(_, bams, output_folder):
             '-l', '0.6'
         ])
 
-        # assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
-        #        'c85f8436fea10c1577d48b0a277d25ff'
+        assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
+               'c85f8436fea10c1577d48b0a277d25ff'
 
-    assert True
