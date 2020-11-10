@@ -24,6 +24,14 @@ RUN (cd samtools-1.7 && ./configure && make)
 ENV HATCHET_PATHS_SAMTOOLS /app/samtools-1.7
 
 # ----------------
+# Install BCFtools
+# ----------------
+RUN wget https://sourceforge.net/projects/samtools/files/samtools/1.7/bcftools-1.7.tar.bz2/download -O bcftools-1.7.tar.bz2
+RUN tar xvjf bcftools-1.7.tar.bz2
+RUN (cd bcftools-1.7 && ./configure && make)
+ENV HATCHET_PATHS_BCFTOOLS /app/bcftools-1.7
+
+# ----------------
 # Copy source
 # ----------------
 COPY setup.py /app
