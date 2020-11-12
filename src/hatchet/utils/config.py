@@ -30,8 +30,6 @@ class ConfigSection(object):
                         v = v[1:-1]
                     elif v == '':
                         v = None
-                    if v is not None and ',' in v:
-                        v = [t.strip() for t in v.split(',')]
                     self.d[k] = v
                 else:
                     self.d[k] = v
