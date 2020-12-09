@@ -60,7 +60,7 @@ The current implementation of HATCHet is composed of two sets of modules:
 
 (1) The *core* modules of HATCHet are designed to efficiently solve a challenging constrained and distance-based simultaneous matrix factorization which aim to infer allele and clone-specific copy numbers and clone proportins from fractional copy numbers. The module is implemented in C++11 and are included in `src` folder.
 
-(2) The *utility* modules of HATCHet perform several different tasks that are needed to process the raw data, perform steps of the HATCHet's algorithm needed for the factorization, and process the results. These task include reading/calling germinal single-point mutations, counting reads from a BAM file, combining the read counts and other information, segmenting through HATCHet's global approach, plotting very useful information, etc. These modules are implemented in python2.7 and are available as the `util` and `bin` submodules.
+(2) The *utility* modules of HATCHet perform several different tasks that are needed to process the raw data, perform steps of the HATCHet's algorithm needed for the factorization, and process the results. These task include reading/calling germinal single-point mutations, counting reads from a BAM file, combining the read counts and other information, segmenting through HATCHet's global approach, plotting very useful information, etc. These modules are implemented in python 3 and are available as the `util` and `bin` submodules.
 
 ## Setup
 <a name="setup"></a>
@@ -100,15 +100,15 @@ The installation process can be broken down into the following steps:
 
 4. **Create a new venv/conda environment for Hatchet**
 
-    `Hatchet` is a Python 2.7 package. Unless you want to compile/install it in your default Python 2 environment, you will
-want to create either a new Conda environment for Python 2.7 and activate it:
+    `Hatchet` is a Python 3 package. Unless you want to compile/install it in your default Python 3 environment, you will
+want to create either a new Conda environment for Python 3 and activate it:
     ```
-    conda create --name hatchet python=2.7
+    conda create --name hatchet python=3.8
     conda activate hatchet
     ```
     or use `virtualenv` through `pip`:
     ```
-    python2 -m pip virtualenv env
+    python3 -m pip virtualenv env
     source env/bin/activate
     ```
 
@@ -119,15 +119,8 @@ want to create either a new Conda environment for Python 2.7 and activate it:
     pip install -U pip
     pip install -U setuptools
     ```
-
-6. **Install cython**
-
-    `cython` is currently needed to compile some of the dependencies of `hatchet`.
-    ```shell
-    pip install cython
-    ```
     
-7. **Build and install HATCHet**
+6. **Build and install HATCHet**
 
     Execute the following commands from the root of HATCHet's repository.
     ```shell
@@ -146,7 +139,7 @@ want to create either a new Conda environment for Python 2.7 and activate it:
 
     When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed intructions](doc/doc_compilation.md).
 
-8. **Install required utilities**
+7. **Install required utilities**
 
     For reading BAM files, read counting, allele counting, and SNP calling, you need to install [SAMtools and BCFtools](http://www.htslib.org/doc/).
     *Currently, HATCHet support only the following versions of these software: 1.5, 1.6, 1.7*

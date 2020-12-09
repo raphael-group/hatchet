@@ -1,12 +1,12 @@
 import sys
 import datetime
-import Supporting as sp
+from . import Supporting as sp
 
 
 
 class ProgressBar:
 
-    def __init__(self, total, length, counter=0, verbose=False, decimals=1, fill=unichr(9608), lock=None, prefix = 'Progress:', suffix = 'Complete'):
+    def __init__(self, total, length, counter=0, verbose=False, decimals=1, fill=chr(9608), lock=None, prefix = 'Progress:', suffix = 'Complete'):
         self.total = total
         self.length = length
         self.decimals = decimals
@@ -42,7 +42,7 @@ class ProgressBar:
         else:
             toprint = rewind + sp.bcolors.BBLUE + msg + sp.bcolors.ENDC + "\n" + result
         with self.lock:
-            write(toprint.encode('utf-8'))
+            write(toprint)
             flush()
             if self.counter.value == self.total:
                 write("\n")
@@ -63,7 +63,7 @@ class ProgressBar:
             toprint = rewind + result + " [%s]" % (msg)
         else:
             toprint = rewind + msg + "\n" + result
-        write(toprint.encode('utf-8'))
+        write(toprint)
         flush()
         if self.counter == self.total:
             write("\n")

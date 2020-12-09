@@ -16,7 +16,7 @@ set -o xtrace
 PS4='\''[\t]'\'
 export PATH=$PATH:${SAM}
 export PATH=$PATH:${BCF}
-#source /path/to/virtualenv-python2.7/bin/activate
+#source /path/to/virtualenv-python3.8/bin/activate
 
 BIN=${XDIR}bin/
 mkdir -p ${BIN}
@@ -35,24 +35,24 @@ mkdir -p ${EVA}
 
 cd ${XDIR}
 
-\time -v python2 -m hatchet binBAM -st ${SAM} -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -q 11 -O ${BIN}normal.bin -o ${BIN}bulk.bin -v &> ${BIN}bins.log
+\time -v python3 -m hatchet binBAM -st ${SAM} -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -q 11 -O ${BIN}normal.bin -o ${BIN}bulk.bin -v &> ${BIN}bins.log
 
-\time -v python2 -m hatchet deBAF -bt ${BCF} -st ${SAM} -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -q 11 -Q 11 -U 11 -c 8 -C 300 -O ${BAF}normal.baf -o ${BAF}bulk.baf -v &> ${BAF}bafs.log
+\time -v python3 -m hatchet deBAF -bt ${BCF} -st ${SAM} -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -q 11 -Q 11 -U 11 -c 8 -C 300 -O ${BAF}normal.baf -o ${BAF}bulk.baf -v &> ${BAF}bafs.log
 
-\time -v python2 -m hatchet comBBo -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
+\time -v python3 -m hatchet comBBo -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
 
-\time -v python2 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -e ${RANDOM} -tB 0.04 -tR 0.15 -d 0.08
+\time -v python3 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -e ${RANDOM} -tB 0.04 -tR 0.15 -d 0.08
 
 cd ${ANA}
-\time -v python2 -m hatchet BBot -c RD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python2 -m hatchet BBot -c CRD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python2 -m hatchet BBot  -c BAF --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python2 -m hatchet BBot  -c BB ${BBC}bulk.bbc &
-\time -v python2 -m hatchet BBot  -c CBB ${BBC}bulk.bbc -tS 0.01 &
+\time -v python3 -m hatchet BBot -c RD --figsize 6,3 ${BBC}bulk.bbc &
+\time -v python3 -m hatchet BBot -c CRD --figsize 6,3 ${BBC}bulk.bbc &
+\time -v python3 -m hatchet BBot  -c BAF --figsize 6,3 ${BBC}bulk.bbc &
+\time -v python3 -m hatchet BBot  -c BB ${BBC}bulk.bbc &
+\time -v python3 -m hatchet BBot  -c CBB ${BBC}bulk.bbc -tS 0.01 &
 wait
 
 cd ${RES}
-\time -v python2 -m hatchet solve -i ${BBC}bulk -n2,8 -p 400 -v 3 -u 0.03 -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 &> >(tee >(grep -v Progress > hatchet.log))
+\time -v python3 -m hatchet solve -i ${BBC}bulk -n2,8 -p 400 -v 3 -u 0.03 -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 &> >(tee >(grep -v Progress > hatchet.log))
 
 ## Increase -l to 0.6 to decrease the sensitivity in high-variance or noisy samples, and decrease it to -l 0.3 in low-variance samples to increase the sensitivity and explore multiple solutions with more clones.
 ## Increase -u if solutions have clone proportions equal to the minimum threshold -u

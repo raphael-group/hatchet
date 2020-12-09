@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -18,7 +18,7 @@ from matplotlib.pyplot import cm
 from itertools import cycle
 from collections import Counter
 
-from ArgParsing import parse_bbot_args
+from .ArgParsing import parse_bbot_args
 
 plt.style.use('ggplot')
 sns.set_style("whitegrid")

@@ -1,13 +1,13 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import sys
 import os.path
 import argparse
 
-import BAMBinning as bb
-import TotalCounting as tc
-import ArgParsing as ap
-from Supporting import *
+from . import BAMBinning as bb
+from . import TotalCounting as tc
+from . import ArgParsing as ap
+from .Supporting import *
 
 
 
@@ -54,12 +54,12 @@ def main(args=None):
     log(msg="# Writing the read counts for bins of tumor samples\n", level="STEP")
     if args["outputTumors"] is not None:
         with open(args["outputTumors"], 'w') as f:
-            for sample in args["samples"]:
+            for sample in sorted(args["samples"]):
                 for c in args["chromosomes"]:
                     for count in tumor_bins[sample[1], c]:
                         f.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
     else:
-        for sample in args["samples"]:
+        for sample in sorted(args["samples"]):
             for c in args["chromosomes"]:
                 for count in tumor_bins[sample[1], c]:
                     sys.stdout.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
@@ -77,7 +77,7 @@ def main(args=None):
     log(msg="# Writing the total read counts for all samples in {}\n".format(args["outputTotal"]), level="STEP")
     with open(args["outputTotal"], 'w') as f:
         f.write("{}\t{}\n".format(args["normal"][1], total[args["normal"][1]]))
-        for sample in args["samples"]:
+        for sample in sorted(args["samples"]):
             f.write("{}\t{}\n".format(sample[1], total[sample[1]]))
 
 

@@ -34,7 +34,7 @@ set -o xtrace
 PS4='\''[\t]'\'
 export PATH=$PATH:${SAM}
 export PATH=$PATH:${BCF}
-#source /path/to/virtualenv-python2.7/bin/activate
+#source /path/to/virtualenv-python3.8/bin/activate
 ```
 
 This preliminary part of the script contains all the preliminary information that are required to execute the full pipeline.
@@ -74,7 +74,7 @@ set -o xtrace
 PS4='\''[\t]'\'
 export PATH=$PATH:${SAM}
 export PATH=$PATH:${BCF}
-#source /path/to/virtualenv-python2.7/bin/activate
+#source /path/to/virtualenv-python3.8/bin/activate
 ```
 
 Third, three commands activate the log trace for the script which terminates in case of error and add time stamps to this.
@@ -113,7 +113,7 @@ To avoid condlicts, user should make sure the running directory is an empty dire
 <a name="binbam"></a>
 
 ```shell
-\time -v python2 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
+\time -v python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
                                    -b 50kb -g ${REF} -j ${J} \
                                    -q 20 -O ${BIN}normal.bin -o ${BIN}bulk.bin -v &> ${BIN}bins.log
 ```
@@ -129,7 +129,7 @@ A standard read quality of 20 is considered and simple parameters are specified 
 <a name="debaf"></a>
 
 ```shell
-\time -v python2 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
+\time -v python3 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
                                   -r ${REF} -j ${J} -q 20 -Q 20 -U 20 -c 4 \
                                   -C 300 -O ${BAF}normal.baf -o ${BAF}bulk.baf -v \
                                   &> ${BAF}bafs.log
@@ -147,7 +147,7 @@ Several simple parameters are specified including: number of parallel threads, r
 <a name="combbo"></a>
 
 ```shell
-\time -v python2 -m hatchet comBBo -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
+\time -v python3 -m hatchet comBBo -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
 ```
 
 comBBo estimates the RDR and BAF from the read counts of all genomic bins from matched-normal sample in `${BIN}normal.bin`, from the read counts of all genomic bins from all tumor samples in `${BIN}bulk.bin`, and germline SNPs allele counts in `${BAF}bulk.baf`.
@@ -158,9 +158,9 @@ The output from standard output is correspondingly written in a BB file `${BB}bu
 <a name="clubb"></a>
 
 ```shell
-\time -v python2 -m hatchet cluBB ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
+\time -v python3 -m hatchet cluBB ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
                                                -e 12 -tB 0.04 -tR 0.15 -d 0.08
-#\time -v python2 -m hatchet cluBB ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
+#\time -v python3 -m hatchet cluBB ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
 #                                               -e 12 -tB 0.04 -tR 0.15 -d 0.08 \
 #                                               -u 20 -e 12 -dR 0.002 -dB 0.002
 ```
@@ -190,11 +190,11 @@ A total of `20` synthetic genomic bins are added only for the clustering by boot
 
 ```shell
 cd ${ANA}
-\time -v python2 -m hatchet BBot -c RD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python2 -m hatchet BBot -c CRD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python2 -m hatchet BBot -c BAF --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python2 -m hatchet BBot -c BB ${BBC}bulk.bbc &
-\time -v python2 -m hatchet BBot -c CBB ${BBC}bulk.bbc &
+\time -v python3 -m hatchet BBot -c RD --figsize 6,3 ${BBC}bulk.bbc &
+\time -v python3 -m hatchet BBot -c CRD --figsize 6,3 ${BBC}bulk.bbc &
+\time -v python3 -m hatchet BBot -c BAF --figsize 6,3 ${BBC}bulk.bbc &
+\time -v python3 -m hatchet BBot -c BB ${BBC}bulk.bbc &
+\time -v python3 -m hatchet BBot -c CBB ${BBC}bulk.bbc &
 wait
 ```
 
@@ -207,7 +207,7 @@ The different plots are generated in parallel; this feature can be disabled by r
 
 ```shell
 cd ${RES}
-\time -v python2 -m hatchet solve -i ${BBC}bulk -n2,8 -p 400 -v 3 \
+\time -v python3 -m hatchet solve -i ${BBC}bulk -n2,8 -p 400 -v 3 \
                                   -u 0.03 -r 12 -j ${J} -eD 6 -eT 12
                                   -g 0.35 -l 0.6 |& tee hatchet.log
 ```

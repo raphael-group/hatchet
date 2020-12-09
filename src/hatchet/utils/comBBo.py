@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import sys
 import math
@@ -6,9 +6,9 @@ import copy
 import numpy as np
 from scipy.stats import beta
 
-import ProgressBar as pb
-import Supporting as sp
-from ArgParsing import parse_combbo_args
+from . import ProgressBar as pb
+from . import Supporting as sp
+from .ArgParsing import parse_combbo_args
 
 
 def main(args=None):

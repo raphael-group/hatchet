@@ -14,14 +14,22 @@ class ConfigSection(object):
         self.d = {}  # key value dict where the value is typecast to int/float/str
 
         for k, v in section_proxy.items():
+
+            if v in ('True', 'False'):
+                self.d[k] = eval(v)
+                continue
+
             try:
                 v = int(v)
             except ValueError:
                 try:
                     v = float(v)
                 except ValueError:
-                    if ',' in v:
-                        v = [t.strip() for t in v.split(',')]
+                    # We interpret a missing value as None, and a "" as the empty string
+                    if v.startswith('"') and v.endswith('"'):
+                        v = v[1:-1]
+                    elif v == '':
+                        v = None
                     self.d[k] = v
                 else:
                     self.d[k] = v
@@ -39,7 +47,7 @@ class ConfigSection(object):
             # If an environment variable exists with name <CONFIG_NAME>_<SECTION>_<ITEM>, use it
             env_varname = '_'.join([str(x).upper() for x in [self.config.name, self.name, item]])
             env_var = os.getenv(env_varname)
-            return env_var or self.d.get(item, None) or None
+            return env_var or self.d[item]
 
     def items(self):
         return self.d.items()

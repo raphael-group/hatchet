@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import os, shutil
 import sys
@@ -6,8 +6,8 @@ import math
 import copy
 import numpy as np
 
-from ArgParsing import parse_clubb_args
-import Supporting as sp
+from .ArgParsing import parse_clubb_args
+from . import Supporting as sp
 
 
 def main(args=None):
@@ -146,9 +146,9 @@ def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10):
         K = Data.X.shape[0]
 
     if hasattr(bnpy.learnalg, "MOVBBirthMergeAlg"):
-        hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
+        hmodel, Info = bnpy.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
     elif hasattr(bnpy.learnalg, "MemoVBMovesAlg"):
-        hmodel, Info = bnpy.Run.run(Data, 'DPMixtureModel', 'DiagGauss', 'memoVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
+        hmodel, Info = bnpy.run(Data, 'DPMixtureModel', 'DiagGauss', 'memoVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
     else:
         raise ValueError(sp.error("BNPY learnalg module does not contain either MOVBBirthMergeAlg or MemoVBMovesAlg, please use the right version!"))
 

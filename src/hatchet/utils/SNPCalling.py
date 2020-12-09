@@ -4,7 +4,7 @@ import shlex
 import subprocess
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 
-import ProgressBar as pb
+from . import ProgressBar as pb
 
 
 
@@ -111,9 +111,9 @@ class SNPCaller(Process):
             err = open("samtools.log", 'a')
         else:
             err = open(os.devnull, 'w')
-        mpileup = subprocess.Popen(shlex.split(cmd_mpileup), stdout=subprocess.PIPE, stderr=err, shell=False)
-        call = subprocess.Popen(shlex.split(cmd_call), stdin=mpileup.stdout, stdout=subprocess.PIPE, stderr=err, shell=False)
-        query = subprocess.Popen(shlex.split(cmd_query), stdin=call.stdout, stdout=subprocess.PIPE, stderr=err, shell=False)
+        mpileup = subprocess.Popen(shlex.split(cmd_mpileup), stdout=subprocess.PIPE, stderr=err, shell=False, text=True)
+        call = subprocess.Popen(shlex.split(cmd_call), stdin=mpileup.stdout, stdout=subprocess.PIPE, stderr=err, shell=False, text=True)
+        query = subprocess.Popen(shlex.split(cmd_query), stdin=call.stdout, stdout=subprocess.PIPE, stderr=err, shell=False, text=True)
         stdout, stderr = query.communicate()
         err.close()
 
