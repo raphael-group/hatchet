@@ -89,7 +89,7 @@ class TotalCounter(Process):
         pipe = subprocess.PIPE
         split = shlex.split
         cmd = "{} view {} -c -q {} {}".format(self.samtools, bamfile, self.q, chromosome)
-        stdout, stderr = popen(split(cmd), stdout=pipe, stderr=pipe, text=True).communicate()
+        stdout, stderr = popen(split(cmd), stdout=pipe, stderr=pipe, universal_newlines=True).communicate()
         if stderr != "":
             self.progress_bar.progress(advance=False, msg="{}{}: samtools warns \"{}\"on (sample={}, chromosome={}){}".format(sp.bcolors.WARNING, self.name, stderr, samplename, chromosome, sp.bcolors.ENDC))
         return (samplename, chromosome, int(stdout.strip()))

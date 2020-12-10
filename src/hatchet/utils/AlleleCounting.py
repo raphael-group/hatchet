@@ -104,8 +104,8 @@ class AlleleCounter(Process):
             err = open("samtools.log", 'a')
         else:
             err = open(os.devnull, 'w')
-        mpileup = subprocess.Popen(shlex.split(cmd_mpileup), stdout=subprocess.PIPE, stderr=err, shell=False, text=True)
-        query = subprocess.Popen(shlex.split(cmd_query), stdin=mpileup.stdout, stdout=subprocess.PIPE, stderr=err, shell=False, text=True)
+        mpileup = subprocess.Popen(shlex.split(cmd_mpileup), stdout=subprocess.PIPE, stderr=err, shell=False, universal_newlines=True)
+        query = subprocess.Popen(shlex.split(cmd_query), stdin=mpileup.stdout, stdout=subprocess.PIPE, stderr=err, shell=False, universal_newlines=True)
         stdout, stderr = query.communicate()
         err.close()
 
@@ -206,7 +206,7 @@ class NaiveAlleleCounter(Process):
             err = open("samtools.log", 'a')
         else:
             err = open(os.devnull, 'w')
-        mpileup = subprocess.Popen(shlex.split(cmd_mpileup), stdout=subprocess.PIPE, stderr=err, shell=False, text=True)
+        mpileup = subprocess.Popen(shlex.split(cmd_mpileup), stdout=subprocess.PIPE, stderr=err, shell=False, universal_newlines=True)
         stdout, stderr = mpileup.communicate()
 
         # Counting alleles

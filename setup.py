@@ -90,6 +90,7 @@ setup(
         'biopython',
         'bnpy@git+https://github.com/raphael-group/bnpy.git',
         'futures',
+        'importlib_resources>=1.0.2',
         'matplotlib',
         'matplotlib-venn',
         'opencv-python',

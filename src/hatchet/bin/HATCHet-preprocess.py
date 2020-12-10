@@ -158,7 +158,7 @@ def runcmd(cmd, xdir, out=None, log="log", rundir=None):
     tmp = log + '_TMP'
     sout = open(j(xdir, out), 'w') if out is not None else sp.PIPE
     with open(j(xdir, tmp), 'w') as serr:
-        proc = sp.Popen(shlex.split(cmd), stdout=sout, stderr=sp.PIPE, cwd=rundir, text=True)
+        proc = sp.Popen(shlex.split(cmd), stdout=sout, stderr=sp.PIPE, cwd=rundir, universal_newlines=True)
         for line in iter(lambda : proc.stderr.read(1), ''):
             sys.stderr.write(line)
             serr.write(line)

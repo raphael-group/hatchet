@@ -612,7 +612,7 @@ def execute(args, basecmd, n, outprefix):
         sys.stderr.write(debug('### Running command: {}\n'.format(cmd)))
 
     FNULL = open(os.devnull, 'w')
-    process = subprocess.Popen(shlex.split(cmd), stdout=FNULL, stderr=subprocess.PIPE, text=True)
+    process = subprocess.Popen(shlex.split(cmd), stdout=FNULL, stderr=subprocess.PIPE, universal_newlines=True)
     buffer = []
 
     if args['v'] >= 2:

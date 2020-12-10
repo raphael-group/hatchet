@@ -19,6 +19,6 @@ def test_solver():
 
     print(' '.join(cmd))
 
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     p.communicate()
     assert p.returncode == 0

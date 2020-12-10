@@ -447,7 +447,7 @@ def extractChromosomes(samtools, normal, tumors, reference=None):
 
     # Check consistency of chromosome names with the reference
     if reference is not None:
-        stdout, stderr = subprocess.Popen("grep -e \"^>\" {}".format(reference), stdout=subprocess.PIPE, shell=True, text=True).communicate()
+        stdout, stderr = subprocess.Popen("grep -e \"^>\" {}".format(reference), stdout=subprocess.PIPE, shell=True, universal_newlines=True).communicate()
         if stderr is not None:
             raise ValueError("Error in reading the reference: {}".format(reference))
         else:
@@ -459,7 +459,7 @@ def extractChromosomes(samtools, normal, tumors, reference=None):
 
 
 def getSQNames(samtools, bamfile):
-    header, stderr = subprocess.Popen([samtools, "view", "-H", bamfile], stdout=subprocess.PIPE, shell=False, text=True).communicate()
+    header, stderr = subprocess.Popen([samtools, "view", "-H", bamfile], stdout=subprocess.PIPE, shell=False, universal_newlines=True).communicate()
     if stderr is not None:
         raise ValueError("The header of the normal-sample BAM cannot be read with samtools!")
     names = set()
@@ -471,8 +471,8 @@ def getSQNames(samtools, bamfile):
 
 
 def checkVersions(samtools, bcftools):
-    samtools_version, samtools_stderr = subprocess.Popen([samtools, "--version-only"], stdout=subprocess.PIPE, shell=False, text=True).communicate()
-    bcftools_version, bcftools_stderr = subprocess.Popen([bcftools, "--version-only"], stdout=subprocess.PIPE, shell=False, text=True).communicate()
+    samtools_version, samtools_stderr = subprocess.Popen([samtools, "--version-only"], stdout=subprocess.PIPE, shell=False, universal_newlines=True).communicate()
+    bcftools_version, bcftools_stderr = subprocess.Popen([bcftools, "--version-only"], stdout=subprocess.PIPE, shell=False, universal_newlines=True).communicate()
     return samtools_version == bcftools_version and samtools_stderr is None and bcftools_stderr is None
 
 
