@@ -8,6 +8,79 @@ import Supporting as sp
 
 
 
+def parse_snp_arguments(args=None):
+    """
+    Parse command line arguments
+    Returns:
+    """
+    description = "Genotype and call SNPs in a matched-normal sample."
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
+    parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
+    parser.add_argument("-st","--samtools", required=False, default="", type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
+    parser.add_argument("-bt","--bcftools", required=False, default="", type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
+    parser.add_argument("-R","--snps", required=False, default=None, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
+    parser.add_argument("-j", "--processes", required=False, default=2, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-q", "--readquality", required=False, default=0, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-Q", "--basequality", required=False, default=13, type=int, help="Minimum base quality for a base to be considered (default: 13)")
+    parser.add_argument("-c", "--mincov", required=False, default=0, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
+    parser.add_argument("-C", "--maxcov", required=False, default=1000, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
+    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=False, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
+    parser.add_argument("-o", "--outputsnps", required=False, default="snps", type=str, help="Output folder for SNPs separated by chromosome (default: ./snps)")
+    parser.add_argument("-v", "--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
+    args = parser.parse_args(args)
+
+    # Parse BAM files, check their existence, and infer or parse the corresponding sample names
+    normalbaf = args.normal
+    if not os.path.isfile(os.path.abspath(normalbaf)):
+        raise ValueError(sp.error("The specified normal BAM file does not exist"))
+    normal = (os.path.abspath(normalbaf), 'Normal')
+
+    # In default mode, check the existence and compatibility of samtools and bcftools
+    samtools = os.path.join(args.samtools, "samtools")
+    bcftools = os.path.join(args.bcftools, "bcftools")
+    if sp.which(samtools) is None:
+        raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
+    elif sp.which(bcftools) is None:
+        raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
+    elif not checkVersions(samtools, bcftools):
+        raise ValueError(sp.error("The versions of samtools and bcftools are different! Please provide the tools with the same version to avoid inconsistent behaviors!{}"))
+
+    # Check that SNP, reference, and region files exist when given in input
+    if not os.path.isfile(args.reference):
+        raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
+    if args.snps != None and not os.path.isdir(args.snps):
+        raise ValueError(sp.error("The folder for output SNPs does not exist!"))
+
+    # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
+    chromosomes = extractChromosomes(samtools, normal, [], args.reference)
+
+    if not args.processes > 0: raise ValueError(sp.error("The number of parallel processes must be greater than 0"))
+    if not args.readquality >= 0: raise ValueError(sp.error("The read mapping quality must be positive"))
+    if not args.basequality >= 0: raise ValueError(sp.error("The base quality quality must be positive"))
+    if not args.mincov >= 0: raise ValueError(sp.error("The minimum-coverage value must be positive"))
+    if not args.maxcov >= 0: raise ValueError(sp.error("The maximum-coverage value must be positive"))
+
+    if args.verbose:
+        sp.log(msg='stderr of samtools and bcftools will be collected in the following file "samtools.log"\n', level="WARN")
+        with open("samtools.log", "w") as f: f.write("")
+
+    return {"normal" : normal,
+            "chromosomes" : chromosomes,
+            "samtools" : samtools,
+            "bcftools" : bcftools,
+            "snps" : args.snps,
+            "reference" : args.reference,
+            "j" : args.processes,
+            "q" : args.readquality,
+            "Q" : args.basequality,
+            "E" : args.newbaq,
+            "mincov" : args.mincov,
+            "maxcov" : args.maxcov,
+            "outputsnps" : os.path.abspath(args.outputsnps),
+            "verbose" : args.verbose}
+
+
 def parse_baf_arguments(args=None):
     """
     Parse command line arguments
@@ -17,7 +90,7 @@ def parse_baf_arguments(args=None):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
-    parser.add_argument("-r","--reference", required=True, type=str, help="Human-genome reference corresponding to given samples")
+    parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
     parser.add_argument("-S","--samples", required=False, default=None, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
     parser.add_argument("-st","--samtools", required=False, default="", type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-bt","--bcftools", required=False, default="", type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
