@@ -20,13 +20,6 @@ def main(args=None):
     args = ap.parse_baf_arguments(args)
     logArgs(args, 80)
 
-    if args["reference"] is not None:
-        defaultMode(args)
-    else:
-        naiveMode(args)
-
-
-def defaultMode(args):
     log(msg="# Inferring SNPs from the normal sample\n", level="STEP")
     snps = SNPCalling.call(samtools=args["samtools"], bcftools=args["bcftools"], reference=args["reference"], samples=[args["normal"]],
                            chromosomes=args["chromosomes"], num_workers=args["j"], snplist=args["snps"], q=args["q"], Q=args["Q"],
@@ -72,58 +65,6 @@ def defaultMode(args):
             for chro in args["chromosomes"]:
                 if (sample[1], chro) in counts:
                     for count in counts[sample[1], chro]: sys.stdout.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
-
-
-def naiveMode(args):
-    log(msg="# Inferring SNPs from the normal sample\n", level="STEP")
-    snps = AlleleCounting.naiveCount(samtools=args["samtools"], samples=[args["normal"]], chromosomes=args["chromosomes"], num_workers=args["j"],
-                                     snplist=args["snps"], q=args["q"], Q=args["Q"], E=args["E"], regions=args["regions"], verbose=args["verbose"])
-    if not snps: sp.close("No SNPs found in the normal!\n")
-
-    log("# Selecting heterozygous SNPs\n", level="STEP")
-    hetSNPs = selectNaiveHetSNPs(counts=snps, chromosomes=args["chromosomes"], mincov=args["mincov"], maxcov=args["maxcov"],
-                                 gamma=args["gamma"], maxshift=args["maxshift"], verbose=args["verbose"])
-    if not hetSNPs: sp.close("No heterozygous SNPs found in the selected regions of the normal!\n")
-
-    log("# Writing the list of selected SNPs, covered and heterozygous in the normal sample\n", level="STEP")
-    with open(args["outputSnps"], 'w') as f:
-        for chro in args["chromosomes"]:
-            if (args["normal"][1], chro) in hetSNPs:
-                for snp in hetSNPs[args["normal"][1], chro]: f.write("{}\t{}\n".format(snp[1], snp[2]))
-
-    log("# Writing the allele counts of the normal sample for selected SNPs\n", level="STEP")
-    if args["outputNormal"] is not None:
-        with open(args["outputNormal"], 'w') as f:
-            for chro in args["chromosomes"]:
-                if (args["normal"][1], chro) in hetSNPs:
-                    for count in hetSNPs[args["normal"][1], chro]:
-                        f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[4], count[5], count[6], count[7]))
-    else:
-        for chro in args["chromosomes"]:
-            if (args["normal"][1], chro) in hetSNPs:
-                for count in hetSNPs[args["normal"][1], chro]:
-                    sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[4], count[5], count[6], count[7]))
-
-    log("# Counting the alleles of tumor samples for selected SNPs\n", level="STEP")
-    snps = AlleleCounting.naiveCount(samtools=args["samtools"], samples=args["samples"], chromosomes=args["chromosomes"], num_workers=args["j"],
-                                     snplist=args["outputSnps"], q=args["q"], Q=args["Q"], E=args["E"], verbose=args["verbose"])
-    if not snps: sp.close("The selected SNPs are not covered in the tumors!\n")
-
-    log("# Writing the allele counts of tumor samples for selected SNPs\n", level="STEP")
-    if args["outputTumors"] is not None:
-        with open(args["outputTumors"], 'w') as f:
-            for sample in args["samples"]:
-                for chro in args["chromosomes"]:
-                    if (sample[1], chro) in snps:
-                        for count in snps[sample[1], chro]:
-                            f.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[4], count[5], count[6], count[7]))
-    else:
-        for sample in args["samples"]:
-            for chro in args["chromosomes"]:
-                for count in hetSNPs[snps, chro]:
-                    if (sample[1], chro) in snps:
-                        sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[4], count[5], count[6], count[7]))
-
 
 
 def selectHetSNPs(counts, gamma, maxshift, verbose):

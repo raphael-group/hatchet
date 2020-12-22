@@ -17,12 +17,12 @@ def parse_baf_arguments(args=None):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
+    parser.add_argument("-r","--reference", required=True, type=str, help="Human-genome reference corresponding to given samples")
     parser.add_argument("-S","--samples", required=False, default=None, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
     parser.add_argument("-st","--samtools", required=False, default="", type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-bt","--bcftools", required=False, default="", type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
     parser.add_argument("-L","--snps", required=False, default=None, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
     parser.add_argument("-e","--regions", required=False, default=None, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data with coding regions (default: none, consider entire genome)")
-    parser.add_argument("-r","--reference", required=False, default=None, type=str, help="Human-genome reference corresponding to given samples, REQUIRED to run the recommended mode (default: none, running naive mode)")
     parser.add_argument("-j", "--processes", required=False, default=2, type=int, help="Number of available parallel processes (default: 2)")
     parser.add_argument("-q", "--readquality", required=False, default=0, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
     parser.add_argument("-Q", "--basequality", required=False, default=13, type=int, help="Minimum base quality for a base to be considered (default: 13)")
@@ -70,16 +70,11 @@ def parse_baf_arguments(args=None):
 
     # Check that SNP, reference, and region files exist when given in input
     if args.snps != None and not os.path.isfile(args.snps):
-        raise ValueError(sp.error("The SNP file does not exist"))
-    if args.reference != None:
-        if not os.path.isfile(args.reference):
-            raise ValueError(sp.error("The human-genome reference file does not exist"))
-        else:
-            sp.log(msg="The human-reference genome has been provided! Running in default recommended mode..\n", level="INFO")
-    else:
-        sp.log(msg="The human-reference genome has not been provided! Running in naive mode..\n", level="WARN")
+        raise ValueError(sp.error("The SNP file does not exist!"))
+    if not os.path.isfile(args.reference):
+        raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
     if args.regions != None and not os.path.isfile(args.regions):
-        raise ValueError(sp.error("The BED file of regions does not exist"))
+        raise ValueError(sp.error("The BED file of regions does not exist!"))
     elif args.regions is None:
         sp.log(msg="In case of WES data a BED file specified by --regions is REQUIRED, or the mincov parameter should be increased sufficiently to discard off-target regions\n", level="WARN")
     if args.snps != None and args.regions != None:
