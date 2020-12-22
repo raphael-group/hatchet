@@ -75,6 +75,13 @@ def log(msg, level=None, lock=None):
             with lock: sys.stderr.write("{}".format(msg))
 
 
+def logArgs(args, width):
+    text = "\n"
+    for key in args:
+        text += "\t{}: {}\n".format(key, args[key])
+    log(msg=text, level="INFO")
+
+
 def error(msg):
     return "{}{}{}".format(bcolors.FAIL, msg, bcolors.ENDC)
 

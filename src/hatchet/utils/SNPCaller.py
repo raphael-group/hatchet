@@ -18,25 +18,31 @@ import ProgressBar as pb
 
 def main(args=None):
     log(msg="# Parsing the input arguments, checking the consistency of given files, and extracting required information\n", level="STEP")
-    args = ap.parse_baf_arguments(args)
+    args = ap.parse_snp_arguments(args)
     logArgs(args, 80)
 
     log(msg="# Inferring SNPs from the normal sample\n", level="STEP")
     snps = call(bcftools=args["bcftools"], reference=args["reference"], samples=[args["normal"]], chromosomes=args["chromosomes"], 
                 num_workers=args["j"], q=args["q"], Q=args["Q"], mincov=args["mincov"], dp=args["maxcov"], 
                 E=args["E"], snplist=args["snps"], outdir=args['outputsnps'], verbose=args["verbose"])
-    
+
     log(msg="# Counting number of identified SNPs\n", level="STEP")
     def count(f):
         cmd_bcf = 'bcftools query -f \'%CHROM,%POS\n\' {}'.format(f)
-        cmf_wcl = 'wc -l'
+        cmd_wcl = 'wc -l'
         bcf = pr.Popen(shlex.split(cmd_bcf), stdout=pr.PIPE, stderr=pr.PIPE)
-        return pr.Popen(shlex.split(cmd_wcl), stdin=bcf.stdout(), stdout=pr.PIPE, stderr=pr.PIPE).communicate()[0]
+        number = pr.Popen(shlex.split(cmd_wcl), stdin=bcf.stdout, stdout=pr.PIPE, stderr=pr.PIPE).communicate()[0]
+        number = ''.join([l for l in number if l.isdigit()])
+        return int(number) if len(number) > 0 else 0
     number_snps = sum(count(f) for f in snps)
+
     if number_snps == 0:
         raise ValueError(sp.error("No SNPs found in the normal!\n"))
     else:
         log(msg="{} SNPs have been identified in total\n".format(number_snps), level="INFO")
+    
+    log(msg="# SNP Calling is concluded\n", level="STEP")
+    log(msg="## Called SNPs have been written per chromosome in:\n{}\n".format('\n'.join(snps)), level="INFO")
     
     
 def call(bcftools, reference, samples, chromosomes, num_workers, q, Q, mincov, dp, E, outdir, snplist=None, verbose=False):
@@ -71,9 +77,7 @@ def call(bcftools, reference, samples, chromosomes, num_workers, q, Q, mincov, d
     tasks.join()
 
     # Get the results
-    sorted_results = {}
-    for i in range(jobs_count):
-        res = results.get()
+    sorted_results = sorted([results.get() for i in range(jobs_count)])
 
     # Close Queues
     tasks.close()
@@ -113,9 +117,9 @@ class Caller(Process):
                 self.task_queue.task_done()
                 break
 
-            self.progress_bar.progress(advance=False, msg="{} starts SNP calling on (sample={}, chromosome={})".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(advance=False, msg="{} starts on {} for {})".format(self.name, next_task[1], next_task[2]))
             snps = self.callSNPs(bamfile=next_task[0], samplename=next_task[1], chromosome=next_task[2])
-            self.progress_bar.progress(advance=True, msg="{} ends SNP calling on (sample={}, chromosome={})".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(advance=True, msg="{} ends on {} for {})".format(self.name, next_task[1], next_task[2]))
             self.task_queue.task_done()
             self.result_queue.put(snps)
         return
@@ -129,12 +133,12 @@ class Caller(Process):
             cmd_mpileup += " -R {}".format(self.snplist)
         if self.E:
             cmd_mpileup += " -E"
-        errname = os.path.join(outdir, "{}_{}_bcftools.log".format(samplename, chromosome))
+        errname = os.path.join(self.outdir, "{}_{}_bcftools.log".format(samplename, chromosome))
         with open(errname, 'w') as err:
             mpileup = pr.Popen(shlex.split(cmd_mpileup), stdout=pr.PIPE, stderr=err)
             call = pr.Popen(shlex.split(cmd_call), stdin=mpileup.stdout, stdout=pr.PIPE, stderr=err)
-            stdout, stderr = call.communicate()
-        if mpileup.returncode != 0 or call.returncode != 0:
+            codes = map(lambda p : p.wait(), [mpileup, call])
+        if any(c != 0 for c in codes):
             raise ValueError(sp.error('SNP Calling failed on {} of {}, please check errors in {}!').format(chromosome, samplename, errname))
         else:
             os.remove(errname)

@@ -26,7 +26,7 @@ def parse_snp_arguments(args=None):
     parser.add_argument("-c", "--mincov", required=False, default=0, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
     parser.add_argument("-C", "--maxcov", required=False, default=1000, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
     parser.add_argument("-E","--newbaq", required=False, action='store_true', default=False, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
-    parser.add_argument("-o", "--outputsnps", required=False, default="snps", type=str, help="Output folder for SNPs separated by chromosome (default: ./snps)")
+    parser.add_argument("-o", "--outputsnps", required=False, default="./", type=str, help="Output folder for SNPs separated by chromosome (default: ./)")
     parser.add_argument("-v", "--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
@@ -49,8 +49,10 @@ def parse_snp_arguments(args=None):
     # Check that SNP, reference, and region files exist when given in input
     if not os.path.isfile(args.reference):
         raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
-    if args.snps != None and not os.path.isdir(args.snps):
+    if args.outputsnps != None and not os.path.isdir(args.outputsnps):
         raise ValueError(sp.error("The folder for output SNPs does not exist!"))
+    if args.snps != None and not os.path.isfile(args.snps):
+        raise ValueError(sp.error("The provided list of SNPs does not exist!"))
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, [], args.reference)

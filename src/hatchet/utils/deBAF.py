@@ -114,12 +114,5 @@ def checkShift(countA, countB, maxshift):
     return (0.5 - (float(min(countA, countB)) / float(countA + countB)) ) <= maxshift
 
 
-def logArgs(args, width):
-    text = "\n"
-    for key in args:
-        text += "\t{}: {}\n".format(key, args[key])
-    log(msg=text, level="INFO")
-
-
 if __name__ == '__main__':
     main()
