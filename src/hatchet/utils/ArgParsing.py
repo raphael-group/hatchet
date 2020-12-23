@@ -144,10 +144,10 @@ def parse_baf_arguments(args=None):
         raise ValueError(sp.error("The versions of samtools and bcftools are different! Please provide the tools with the same version to avoid inconsistent behaviors!{}"))
 
     # Check that SNP, reference, and region files exist when given in input
-    if not os.path.isdir(args.snps):
-        raise ValueError(sp.error("The directory of SNP files does not exist!"))
-    else:
-        snplists = {os.path.basename(f).split('.')[0] : f for f in glob.glob(os.path.join(args.snps, '/*'))}
+    for f in args.snps:
+        if not os.path.isfile(f):
+            raise ValueError(sp.error("The specified SNP file {} does not exist!".format(f)))
+    snplists = {os.path.basename(f).split('.')[0] : f for f in args.snps}
     if not os.path.isfile(args.reference):
         raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
     if args.regions != None and not os.path.isfile(args.regions):
@@ -161,7 +161,7 @@ def parse_baf_arguments(args=None):
     chromosomes = extractChromosomes(samtools, normal, samples, args.reference)
     for c in chromosomes:
         if c not in snplists:
-            raise ValueError(sp.error('The SNP file for analyzed chromosome {} was expected with name {}.* but not found in the provided folder!'.format(c, c)))
+            raise ValueError(sp.error('The SNP file for analyzed chromosome {} was expected with name {}.* but not found in the provided list!'.format(c, c)))
     snplists = {c : snplists[c] for c in chromosomes}
 
     if not args.processes > 0: raise ValueError(sp.error("The number of parallel processes must be greater than 0"))
