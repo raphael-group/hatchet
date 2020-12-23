@@ -93,10 +93,10 @@ def parse_baf_arguments(args=None):
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
+    parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
     parser.add_argument("-S","--samples", required=False, default=None, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
     parser.add_argument("-st","--samtools", required=False, default="", type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-bt","--bcftools", required=False, default="", type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
-    parser.add_argument("-L","--snps", required=False, default=None, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
     parser.add_argument("-e","--regions", required=False, default=None, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data with coding regions (default: none, consider entire genome)")
     parser.add_argument("-j", "--processes", required=False, default=2, type=int, help="Number of available parallel processes (default: 2)")
     parser.add_argument("-q", "--readquality", required=False, default=0, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
@@ -144,8 +144,10 @@ def parse_baf_arguments(args=None):
         raise ValueError(sp.error("The versions of samtools and bcftools are different! Please provide the tools with the same version to avoid inconsistent behaviors!{}"))
 
     # Check that SNP, reference, and region files exist when given in input
-    if args.snps != None and not os.path.isfile(args.snps):
-        raise ValueError(sp.error("The SNP file does not exist!"))
+    if not os.path.isdir(args.snps):
+        raise ValueError(sp.error("The directory of SNP files does not exist!"))
+    else:
+        snplists = {os.path.basename(f).split('.')[0] : f for f in glob.glob(os.path.join(args.snps, '/*'))}
     if not os.path.isfile(args.reference):
         raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
     if args.regions != None and not os.path.isfile(args.regions):
@@ -157,6 +159,10 @@ def parse_baf_arguments(args=None):
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples, args.reference)
+    for c in chromosomes:
+        if c not in snplists:
+            raise ValueError(sp.error('The SNP file for analyzed chromosome {} was expected with name {}.* but not found in the provided folder!'.format(c, c)))
+    snplists = {c : snplists[c] for c in chromosomes}
 
     if not args.processes > 0: raise ValueError(sp.error("The number of parallel processes must be greater than 0"))
     if not args.readquality >= 0: raise ValueError(sp.error("The read mapping quality must be positive"))
@@ -176,7 +182,7 @@ def parse_baf_arguments(args=None):
             "chromosomes" : chromosomes,
             "samtools" : samtools,
             "bcftools" : bcftools,
-            "snps" : args.snps,
+            "snps" : snplists,
             "regions" : args.regions,
             "reference" : args.reference,
             "j" : args.processes,
