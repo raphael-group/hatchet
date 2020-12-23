@@ -127,8 +127,7 @@ class Caller(Process):
     def callSNPs(self, bamfile, samplename, chromosome):
         cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}".format(self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp)
         cmd_call = "{} call -mv -Oz -o {}".format(self.bcftools, os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome)))
-        if chromosome is not None:
-            cmd_mpileup += " -r {}".format(chromosome)
+        cmd_mpileup += " -r {}".format(chromosome)
         if self.snplist is not None:
             cmd_mpileup += " -R {}".format(self.snplist)
         if self.E:
