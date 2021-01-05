@@ -111,7 +111,7 @@ def parse_baf_arguments(args=None):
     parser.add_argument("-E","--newbaq", required=False, action='store_true', default=False, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
     parser.add_argument("-O", "--outputnormal", required=False, default=None, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
     parser.add_argument("-o", "--outputtumors", required=False, default=None, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
-    parser.add_argument("-l", "--outputsnps", required=False, default="selectedSNPs.csv", type=str, help="Output filename for list of selected SNPs (default: selectedSNPs.txt)")
+    parser.add_argument("-l", "--outputsnps", required=False, default="./", type=str, help="Output directory for lists of selected SNPs (default: ./)")
     parser.add_argument("-v", "--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
@@ -154,8 +154,8 @@ def parse_baf_arguments(args=None):
         raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
     if args.regions != None and not os.path.isfile(args.regions):
         raise ValueError(sp.error("The BED file of regions does not exist!"))
-    elif args.regions is None:
-        sp.log(msg="In case of WES data a BED file specified by --regions is REQUIRED, or the mincov parameter should be increased sufficiently to discard off-target regions\n", level="WARN")
+    #elif args.regions is None:
+    #    sp.log(msg="In case of WES data a BED file specified by --regions is REQUIRED, or the mincov parameter should be increased sufficiently to discard off-target regions\n", level="WARN")
     if args.snps != None and args.regions != None:
         raise ValueError(sp.error("Both SNP list and genomic regions have been provided, please provide only one of these!"))
 
