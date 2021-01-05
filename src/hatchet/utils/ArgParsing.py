@@ -22,7 +22,7 @@ def parse_snp_arguments(args=None):
     parser.add_argument("-R","--snps", required=False, default=None, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
     parser.add_argument("-j", "--processes", required=False, default=2, type=int, help="Number of available parallel processes (default: 2)")
     parser.add_argument("-q", "--readquality", required=False, default=0, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-Q", "--basequality", required=False, default=13, type=int, help="Minimum base quality for a base to be considered (default: 13)")
+    parser.add_argument("-Q", "--basequality", required=False, default=11, type=int, help="Minimum base quality for a base to be considered (default: 11)")
     parser.add_argument("-c", "--mincov", required=False, default=0, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
     parser.add_argument("-C", "--maxcov", required=False, default=1000, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
     parser.add_argument("-E","--newbaq", required=False, action='store_true', default=False, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
@@ -51,6 +51,8 @@ def parse_snp_arguments(args=None):
         raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
     if args.outputsnps != None and not os.path.isdir(args.outputsnps):
         raise ValueError(sp.error("The folder for output SNPs does not exist!"))
+    if args.snps != None and len(args.snps) < 2:
+        args.snps = None
     if args.snps != None and not os.path.isfile(args.snps):
         raise ValueError(sp.error("The provided list of SNPs does not exist!"))
 
@@ -100,8 +102,8 @@ def parse_baf_arguments(args=None):
     parser.add_argument("-e","--regions", required=False, default=None, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data with coding regions (default: none, consider entire genome)")
     parser.add_argument("-j", "--processes", required=False, default=2, type=int, help="Number of available parallel processes (default: 2)")
     parser.add_argument("-q", "--readquality", required=False, default=0, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-Q", "--basequality", required=False, default=13, type=int, help="Minimum base quality for a base to be considered (default: 13)")
-    parser.add_argument("-U", "--snpquality", required=False, default=20, type=int, help="Minimum SNP-variant quality, QUAL, for a variant to be considered (default: 20)")
+    parser.add_argument("-Q", "--basequality", required=False, default=11, type=int, help="Minimum base quality for a base to be considered (default: 11)")
+    parser.add_argument("-U", "--snpquality", required=False, default=11, type=int, help="Minimum SNP-variant quality, QUAL, for a variant to be considered (default: 11)")
     parser.add_argument("-g", "--gamma", required=False, default=0.05, type=float, help="Level of confidence to determine heterozigosity of SNPs (default: 0.05)")
     parser.add_argument("-b", "--maxshift", required=False, default=0.5, type=float, help="Maximum allowed absolute difference of BAF from 0.5 for selected heterozygous SNPs in the normal sample (default: 0.5)")
     parser.add_argument("-c", "--mincov", required=False, default=0, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
@@ -215,7 +217,7 @@ def parse_bin_arguments(args=None):
     parser.add_argument("-r","--regions", required=False, default=None, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
     parser.add_argument("-g","--reference", required=False, default=None, type=str, help="Reference genome, note that reference must be indexed and the dictionary must exist in the same directory with the same name and .dict extension")
     parser.add_argument("-j", "--processes", required=False, default=2, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-q", "--readquality", required=False, default=0, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-q", "--readquality", required=False, default=11, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
     parser.add_argument("-O", "--outputnormal", required=False, default=None, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
     parser.add_argument("-o", "--outputtumors", required=False, default=None, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
     parser.add_argument("-t", "--outputtotal", required=False, default="total_read.counts", type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")

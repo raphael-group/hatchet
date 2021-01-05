@@ -28,7 +28,7 @@ def parsing_arguments(args=None):
     parser.add_argument("-eT","--tetraploidcmax", type=int, required=False, default=12, help="Maximum copy-number value overall segments (default: 12, 0 means inferred from scaled fractional copy numbers)")
     parser.add_argument("-ts","--minsize", type=float, required=False, default=0.008, help="The minimum proportion of covered genome for potential clonal clusters (default: 0.008)")
     parser.add_argument("-tc","--minchrs", type=int, required=False, default=1, help="The minimum number of covered chromosomes for potential clonal clusters (default: 1)")
-    parser.add_argument("-td","--maxneutralshift", type=float, required=False, default=0.1, help="Maximum BAF shift for neutral cluster used to automatically infer the diploid/tetraploid cluster (default: 0.1)")
+    parser.add_argument("-td","--maxneutralshift", type=float, required=False, default=0.01, help="Maximum BAF shift for neutral cluster used to automatically infer the diploid/tetraploid cluster (default: 0.1)")
     parser.add_argument("--merge", action='store_true', default=False, required=False, help="Merge the clusters (default: false)")
     parser.add_argument("-mR","--mergeRDR", type=float, required=False, default=0.08, help="RDR tolerance used for finding the clonal copy numbers (default: 0.08)")
     parser.add_argument("-mB","--mergeBAF", type=float, required=False, default=0.04, help="BAF tolerance used for finding the clonal copy numbers (default: 0.04)")
@@ -456,7 +456,7 @@ def findClonalClusters(fseg, neutral, size, tB, tR, samples, v):
                 break
 
     clusters = sorted([idx for idx in fseg if idx != neutral and idx in location], key=(lambda i : size[i]), reverse=True)
-    allclonal = [(2, 0), (2, 1), (3, 2), (4, 2), (1, 0), (3, 0), (3, 1), (4, 0)]
+    allclonal = [(2, 0), (2, 1), (3, 2), (4, 2), (1, 0), (3, 0), (3, 1), (4, 0), (4, 1), (5, 0)]
     found_pattern = []
     best_pattern = {}
     best_scale = ()
