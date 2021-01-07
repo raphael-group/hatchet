@@ -53,7 +53,7 @@ def parse_snp_arguments(args=None):
         raise ValueError(sp.error("The folder for output SNPs does not exist!"))
     if args.snps != None and len(args.snps) < 2:
         args.snps = None
-    if args.snps != None and not os.path.isfile(args.snps):
+    if args.snps != None and not (os.path.isfile(args.snps) or sp.urlexists(args.snps)):
         raise ValueError(sp.error("The provided list of SNPs does not exist!"))
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference

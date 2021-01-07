@@ -17,6 +17,7 @@ MAXREADS=300 #Use 300 for WGS with >30x and Use 1000 for WES with ~100x
 LIST=""
 #We reccommend to provide a list of known SNPs, please uncomment the appropriate one below according to the provided reference genome
 #If a list is not provided, all genomic positions will be genotyped by BCFtools and will be considered for selection of heterozygous SNPs
+#To improve running time or in case of slow download speeed, please do not provide a list.
 #Uncomment the following for reference genome hg19 with `chr` notation
 #LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"
 #Uncomment the following for reference genome hg19 without `chr` notation
@@ -60,11 +61,11 @@ mkdir -p ${EVA}
 
 cd ${XDIR}
 
-python2 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -O ${RDR}normal.rdr -o ${BIN}tumor.rdr -v &> ${BIN}bins.log
+python2 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -O ${RDR}normal.rdr -o ${RDR}tumor.rdr |& tee ${RDR}bins.log
 
-python2 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -R ${LIST} -o ${SNP} -v &> ${BAF}bafs.log
+python2 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
 
-python2 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP} -O ${BAF}normal.baf -o ${BAF}tumor.baf -v &> ${BAF}bafs.log
+python2 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP} -O ${BAF}normal.baf -o ${BAF}tumor.baf |& tee ${BAF}bafs.log
 
 python2 -m hatchet comBBo -c ${RDR}normal.rdr -C ${RDR}tumor.rdr -B ${BAF}tumor.baf -e ${RANDOM} > ${BB}bulk.bb
 

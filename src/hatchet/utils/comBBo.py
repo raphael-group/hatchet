@@ -98,6 +98,29 @@ def combine(normalbins, tumorbins, tumorbafs, normalbafs, diploidbaf, totalcount
     return res
 
 
+def computeBAFs(partition, samples, normal, diploidbaf, phase=None, blocklength=0):
+    if phase is None:
+        tpartition = partition
+    else:
+        
+
+    alphas = {sample : sum(int(min(x[2], x[3])) for x in tpartition[sample]) for sample in samples}
+    betas = {sample : sum(int(max(x[2], x[3])) for x in tpartition[sample]) for sample in samples}
+    mirrorbaf = {sample : (float(alphas[sample]) / float(alphas[sample]+betas[sample])) if (alphas[sample]+betas[sample])>0 else 0.5 for sample in samples}
+
+    if normal != None:
+        normalalpha = sum(int(min(x[0], x[1])) for x in normal)
+        normalbeta = sum(int(max(x[0], x[1])) for x in normal)
+        normalbaf = float(normalalpha) / float(normalalpha + normalbeta)
+        normalize = (lambda m, n, d : min(0.5, float(float(m) / float(n)) * 0.5 ) if n > 0 and (0.5 - m) <= d else m)
+        mirrorbaf = {sample : normalize(mirrorbaf[sample], normalbaf, diploidbaf) for sample in samples}
+        ab = {sample : splitBAF(mirrorbaf[sample], alphas[sample]+betas[sample]) for sample in samples}
+        alphas = {sample : ab[sample][0] for sample in samples}
+        betas = {sample : ab[sample][1] for sample in samples}
+        
+    return [(sample, alphas[sample], betas[sample], mirrorbaf[sample]) for sample in samples]
+
+
 def computeBAFs(mode, partition, normal, diploidbaf, samples, chro, draws, bafsd, gamma):
     if mode == "MOMENTS":
         return moments(partition, samples, normal, diploidbaf, chro, draws, bafsd)
@@ -185,14 +208,6 @@ def bootstrap(partition, samples, draws, bafsd):
     avg_cov = {sample : float(sum(x[2]+x[3] for x in partition[sample])) / float(len(partition[sample])) for sample in samples}
     for sample in samples:
         for snp in partition[sample]:
-            # OPTION 2
-            # bafs = [snp[4] for i in range(draws)]
-            # covs = map(float, list(poisson(lam=avg_cov[snp[0]], size=draws)))
-            # covs = [c if c > 0.0 else float(avg_cov[snp[0]]) for c in covs]
-            # mid = int(len(covs)/2)
-            # alleles = [binomial(n=cov, p=baf) for cov, baf in zip(covs[:mid], bafs[:mid])]
-            # alleles += [binomial(n=cov, p=(1.0 - baf)) for cov, baf in zip(covs[mid:], bafs[mid:])]
-            # boot[sample].extend([(snp[0], snp[1], int(alleles[i]), int(covs[i]-alleles[i]), float(min(alleles[i], covs[i]-alleles[i])) / float(covs[i]) ) for i in range(draws)])
             covs = map(float, list(poisson(lam=avg_cov[snp[0]], size=draws)))
             covs = [c if c > 0.0 else float(avg_cov[snp[0]]) for c in covs]
             ebafs = sorted([gauss(snp[4], bafsd) for cov in covs])
@@ -211,14 +226,6 @@ def normalbootstrap(points, draws, bafsd):
     poisson = np.random.poisson
     avg_cov = float(sum(int(x[0]) + int(x[1]) for x in points)) / float(len(points))
     for snp in points:
-        # OPTION 2:
-        # bafs = [snp[2] for i in range(draws)]
-        # covs = map(float, list(poisson(lam=avg_cov, size=draws)))
-        # covs = [c if c > 0.0 else float(avg_cov) for c in covs]
-        # mid = int(len(covs)/2)
-        # alleles = [binomial(n=cov, p=baf) for cov, baf in zip(covs[:mid], bafs[:mid])]
-        # alleles += [binomial(n=cov, p=(1.0 - baf)) for cov, baf in zip(covs[mid:], bafs[mid:])]
-        # boot.extend([(int(alleles[i]), int(covs[i]-alleles[i]), float(min(alleles[i], covs[i]-alleles[i])) / float(covs[i]) ) for i in range(draws)])
         covs = map(float, list(poisson(lam=avg_cov, size=draws)))
         covs = [c if c > 0.0 else float(avg_cov) for c in covs]
         ebafs = [gauss(snp[2], bafsd) for cov in covs]
@@ -343,16 +350,6 @@ def readBAFs(tumor, normal=None):
             baf = float(min(ref, alt)) / float(ref+alt) if ref+alt > 0 else 0.5
             if normal != None and (parsed[1], pos) not in normalBAFs:
                 raise ValueError("The SNP at position {} in chromosome {} is covered in a tumor sample but not in the normal!".format(pos, parsed[1]))
-            # if normal is not None:
-            #     try:
-            #         scale = ref + alt
-            #         normalbaf = normalBAFs[parsed[1], pos][2]
-            #         baf = float(baf) / float(normalbaf) * float(0.5) if normalbaf > 0 else 0.5
-            #         #baf = min(baf, 1.0 - baf)
-            #         baf = min(baf, 0.5)
-            #         alt, ref = splitBAF(baf, scale)
-            #     except KeyError:
-            #         raise ValueError("The SNP at position {} in chromosome {} is covered in a tumor sample but not in the normal!".format(pos, parsed[1]))
             try:
                 tumorBAFs[parsed[1]].append((parsed[0], pos, ref, alt, baf))
             except KeyError:

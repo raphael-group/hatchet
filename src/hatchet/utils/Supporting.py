@@ -1,5 +1,6 @@
 import sys
 import datetime
+import requests
 
 
 def naturalOrder(text):
@@ -39,6 +40,11 @@ def which(program):
                 return exe_file
 
     return None
+
+
+def urlexists(path):
+    r = requests.head(path)
+    return r.status_code == requests.codes.ok
 
 
 def log(msg, level=None, lock=None):
