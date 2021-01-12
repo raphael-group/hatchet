@@ -306,14 +306,11 @@ def parse_combbo_args(args=None):
     parser.add_argument("-c","--normalbins", required=True, type=str, help='Normal bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-C","--tumorbins", required=True, type=str, help='Tumor bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-B","--tumorbafs", required=True, type=str, help='Tumor allele counts in the format "SAMPLE\tCHR\tPOS\tREF-COUNT\tALT-COUNT"')
-    parser.add_argument("-b","--normalbafs", required=False, default=None, type=str, help='Normal allele counts in the format "SAMPLE\tCHR\tPOS\tREF-COUNT\tALT-COUNT"')
+    parser.add_argument("-p","--phase", required=False, default=None, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')
     parser.add_argument("-d","--diploidbaf", type=float, required=False, default=0.1, help="Maximum diploid-BAF shift used to select the bins whose BAF should be normalized by the normal when normalbafs is given (default: 0.1)")
     parser.add_argument("-t","--totalcounts", required=False, default=None, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample (default: none)')
-    parser.add_argument("-m","--mode", required=False, type=str, default="MIRROR", help='Mode name of the method to use for combining different SNPs covering the same bin (default: MIRROR):\n\n{}MIRROR{}: for each SNP the B allele corresponds to the allele in lower proportion.\n\n{}BINOMIAL_TEST{}: In addition to the MIRROR method each bin is tested to be copy neutral by asking if 0.5 is in the confidence interval of the corresponding BETA distribution, in that case bin has BAF equal to 0.\n\n{}MOMENTS{}: The method of moments is applied where the BAF of each SNP is computed by considering the allele in lower proportion as B and the mean across the SNPs is computed. \n\n'.format(sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC))
     parser.add_argument("-g","--gamma",type=float,required=False, default=0.05, help='Confidence level used to determine if a bin is copy neutral with BAF of 0.5 in the BINOMIAL_TEST mode (default: 0.05)')
     parser.add_argument("-e","--seed", type=int, required=False, default=0, help='Random seed used for the normal distributions used in the clouds (default: 0)')
-    parser.add_argument("-s","--bootstrap", type=int, required=False, default=100, help='Number of draws for bootstrapping each SNP. Bootstrap significantly helps to estimate the BAF of each bin by combining the corresponding SNPs when SAMPLE or AVERAGE modes are used. (default: 100)')
-    parser.add_argument("-dB","--bafdeviation", type=float, required=False, default=0.02, help='Standard deviation of the BAFs used to generate the points in the clouds (default: 0.002)')
     parser.add_argument("-v", "--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
     parser.add_argument("-r", "--disablebar", action='store_true', default=False, required=False, help="Disable progress bar")
     args = parser.parse_args(args)
@@ -324,32 +321,25 @@ def parse_combbo_args(args=None):
         raise ValueError(sp.error("The specified file for tumor bin counts does not exist!"))
     if not os.path.isfile(args.normalbins):
         raise ValueError(sp.error("The specified file for normal bin counts does not exist!"))
-    if args.normalbafs is not None and not os.path.isfile(args.normalbafs):
-        raise ValueError(sp.error("The specified file for normal baf does not exist!"))
+    if args.phase is not None and not os.path.isfile(args.phase):
+        raise ValueError(sp.error("The specified file for phase does not exist!"))
     if not 0.0 <= args.diploidbaf <= 0.5:
         raise ValueError(sp.error("The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]"))
     if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
         raise ValueError(sp.error("The specified file for total read counts does not exist!"))
-    if args.mode not in ["BINOMIAL_TEST", "MOMENTS", "MIRROR"]:
-        raise ValueError(sp.error("The specified mode does not exist!"))
     if not 0.0 <= args.gamma <= 0.1:
         raise ValueError(sp.error("The specified gamma must be a value in [0.0, 0.1]"))
     if args.seed < 0:
         raise ValueError(sp.error("Seed parameter must be positive!"))
-    if args.bootstrap < 0:
-        raise ValueError(sp.error("Bootstrap parameter must be positive!"))
 
     return {"normalbins" : args.normalbins,
             "tumorbins" : args.tumorbins,
             "tumorbafs" : args.tumorbafs,
-            "normalbafs" : args.normalbafs,
+            "phase" : args.phase,
             "diploidbaf" : args.diploidbaf,
             "totalcounts" : args.totalcounts,
-            "mode" : args.mode,
             "gamma" : args.gamma,
             "seed" : args.seed,
-            "bootstrap" : args.bootstrap,
-            "bafsd" : args.bafdeviation,
             "verbose" : args.verbose,
             "disable" : args.disablebar}
 

@@ -125,14 +125,29 @@ class Caller(Process):
         return
 
     def callSNPs(self, bamfile, samplename, chromosome):
+        errname = os.path.join(self.outdir, "{}_{}_bcftools.log".format(samplename, chromosome))
+        if self.snplist is not None:
+            cmd_tgt = "{} query -f '%CHROM\t%POS\n' -r {} {}".format(self.bcftools, chromosome, self.snplist)
+            cmd_gzip = "gzip -9 -"
+            tgtfile = os.path.join(self.outdir, "target_{}.pos.gz".format(chromosome))
+            with open(tgtfile, 'w') as tout, open(errname, 'w') as err:
+                tgt = pr.Popen(shlex.split(cmd_tgt), stdout=pr.PIPE, stderr=err)
+                gzip = pr.Popen(shlex.split(cmd_gzip), stdin=tgt.stdout, stdout=tout, stderr=err)
+                codes = map(lambda p : p.wait(), [tgt, gzip])
+            if any(c != 0 for c in codes):
+                raise ValueError(sp.error('SNP Calling failed on {} of {}, please check errors in {}!').format(chromosome, samplename, errname))
+            else:
+                os.remove(errname)
+
         cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}".format(self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp)
         cmd_call = "{} call -mv -Oz -o {}".format(self.bcftools, os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome)))
-        cmd_mpileup += " -r {}".format(chromosome)
         if self.snplist is not None:
-            cmd_mpileup += " -R {}".format(self.snplist)
+            assert os.path.isfile(tgtfile)
+            cmd_mpileup += " -T {}".format(tgtfile)
+        else:
+            cmd_mpileup += " -r {}".format(chromosome)
         if self.E:
             cmd_mpileup += " -E"
-        errname = os.path.join(self.outdir, "{}_{}_bcftools.log".format(samplename, chromosome))
         with open(errname, 'w') as err:
             mpileup = pr.Popen(shlex.split(cmd_mpileup), stdout=pr.PIPE, stderr=err)
             call = pr.Popen(shlex.split(cmd_call), stdin=mpileup.stdout, stdout=pr.PIPE, stderr=err)
@@ -141,6 +156,8 @@ class Caller(Process):
             raise ValueError(sp.error('SNP Calling failed on {} of {}, please check errors in {}!').format(chromosome, samplename, errname))
         else:
             os.remove(errname)
+            if self.snplist is not None:
+                os.remove(tgtfile)
         return os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
 
 

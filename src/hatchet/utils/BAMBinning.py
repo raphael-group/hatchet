@@ -79,9 +79,9 @@ class Binner(Process):
                 self.task_queue.task_done()
                 break
 
-            self.progress_bar.progress(advance=False, msg="{} starts binning on (sample={}, chromosome={})".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(advance=False, msg="{} starts on {} for {})".format(self.name, next_task[1], next_task[2]))
             bins = self.binChr(bamfile=next_task[0], samplename=next_task[1], chromosome=next_task[2])
-            self.progress_bar.progress(advance=True, msg="{} ends binning on (sample={}, chromosome={})".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(advance=True, msg="{} ends on {} for {})".format(self.name, next_task[1], next_task[2]))
             self.task_queue.task_done()
             self.result_queue.put(bins)
         return

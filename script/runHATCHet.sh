@@ -40,53 +40,54 @@ PS4='\''[\t]'\'
 ALLNAMES="Normal ${NAMES}"
 export PATH=$PATH:${SAM}
 export PATH=$PATH:${BCF}
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
 #source /path/to/virtualenv-python2.7/bin/activate
 
-RDR=${XDIR}rdr/
-mkdir -p ${RDR}
-SNP=${XDIR}snps/
-mkdir -p ${SNP}
-BAF=${XDIR}baf/
-mkdir -p ${BAF}
-BB=${XDIR}bb/
-mkdir -p ${BB}
-BBC=${XDIR}bbc/
-mkdir -p ${BBC}
-ANA=${XDIR}analysis/
-mkdir -p ${ANA}
-RES=${XDIR}results/
-mkdir -p ${RES}
-EVA=${XDIR}evaluation/
-mkdir -p ${EVA}
-
 cd ${XDIR}
+RDR="rdr/"
+mkdir -p ${RDR}
+SNP="snps/"
+mkdir -p ${SNP}
+BAF="baf/"
+mkdir -p ${BAF}
+BB="bb/"
+mkdir -p ${BB}
+BBC="bbc/"
+mkdir -p ${BBC}
+PLO="plots/"
+mkdir -p ${PLO}
+RES="results/"
+mkdir -p ${RES}
+SUM="summary/"
+mkdir -p ${SUM}
 
 python2 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -O ${RDR}normal.rdr -o ${RDR}tumor.rdr |& tee ${RDR}bins.log
 
 python2 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
 
-python2 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP} -O ${BAF}normal.baf -o ${BAF}tumor.baf |& tee ${BAF}bafs.log
+python2 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP}*.vcf.gz -O ${BAF}normal.baf -o ${BAF}tumor.baf |& tee ${BAF}bafs.log
 
 python2 -m hatchet comBBo -c ${RDR}normal.rdr -C ${RDR}tumor.rdr -B ${BAF}tumor.baf -e ${RANDOM} > ${BB}bulk.bb
 
 python2 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -e ${RANDOM} -tB 0.04 -tR 0.15 -d 0.08
 
-cd ${ANA}
-python2 -m hatchet BBot -c RD --figsize 6,3 ${BBC}bulk.bbc &
-python2 -m hatchet BBot -c CRD --figsize 6,3 ${BBC}bulk.bbc &
-python2 -m hatchet BBot -c BAF --figsize 6,3 ${BBC}bulk.bbc &
-python2 -m hatchet BBot -c BB ${BBC}bulk.bbc &
-python2 -m hatchet BBot -c CBB ${BBC}bulk.bbc -tS 0.01 &
+cd ${PLO}
+python2 -m hatchet BBot -c RD --figsize 6,3 ../${BBC}bulk.bbc &
+python2 -m hatchet BBot -c CRD --figsize 6,3 ../${BBC}bulk.bbc &
+python2 -m hatchet BBot -c BAF --figsize 6,3 ../${BBC}bulk.bbc &
+python2 -m hatchet BBot -c BB ../${BBC}bulk.bbc &
+python2 -m hatchet BBot -c CBB ../${BBC}bulk.bbc -tS 0.01 &
 wait
 
-cd ${RES}
-python2 -m hatchet solve -i ${BBC}bulk -n2,8 -p 400 -u 0.03 -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 &> >(tee >(grep -v Progress > hatchet.log))
+cd ../${RES}
+python2 -m hatchet solve -i ../${BBC}bulk -n2,8 -p 400 -u 0.03 -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 &> >(tee >(grep -v Progress > hatchet.log))
 
 ## Increase -l to 0.6 to decrease the sensitivity in high-variance or noisy samples, and decrease it to -l 0.3 in low-variance samples to increase the sensitivity and explore multiple solutions with more clones.
 ## Increase -u if solutions have clone proportions equal to the minimum threshold -u
 ## Decrease the number of restarts to 200 or 100 for fast runs, as well as user can decrease the number of clones to -n 2,6 when appropriate or when previous runs suggest fewer clones.
 ## Increase the single-clone confidence to `-c 0.6` to increase the confidence in the presence of a single tumor clone and further increase this value when interested in a single clone.
 
-cd ${EVA}
-python -m hatchet BBeval ${RES}/best.bbc.ucn
+cd ../${EVA}
+python -m hatchet BBeval ../${RES}/best.bbc.ucn
 

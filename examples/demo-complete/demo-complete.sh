@@ -92,26 +92,34 @@ echo 'NORMAL="data/normal.bam"' >> runHATCHet.sh
 4. We specify the list of paths to the tumor BAM files and corresponding names
 ```shell
 echo 'BAMS="data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam"' >> runHATCHet.sh
-echo 'NAMES="TumorSample1 TumorSample2 TumorSample3"'
+echo 'NAMES="TumorSample1 TumorSample2 TumorSample3"' >> runHATCHet.sh
 :<<'```shell' # Ignore this line
 ```
 
-5. We specify the appropriate list of known SNPs (the first in the provided list)
+5. We keep the default number of reads and number of parallel processes
+```shell
+echo 'J=$(python -c "import multiprocessing as mp; print mp.cpu_count()")' >> runHATCHet.sh
+echo "MINREADS=8" >> runHATCHet.sh
+echo "MAXREADS=300" >> runHATCHet.sh
+:<<'```shell' # Ignore this line
+```
+
+6. We specify the appropriate list of known SNPs (the first in the provided list)
 ```shell
 echo 'LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"' >> runHATCHet.sh
 :<<'```shell' # Ignore this line
 ```
 
-6. We add all the remaining part of the template of HATCHet's script
+7. We add all the remaining part of the template of HATCHet's script
 ```shell
-head -n 50 ../../script/runHATCHet.sh >> runHATCHet.sh
+tail -n 60 ../../script/runHATCHet.sh >> runHATCHet.sh
 :<<'```shell' # Ignore this line
 ```
 
 ## Running HATCHet
 
 ```shell
-bash runHATCHet.sh
+bash runHATCHet.sh |& tee hatchet.log
 exit $?
 ```
 
