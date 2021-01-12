@@ -1,7 +1,7 @@
 # cluBB
 
 This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample.
-cluBB uses BNPY for clustering; the path of BNPY needs to be specified and main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see Main parameters below).
+cluBB uses BNPY for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see Main parameters below).
 
 ## Input
 
@@ -45,7 +45,7 @@ cluBB produces two tab-separated files:
 
 ## Main parameters
 
-cluBB requires to specify the path to the home directory of BNPY through `-by`, `--bnpy`. In addition, cluBB has 4 main features with some main parameters that allow  to improve the clustering.
+cluBB has 4 main features with some main parameters that allow  to improve the clustering.
 
 1. cluBB has a parameter `-d`, `--diploidbaf` that specifies the maximum expected shift from 0.5 for BAF for a diploid or tetraploid cluster (i.e. with copy-number states (1, 1) or (2, 2)). This threshold is used for two goals: (1) To identify the diploid or tetraploid cluster which is used to correct the estimated BAF of potentially biased clusters. (2) To identify potentially biased clusters.
 The default value of this parameter (0.08) is typically sufficient for most of the datasets, but its value can be changed or tuned to accommodate the features of special datasets.
