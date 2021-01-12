@@ -6,6 +6,8 @@ from io import BytesIO as StringIO
 from mock import patch
 import hashlib
 import shutil
+import pandas as pd
+from pandas.util.testing import assert_frame_equal
 
 import hatchet
 from hatchet import config
@@ -26,7 +28,7 @@ def bams():
     normal_bam = os.path.join(bam_directory, 'normal.bam')
     if not os.path.exists(normal_bam):
         pytest.skip('File not found: {}/{}'.format(bam_directory, normal_bam))
-    tumor_bams = [f for f in glob.glob(bam_directory + '/*.bam') if os.path.basename(f) != 'normal.bam']
+    tumor_bams = sorted([f for f in glob.glob(bam_directory + '/*.bam') if os.path.basename(f) != 'normal.bam'])
     if not tumor_bams:
         pytest.skip('No tumor bams found in {}'.format(bam_directory))
 
@@ -115,8 +117,9 @@ def test_script(_, bams, output_folder):
         '-d', '0.4'
     ])
 
-    assert hashlib.md5(open(os.path.join(output_folder, 'bbc/bulk.seg'), 'rb').read()).hexdigest() == \
-           'df4245b616422ce0dc36d6ee3ac0ce88'
+    df1 = pd.read_csv(os.path.join(output_folder, 'bbc/bulk.seg'), sep='\t')
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'bulk.seg'), sep='\t')
+    assert_frame_equal(df1, df2)
 
     if os.getenv('GRB_LICENSE_FILE') is not None:
         main(args=[
@@ -135,5 +138,6 @@ def test_script(_, bams, output_folder):
             '-l', '0.6'
         ])
 
-        assert hashlib.md5(open(os.path.join(output_folder, 'results/best.bbc.ucn')).read()).hexdigest() == \
-               'c85f8436fea10c1577d48b0a277d25ff'
+        df1 = pd.read_csv(os.path.join(output_folder, 'results/best.bbc.ucn'), sep='\t')
+        df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
+        assert_frame_equal(df1, df2)
