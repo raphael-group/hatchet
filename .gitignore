@@ -1,6 +1,7 @@
 # Temp
 *~
 *.ucn*
+!tests/data/best.bbc.ucn
 
 # Build directory
 build/
