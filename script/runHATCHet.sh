@@ -31,8 +31,9 @@ LIST=""
 
 
 ##################################################################
-# For default run please run the following without changes       #
+# For default run please execute the following without changes   #
 # Otherwise please follow the related HATCHet's reccommendations #
+# To run HATCHet with phasing of SNPs please see below           #
 ##################################################################
 set -e
 set -o xtrace
@@ -62,32 +63,47 @@ mkdir -p ${RES}
 SUM="summary/"
 mkdir -p ${SUM}
 
-python2 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -O ${RDR}normal.rdr -o ${RDR}tumor.rdr |& tee ${RDR}bins.log
+python2 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -O ${RDR}normal.rdr -o ${RDR}tumor.rdr -t ${RDR}total.tsv |& tee ${RDR}bins.log
 
 python2 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
 
 python2 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP}*.vcf.gz -O ${BAF}normal.baf -o ${BAF}tumor.baf |& tee ${BAF}bafs.log
 
-python2 -m hatchet comBBo -c ${RDR}normal.rdr -C ${RDR}tumor.rdr -B ${BAF}tumor.baf -e ${RANDOM} > ${BB}bulk.bb
+################################################################################################################################
+# To run HATCHet with phasing please do the following:                                                                         #
+# 1. Use a phasing algorithm with the SNP VCF files generated in ${SNP}*.vcf.gz (snps folder by default)                       #
+# 2. Combine the phased SNPs for all chromosomes in a unique phased file with `CHROM  POS  PHASE` where:                       #
+#      - CHROM is the chromosome of the SNP;                                                                                   #
+#      - POS is the genomic position of the SNP;                                                                               #
+#      - PHASE is any string that contains 0|1 and 1|0 (lines without those will be excluded as well as those starting with #) #
+# 3. Provide the path to the phased file in the variable PHASE here below                                                      #
+# 4. Choose haplotype block size BLOCK, 50kb is used by default
+# Note: a phased VCF file (with phased genotypes 0|1 and 1|0) works and `bcftools concat` can be used to combine chromosomes   #                                         #
+# If using reference-phasing algorithm please make sure the ouput VCF are w.r.t. same reference genome, otherwise please       #
+# use LiftOver to convert it or bcftools --annotate to add or remove `chr` notation                                            #
+################################################################################################################################
+PHASE="None"
+BLOCK="50kb"
+
+python2 -m hatchet comBBo -c ${RDR}normal.rdr -C ${RDR}tumor.rdr -B ${BAF}tumor.baf -t ${RDR}total.tsv -p ${PHASE} -l ${BLOCK} -e ${RANDOM} > ${BB}bulk.bb
 
 python2 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -e ${RANDOM} -tB 0.04 -tR 0.15 -d 0.08
 
 cd ${PLO}
-python2 -m hatchet BBot -c RD --figsize 6,3 ../${BBC}bulk.bbc &
-python2 -m hatchet BBot -c CRD --figsize 6,3 ../${BBC}bulk.bbc &
-python2 -m hatchet BBot -c BAF --figsize 6,3 ../${BBC}bulk.bbc &
-python2 -m hatchet BBot -c BB ../${BBC}bulk.bbc &
-python2 -m hatchet BBot -c CBB ../${BBC}bulk.bbc -tS 0.01 &
-wait
+python2 -m hatchet BBot -c RD --figsize 6,3 ../${BBC}bulk.bbc
+python2 -m hatchet BBot -c CRD --figsize 6,3 ../${BBC}bulk.bbc
+python2 -m hatchet BBot -c BAF --figsize 6,3 ../${BBC}bulk.bbc
+python2 -m hatchet BBot -c BB ../${BBC}bulk.bbc
+python2 -m hatchet BBot -c CBB ../${BBC}bulk.bbc -tS 0.01
 
 cd ../${RES}
-python2 -m hatchet solve -i ../${BBC}bulk -n2,8 -p 400 -u 0.03 -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 &> >(tee >(grep -v Progress > hatchet.log))
+python2 -m hatchet solve -i ../${BBC}bulk -n2,6 -p 400 -u 0.03 -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 &> >(tee >(grep -v Progress > hatchet.log))
 
 ## Increase -l to 0.6 to decrease the sensitivity in high-variance or noisy samples, and decrease it to -l 0.3 in low-variance samples to increase the sensitivity and explore multiple solutions with more clones.
 ## Increase -u if solutions have clone proportions equal to the minimum threshold -u
-## Decrease the number of restarts to 200 or 100 for fast runs, as well as user can decrease the number of clones to -n 2,6 when appropriate or when previous runs suggest fewer clones.
+## Decrease the number of restarts to 200 or 100 for fast runs, as well as user can increase the number of clones to -n 2,8 when appropriate or when previous runs suggest fewer clones (i.e. OBJ function keeps decreasing).
 ## Increase the single-clone confidence to `-c 0.6` to increase the confidence in the presence of a single tumor clone and further increase this value when interested in a single clone.
 
-cd ../${EVA}
+cd ../${SUM}
 python -m hatchet BBeval ../${RES}/best.bbc.ucn
 

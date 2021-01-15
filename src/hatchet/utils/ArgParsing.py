@@ -220,7 +220,7 @@ def parse_bin_arguments(args=None):
     parser.add_argument("-q", "--readquality", required=False, default=11, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
     parser.add_argument("-O", "--outputnormal", required=False, default=None, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
     parser.add_argument("-o", "--outputtumors", required=False, default=None, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
-    parser.add_argument("-t", "--outputtotal", required=False, default="total_read.counts", type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
+    parser.add_argument("-t", "--outputtotal", required=False, default="total.tsv", type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
     parser.add_argument("-v", "--verbose", action='store_true', default=False, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
@@ -307,6 +307,7 @@ def parse_combbo_args(args=None):
     parser.add_argument("-C","--tumorbins", required=True, type=str, help='Tumor bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-B","--tumorbafs", required=True, type=str, help='Tumor allele counts in the format "SAMPLE\tCHR\tPOS\tREF-COUNT\tALT-COUNT"')
     parser.add_argument("-p","--phase", required=False, default=None, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')
+    parser.add_argument("-l","--blocklength", required=False, default='0', type=str, help="Size of the haplotype blocks, specified as a full number or using the notations either \"kb\" or \"Mb\" (default: 50kb)")
     parser.add_argument("-d","--diploidbaf", type=float, required=False, default=0.1, help="Maximum diploid-BAF shift used to select the bins whose BAF should be normalized by the normal when normalbafs is given (default: 0.1)")
     parser.add_argument("-t","--totalcounts", required=False, default=None, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample (default: none)')
     parser.add_argument("-g","--gamma",type=float,required=False, default=0.05, help='Confidence level used to determine if a bin is copy neutral with BAF of 0.5 in the BINOMIAL_TEST mode (default: 0.05)')
@@ -321,6 +322,8 @@ def parse_combbo_args(args=None):
         raise ValueError(sp.error("The specified file for tumor bin counts does not exist!"))
     if not os.path.isfile(args.normalbins):
         raise ValueError(sp.error("The specified file for normal bin counts does not exist!"))
+    if args.phase == 'None':
+        args.phase = None
     if args.phase is not None and not os.path.isfile(args.phase):
         raise ValueError(sp.error("The specified file for phase does not exist!"))
     if not 0.0 <= args.diploidbaf <= 0.5:
@@ -332,10 +335,22 @@ def parse_combbo_args(args=None):
     if args.seed < 0:
         raise ValueError(sp.error("Seed parameter must be positive!"))
 
+    size = 0
+    try:
+        if args.blocklength[-2:] == "kb":
+            size = int(args.blocklength[:-2]) * 1000
+        elif args.size[-2:] == "Mb":
+            size = int(args.blocklength[:-2]) * 1000000
+        else:
+            size = int(args.blocklength)
+    except:
+        raise ValueError(sp.error("Size must be a number, optionally ending with either \"kb\" or \"Mb\"!"))
+
     return {"normalbins" : args.normalbins,
             "tumorbins" : args.tumorbins,
             "tumorbafs" : args.tumorbafs,
             "phase" : args.phase,
+            "block" : size,
             "diploidbaf" : args.diploidbaf,
             "totalcounts" : args.totalcounts,
             "gamma" : args.gamma,

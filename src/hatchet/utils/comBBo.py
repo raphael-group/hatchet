@@ -18,6 +18,7 @@ from collections import deque
 def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
     args = parse_combbo_args(args)
+    sp.logArgs(args, 80)
     np.random.seed(seed=args["seed"])
     sp.log(msg="# Reading and checking the bin count files for computing read-depth ratios\n", level="STEP")
     normalbins, tumorbins, chromosomes, normal, samples1 = readBINs(normalbins=args["normalbins"], tumorbins=args["tumorbins"])
@@ -38,8 +39,8 @@ def main(args=None):
 
     sp.log(msg="# Combine the bin and allele counts to obtain BAF and RD for each bin\n", level="STEP")
     result = combine(normalbins=normalbins, tumorbins=tumorbins, tumorbafs=tumorbafs, diploidbaf=args["diploidbaf"], 
-                     totalcounts=totalcounts, chromosomes=chromosomes, samples=samples, normal=normal, 
-                     gamma=args["gamma"], verbose=args["verbose"], disable=args["disable"], phase=phase)
+                     totalcounts=totalcounts, chromosomes=chromosomes, samples=samples, normal=normal, gamma=args["gamma"], 
+                     verbose=args["verbose"], disable=args["disable"], phase=phase, block=args["block"])
 
     names = list(samples).sort()
     sys.stdout.write("#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n")
@@ -48,7 +49,7 @@ def main(args=None):
             sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key[0], key[1], key[2], sample[0], sample[1], sample[2], sample[3], sample[4], sample[5], sample[6]))
 
 
-def combine(normalbins, tumorbins, tumorbafs, diploidbaf, totalcounts, chromosomes, samples, normal, gamma, verbose=False, disable=False, phase=None):
+def combine(normalbins, tumorbins, tumorbafs, diploidbaf, totalcounts, chromosomes, samples, normal, gamma, verbose=False, disable=False, phase=None, block=None):
     res = {}
     ctumorbafs = {c : sorted(tumorbafs[c], key=(lambda x : x[1])) for c in tumorbafs}
     if not disable: progress_bar = pb.ProgressBar(total=len(tumorbins), length=40, verbose=verbose)
@@ -91,7 +92,7 @@ def combine(normalbins, tumorbins, tumorbafs, diploidbaf, totalcounts, chromosom
                 if phase is None:
                     records = computeBAFs(partition=tpartition, diploidbaf=diploidbaf, samples=samples)
                 else:
-                    records = computeBAFs(partition=tpartition, diploidbaf=diploidbaf, samples=samples, phase=phase[bi[0]])
+                    records = computeBAFs(partition=tpartition, diploidbaf=diploidbaf, samples=samples, phase=phase[bi[0]], block=block)
                 parsed = {record[0] : record for record in records}
 
                 res[bi] = [(parsed[sample][0], ratios[sample], snps[sample], cov[sample], parsed[sample][1], parsed[sample][2], parsed[sample][3]) for sample in samples]
@@ -104,11 +105,11 @@ def combine(normalbins, tumorbins, tumorbafs, diploidbaf, totalcounts, chromosom
     return res
 
 
-def computeBAFs(partition, samples, diploidbaf, phase=None, blocklength=0):
+def computeBAFs(partition, samples, diploidbaf, phase=None, block=0):
     if phase is None:
         tpartition = partition
     else:
-        select = (lambda L, s : blocking(filter(lambda o : o in phase, L), s, phase))
+        select = (lambda L, s : blocking(filter(lambda o : o[1] in phase, L), s, phase, block))
         tpartition = {sample : select(partition[sample], sample) for sample in samples}
 
     alphas = {sample : sum(int(min(x[2], x[3])) for x in tpartition[sample]) for sample in samples}
@@ -118,14 +119,16 @@ def computeBAFs(partition, samples, diploidbaf, phase=None, blocklength=0):
     return [(sample, alphas[sample], betas[sample], mirrorbaf[sample]) for sample in samples]
 
 
-def blocking(L, sample, phase):
+def blocking(L, sample, phase, blocksize):
     result = []
+    if len(L) == 0:
+        return result
     que = deque(sorted(L, key=(lambda v : v[1])))
     omap = {}
     blocks = {}
-    for bk in range(min(L), max(L) + 1, blocksize):
+    for bk in range(min(o[1] for o in L), max(o[1] for o in L) + 1, blocksize):
         block = (sample, bk, 0, 0)
-        while que and bk <= que[0] < bk + blocksize:
+        while que and bk <= que[0][1] < bk + blocksize:
             o = que.popleft()
             if phase[o[1]] == '0|1':
                 block = (sample, bk, block[2] + o[2], block[3] + o[3])
@@ -134,7 +137,7 @@ def blocking(L, sample, phase):
             else:
                 assert False, 'Found a wrong phase value'
             omap[o] = bk
-        if sum(block) > 0:
+        if block[2] + block[3] > 0:
             result.append(block)
     return result
 

@@ -112,7 +112,7 @@ echo 'LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF
 
 7. We add all the remaining part of the template of HATCHet's script
 ```shell
-tail -n 60 ../../script/runHATCHet.sh >> runHATCHet.sh
+tail -n 80 ../../script/runHATCHet.sh >> runHATCHet.sh
 :<<'```shell' # Ignore this line
 ```
 
