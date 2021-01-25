@@ -8,6 +8,83 @@ from . import Supporting as sp
 from hatchet import config
 
 
+def parse_snp_arguments(args=None):
+    """
+    Parse command line arguments
+    Returns:
+    """
+    description = "Genotype and call SNPs in a matched-normal sample."
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
+    parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
+    parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
+    parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
+    parser.add_argument("-R","--snps", required=False, default=config.snp.snps, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
+    parser.add_argument("-j", "--processes", required=False, default=config.snp.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-q", "--readquality", required=False, default=config.snp.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-Q", "--basequality", required=False, default=config.snp.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
+    parser.add_argument("-c", "--mincov", required=False, default=config.snp.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
+    parser.add_argument("-C", "--maxcov", required=False, default=config.snp.maxcov, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
+    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.snp.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
+    parser.add_argument("-o", "--outputsnps", required=False, default=config.snp.outputsnps, type=str, help="Output folder for SNPs separated by chromosome (default: ./)")
+    parser.add_argument("-v", "--verbose", action='store_true', default=config.snp.verbose, required=False, help="Use verbose log messages")
+    args = parser.parse_args(args)
+
+    # Parse BAM files, check their existence, and infer or parse the corresponding sample names
+    normalbaf = args.normal
+    if not os.path.isfile(os.path.abspath(normalbaf)):
+        raise ValueError(sp.error("The specified normal BAM file does not exist"))
+    normal = (os.path.abspath(normalbaf), 'Normal')
+
+    # In default mode, check the existence and compatibility of samtools and bcftools
+    samtools = os.path.join(args.samtools, "samtools")
+    bcftools = os.path.join(args.bcftools, "bcftools")
+    if sp.which(samtools) is None:
+        raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
+    elif sp.which(bcftools) is None:
+        raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
+    elif not checkVersions(samtools, bcftools):
+        raise ValueError(sp.error("The versions of samtools and bcftools are different! Please provide the tools with the same version to avoid inconsistent behaviors!{}"))
+
+    # Check that SNP, reference, and region files exist when given in input
+    if not os.path.isfile(args.reference):
+        raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
+    if args.outputsnps != None and not os.path.isdir(args.outputsnps):
+        raise ValueError(sp.error("The folder for output SNPs does not exist!"))
+    if args.snps != None and len(args.snps) < 2:
+        args.snps = None
+    if args.snps != None and not (os.path.isfile(args.snps) or sp.urlexists(args.snps)):
+        raise ValueError(sp.error("The provided list of SNPs does not exist!"))
+
+    # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
+    chromosomes = extractChromosomes(samtools, normal, [], args.reference)
+
+    if not args.processes > 0: raise ValueError(sp.error("The number of parallel processes must be greater than 0"))
+    if not args.readquality >= 0: raise ValueError(sp.error("The read mapping quality must be positive"))
+    if not args.basequality >= 0: raise ValueError(sp.error("The base quality quality must be positive"))
+    if not args.mincov >= 0: raise ValueError(sp.error("The minimum-coverage value must be positive"))
+    if not args.maxcov >= 0: raise ValueError(sp.error("The maximum-coverage value must be positive"))
+
+    if args.verbose:
+        sp.log(msg='stderr of samtools and bcftools will be collected in the following file "samtools.log"\n', level="WARN")
+        with open("samtools.log", "w") as f: f.write("")
+
+    return {"normal" : normal,
+            "chromosomes" : chromosomes,
+            "samtools" : samtools,
+            "bcftools" : bcftools,
+            "snps" : args.snps,
+            "reference" : args.reference,
+            "j" : args.processes,
+            "q" : args.readquality,
+            "Q" : args.basequality,
+            "E" : args.newbaq,
+            "mincov" : args.mincov,
+            "maxcov" : args.maxcov,
+            "outputsnps" : os.path.abspath(args.outputsnps),
+            "verbose" : args.verbose}
+
+
 def parse_baf_arguments(args=None):
     """
     Parse command line arguments
@@ -17,16 +94,16 @@ def parse_baf_arguments(args=None):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
+    parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
+    parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs to consider in the normal sample")
     parser.add_argument("-S","--samples", required=False, default=config.baf.samples, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
     parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
-    parser.add_argument("-L","--snps", required=False, default=config.baf.snps, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
-    parser.add_argument("-e","--regions", required=False, default=None, type=config.baf.regions, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data with coding regions (default: none, consider entire genome)")
-    parser.add_argument("-r","--reference", required=False, default=config.paths.reference, type=str, help="Human-genome reference corresponding to given samples, REQUIRED to run the recommended mode (default: none, running naive mode)")
+    parser.add_argument("-e","--regions", required=False, default=config.baf.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data with coding regions (default: none, consider entire genome)")
     parser.add_argument("-j", "--processes", required=False, default=config.baf.processes, type=int, help="Number of available parallel processes (default: 2)")
     parser.add_argument("-q", "--readquality", required=False, default=config.baf.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-Q", "--basequality", required=False, default=config.baf.basequality, type=int, help="Minimum base quality for a base to be considered (default: 13)")
-    parser.add_argument("-U", "--snpquality", required=False, default=config.baf.snpquality, type=int, help="Minimum SNP-variant quality, QUAL, for a variant to be considered (default: 20)")
+    parser.add_argument("-Q", "--basequality", required=False, default=config.baf.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
+    parser.add_argument("-U", "--snpquality", required=False, default=config.baf.snpquality, type=int, help="Minimum SNP-variant quality, QUAL, for a variant to be considered (default: 11)")
     parser.add_argument("-g", "--gamma", required=False, default=config.baf.gamma, type=float, help="Level of confidence to determine heterozigosity of SNPs (default: 0.05)")
     parser.add_argument("-b", "--maxshift", required=False, default=config.baf.maxshift, type=float, help="Maximum allowed absolute difference of BAF from 0.5 for selected heterozygous SNPs in the normal sample (default: 0.5)")
     parser.add_argument("-c", "--mincov", required=False, default=config.baf.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
@@ -34,7 +111,7 @@ def parse_baf_arguments(args=None):
     parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.baf.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
     parser.add_argument("-O", "--outputnormal", required=False, default=config.baf.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
     parser.add_argument("-o", "--outputtumors", required=False, default=config.baf.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
-    parser.add_argument("-l", "--outputsnps", required=False, default=config.baf.outputsnps, type=str, help="Output filename for list of selected SNPs (default: selectedSNPs.txt)")
+    parser.add_argument("-l", "--outputsnps", required=False, default=config.baf.outputsnps, type=str, help="Output directory for lists of selected SNPs (default: ./)")
     parser.add_argument("-v", "--verbose", action='store_true', default=config.baf.verbose, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
@@ -69,24 +146,26 @@ def parse_baf_arguments(args=None):
         raise ValueError(sp.error("The versions of samtools and bcftools are different! Please provide the tools with the same version to avoid inconsistent behaviors!{}"))
 
     # Check that SNP, reference, and region files exist when given in input
-    if args.snps != None and not os.path.isfile(args.snps):
-        raise ValueError(sp.error("The SNP file does not exist"))
-    if args.reference != None:
-        if not os.path.isfile(args.reference):
-            raise ValueError(sp.error("The human-genome reference file does not exist"))
-        else:
-            sp.log(msg="The human-reference genome has been provided! Running in default recommended mode..\n", level="INFO")
-    else:
-        sp.log(msg="The human-reference genome has not been provided! Running in naive mode..\n", level="WARN")
+    snplists = {}
+    for f in args.snps:
+        if not os.path.isfile(f):
+            raise ValueError(sp.error("The specified SNP file {} does not exist!".format(f)))
+        snplists = {os.path.basename(f).split('.')[0] : f for f in args.snps}
+    if not os.path.isfile(args.reference):
+        raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
     if args.regions != None and not os.path.isfile(args.regions):
-        raise ValueError(sp.error("The BED file of regions does not exist"))
-    elif args.regions is None:
-        sp.log(msg="In case of WES data a BED file specified by --regions is REQUIRED, or the mincov parameter should be increased sufficiently to discard off-target regions\n", level="WARN")
+        raise ValueError(sp.error("The BED file of regions does not exist!"))
+    #elif args.regions is None:
+    #    sp.log(msg="In case of WES data a BED file specified by --regions is REQUIRED, or the mincov parameter should be increased sufficiently to discard off-target regions\n", level="WARN")
     if args.snps != None and args.regions != None:
         raise ValueError(sp.error("Both SNP list and genomic regions have been provided, please provide only one of these!"))
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples, args.reference)
+    #for c in chromosomes:
+    #    if c not in snplists:
+    #        raise ValueError(sp.error('The SNP file for analyzed chromosome {} was expected with name {}.* but not found in the provided list!'.format(c, c)))
+    snplists = {c : snplists.get(c, []) for c in chromosomes}
 
     if not args.processes > 0: raise ValueError(sp.error("The number of parallel processes must be greater than 0"))
     if not args.readquality >= 0: raise ValueError(sp.error("The read mapping quality must be positive"))
@@ -106,7 +185,7 @@ def parse_baf_arguments(args=None):
             "chromosomes" : chromosomes,
             "samtools" : samtools,
             "bcftools" : bcftools,
-            "snps" : args.snps,
+            "snps" : snplists,
             "regions" : args.regions,
             "reference" : args.reference,
             "j" : args.processes,
@@ -228,14 +307,12 @@ def parse_combbo_args(args=None):
     parser.add_argument("-c","--normalbins", required=True, type=str, help='Normal bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-C","--tumorbins", required=True, type=str, help='Tumor bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-B","--tumorbafs", required=True, type=str, help='Tumor allele counts in the format "SAMPLE\tCHR\tPOS\tREF-COUNT\tALT-COUNT"')
-    parser.add_argument("-b","--normalbafs", required=False, default=config.combbo.normalbafs, type=str, help='Normal allele counts in the format "SAMPLE\tCHR\tPOS\tREF-COUNT\tALT-COUNT"')
+    parser.add_argument("-p","--phase", required=False, default=config.combbo.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')
+    parser.add_argument("-l","--blocklength", required=False, default=config.combbo.blocklength, type=str, help="Size of the haplotype blocks, specified as a full number or using the notations either \"kb\" or \"Mb\" (default: 50kb)")
     parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.combbo.diploidbaf, help="Maximum diploid-BAF shift used to select the bins whose BAF should be normalized by the normal when normalbafs is given (default: 0.1)")
     parser.add_argument("-t","--totalcounts", required=False, default=config.combbo.totalcounts, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample (default: none)')
-    parser.add_argument("-m","--mode", required=False, type=str, default=config.combbo.mode, help='Mode name of the method to use for combining different SNPs covering the same bin (default: MIRROR):\n\n{}MIRROR{}: for each SNP the B allele corresponds to the allele in lower proportion.\n\n{}BINOMIAL_TEST{}: In addition to the MIRROR method each bin is tested to be copy neutral by asking if 0.5 is in the confidence interval of the corresponding BETA distribution, in that case bin has BAF equal to 0.\n\n{}MOMENTS{}: The method of moments is applied where the BAF of each SNP is computed by considering the allele in lower proportion as B and the mean across the SNPs is computed. \n\n'.format(sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC))
     parser.add_argument("-g","--gamma",type=float,required=False, default=config.combbo.gamma, help='Confidence level used to determine if a bin is copy neutral with BAF of 0.5 in the BINOMIAL_TEST mode (default: 0.05)')
     parser.add_argument("-e","--seed", type=int, required=False, default=config.combbo.seed, help='Random seed used for the normal distributions used in the clouds (default: 0)')
-    parser.add_argument("-s","--bootstrap", type=int, required=False, default=config.combbo.bootstrap, help='Number of draws for bootstrapping each SNP. Bootstrap significantly helps to estimate the BAF of each bin by combining the corresponding SNPs when SAMPLE or AVERAGE modes are used. (default: 100)')
-    parser.add_argument("-dB","--bafdeviation", type=float, required=False, default=config.combbo.bafdeviation, help='Standard deviation of the BAFs used to generate the points in the clouds (default: 0.002)')
     parser.add_argument("-v", "--verbose", action='store_true', default=config.combbo.verbose, required=False, help="Use verbose log messages")
     parser.add_argument("-r", "--disablebar", action='store_true', default=config.combbo.disablebar, required=False, help="Disable progress bar")
     args = parser.parse_args(args)
@@ -246,32 +323,39 @@ def parse_combbo_args(args=None):
         raise ValueError(sp.error("The specified file for tumor bin counts does not exist!"))
     if not os.path.isfile(args.normalbins):
         raise ValueError(sp.error("The specified file for normal bin counts does not exist!"))
-    if args.normalbafs is not None and not os.path.isfile(args.normalbafs):
-        raise ValueError(sp.error("The specified file for normal baf does not exist!"))
+    if args.phase == 'None':
+        args.phase = None
+    if args.phase is not None and not os.path.isfile(args.phase):
+        raise ValueError(sp.error("The specified file for phase does not exist!"))
     if not 0.0 <= args.diploidbaf <= 0.5:
         raise ValueError(sp.error("The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]"))
     if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
         raise ValueError(sp.error("The specified file for total read counts does not exist!"))
-    if args.mode not in ["BINOMIAL_TEST", "MOMENTS", "MIRROR"]:
-        raise ValueError(sp.error("The specified mode does not exist!"))
     if not 0.0 <= args.gamma <= 0.1:
         raise ValueError(sp.error("The specified gamma must be a value in [0.0, 0.1]"))
     if args.seed < 0:
         raise ValueError(sp.error("Seed parameter must be positive!"))
-    if args.bootstrap < 0:
-        raise ValueError(sp.error("Bootstrap parameter must be positive!"))
+
+    size = 0
+    try:
+        if args.blocklength[-2:] == "kb":
+            size = int(args.blocklength[:-2]) * 1000
+        elif args.blocklength[-2:] == "Mb":
+            size = int(args.blocklength[:-2]) * 1000000
+        else:
+            size = int(args.blocklength)
+    except:
+        raise ValueError(sp.error("Size must be a number, optionally ending with either \"kb\" or \"Mb\"!"))
 
     return {"normalbins" : args.normalbins,
             "tumorbins" : args.tumorbins,
             "tumorbafs" : args.tumorbafs,
-            "normalbafs" : args.normalbafs,
+            "phase" : args.phase,
+            "block" : size,
             "diploidbaf" : args.diploidbaf,
             "totalcounts" : args.totalcounts,
-            "mode" : args.mode,
             "gamma" : args.gamma,
             "seed" : args.seed,
-            "bootstrap" : args.bootstrap,
-            "bafsd" : args.bafdeviation,
             "verbose" : args.verbose,
             "disable" : args.disablebar}
 
@@ -350,9 +434,9 @@ def parse_bbot_args(args=None):
     parser.add_argument("INPUT", help='Input BBC file with RDR and BAF')
     parser.add_argument("-c", "--command", required=False, type=str, default=config.bbot.command, help="The command determining the plots to generate (default: all)\n\n\t{}RD{}: Plot the read-depth ratio (RD) values of the genomes for each sample.\n\n\t{}CRD{}: Plot the read-depth ratio (CRD) values of the genomes for each sample colored by corresponding cluster.\n\n\t{}BAF{}: Plot the B-allele frequency (BAF) values of the genomes for each sample.\n\n\t{}CBAF{}: Plot BAF values for each sample colored by corresponding cluster.\n\n\t{}BB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples and their density.\n\n\t{}CBB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples by coloring the bins depending on their cluster.\n\n\t{}CLUSTER{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each cluster in all samples where the size of the markers is proportional to the number of bins.".format(sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC))
     parser.add_argument("-s", "--segfile", required=False, type=str, default=config.bbot.segfile, help="When the corresponding seg file is provided the clusters are also plotted (default: none)")
-    parser.add_argument("-m","--colormap", required=False, type=str, default=config.bbot.colormap,help='Colormap to use for the colors in the plots, the available colormaps are the following {Set1, Set2, Paired, Dark2, tab10, tab20}')
-    parser.add_argument("-tC","--chrthreshold", required=False, type=int, default=config.bbot.chrthreshold,help='Only covering at least this number of chromosomes are considered (default: None)')
-    parser.add_argument("-tS","--sizethreshold", required=False, type=float, default=config.bbot.sizethreshold,help='Only covering at least this genome proportion (default: None)')
+    parser.add_argument("-m","--colormap", required=False, type=str, default=config.bbot.colormap, help='Colormap to use for the colors in the plots, the available colormaps are the following {Set1, Set2, Paired, Dark2, tab10, tab20}')
+    parser.add_argument("-tC","--chrthreshold", required=False, type=int, default=config.bbot.chrthreshold, help='Only covering at least this number of chromosomes are considered (default: None)')
+    parser.add_argument("-tS","--sizethreshold", required=False, type=float, default=config.bbot.sizethreshold, help='Only covering at least this genome proportion (default: None)')
     parser.add_argument("--resolution", required=False, default=config.bbot.resolution, type=int, help='Resolution of bins (default: bins are not merged)')
     parser.add_argument("--xmin", required=False, default=config.bbot.xmin, type=float, help='Minimum value on x-axis for supported plots (default: inferred from data)')
     parser.add_argument("--xmax", required=False, default=config.bbot.xmax, type=float, help='Maximum value on x-axis for supported plots (default: inferred from data)')

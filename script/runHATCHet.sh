@@ -1,64 +1,108 @@
 #!/usr/bin/env bash
 
-REF="/path/to/reference.fa"
-SAM="/path/to/samtools-home/bin/"
-BCF="/path/to/bcftools-home/bin/"
+####################################################################################
+# Please set up the correct configuration values here below before running HATCHet #
+####################################################################################
 
+REF="/path/to/reference.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
+SAM="/path/to/samtools-home/bin/" #Uncomment if samtools is already in PATH
+BCF="/path/to/bcftools-home/bin/" #Uncomment if bcftools is already in PATH
 XDIR="/path/to/running-dir/"
 NORMAL="/path/to/matched-normal.bam"
 BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
-ALLNAMES="Normal Primary Met"
-NAMES="Primary Met"
-J=22
+NAMES="Primary Met" #Use the same order as the related tumor BAM files in BAMS above
+J=$(python -c 'import multiprocessing as mp; print mp.cpu_count()') #Replace with fixed number if you do not want to use all available cpus 
+MINREADS=8 #Use 8 for WGS with >30x and 20 for WES with ~100x
+MAXREADS=300 #Use 300 for WGS with >30x and Use 1000 for WES with ~100x
+LIST=""
+#We reccommend to provide a list of known SNPs, please uncomment the appropriate one below according to the provided reference genome
+#If a list is not provided, all genomic positions will be genotyped by BCFtools and will be considered for selection of heterozygous SNPs
+#To improve running time or in case of slow download speeed, please do not provide a list.
+#Uncomment the following for reference genome hg19 with `chr` notation
+#LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"
+#Uncomment the following for reference genome hg19 without `chr` notation
+#LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz"
+#Uncomment the following for reference genome hg38 with `chr` notation
+#LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/GATK/00-All.vcf.gz"
+#Uncomment the following for reference genome hg38 without `chr` notation
+#LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz"
 
+####################################################################################
+
+
+##################################################################
+# For default run please execute the following without changes   #
+# Otherwise please follow the related HATCHet's reccommendations #
+# To run HATCHet with phasing of SNPs please see below           #
+##################################################################
 set -e
 set -o xtrace
 PS4='\''[\t]'\'
+ALLNAMES="Normal ${NAMES}"
 export PATH=$PATH:${SAM}
 export PATH=$PATH:${BCF}
-#source /path/to/virtualenv-python3.8/bin/activate
-
-BIN=${XDIR}bin/
-mkdir -p ${BIN}
-BAF=${XDIR}baf/
-mkdir -p ${BAF}
-BB=${XDIR}bb/
-mkdir -p ${BB}
-BBC=${XDIR}bbc/
-mkdir -p ${BBC}
-ANA=${XDIR}analysis/
-mkdir -p ${ANA}
-RES=${XDIR}results/
-mkdir -p ${RES}
-EVA=${XDIR}evaluation/
-mkdir -p ${EVA}
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
 
 cd ${XDIR}
+RDR="rdr/"
+mkdir -p ${RDR}
+SNP="snps/"
+mkdir -p ${SNP}
+BAF="baf/"
+mkdir -p ${BAF}
+BB="bb/"
+mkdir -p ${BB}
+BBC="bbc/"
+mkdir -p ${BBC}
+PLO="plots/"
+mkdir -p ${PLO}
+RES="results/"
+mkdir -p ${RES}
+SUM="summary/"
+mkdir -p ${SUM}
 
-\time -v python3 -m hatchet binBAM -st ${SAM} -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -q 11 -O ${BIN}normal.bin -o ${BIN}bulk.bin -v &> ${BIN}bins.log
+python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -O ${RDR}normal.rdr -o ${RDR}tumor.rdr -t ${RDR}total.tsv |& tee ${RDR}bins.log
 
-\time -v python3 -m hatchet deBAF -bt ${BCF} -st ${SAM} -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -q 11 -Q 11 -U 11 -c 8 -C 300 -O ${BAF}normal.baf -o ${BAF}bulk.baf -v &> ${BAF}bafs.log
+python3 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
 
-\time -v python3 -m hatchet comBBo -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
+python3 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP}*.vcf.gz -O ${BAF}normal.baf -o ${BAF}tumor.baf |& tee ${BAF}bafs.log
 
-\time -v python3 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -e ${RANDOM} -tB 0.04 -tR 0.15 -d 0.08
+################################################################################################################################
+# To run HATCHet with phasing please do the following:                                                                         #
+# 1. Use a phasing algorithm with the SNP VCF files generated in ${SNP}*.vcf.gz (snps folder by default)                       #
+# 2. Combine the phased SNPs for all chromosomes in a unique phased file with `CHROM  POS  PHASE` where:                       #
+#      - CHROM is the chromosome of the SNP;                                                                                   #
+#      - POS is the genomic position of the SNP;                                                                               #
+#      - PHASE is any string that contains 0|1 and 1|0 (lines without those will be excluded as well as those starting with #) #
+# 3. Provide the path to the phased file in the variable PHASE here below                                                      #
+# 4. Choose haplotype block size BLOCK, 50kb is used by default
+# Note: a phased VCF file (with phased genotypes 0|1 and 1|0) works and `bcftools concat` can be used to combine chromosomes   #                                         #
+# If using reference-phasing algorithm please make sure the ouput VCF are w.r.t. same reference genome, otherwise please       #
+# use LiftOver to convert it or bcftools --annotate to add or remove `chr` notation                                            #
+################################################################################################################################
+PHASE="None"
+BLOCK="50kb"
 
-cd ${ANA}
-\time -v python3 -m hatchet BBot -c RD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python3 -m hatchet BBot -c CRD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python3 -m hatchet BBot  -c BAF --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python3 -m hatchet BBot  -c BB ${BBC}bulk.bbc &
-\time -v python3 -m hatchet BBot  -c CBB ${BBC}bulk.bbc -tS 0.01 &
-wait
+python3 -m hatchet comBBo -c ${RDR}normal.rdr -C ${RDR}tumor.rdr -B ${BAF}tumor.baf -t ${RDR}total.tsv -p ${PHASE} -l ${BLOCK} -e ${RANDOM} > ${BB}bulk.bb
 
-cd ${RES}
-\time -v python3 -m hatchet solve -i ${BBC}bulk -n2,8 -p 400 -v 3 -u 0.03 -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 &> >(tee >(grep -v Progress > hatchet.log))
+python3 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc -e ${RANDOM} -tB 0.04 -tR 0.15 -d 0.08
+
+cd ${PLO}
+python3 -m hatchet BBot -c RD --figsize 6,3 ../${BBC}bulk.bbc
+python3 -m hatchet BBot -c CRD --figsize 6,3 ../${BBC}bulk.bbc
+python3 -m hatchet BBot -c BAF --figsize 6,3 ../${BBC}bulk.bbc
+python3 -m hatchet BBot -c BB ../${BBC}bulk.bbc
+python3 -m hatchet BBot -c CBB ../${BBC}bulk.bbc -tS 0.01
+
+cd ../${RES}
+python3 -m hatchet solve -i ../${BBC}bulk -n2,6 -p 400 -u 0.03 -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 -l 0.6 &> >(tee >(grep -v Progress > hatchet.log))
 
 ## Increase -l to 0.6 to decrease the sensitivity in high-variance or noisy samples, and decrease it to -l 0.3 in low-variance samples to increase the sensitivity and explore multiple solutions with more clones.
 ## Increase -u if solutions have clone proportions equal to the minimum threshold -u
-## Decrease the number of restarts to 200 or 100 for fast runs, as well as user can decrease the number of clones to -n 2,6 when appropriate or when previous runs suggest fewer clones.
+## Decrease the number of restarts to 200 or 100 for fast runs, as well as user can increase the number of clones to -n 2,8 when appropriate or when previous runs suggest fewer clones (i.e. OBJ function keeps decreasing).
 ## Increase the single-clone confidence to `-c 0.6` to increase the confidence in the presence of a single tumor clone and further increase this value when interested in a single clone.
 
-cd ${EVA}
-\time -v python -m hatchet BBeval ${RES}/best.bbc.ucn
+cd ../${SUM}
+python3 -m hatchet BBeval ../${RES}/best.bbc.ucn
 

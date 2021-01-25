@@ -6,11 +6,12 @@ from io import StringIO
 from mock import patch
 import shutil
 import pandas as pd
-from pandas.util.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal
 
 import hatchet
 from hatchet import config
 from hatchet.utils.binBAM import main as binBAM
+from hatchet.utils.SNPCaller import main as SNPCaller
 from hatchet.utils.deBAF import main as deBAF
 from hatchet.utils.comBBo import main as comBBo
 from hatchet.utils.cluBB import main as cluBB
@@ -38,7 +39,7 @@ def bams():
 def output_folder():
     out = os.path.join(this_dir, 'out')
     shutil.rmtree(out, ignore_errors=True)
-    for sub_folder in ('bin', 'baf', 'bb', 'bbc', 'results', 'evaluation', 'analysis'):
+    for sub_folder in ('bin', 'snps', 'baf', 'bb', 'bbc', 'results', 'evaluation', 'analysis'):
         os.makedirs(os.path.join(out, sub_folder))
     return out
 
@@ -67,6 +68,20 @@ def test_script(_, bams, output_folder):
         ]
     )
 
+    SNPCaller(
+        args=[
+            '-N', normal_bam,
+            '-r', config.paths.reference,
+            '-c', '290',    # min reads
+            '-C', '300',  # max reads
+            '-R', '',
+            '-o', 'out/snps',
+            '-st', config.paths.samtools,
+            '-bt', config.paths.bcftools,
+            '-j', '1'
+        ]
+    )
+
     deBAF(
         args=[
             '-bt', config.paths.bcftools,
@@ -84,6 +99,7 @@ def test_script(_, bams, output_folder):
             '-C', '300',
             '-O', os.path.join(output_folder, 'baf/normal.baf'),
             '-o', os.path.join(output_folder, 'baf/bulk.baf'),
+            '-L', 'out/snps/chr22.vcf.gz',
             '-v'
         ]
     )
@@ -95,7 +111,6 @@ def test_script(_, bams, output_folder):
         '-c', os.path.join(output_folder, 'bin/normal.bin'),
         '-C', os.path.join(output_folder, 'bin/bulk.bin'),
         '-B', os.path.join(output_folder, 'baf/bulk.baf'),
-        '-m', 'MIRROR',
         '-e', '12'
     ])
 

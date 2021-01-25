@@ -102,7 +102,7 @@ setup(
         'scipy'
     ],
 
-    extras_require = {
+    extras_require={
         'dev': ['pytest', 'mock']
     }
 

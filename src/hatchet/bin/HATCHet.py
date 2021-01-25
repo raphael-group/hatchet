@@ -458,7 +458,7 @@ def findClonalClusters(fseg, neutral, size, tB, tR, samples, v):
                 break
 
     clusters = sorted([idx for idx in fseg if idx != neutral and idx in location], key=(lambda i : size[i]), reverse=True)
-    allclonal = [(2, 0), (2, 1), (3, 2), (4, 2), (1, 0), (3, 0), (3, 1), (4, 0)]
+    allclonal = [(2, 0), (2, 1), (3, 2), (4, 2), (1, 0), (3, 0), (3, 1), (4, 0), (4, 1), (5, 0)]
     found_pattern = []
     best_pattern = {}
     best_scale = ()
