@@ -154,10 +154,10 @@ def readBINs(normalbins, tumorbins):
     with open(normalbins, 'r') as f:
         for line in f:
             parsed = line.strip().split()[:5]
-            normal_chr.add(parsed[1])
-            normal.add(parsed[0])
-            if (parsed[1], int(parsed[2]), int(parsed[3])) not in normalBINs:
-                normalBINs[parsed[1], int(parsed[2]), int(parsed[3])] = (parsed[0], int(parsed[4]))
+            normal_chr.add(parsed[0])
+            normal.add(parsed[3])
+            if (parsed[0], int(parsed[1]), int(parsed[2])) not in normalBINs:
+                normalBINs[parsed[0], int(parsed[1]), int(parsed[2])] = (parsed[3], int(parsed[4]))
             else:
                 raise ValueError(sp.error("Found multiple lines for the same interval in the normal bin counts!"))
 
@@ -179,13 +179,13 @@ def readBINs(normalbins, tumorbins):
     with open(tumorbins, 'r') as f:
         for line in f:
             parsed = line.strip().split()[:5]
-            tumor_chr.add(parsed[1])
-            samples.add(parsed[0])
+            tumor_chr.add(parsed[0])
+            samples.add(parsed[3])
             try:
-                tumorBINs[parsed[1], int(parsed[2]), int(parsed[3])].add((parsed[0], int(parsed[4])))
+                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])].add((parsed[3], int(parsed[4])))
             except KeyError:
-                tumorBINs[parsed[1], int(parsed[2]), int(parsed[3])] = set()
-                tumorBINs[parsed[1], int(parsed[2]), int(parsed[3])].add((parsed[0], int(parsed[4])))
+                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])] = set()
+                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])].add((parsed[3], int(parsed[4])))
 
     # Check tumor bin counts
     prev_r = -1
@@ -220,19 +220,19 @@ def readBAFs(tumor):
     samples = set()
     with open(tumor, 'r') as f:
         for line in f:
-            parsed = line.strip().split()[:5]
-            sample = parsed[0]
-            chromosome = parsed[1]
-            pos = int(parsed[2])
-            ref = int(parsed[3])
-            alt = int(parsed[4])
+            parsed = line.strip().split()[:6]
+            sample = parsed[3]
+            chromosome = parsed[0]
+            pos = int(parsed[1])
+            ref = int(parsed[4])
+            alt = int(parsed[5])
             tumor_chr.add(chromosome)
             samples.add(sample)
             baf = float(min(ref, alt)) / float(ref+alt) if ref+alt > 0 else 0.5
             try:
-                tumorBAFs[parsed[1]].append((parsed[0], pos, ref, alt, baf))
+                tumorBAFs[chromosome].append((sample, pos, ref, alt, baf))
             except KeyError:
-                tumorBAFs[parsed[1]] = [(parsed[0], pos, ref, alt, baf)]
+                tumorBAFs[chromosome] = [(sample, pos, ref, alt, baf)]
 
     # Check tumor bafs
     for key in tumorBAFs:

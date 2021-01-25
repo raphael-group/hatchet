@@ -40,19 +40,14 @@ def main(args=None):
                     f.write("{}\t{}\n".format(chro, snp))
 
     log(msg="# Writing the allele counts of the normal sample for selected SNPs\n", level="STEP")
-    if args["outputNormal"] is not None:
-        with open(args["outputNormal"], 'w') as f:
-            for chro in args["chromosomes"]:
-                if (args["normal"][1], chro) in hetSNPs:
-                    for snp in sorted(hetSNPs[args["normal"][1], chro]):
-                        count = hetSNPs[args["normal"][1], chro][snp]
-                        f.write("{}\t{}\t{}\t{}\t{}\n".format(args["normal"][1], chro, snp, count[0][1], count[1][1]))
-    else:
-        for chro in args["chromosomes"]:
-            if (args["normal"][1], chro) in hetSNPs:
-                for snp in sorted(hetSNPs[args["normal"][1], chro]):
-                    count = hetSNPs[args["normal"][1], chro][snp]
-                    sys.stdout.write("{}\t{}\t{}\t{}\t{}\n".format(args["normal"][1], chro, snp, count[0][1], count[1][1]))
+    handle = open(args['outputNormal'], 'w') if args['outputNormal'] is not None else sys.stdout
+    for chro in args["chromosomes"]:
+        if (args["normal"][1], chro) in hetSNPs:
+            for snp in sorted(hetSNPs[args["normal"][1], chro]):
+                count = hetSNPs[args["normal"][1], chro][snp]
+                handle.write("{}\t{}\t{}\t{}\t{}\t{}\n".format(chro, snp, snp+1, args["normal"][1], count[0][1], count[1][1]))
+    if handle is not sys.stdout:
+        handle.close()
 
     log(msg="# Counting SNPs alleles from tumour samples\n", level="STEP")
     rcounts = counting(bcftools=args["bcftools"], reference=args["reference"], samples=args["samples"], chromosomes=args["chromosomes"], num_workers=args["j"], 
@@ -66,21 +61,15 @@ def main(args=None):
 
     log(msg="# Writing the allele counts of tumor samples for selected SNPs\n", level="STEP")
     map(lambda f : os.remove(hetsnpsfiles[f]), hetsnpsfiles)
-    if args["outputTumors"] is not None:
-        with open(args["outputTumors"], 'w') as f:
-            for sample in args["samples"]:
-                for chro in args["chromosomes"]:
-                    if (sample[1], chro) in counts:
-                        for snp in counts[sample[1], chro]:
-                            count = counts[sample[1], chro][snp]
-                            f.write("{}\t{}\t{}\t{}\t{}\n".format(sample[1], chro, snp, count[0][1], count[1][1]))
-    else:
-        for sample in args["samples"]:
-            for chro in args["chromosomes"]:
-                if (sample[1], chro) in counts:
-                    for snp in counts[sample[1], chro]:
-                        count = counts[sample[1], chro][snp]
-                        sys.stdout.write("{}\t{}\t{}\t{}\t{}\n".format(sample[1], chro, snp, count[0][1], count[1][1]))
+    handle = open(args['outputTumors'], 'w') if args['outputTumors'] is not None else sys.stdout
+    for sample in args["samples"]:
+        for chro in args["chromosomes"]:
+            if (sample[1], chro) in counts:
+                for snp in counts[sample[1], chro]:
+                    count = counts[sample[1], chro][snp]
+                    handle.write("{}\t{}\t{}\t{}\t{}\t{}\n".format(chro, snp, snp+1, sample[1], count[0][1], count[1][1]))
+    if handle is not sys.stdout:
+        handle.close()
 
 
 def selectHetSNPs(counts, gamma, maxshift):
