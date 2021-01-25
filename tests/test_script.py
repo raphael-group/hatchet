@@ -99,7 +99,7 @@ def test_script(_, bams, output_folder):
             '-C', '300',
             '-O', os.path.join(output_folder, 'baf/normal.baf'),
             '-o', os.path.join(output_folder, 'baf/bulk.baf'),
-            '-L', 'out/snps/chr22.vcf.gz',
+            '-L', os.path.join(output_folder, 'snps', 'chr22.vcf.gz'),
             '-v'
         ]
     )
