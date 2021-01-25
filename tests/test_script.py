@@ -75,7 +75,7 @@ def test_script(_, bams, output_folder):
             '-c', '290',    # min reads
             '-C', '300',  # max reads
             '-R', '',
-            '-o', 'out/snps',
+            '-o', os.path.join(output_folder, 'snps'),
             '-st', config.paths.samtools,
             '-bt', config.paths.bcftools,
             '-j', '1'
