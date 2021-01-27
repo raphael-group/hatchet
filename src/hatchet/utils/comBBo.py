@@ -109,7 +109,7 @@ def computeBAFs(partition, samples, diploidbaf, phase=None, block=0):
     if phase is None:
         tpartition = partition
     else:
-        select = (lambda L, s : blocking(filter(lambda o : o[1] in phase, L), s, phase, block))
+        select = lambda L, s : blocking(list(filter(lambda o : o[1] in phase, L)), s, phase, block)
         tpartition = {sample : select(partition[sample], sample) for sample in samples}
 
     alphas = {sample : sum(int(min(x[2], x[3])) for x in tpartition[sample]) for sample in samples}
