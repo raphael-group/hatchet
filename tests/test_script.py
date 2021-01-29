@@ -16,7 +16,7 @@ from hatchet.utils.deBAF import main as deBAF
 from hatchet.utils.comBBo import main as comBBo
 from hatchet.utils.cluBB import main as cluBB
 from hatchet.bin.HATCHet import main as main
-
+from hatchet.utils.BBeval import main as BBeval
 
 this_dir = os.path.dirname(__file__)
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
@@ -155,3 +155,8 @@ def test_script(_, bams, output_folder):
         df1 = pd.read_csv(os.path.join(output_folder, 'results/best.bbc.ucn'), sep='\t')
         df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
         assert_frame_equal(df1, df2)
+
+        BBeval(args=[
+            os.path.join(output_folder, 'results/best.bbc.ucn'),
+            '--rundir', os.path.join(output_folder, 'evaluation')
+        ])

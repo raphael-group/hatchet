@@ -205,13 +205,15 @@ def single(tumor, clones, props, base, args):
     sys.stderr.write(log("# Plotting reduced-clone profiles in {}\n".format(os.path.join(args['rundir'], out))))
     gridprofilesreduced(tumor, base, clones, props, args, out)
 
-    out = 'intratumor-mixtures.pdf'
-    sys.stderr.write(log("# Plotting reduced mixtures in {}\n".format(os.path.join(args['rundir'], out))))
-    gridmixtures(tumor, base, clones, props, args, out)
+    # Run tumor mixture analyses if we have a multiple tumor samples (keys in props)
+    if len(props) > 1:
+        out = 'intratumor-mixtures.pdf'
+        sys.stderr.write(log("# Plotting reduced mixtures in {}\n".format(os.path.join(args['rundir'], out))))
+        gridmixtures(tumor, base, clones, props, args, out)
 
-    out = 'intratumor-subclonality.pdf'
-    sys.stderr.write(log("# Plotting reduced mixtures in {}\n".format(os.path.join(args['rundir'], out))))
-    subclonal(tumor, base, clones, props, args, out)
+        out = 'intratumor-subclonality.pdf'
+        sys.stderr.write(log("# Plotting reduced mixtures in {}\n".format(os.path.join(args['rundir'], out))))
+        subclonal(tumor, base, clones, props, args, out)
 
 
 def profiles(tumor, clones, props, args, out):
