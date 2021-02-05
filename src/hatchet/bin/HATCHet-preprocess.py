@@ -110,8 +110,8 @@ def main():
 
     log('Computing RDRs\n', level='PROGRESS')
     cmd = 'python3 {} -N {} -T {} -S {} -b {} -g {} -j {} -q {} -O {} -o {}'
-    nbin = os.path.join(drdr, 'normal.bin')
-    tbin = os.path.join(drdr, 'bulk.bin')
+    nbin = os.path.join(drdr, 'normal.1bed')
+    tbin = os.path.join(drdr, 'bulk.1bed')
     cmd = cmd.format(get_comp('binBAM.py'), args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), args['size'], args['ref'], args['J'], args['phred'], nbin, tbin)
     if args['samtools'] is not None:
         cmd += " --samtools {}".format(args['samtools'])
@@ -119,8 +119,8 @@ def main():
 
     log('Computing BAFs\n', level='PROGRESS')
     cmd = 'python3 {} -N {} -T {} -S {} -r {} -j {} -q {} -Q {} -U {} -c {} -C {} -O {} -o {}'
-    nbaf = os.path.join(dbaf, 'normal.baf')
-    tbaf = os.path.join(dbaf, 'bulk.baf')
+    nbaf = os.path.join(dbaf, 'normal.1bed')
+    tbaf = os.path.join(dbaf, 'bulk.1bed')
     cmd = cmd.format(get_comp('deBAF.py'), args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), args['ref'], args['J'], args['phred'], args['phred'], args['phred'], args['minreads'], args['maxreads'], nbaf, tbaf)
     if args['samtools'] is not None:
         cmd += " --samtools {}".format(args['samtools'])

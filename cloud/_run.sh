@@ -61,9 +61,9 @@ EVA=${OUTPUT_FOLDER}/evaluation/
 
 mkdir -p ${BIN} ${BAF} ${BB} ${BBC} ${ANA} ${RES} ${EVA}
 
-python -m hatchet binBAM -N ${NORMALBAM} -T ${TUMOR_BAMS} -S ${ALLNAMES} -b 50kb -O ${BIN}normal.bin -o ${BIN}bulk.bin &> ${BIN}bins.log
-python -m hatchet deBAF -N ${NORMALBAM} -T ${TUMOR_BAMS} -S ${ALLNAMES} -O ${BAF}normal.baf -o ${BAF}bulk.baf &> ${BAF}bafs.log
-python -m hatchet comBBo -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf > ${BB}bulk.bb
+python -m hatchet binBAM -N ${NORMALBAM} -T ${TUMOR_BAMS} -S ${ALLNAMES} -b 50kb -O ${BIN}normal.1bed -o ${BIN}bulk.1bed &> ${BIN}bins.log
+python -m hatchet deBAF -N ${NORMALBAM} -T ${TUMOR_BAMS} -S ${ALLNAMES} -O ${BAF}normal.1bed -o ${BAF}bulk.1bed &> ${BAF}bafs.log
+python -m hatchet comBBo -c ${BIN}normal.1bed -C ${BIN}bulk.1bed -B ${BAF}bulk.1bed > ${BB}bulk.bb
 python -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc
 
 cd ${ANA}

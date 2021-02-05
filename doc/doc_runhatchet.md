@@ -115,7 +115,7 @@ To avoid condlicts, user should make sure the running directory is an empty dire
 ```shell
 \time -v python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
                                    -b 50kb -g ${REF} -j ${J} \
-                                   -q 20 -O ${BIN}normal.bin -o ${BIN}bulk.bin -v &> ${BIN}bins.log
+                                   -q 20 -O ${BIN}normal.1bed -o ${BIN}bulk.1bed -v &> ${BIN}bins.log
 ```
 
 binBAM computes the read counts in genomic bins of the reference genome from the matched-normal sample `${NORMAL}` and from all tumor samples `${BAMS}` with names `${ALLNAMES}`.
@@ -131,7 +131,7 @@ A standard read quality of 20 is considered and simple parameters are specified 
 ```shell
 \time -v python3 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
                                   -r ${REF} -j ${J} -q 20 -Q 20 -U 20 -c 4 \
-                                  -C 300 -O ${BAF}normal.baf -o ${BAF}bulk.baf -v \
+                                  -C 300 -O ${BAF}normal.1bed -o ${BAF}bulk.1bed -v \
                                   &> ${BAF}bafs.log
 ```
 
@@ -147,10 +147,10 @@ Several simple parameters are specified including: number of parallel threads, r
 <a name="combbo"></a>
 
 ```shell
-\time -v python3 -m hatchet comBBo -c ${BIN}normal.bin -C ${BIN}bulk.bin -B ${BAF}bulk.baf -m MIRROR -e 12 > ${BB}bulk.bb
+\time -v python3 -m hatchet comBBo -c ${BIN}normal.1bed -C ${BIN}bulk.1bed -B ${BAF}bulk.1bed -m MIRROR -e 12 > ${BB}bulk.bb
 ```
 
-comBBo estimates the RDR and BAF from the read counts of all genomic bins from matched-normal sample in `${BIN}normal.bin`, from the read counts of all genomic bins from all tumor samples in `${BIN}bulk.bin`, and germline SNPs allele counts in `${BAF}bulk.baf`.
+comBBo estimates the RDR and BAF from the read counts of all genomic bins from matched-normal sample in `${BIN}normal.1bed`, from the read counts of all genomic bins from all tumor samples in `${BIN}bulk.bin`, and germline SNPs allele counts in `${BAF}bulk.1bed`.
 The standard method `MIRROR` for estimation is used and a random seed of `12` which allows to replicate the analysis is specified.
 The output from standard output is correspondingly written in a BB file `${BB}bulk.bb`.
 

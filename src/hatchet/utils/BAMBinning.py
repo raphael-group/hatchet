@@ -93,6 +93,6 @@ class Binner(Process):
                     n_reads = sam.count(chromosome, start=start-1, stop=stop, read_callback=read_callback)
                 else:
                     n_reads = sam.count(chromosome, start=0, stop=stop, read_callback=read_callback)
-                bins.append((samplename, chromosome, start, stop, str(n_reads)))
+                bins.append((samplename, chromosome, max(start, 1), stop, str(n_reads)))
                 start += self.size
         return list(bins)

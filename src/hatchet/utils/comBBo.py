@@ -220,12 +220,12 @@ def readBAFs(tumor):
     samples = set()
     with open(tumor, 'r') as f:
         for line in f:
-            parsed = line.strip().split()[:6]
-            sample = parsed[3]
+            parsed = line.strip().split()[:5]
+            sample = parsed[2]
             chromosome = parsed[0]
             pos = int(parsed[1])
-            ref = int(parsed[4])
-            alt = int(parsed[5])
+            ref = int(parsed[3])
+            alt = int(parsed[4])
             tumor_chr.add(chromosome)
             samples.add(sample)
             baf = float(min(ref, alt)) / float(ref+alt) if ref+alt > 0 else 0.5

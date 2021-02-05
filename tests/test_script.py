@@ -15,6 +15,7 @@ from hatchet.utils.SNPCaller import main as SNPCaller
 from hatchet.utils.deBAF import main as deBAF
 from hatchet.utils.comBBo import main as comBBo
 from hatchet.utils.cluBB import main as cluBB
+from hatchet.utils.BBot import main as BBot
 from hatchet.bin.HATCHet import main as main
 from hatchet.utils.BBeval import main as BBeval
 
@@ -39,7 +40,7 @@ def bams():
 def output_folder():
     out = os.path.join(this_dir, 'out')
     shutil.rmtree(out, ignore_errors=True)
-    for sub_folder in ('bin', 'snps', 'baf', 'bb', 'bbc', 'results', 'evaluation', 'analysis'):
+    for sub_folder in ('bin', 'snps', 'baf', 'bb', 'bbc', 'plots', 'results', 'evaluation', 'analysis'):
         os.makedirs(os.path.join(out, sub_folder))
     return out
 
@@ -62,8 +63,8 @@ def test_script(_, bams, output_folder):
             '-g', config.paths.reference,
             '-j', '12',
             '-q', '11',
-            '-O', os.path.join(output_folder, 'bin/normal.bin'),
-            '-o', os.path.join(output_folder, 'bin/bulk.bin'),
+            '-O', os.path.join(output_folder, 'bin/normal.1bed'),
+            '-o', os.path.join(output_folder, 'bin/bulk.1bed'),
             '-v'
         ]
     )
@@ -97,8 +98,8 @@ def test_script(_, bams, output_folder):
             '-U', '11',
             '-c', '8',
             '-C', '300',
-            '-O', os.path.join(output_folder, 'baf/normal.baf'),
-            '-o', os.path.join(output_folder, 'baf/bulk.baf'),
+            '-O', os.path.join(output_folder, 'baf/normal.1bed'),
+            '-o', os.path.join(output_folder, 'baf/bulk.1bed'),
             '-L', os.path.join(output_folder, 'snps', 'chr22.vcf.gz'),
             '-v'
         ]
@@ -108,9 +109,9 @@ def test_script(_, bams, output_folder):
     sys.stdout = StringIO()
 
     comBBo(args=[
-        '-c', os.path.join(output_folder, 'bin/normal.bin'),
-        '-C', os.path.join(output_folder, 'bin/bulk.bin'),
-        '-B', os.path.join(output_folder, 'baf/bulk.baf'),
+        '-c', os.path.join(output_folder, 'bin/normal.1bed'),
+        '-C', os.path.join(output_folder, 'bin/bulk.1bed'),
+        '-B', os.path.join(output_folder, 'baf/bulk.1bed'),
         '-e', '12'
     ])
 
@@ -134,6 +135,11 @@ def test_script(_, bams, output_folder):
     df1 = pd.read_csv(os.path.join(output_folder, 'bbc/bulk.seg'), sep='\t')
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'bulk.seg'), sep='\t')
     assert_frame_equal(df1, df2)
+
+    BBot(args=[
+        os.path.join(output_folder, 'bbc/bulk.bbc'),
+        '--rundir', os.path.join(output_folder, 'plots')
+    ])
 
     if os.getenv('GRB_LICENSE_FILE') is not None:
         main(args=[
