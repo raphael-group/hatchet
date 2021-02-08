@@ -99,7 +99,7 @@ def parsing_arguments(args=None):
         raise ValueError(error("The RDR tolerance for merging clusters must be in [0, 1]!"))
     if args.mergeBAF < 0.0 or args.mergeBAF > 1.0:
         raise ValueError(error("The BAF tolerance for merging clusters must be in [0, 1]!"))
-    if args.limitinc is not None and args.limitinc < 0.0 or args.limitinc > 1.0:
+    if args.limitinc is not None and (args.limitinc < 0.0 or args.limitinc > 1.0):
         raise ValueError(error("The increasing limit must be in [0, 1]!"))
     if args.ghostprop < 0.0 or args.ghostprop > 1.0:
         raise ValueError(error("The increasing proportion of the ghost point must be in [0, 1]!"))
