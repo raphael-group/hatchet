@@ -578,6 +578,8 @@ def parseRegions(region_file, chromosomes):
         sp.log(msg="The chromosome {} present in the provided regions is non-autosome or is not present in the given BAM files\n".format(c), level="WARN")
 
     for key in res:
+        if len(res[key]) == 0:
+            raise ValueError(sp.error("The regions of chromosome {} could not be determined.".format(key)))
         res[key].sort(key=lambda x : x[0])
         if not all(a[0]<=a[1] and a[1]<=b[0] and b[0]<=b[1] for a, b in zip(res[key], res[key][1:])):
             raise ValueError(sp.error("The regions provided for chromosome {} are non-disjoint or a region start is greater than corresponding region end".format(key)))

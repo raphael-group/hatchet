@@ -90,6 +90,8 @@ def knownRegions(refdict, chromosomes):
 
     res = {}
     for c in chromosomes:
+        if ends[c] is None:
+            raise ValueError("Length of chromosome {} could not be determined. Are you using the correct reference genome?".format(c))
         res[c] = [(0, ends[c])]
         
     return res
