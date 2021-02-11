@@ -9,7 +9,7 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python: [3.6, 3.7, 3.8]
@@ -90,6 +90,7 @@ jobs:
         run: |
           tox
         env:
+          PLATFORM: ${{ matrix.python }}
           CXXFLAGS: -pthread
 
       - name: Save Pytest Output Data

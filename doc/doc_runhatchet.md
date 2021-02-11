@@ -158,9 +158,9 @@ The output from standard output is correspondingly written in a BB file `${BB}bu
 <a name="clubb"></a>
 
 ```shell
-\time -v python3 -m hatchet cluBB ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
+\time -v python3 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
                                                -e 12 -tB 0.04 -tR 0.15 -d 0.08
-#\time -v python3 -m hatchet cluBB ${BB}bulk.bb -by ${BNPY} -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
+#\time -v python3 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
 #                                               -e 12 -tB 0.04 -tR 0.15 -d 0.08 \
 #                                               -u 20 -e 12 -dR 0.002 -dB 0.002
 ```
