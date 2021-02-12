@@ -6,8 +6,8 @@ import math
 import copy
 import numpy as np
 
-from ArgParsing import parse_clubb_args
-import Supporting as sp
+from hatchet.utils.ArgParsing import parse_clubb_args
+import hatchet.utils.Supporting as sp
 
 
 def main(args=None):
@@ -26,7 +26,7 @@ def main(args=None):
         clouds = generateClouds(points=points, density=args["cloud"], seed=args["seed"], sdeven=args["ratiodeviation"], sdodd=args["bafdeviation"])
 
     sp.log(msg="# Clustering bins by RD and BAF across tumor samples\n", level="STEP")
-    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, output=args["outsegments"], samples=samples, clouds=clouds, K=args["initclusters"], sf=args["tuning"], restarts=args['restarts'])
+    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, clouds=clouds, K=args["initclusters"], concentration_prior = args["tuning"], restarts=args['restarts'])
 
     if args['rdtol'] > 0.0 or args['baftol'] > 0.0:
         sp.log(msg="# Refining clustering using given tolerances\n", level="STEP")
