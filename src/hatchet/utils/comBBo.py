@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import sys
 import math
@@ -6,24 +6,31 @@ import copy
 import numpy as np
 from scipy.stats import beta
 
-import ProgressBar as pb
-import Supporting as sp
-from ArgParsing import parse_combbo_args
+from . import ProgressBar as pb
+from . import Supporting as sp
+from .ArgParsing import parse_combbo_args
+
+from collections import defaultdict
+from collections import deque
+
 
 
 def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
     args = parse_combbo_args(args)
+    sp.logArgs(args, 80)
     np.random.seed(seed=args["seed"])
     sp.log(msg="# Reading and checking the bin count files for computing read-depth ratios\n", level="STEP")
-    normalbins, tumorbins, chromosomes, normal1, samples1 = readBINs(normalbins=args["normalbins"], tumorbins=args["tumorbins"])
+    normalbins, tumorbins, chromosomes, normal, samples1 = readBINs(normalbins=args["normalbins"], tumorbins=args["tumorbins"])
     sp.log(msg="# Reading and checking the allele count files for computing BAF\n", level="STEP")
-    tumorbafs, chromosomes2, samples2, normalbafs, normal2 = readBAFs(tumor=args["tumorbafs"], normal=args["normalbafs"])
-    if normal1 != normal2 and normal2 is not None: raise ValueError(sp.error("The name of normal sample is different in bin counts and allele counts!"))
-    else: normal = normal1
-
+    tumorbafs, chromosomes2, samples2 = readBAFs(tumor=args["tumorbafs"])
     if samples1 != samples2: raise ValueError(sp.error("The names of tumor samples are different in bin counts and allele counts!"))
     else: samples = samples1
+    if args['phase'] is not None:
+        sp.log(msg="# Reading phases of heterozygous germline SNPs\n", level="STEP")
+        phase = readPhase(args["phase"])
+    else:
+        phase = None
 
     totalcounts = None
     if args["totalcounts"] is not None:
@@ -31,7 +38,9 @@ def main(args=None):
         totalcounts = readTotalCounts(filename=args["totalcounts"], samples=samples, normal=normal)
 
     sp.log(msg="# Combine the bin and allele counts to obtain BAF and RD for each bin\n", level="STEP")
-    result = combine(normalbins=normalbins, tumorbins=tumorbins, tumorbafs=tumorbafs, normalbafs=normalbafs, diploidbaf=args["diploidbaf"], totalcounts=totalcounts, chromosomes=chromosomes, samples=samples, normal=normal, mode=args["mode"], bafsd=args["bafsd"], gamma=args["gamma"], draws=args["bootstrap"], verbose=args["verbose"], disable=args["disable"])
+    result = combine(normalbins=normalbins, tumorbins=tumorbins, tumorbafs=tumorbafs, diploidbaf=args["diploidbaf"], 
+                     totalcounts=totalcounts, chromosomes=chromosomes, samples=samples, normal=normal, gamma=args["gamma"], 
+                     verbose=args["verbose"], disable=args["disable"], phase=phase, block=args["block"])
 
     names = list(samples).sort()
     sys.stdout.write("#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n")
@@ -40,7 +49,7 @@ def main(args=None):
             sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key[0], key[1], key[2], sample[0], sample[1], sample[2], sample[3], sample[4], sample[5], sample[6]))
 
 
-def combine(normalbins, tumorbins, tumorbafs, normalbafs, diploidbaf, totalcounts, chromosomes, samples, normal, mode, draws, bafsd, gamma, verbose=False, disable=False):
+def combine(normalbins, tumorbins, tumorbafs, diploidbaf, totalcounts, chromosomes, samples, normal, gamma, verbose=False, disable=False, phase=None, block=None):
     res = {}
     ctumorbafs = {c : sorted(tumorbafs[c], key=(lambda x : x[1])) for c in tumorbafs}
     if not disable: progress_bar = pb.ProgressBar(total=len(tumorbins), length=40, verbose=verbose)
@@ -62,11 +71,6 @@ def combine(normalbins, tumorbins, tumorbafs, normalbafs, diploidbaf, totalcount
                     ctumorbafs[bi[0]] = ctumorbafs[bi[0]][i:]
                     break
             
-            if normalbafs != None:
-                normalover = [normalbafs[bi[0], x[1]] for x in tumorover]
-            else:
-                normalover = None
-
             # Partition the overlapping SNPs by samples
             tpartition = {sample : [x for x in tumorover if x[0] == sample] for sample in samples}
 
@@ -85,7 +89,10 @@ def combine(normalbins, tumorbins, tumorbafs, normalbafs, diploidbaf, totalcount
                 cov = {sample : float(sum(x[2]+x[3] for x in tpartition[sample])) / float(len(tpartition[sample])) for sample in samples}
 
                 #Compute BAFs
-                records = computeBAFs(mode=mode, partition=tpartition, normal=normalover, diploidbaf=diploidbaf, samples=samples, chro=bi[0], draws=draws, bafsd=bafsd, gamma=gamma)
+                if phase is None:
+                    records = computeBAFs(partition=tpartition, diploidbaf=diploidbaf, samples=samples)
+                else:
+                    records = computeBAFs(partition=tpartition, diploidbaf=diploidbaf, samples=samples, phase=phase[bi[0]], block=block)
                 parsed = {record[0] : record for record in records}
 
                 res[bi] = [(parsed[sample][0], ratios[sample], snps[sample], cov[sample], parsed[sample][1], parsed[sample][2], parsed[sample][3]) for sample in samples]
@@ -94,141 +101,46 @@ def combine(normalbins, tumorbins, tumorbafs, normalbafs, diploidbaf, totalcount
                     sp.log(msg='The bin ({}, {}) in chromosomes "{}" has been discarded because there are no covering SNPs in each tumor or normal sample\n'.format(bi[1], bi[2], bi[0]), level="WARN")
                 elif verbose and normal_count == 0:
                     sp.log(msg='The bin ({}, {}) in chromosomes "{}" has been discarded because normal read count is zero\n'.format(bi[1], bi[2], bi[0]), level="WARN")
-            if not disable: progress_bar.progress(advance=True, msg="Combine bin ({}, {}) in chromosome {}".format(bi[1], bi[2], bi[0]))
+        if not disable: progress_bar.progress(advance=True, msg="Combine bin ({}, {}) in chromosome {}".format(bi[1], bi[2], bi[0]))
     return res
 
 
-def computeBAFs(mode, partition, normal, diploidbaf, samples, chro, draws, bafsd, gamma):
-    if mode == "MOMENTS":
-        return moments(partition, samples, normal, diploidbaf, chro, draws, bafsd)
-    elif mode == "MIRROR":
-        return mirror(partition, samples, normal, diploidbaf)
-    elif mode == "BINOMIAL_TEST":
-        return testBinomial(partition, samples, normal, diploidbaf, draws, bafsd, gamma)
+def computeBAFs(partition, samples, diploidbaf, phase=None, block=0):
+    if phase is None:
+        tpartition = partition
     else:
-        raise ValueError(sp.error("Specified MODE does not exist!"))
+        select = lambda L, s : blocking(list(filter(lambda o : o[1] in phase, L)), s, phase, block)
+        tpartition = {sample : select(partition[sample], sample) for sample in samples}
 
-
-def mirror(partition, samples, normal, diploidbaf):
-    alphas = {sample : sum(int(min(x[2], x[3])) for x in partition[sample]) for sample in samples}
-    betas = {sample : sum(int(max(x[2], x[3])) for x in partition[sample]) for sample in samples}
+    alphas = {sample : sum(int(min(x[2], x[3])) for x in tpartition[sample]) for sample in samples}
+    betas = {sample : sum(int(max(x[2], x[3])) for x in tpartition[sample]) for sample in samples}
     mirrorbaf = {sample : (float(alphas[sample]) / float(alphas[sample]+betas[sample])) if (alphas[sample]+betas[sample])>0 else 0.5 for sample in samples}
-
-    if normal != None:
-        normalalpha = sum(int(min(x[0], x[1])) for x in normal)
-        normalbeta = sum(int(max(x[0], x[1])) for x in normal)
-        normalbaf = float(normalalpha) / float(normalalpha + normalbeta)
-        normalize = (lambda m, n, d : min(0.5, float(float(m) / float(n)) * 0.5 ) if n > 0 and (0.5 - m) <= d else m)
-        mirrorbaf = {sample : normalize(mirrorbaf[sample], normalbaf, diploidbaf) for sample in samples}
-        ab = {sample : splitBAF(mirrorbaf[sample], alphas[sample]+betas[sample]) for sample in samples}
-        alphas = {sample : ab[sample][0] for sample in samples}
-        betas = {sample : ab[sample][1] for sample in samples}
         
     return [(sample, alphas[sample], betas[sample], mirrorbaf[sample]) for sample in samples]
 
 
-def testBinomial(partition, samples, normal, diploidbaf, draws, bafsd, gamma):
-    mirrorres = mirror(partition, samples, normal, diploidbaf)
-    return [(record[0], record[1], record[2], 0.5) if isNeutral(record[1], record[2], gamma) else record for record in mirrorres]
+def blocking(L, sample, phase, blocksize):
+    result = []
+    if len(L) == 0:
+        return result
+    que = deque(sorted(L, key=(lambda v : v[1])))
+    omap = {}
+    blocks = {}
+    for bk in range(min(o[1] for o in L), max(o[1] for o in L) + 1, blocksize):
+        block = (sample, bk, 0, 0)
+        while que and bk <= que[0][1] < bk + blocksize:
+            o = que.popleft()
+            if phase[o[1]] == '0|1':
+                block = (sample, bk, block[2] + o[2], block[3] + o[3])
+            elif phase[o[1]] == '1|0':
+                block = (sample, bk, block[2] + o[3], block[3] + o[2])
+            else:
+                assert False, 'Found a wrong phase value'
+            omap[o] = bk
+        if block[2] + block[3] > 0:
+            result.append(block)
+    return result
 
-
-def isNeutral(countA, countB, gamma):
-    p_lower = gamma / 2.0
-    p_upper = 1.0 - p_lower
-    [c_lower, c_upper] = beta.ppf([p_lower, p_upper], countA + 1, countB + 1)
-    return c_lower <= 0.5 <= c_upper
-
-# def isNeutral(countA, countB, gamma):
-#     lb, ub = proportion_confint(min(countA, countB), countA+countB, alpha=gamma, method='beta')
-#     return lb <= 0.5 <= ub
-
-# def isNeutral(countA, countB, gamma):
-#     lb, ub = proportion_confint(min(countA, countB), countA+countB, alpha=gamma, method='jeffreys')
-#     return lb <= 0.5 <= ub
-
-
-def moments(partition, samples, normal, diploidbaf, chro, draws, bafsd):
-    snps = partition
-    if normal != None:
-        normalsnps = [x for x in normal]
-    if draws > 0:
-        snps = bootstrap(partition=partition, samples=samples, draws=draws, bafsd=bafsd)
-        if normal != None:
-            normalsnps = normalbootstrap(points=normal, draws=draws, bafsd=bafsd)
-
-    # Scale BAFs if normal BAFs are given
-    Var = (lambda value, mean, size : float(value - mean)**2 / float(size - 1) if size > 1 else 0.0)
-
-    sample_mean = {sample : min(0.5, float(sum(x[4] for x in snps[sample])) / float(len(snps[sample]))) for sample in samples}
-    sample_var = {sample : float(sum(Var(x[4], sample_mean[sample], len(snps[sample])) for x in snps[sample])) for sample in samples}
-
-    if normal != None:
-        normal_mean = float(sum(x[2] for x in normalsnps )) / float(len(normalsnps))
-        norm = float(normal_mean) if normal_mean > 0 else 0.5
-        normalize = (lambda m, n, d : min(0.5, (m / n) * 0.5) if (0.5 - m) <= d else m )
-        sample_mean = {sample : normalize(sample_mean[sample], norm, diploidbaf) for sample in samples}
-
-    posvar = set(sample for sample in samples if sample_var[sample] > 0.0)
-    common = {sample : float( (sample_mean[sample] * (1.0 - sample_mean[sample])) / sample_var[sample]) - 1.0 for sample in posvar}
-    alphas = {sample : float(sample_mean[sample] * common[sample]) if sample in posvar else sum(min(x[2], x[3]) for x in snps[sample]) for sample in samples}
-    betas = {sample : float((1.0 - sample_mean[sample]) * common[sample]) if sample in posvar else sum(max(x[2], x[3]) for x in snps[sample]) for sample in samples}
-    roundings = {sample : roundAlphasBetas(sample_mean[sample], alphas[sample], betas[sample]) for sample in samples}
-    
-    return [(sample, roundings[sample][0], roundings[sample][1], sample_mean[sample]) for sample in samples]
-
-
-def bootstrap(partition, samples, draws, bafsd):
-    boot = {sample : [] for sample in samples}
-    gauss = np.random.normal
-    binomial = np.random.binomial
-    poisson = np.random.poisson
-    avg_cov = {sample : float(sum(x[2]+x[3] for x in partition[sample])) / float(len(partition[sample])) for sample in samples}
-    for sample in samples:
-        for snp in partition[sample]:
-            # OPTION 2
-            # bafs = [snp[4] for i in range(draws)]
-            # covs = map(float, list(poisson(lam=avg_cov[snp[0]], size=draws)))
-            # covs = [c if c > 0.0 else float(avg_cov[snp[0]]) for c in covs]
-            # mid = int(len(covs)/2)
-            # alleles = [binomial(n=cov, p=baf) for cov, baf in zip(covs[:mid], bafs[:mid])]
-            # alleles += [binomial(n=cov, p=(1.0 - baf)) for cov, baf in zip(covs[mid:], bafs[mid:])]
-            # boot[sample].extend([(snp[0], snp[1], int(alleles[i]), int(covs[i]-alleles[i]), float(min(alleles[i], covs[i]-alleles[i])) / float(covs[i]) ) for i in range(draws)])
-            covs = map(float, list(poisson(lam=avg_cov[snp[0]], size=draws)))
-            covs = [c if c > 0.0 else float(avg_cov[snp[0]]) for c in covs]
-            ebafs = sorted([gauss(snp[4], bafsd) for cov in covs])
-            winsorized = int(len(ebafs) * 0.1)
-            ebafs = [ebafs[winsorized] for i in range(winsorized)] + ebafs[winsorized:-winsorized] + [ebafs[-winsorized-1] for i in range(winsorized)]
-            assert(len(ebafs) == len(covs))
-            alleles = [splitBAF(ebaf, cov) for (ebaf, cov) in zip(ebafs, covs)]
-            boot[sample].extend([(snp[0], snp[1], alleles[i][0], alleles[i][1], float(min(alleles[i][0], alleles[i][1])) / float(alleles[i][0] + alleles[i][1]) ) for i in range(draws)])
-    return {sample : partition[sample] + boot[sample] for sample in samples}
-
-
-def normalbootstrap(points, draws, bafsd):
-    boot = []
-    gauss = np.random.normal
-    binomial = np.random.binomial
-    poisson = np.random.poisson
-    avg_cov = float(sum(int(x[0]) + int(x[1]) for x in points)) / float(len(points))
-    for snp in points:
-        # OPTION 2:
-        # bafs = [snp[2] for i in range(draws)]
-        # covs = map(float, list(poisson(lam=avg_cov, size=draws)))
-        # covs = [c if c > 0.0 else float(avg_cov) for c in covs]
-        # mid = int(len(covs)/2)
-        # alleles = [binomial(n=cov, p=baf) for cov, baf in zip(covs[:mid], bafs[:mid])]
-        # alleles += [binomial(n=cov, p=(1.0 - baf)) for cov, baf in zip(covs[mid:], bafs[mid:])]
-        # boot.extend([(int(alleles[i]), int(covs[i]-alleles[i]), float(min(alleles[i], covs[i]-alleles[i])) / float(covs[i]) ) for i in range(draws)])
-        covs = map(float, list(poisson(lam=avg_cov, size=draws)))
-        covs = [c if c > 0.0 else float(avg_cov) for c in covs]
-        ebafs = [gauss(snp[2], bafsd) for cov in covs]
-        winsorized = int(len(ebafs) * 0.1)
-        ebafs = [ebafs[winsorized] for i in range(winsorized)] + ebafs[winsorized:-winsorized] + [ebafs[-winsorized-1] for i in range(winsorized)]
-        assert(len(ebafs) == len(covs))
-        alleles = [splitBAF(ebaf, cov) for (ebaf, cov) in zip(ebafs, covs)]
-        boot.extend([(int(alleles[i][0]), int(alleles[i][1]), float(min(alleles[i][0], alleles[i][1])) / float(alleles[i][0]+alleles[i][1]) ) for i in range(draws)])
-    return points + boot
-    
 
 def readBINs(normalbins, tumorbins):
     normalBINs = {}
@@ -242,10 +154,10 @@ def readBINs(normalbins, tumorbins):
     with open(normalbins, 'r') as f:
         for line in f:
             parsed = line.strip().split()[:5]
-            normal_chr.add(parsed[1])
-            normal.add(parsed[0])
-            if (parsed[1], int(parsed[2]), int(parsed[3])) not in normalBINs:
-                normalBINs[parsed[1], int(parsed[2]), int(parsed[3])] = (parsed[0], int(parsed[4]))
+            normal_chr.add(parsed[0])
+            normal.add(parsed[3])
+            if (parsed[0], int(parsed[1]), int(parsed[2])) not in normalBINs:
+                normalBINs[parsed[0], int(parsed[1]), int(parsed[2])] = (parsed[3], int(parsed[4]))
             else:
                 raise ValueError(sp.error("Found multiple lines for the same interval in the normal bin counts!"))
 
@@ -267,13 +179,13 @@ def readBINs(normalbins, tumorbins):
     with open(tumorbins, 'r') as f:
         for line in f:
             parsed = line.strip().split()[:5]
-            tumor_chr.add(parsed[1])
-            samples.add(parsed[0])
+            tumor_chr.add(parsed[0])
+            samples.add(parsed[3])
             try:
-                tumorBINs[parsed[1], int(parsed[2]), int(parsed[3])].add((parsed[0], int(parsed[4])))
+                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])].add((parsed[3], int(parsed[4])))
             except KeyError:
-                tumorBINs[parsed[1], int(parsed[2]), int(parsed[3])] = set()
-                tumorBINs[parsed[1], int(parsed[2]), int(parsed[3])].add((parsed[0], int(parsed[4])))
+                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])] = set()
+                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])].add((parsed[3], int(parsed[4])))
 
     # Check tumor bin counts
     prev_r = -1
@@ -300,63 +212,27 @@ def readBINs(normalbins, tumorbins):
     return normalBINs, tumorBINs, chromosomes, normal.pop(), samples
 
 
-def readBAFs(tumor, normal=None):
+def readBAFs(tumor):
     tumorBAFs = {}
-    normal_chr = set()
     tumor_chr = set()
-
-    if normal != None:
-        normalBAFs = {}
-        normal_sample = set()
-        normal_chr = set()
-
-        with open(normal, 'r') as f:
-            for line in f:
-                parsed = line.strip().split()[:5]
-                normal_chr.add(parsed[1])
-                normal_sample.add(parsed[0])
-                pos = int(parsed[2])
-                ref = int(parsed[3])
-                alt = int(parsed[4])
-                if (parsed[1], pos) not in normalBAFs:
-                    normalBAFs[parsed[1], pos] = (ref, alt, float(min(ref, alt)) / float(ref + alt))
-                else:
-                    raise ValueError(sp.error("A position is present multiple times in the normal sample!"))
-
-        if len(normal_sample) != 1:
-            raise ValueError("Found multiple samples in the normal BAF file!")
-        if not tumor_chr <= normal_chr:
-            raise ValueError("The chromosomes in tumor are not present in the normal!")
 
     # Read tumor bafs
     samples = set()
     with open(tumor, 'r') as f:
         for line in f:
             parsed = line.strip().split()[:5]
-            sample = parsed[0]
-            chromosome = parsed[1]
-            pos = int(parsed[2])
+            sample = parsed[2]
+            chromosome = parsed[0]
+            pos = int(parsed[1])
             ref = int(parsed[3])
             alt = int(parsed[4])
             tumor_chr.add(chromosome)
             samples.add(sample)
             baf = float(min(ref, alt)) / float(ref+alt) if ref+alt > 0 else 0.5
-            if normal != None and (parsed[1], pos) not in normalBAFs:
-                raise ValueError("The SNP at position {} in chromosome {} is covered in a tumor sample but not in the normal!".format(pos, parsed[1]))
-            # if normal is not None:
-            #     try:
-            #         scale = ref + alt
-            #         normalbaf = normalBAFs[parsed[1], pos][2]
-            #         baf = float(baf) / float(normalbaf) * float(0.5) if normalbaf > 0 else 0.5
-            #         #baf = min(baf, 1.0 - baf)
-            #         baf = min(baf, 0.5)
-            #         alt, ref = splitBAF(baf, scale)
-            #     except KeyError:
-            #         raise ValueError("The SNP at position {} in chromosome {} is covered in a tumor sample but not in the normal!".format(pos, parsed[1]))
             try:
-                tumorBAFs[parsed[1]].append((parsed[0], pos, ref, alt, baf))
+                tumorBAFs[chromosome].append((sample, pos, ref, alt, baf))
             except KeyError:
-                tumorBAFs[parsed[1]] = [(parsed[0], pos, ref, alt, baf)]
+                tumorBAFs[chromosome] = [(sample, pos, ref, alt, baf)]
 
     # Check tumor bafs
     for key in tumorBAFs:
@@ -366,10 +242,24 @@ def readBAFs(tumor, normal=None):
 
     chromosomes = sorted(list(tumor_chr), key=sp.numericOrder)
 
-    if normal is None:
-        return tumorBAFs, chromosomes, samples, None, None
-    else:
-        return tumorBAFs, chromosomes, samples, normalBAFs, normal_sample.pop()
+    return tumorBAFs, chromosomes, samples
+
+
+def readPhase(f):
+    phased = defaultdict(lambda : dict())
+    with open(f, 'r') as i:
+        for l in i:
+            p = l.strip().split()
+            if len(l) > 1 and p[0][0] != '#':
+                zeroone = '0|1' in l
+                onezero = '1|0' in l
+                if zeroone or onezero:
+                    if zeroone and onezero:
+                        raise ValueError('Found a record in phased positions which contains both phases 0|1 and 1|0!')
+                    if p[0] in phased[p[0]]:
+                        raise ValueError('Found a duplicate phased position!')
+                    phased[p[0]][int(p[1])] = '0|1' if zeroone else '1|0'
+    return phased
 
 
 def splitBAF(baf, scale):
@@ -388,24 +278,6 @@ def splitBAF(baf, scale):
     diff = [abs(est - BAF) for est in estimations]
     best = np.argmin(diff)
     return roundings[best][0], roundings[best][1]
-
-
-def roundAlphasBetas(baf, alpha, beta):
-    BAF = float(baf)
-    BAF = min(BAF, 1.0 - BAF)
-    ALPHA = min(alpha, beta)
-    BETA = max(alpha, beta)
-
-    roundings = []
-    roundings.append((int(math.floor(ALPHA)), int(math.floor(BETA))))
-    roundings.append((int(math.floor(ALPHA)), int(math.ceil(BETA))))
-    roundings.append((int(math.ceil(ALPHA)), int(math.floor(BETA))))
-    roundings.append((int(math.ceil(ALPHA)), int(math.ceil(BETA))))
-    roundings = [(int(min(a,b)), int(max(a,b))) for (a, b) in roundings]
-
-    estimations = [float(a) / float(a+b) if a+b>0 else 1.0 for (a, b) in roundings]
-    diff = [abs(est - BAF) for est in estimations]
-    return roundings[np.argmin(diff)]
 
 
 def readTotalCounts(filename, samples, normal):

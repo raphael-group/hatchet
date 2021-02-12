@@ -4,8 +4,8 @@ import shlex
 import subprocess
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 
-import ProgressBar as pb
-import Supporting as sp
+from . import ProgressBar as pb
+from . import Supporting as sp
 
 
 def tcount(samtools, samples, chromosomes, num_workers, q, verbose=False):
@@ -77,9 +77,9 @@ class TotalCounter(Process):
                 self.task_queue.task_done()
                 break
 
-            self.progress_bar.progress(advance=False, msg="{} starts total counting on (sample={}, chromosome={})".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(advance=False, msg="{} starts on {} for {}".format(self.name, next_task[1], next_task[2]))
             count = self.binChr(bamfile=next_task[0], samplename=next_task[1], chromosome=next_task[2])
-            self.progress_bar.progress(advance=True, msg="{} ends total counting on (sample={}, chromosome={})".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(advance=True, msg="{} ends on {} for {}".format(self.name, next_task[1], next_task[2]))
             self.task_queue.task_done()
             self.result_queue.put(count)
         return
@@ -89,7 +89,7 @@ class TotalCounter(Process):
         pipe = subprocess.PIPE
         split = shlex.split
         cmd = "{} view {} -c -q {} {}".format(self.samtools, bamfile, self.q, chromosome)
-        stdout, stderr = popen(split(cmd), stdout=pipe, stderr=pipe).communicate()
+        stdout, stderr = popen(split(cmd), stdout=pipe, stderr=pipe, universal_newlines=True).communicate()
         if stderr != "":
             self.progress_bar.progress(advance=False, msg="{}{}: samtools warns \"{}\"on (sample={}, chromosome={}){}".format(sp.bcolors.WARNING, self.name, stderr, samplename, chromosome, sp.bcolors.ENDC))
         return (samplename, chromosome, int(stdout.strip()))

@@ -1,5 +1,6 @@
 import sys
 import datetime
+import requests
 
 
 def naturalOrder(text):
@@ -41,6 +42,11 @@ def which(program):
     return None
 
 
+def urlexists(path):
+    r = requests.head(path)
+    return r.status_code == requests.codes.ok
+
+
 def log(msg, level=None, lock=None):
     timestamp = '{:%Y-%b-%d %H:%M:%S}'.format(datetime.datetime.now())
     if level == "STEP":
@@ -73,6 +79,13 @@ def log(msg, level=None, lock=None):
             sys.stderr.write("{}".format(msg))
         else:
             with lock: sys.stderr.write("{}".format(msg))
+
+
+def logArgs(args, width):
+    text = "\n"
+    for key in args:
+        text += "\t{}: {}\n".format(key, args[key])
+    log(msg=text, level="INFO")
 
 
 def error(msg):

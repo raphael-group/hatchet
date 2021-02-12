@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -18,7 +18,7 @@ from matplotlib.pyplot import cm
 from itertools import cycle
 from collections import Counter
 
-from ArgParsing import parse_bbot_args
+from .ArgParsing import parse_bbot_args
 
 plt.style.use('ggplot')
 sns.set_style("whitegrid")
@@ -32,16 +32,15 @@ def main(args=None):
     sys.stderr.write(log("# Reading input BBC file\n"))
     bbc, clusters = readBBC(args['input'])
 
+    sys.stderr.write(log("# Bin's clusters are selected accordingly to the provided thresholds\n"))
+    order, pal = select(bbc, clusters, args)
+
     if args['fontscale'] != 1:
         sns.set(font_scale = args['fontscale'])
 
     if args['resolution'] is not None:
         sys.stderr.write(log("# Merging bins according to resolution\n"))
         bbc, clusters = join(bbc, clusters, args['resolution'])
-
-    if args['ct'] is not None or args['st'] is not None:
-        sys.stderr.write(log("# Bin's clusters are selected accordingly to the provided thresholds\n"))
-        bbc, clusters = select(bbc, clusters, args)
 
     if args['command'] is None or args['command'] == 'RD':
         out = os.path.join(args['x'], 'readdepthratio.pdf')
@@ -71,7 +70,7 @@ def main(args=None):
     if args['command'] is None or args['command'] == 'CBB':
         out = os.path.join(args['x'], 'bb_clustered.pdf' if args['pdf'] else 'bb_clustered.png')
         sys.stderr.write(log("# [CBB] Plotting clustered RDR-BB for all samples in {}\n".format(out)))
-        clubb(bbc, clusters, args, out)
+        clubb(bbc, clusters, args, out, order, pal)
 
     if args['command'] is None or args['command'] == 'CLUSTER':
         if args['segfile'] is not None:
@@ -237,7 +236,7 @@ def bb(bbc, clusters, args, out):
             plt.close()
 
 
-def clubb(bbc, clusters, args, out):
+def clubb(bbc, clusters, args, out, order, pal):
     pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
     ly = 'RDR'
     lx = '0.5 - BAF'
@@ -246,7 +245,6 @@ def clubb(bbc, clusters, args, out):
     size = {i : float(sum(clusters[b[0]][b[1]] == i for b in pos)) for i in set(clusters[b[0]][b[1]] for b in pos)}
     data = [{ly : bbc[b[0]][b[1]][p]['RDR'], lx : 0.5 - bbc[b[0]][b[1]][p]['BAF'], g : p, lh : clusters[b[0]][b[1]], 'size' : size[clusters[b[0]][b[1]]]} for b in pos for p in bbc[b[0]][b[1]]]
     df = pd.DataFrame(data)
-    order = sorted(set(df[lh]), key=(lambda x : size[x]), reverse=True)
     figsize = args['figsize'] if args['figsize'] is not None else (10, 1.1)
     s = args['markersize'] if args['markersize'] > 0 else 7
     
@@ -254,9 +252,9 @@ def clubb(bbc, clusters, args, out):
     #    for sample, group in df.groupby(g):
     #sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
     if args['colwrap'] > 1:
-        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=args['cmap'], fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, col=g, col_wrap=args['colwrap'])
+        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=pal, fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, col=g, col_wrap=args['colwrap'])
     else:
-        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=args['cmap'], fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, row=g)
+        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=pal, fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, row=g)
     #plt.title("{}".format(sample))
     coordinates(args, g)
     #pdf.savefig(bbox_inches='tight')
@@ -386,20 +384,16 @@ def select(bbc, clusters, args):
     s = ['{}:\tSIZE= {},\t# CHRS= {}'.format(idx, count[idx]['SIZE'], count[idx]['CHRS']) for idx in sel]
     sys.stderr.write(info('## Selected clusters: \n{}\n'.format('\n'.join(s))))
 
-    resclu = {}
-    resbbc = {}
-    for c in clusters:
-        if c not in resclu:
-            resclu[c] = {}
-        assert c not in resbbc
-        resbbc[c] = {}
-        for s in clusters[c]:
-            if clusters[c][s] in sel:
-                resclu[c][s] = clusters[c][s]
-                resbbc[c][s] = bbc[c][s]
+    order = sorted(sel, key=(lambda x: count[x]['SIZE']), reverse=True)    
+    [ order.append(i) if not i in sel else next for i in alls]    
+    if len(sel) <= len(sns.color_palette(args['cmap'])): # are there more colors than selected clusters?    
+        pal = sns.color_palette(args['cmap'])[0:len(sel)-1]    
+        [ pal.append('0.5') for i in range( len(alls) - len(sel) ) ]    
+    else:    
+        pal = sns.color_palette(args['cmap'])    
+        [ pal.append('0.5') for i in range( len(alls) - len(sns.color_palette(args['cmap'])) ) ]    
 
-    return {c : resbbc[c] for c in resbbc if len(resbbc[c]) > 0}, {c : resclu[c] for c in resclu if len(resclu[c]) > 0}
-
+    return order, pal
 
 def addchr(pos):
     ymin, ymax = plt.ylim()

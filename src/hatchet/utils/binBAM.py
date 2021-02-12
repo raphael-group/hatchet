@@ -1,13 +1,13 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import sys
 import os.path
 import argparse
 
-import BAMBinning as bb
-import TotalCounting as tc
-import ArgParsing as ap
-from Supporting import *
+from . import BAMBinning as bb
+from . import TotalCounting as tc
+from . import ArgParsing as ap
+from .Supporting import *
 
 
 
@@ -36,15 +36,12 @@ def main(args=None):
     if not normal_bins: close("No bins in the normal sample!\n")
 
     log(msg="# Writing the read counts for bins of normal sample\n", level="STEP")
-    if args["outputNormal"] is not None:
-        with open(args["outputNormal"], 'w') as f:
-            for c in args["chromosomes"]:
-                for count in normal_bins[args["normal"][1], c]:
-                    f.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
-    else:
-        for c in args["chromosomes"]:
-            for count in normal_bins[args["normal"][1], c]:
-                sys.stdout.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
+    handle = open(args['outputNormal'], 'w') if args['outputNormal'] is not None else sys.stdout
+    for c in args["chromosomes"]:
+        for (samplename, chromosome, start, stop, n_reads) in normal_bins[args["normal"][1], c]:
+            handle.write('\t'.join([str(chromosome), str(start), str(stop), samplename, str(n_reads)]) + '\n')
+    if handle is not sys.stdout:
+        handle.close()
 
     log(msg="# Binning and counting the tumor samples\n", level="STEP")
     tumor_bins = bb.bin(samtools=args["samtools"], samples=args["samples"], chromosomes=args["chromosomes"],
@@ -52,17 +49,13 @@ def main(args=None):
     if not tumor_bins: close("No bins in the tumor samples!\n")
 
     log(msg="# Writing the read counts for bins of tumor samples\n", level="STEP")
-    if args["outputTumors"] is not None:
-        with open(args["outputTumors"], 'w') as f:
-            for sample in sorted(args["samples"]):
-                for c in args["chromosomes"]:
-                    for count in tumor_bins[sample[1], c]:
-                        f.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
-    else:
-        for sample in sorted(args["samples"]):
-            for c in args["chromosomes"]:
-                for count in tumor_bins[sample[1], c]:
-                    sys.stdout.write("{}\t{}\t{}\t{}\t{}\n".format(count[0], count[1], count[2], count[3], count[4]))
+    handle = open(args['outputTumors'], 'w') if args['outputTumors'] is not None else sys.stdout
+    for sample in sorted(args["samples"]):
+        for c in args["chromosomes"]:
+            for (samplename, chromosome, start, stop, n_reads) in tumor_bins[sample[1], c]:
+                handle.write('\t'.join([str(chromosome), str(start), str(stop), samplename, str(n_reads)]) + '\n')
+    if handle is not sys.stdout:
+        handle.close()
 
     log(msg="# Counting total number of reads for normal and tumor samples\n", level="STEP")
     total_counts = tc.tcount(samtools=args["samtools"], samples=({args["normal"]}|args["samples"]), chromosomes=args["chromosomes"],
@@ -97,6 +90,8 @@ def knownRegions(refdict, chromosomes):
 
     res = {}
     for c in chromosomes:
+        if ends[c] is None:
+            raise ValueError("Length of chromosome {} could not be determined. Are you using the correct reference genome?".format(c))
         res[c] = [(0, ends[c])]
         
     return res

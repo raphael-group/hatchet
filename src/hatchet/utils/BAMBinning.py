@@ -1,11 +1,8 @@
-import os
-import sys
-import shlex
-import subprocess
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
+from collections import deque
+import pysam
 
-import ProgressBar as pb
-import Supporting as sp
+from . import ProgressBar as pb
 
 
 def bin(samtools, samples, chromosomes, num_workers, q, size, regions, verbose=False):
@@ -57,7 +54,6 @@ def bin(samtools, samples, chromosomes, num_workers, q, size, regions, verbose=F
     return sorted_results
 
 
-
 class Binner(Process):
 
     def __init__(self, task_queue, result_queue, progress_bar, samtools, q, size, regions, verbose):
@@ -79,29 +75,24 @@ class Binner(Process):
                 self.task_queue.task_done()
                 break
 
-            self.progress_bar.progress(advance=False, msg="{} starts binning on (sample={}, chromosome={})".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(advance=False, msg="{} starts on {} for {})".format(self.name, next_task[1], next_task[2]))
             bins = self.binChr(bamfile=next_task[0], samplename=next_task[1], chromosome=next_task[2])
-            self.progress_bar.progress(advance=True, msg="{} ends binning on (sample={}, chromosome={})".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(advance=True, msg="{} ends on {} for {})".format(self.name, next_task[1], next_task[2]))
             self.task_queue.task_done()
             self.result_queue.put(bins)
         return
 
     def binChr(self, bamfile, samplename, chromosome):
-        bins = []
-        append = bins.append
-        popen = subprocess.Popen
-        pipe = subprocess.PIPE
-        split = shlex.split
-        cmd = "{} view {} -c -q {}".format(self.samtools, bamfile, self.q)
-        for reg in self.regions[chromosome]:
-            index = reg[0]
-            end = reg[1]
-            while index < end:
-                border = min(index+self.size, end)
-                cmd_reg = cmd + " {}:{}-{}".format(chromosome, index, border)
-                stdout, stderr = popen(split(cmd_reg), stdout=pipe, stderr=pipe).communicate()
-                if stderr != "":
-                    self.progress_bar.progress(advance=False, msg="{}{}: samtools warns \"{}\"on (sample={}, chromosome={}, region=({},{})){}".format(sp.bcolors.WARNING, self.name, stderr, samplename, chromosome, index, border, sp.bcolors.ENDC))
-                append((samplename, chromosome, index, border, stdout.strip()))
-                index += self.size
-        return bins
+        read_callback = lambda r: r.mapping_quality >= self.q
+        sam = pysam.AlignmentFile(bamfile, 'rb')
+        bins = deque()
+        for start, end in self.regions[chromosome]:
+            while start < end:
+                stop = min(start + self.size, end)
+                if start > 0:
+                    n_reads = sam.count(chromosome, start=start-1, stop=stop, read_callback=read_callback)
+                else:
+                    n_reads = sam.count(chromosome, start=0, stop=stop, read_callback=read_callback)
+                bins.append((samplename, chromosome, max(start, 1), stop, str(n_reads)))
+                start += self.size
+        return list(bins)

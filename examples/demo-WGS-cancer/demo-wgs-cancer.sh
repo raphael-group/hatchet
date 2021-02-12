@@ -8,7 +8,7 @@ The following HATCHet's demo represents a guided example starting from WGS (whol
 The demo requires that HATCHet has been successfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
-PY="python2" # This id the full path to the version of PYTHON2.7 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python2`
+PY="python3" # This id the full path to the version of PYTHON3 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python3`
 :<<'```shell' # Ignore this line
 ```
 
@@ -87,7 +87,7 @@ We apply the last step with default parameters and, for simplicity of this demo,
 - We only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
 
 ```shell
-${INFER} ${SOLVE} -i demo-wgs-cancer -n2,6 -p 100 -v 2 -u 0.1 -r 12 -eD 6 -eT 12 -l 0.5 |& tee hatchet.log
+${INFER} -i demo-wgs-cancer -n2,6 -p 100 -v 2 -u 0.1 -r 12 -eD 6 -eT 12 -l 0.5 |& tee hatchet.log
 :<<'```shell' # Ignore this line
 ```
 
@@ -114,7 +114,7 @@ We obtain the following summary of results:
 HATCHet predicts the presence of 4 clones in the 3 tumor samples and, especially, predicts that 2 samples (A12-C and A12-D) contains two distinct tumor clones. While HATCHet accurately recovers the major tumor clones distinguished by larger CNAs, HATCHet may miss small or minor CNAs, especially CNAs that are only present in a unique sample or in low proportions. Investigating the presence of unique or low proporions clones is particularly interesting in this patient because the high noise and variance make more difficult distinguishing variations in the clusters between those due to either noise or presence of different clones. To investigate the presence of minor or low-proportions clones, we re-run the `hatchet` step by increasing the sensitivity of HATCHet; we do this by decreasing the value of the limit `-l` from the default of `0.5` to `0.2`. Remember that the value that control the sensivity `-l` must be in `[0, 1]` and the default value is `0.5`; in particular, lower values incrase the sensitivty of HATCHet by exploring solutions with more clones and the presence of small CNAs, whereas higher values decrease the sensitivity. We thus re-run the `hatchet` step as follows:
 
 ```shell
-${INFER} ${SOLVE} -i demo-wgs-cancer -n2,6 -p 100 -v 2 -u 0.1 -r 12 -eD 6 -eT 12 -l 0.2 |& tee hatchet.log
+${INFER} -i demo-wgs-cancer -n2,6 -p 100 -v 2 -u 0.1 -r 12 -eD 6 -eT 12 -l 0.2 |& tee hatchet.log
 :<<'```shell' # Ignore this line
 ```
 
