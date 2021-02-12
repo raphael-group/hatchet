@@ -8,7 +8,7 @@ The following HATCHet's demo represents a guided example starting from WES (whol
 The demo requires that HATCHet has been successfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
-PY="python3" # This id the full path to the version of PYTHON3 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python2`
+PY="python3" # This is the full path to the version of PYTHON3 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python3`
 :<<'```shell' # Ignore this line
 ```
 
@@ -80,14 +80,14 @@ In this clustering the previously-described condition is met and all the differe
 
 ## hatchet's step
 
-In the last step we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD. 
+In the last step we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
 We apply the last step with default parameters and, for simplicity of this demo, we apply only few changes:
 - As the dataset has high variance and noise (see clustering), we consider a minimum clone proportion `-u` slightly higher than the default value, i.e. `6%`. We do this because we cannot infer tumor clones with very low proportions when there is high noise and because potential clones inferred with very low proportions may simply be the result of overfitting. In fact, when using values of `-u` smaller than `6%` we obtain solutions with clone proporions identical to the minimum value of `-u`; this is the recommended criterion to determine the need of increasing the value of `-u`. Interestingly, we can observe the same overfitting sign when we consider too high values of the minimum clone proportion, for example `-u 0.1`. This happens because the value is too high to fit the given data. As such, it is always important to choose the minimum value which provides "non-overfitting" results, i.e. results where the clone proportions are not identical to the minimum. When this is not possible, as in very noisy datasets, we reccommend to either tune the clustering or keeping very low values of the minimum clone proportion, as HATCHet is still able to recover the main clonal composition even  in the presence of mninor overfitting.
 - We limit the number of clones to 6 for simplicity of this demo and because it is a reasonable value for CNAs when consider only few samples from the same patient.
 - We only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
 
 ```shell
-${INFER} ${SOLVE} -i demo-wes -n2,6 -p 100 -v 2 -u 0.06 -r 12 -eD 6 -eT 12 -l 0.5 |& tee hatchet.log
+${INFER} -i demo-wes -n2,6 -p 100 -v 2 -u 0.06 -r 12 -eD 6 -eT 12 -l 0.5 |& tee hatchet.log
 :<<'```shell' # Ignore this line
 ```
 

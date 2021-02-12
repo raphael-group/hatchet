@@ -49,7 +49,7 @@ We download and install Miniconda to create virtual environment specific to HATC
 ```shell
 wget https://repo.anaconda.com/miniconda/Miniconda2-latest-Linux-x86_64.sh -P ${SETUP_HOME}/
 bash ${SETUP_HOME}/Miniconda2-latest-Linux-x86_64.sh -b -f -p ${SETUP_HOME}/miniconda/ && rm -f ${SETUP_HOME}/Miniconda2-latest-Linux-x86_64.sh
-${SETUP_HOME}/miniconda/bin/conda create -y -n hatchet python=2.7 numpy scipy pandas matplotlib seaborn
+${SETUP_HOME}/miniconda/bin/conda create -y -n hatchet python=3.8 numpy scipy pandas matplotlib seaborn
 echo "source ${SETUP_HOME}/miniconda/bin/activate hatchet" >> ${SETUP_HOME}/setup_hatchet.sh
 :<<'```shell' # Ignore this line
 ```

@@ -16,7 +16,7 @@ Specifically, the tumor is composed of 2 tumor clones (clone0 and clone1) and a 
 The demo requires that HATCHet has been successfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
-PY="python2" # This id the full path to the version of PYTHON2.7 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python2`
+PY="python3" # This id the full path to the version of PYTHON3 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python3`
 :<<'```shell' # Ignore this line
 ```
 

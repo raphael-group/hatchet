@@ -30,7 +30,7 @@ Two example segmented files in this format for two tumor samples from the same p
 The demo requires that HATCHet has been succesfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
-PY="python2" # This id the full path to the version of PYTHON2.7 which contains the required modules. When this corresponds to the standard version, the user can keep the given value of `python2`
+PY="python3" # This id the full path to the version of PYTHON3 which contains the required modules. When this corresponds to the standard version, the user can keep the given value of `python3`
 :<<'```shell' # Ignore this line
 ```
 
@@ -69,7 +69,7 @@ In addition, one could consider different size of the resulting bins by using th
 Having the input BB file, we can continue by executing the standard HATCHet pipeline and skipping the pre-processing steps (`binBAM`, `deBAF`, and `comBBo`). As such, the next main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluBB`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
-${CLUBB} samples.GATK4.CNV.bb -by ${BNPY} -o samples.GATK4.CNV.seg -O samples.GATK4.CNV.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
+${CLUBB} samples.GATK4.CNV.bb -o samples.GATK4.CNV.seg -O samples.GATK4.CNV.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
@@ -92,7 +92,7 @@ Next we apply `hatchet`, i.e. the component of HATCHet which estimates fractiona
 We apply the last step with default parameters and, for simplicity of this demo, we consider 6 clones, which can be easily considered by HATCHet in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
 
 ```shell
-${INFER} ${SOLVE} -i samples.GATK4.CNV -n2,6 -p 100 -v 2 -u 0.03 -r 12 -eD 6 -eT 12 -l 0.6 |& tee hatchet.log
+${INFER} -i samples.GATK4.CNV -n2,6 -p 100 -v 2 -u 0.03 -r 12 -eD 6 -eT 12 -l 0.6 |& tee hatchet.log
 :<<'```shell' # Ignore this line
 ```
 

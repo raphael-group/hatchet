@@ -12,12 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [2.7]
+        python: [3.6, 3.7, 3.8]
 
     steps:
       - uses: actions/checkout@v2
         with:
           lfs: true
+
+      - name: Upgrade setuptools
+        run: |
+          pip3 install wheel --upgrade
+          pip3 install setuptools --upgrade
 
       - name: Cache Testing Data
         id: cache-test-data
@@ -29,8 +34,6 @@ jobs:
       - name: Download Testing Data
         if: steps.cache-test-data.outputs.cache-hit != 'true'
         run: |
-          pip3 install wheel
-          pip3 install setuptools
           pip3 install zenodo-get
           python3 -m zenodo_get 10.5281/zenodo.4046906 --output-dir=testdata
 
@@ -72,7 +75,7 @@ jobs:
           gunzip hg19.fa.gz
           $HATCHET_PATHS_SAMTOOLS/samtools faidx hg19.fa
           $HATCHET_PATHS_SAMTOOLS/samtools dict hg19.fa > hg19.dict
-          echo "HATCHET_PATHS_HG19=$(realpath hg19.fa)" >> $GITHUB_ENV
+          echo "HATCHET_PATHS_REFERENCE=$(realpath hg19.fa)" >> $GITHUB_ENV
 
       - name: Setup Python
         uses: actions/setup-python@v2

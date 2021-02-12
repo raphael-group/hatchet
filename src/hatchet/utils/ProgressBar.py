@@ -1,6 +1,8 @@
 import sys
 import datetime
-import hatchet.utils.Supporting as sp
+from . import Supporting as sp
+
+
 
 class ProgressBar:
 
@@ -40,7 +42,7 @@ class ProgressBar:
         else:
             toprint = rewind + sp.bcolors.BBLUE + msg + sp.bcolors.ENDC + "\n" + result
         with self.lock:
-            write(toprint.encode('utf-8'))
+            write(toprint)
             flush()
             if self.counter.value == self.total:
                 write("\n")
@@ -61,7 +63,7 @@ class ProgressBar:
             toprint = rewind + result + " [%s]" % (msg)
         else:
             toprint = rewind + msg + "\n" + result
-        write(toprint.encode('utf-8'))
+        write(toprint)
         flush()
         if self.counter == self.total:
             write("\n")

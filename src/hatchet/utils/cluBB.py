@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import os, shutil
 import sys
@@ -6,8 +6,8 @@ import math
 import copy
 import numpy as np
 
-from hatchet.utils.ArgParsing import parse_clubb_args
-import hatchet.utils.Supporting as sp
+from .ArgParsing import parse_clubb_args
+from . import Supporting as sp
 
 
 def main(args=None):

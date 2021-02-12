@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import os
 import sys
@@ -8,6 +8,8 @@ import subprocess
 import multiprocessing as mp
 import shlex
 from collections import Counter
+
+from hatchet import config
 
 
 def parsing_arguments(args=None):
@@ -19,64 +21,35 @@ def parsing_arguments(args=None):
     parser = argparse.ArgumentParser(
         description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("SOLVER", help="Path to the executable solver")
-    parser.add_argument("-i", "--input", type=str, required=True,
-                        help="Prefix path to seg and bbc input files (required)")
-    parser.add_argument("-x", "--runningdir", type=str, required=False,
-                        default="./", help="Running directory (default: ./)")
-    parser.add_argument("-n", "--clones", type=str, required=False, default="2,8",
-                        help="Either an estimated number of clones or an interval where the\nnumber of clones should be looked for given in the form LOWER,UPPER where LOWER and UPPER are two integer defining the interval (default: 2,8)")
-    parser.add_argument("-f", "--noampdel", action='store_true', default=False, required=False,
-                        help="Remove amp-del assumption where each mutated allele of every segment can be either amplified or deleted in all tumor clones w.r.t. base (2 for diploid and 4 for tetraploid) (default: use assumption)")
-    parser.add_argument("-c", "--clonal", type=str, required=False, default=None,
-                        help="Clonal clusters to fix for tetraploid (default: automatically inferred)")
-    parser.add_argument("-d", "--cnstates", type=int, required=False, default=None,
-                        help="Maximum number of distinct copy-number states for each segment (default: None, no limit)")
-    parser.add_argument("-eD", "--diploidcmax", type=int, required=False, default=6,
-                        help="Maximum copy-number value overall segments (default: 6, 0 means inferred from scaled fractional copy numbers)")
-    parser.add_argument("-eT", "--tetraploidcmax", type=int, required=False, default=12,
-                        help="Maximum copy-number value overall segments (default: 12, 0 means inferred from scaled fractional copy numbers)")
-    parser.add_argument("-ts", "--minsize", type=float, required=False, default=0.008,
-                        help="The minimum proportion of covered genome for potential clonal clusters (default: 0.008)")
-    parser.add_argument("-tc", "--minchrs", type=int, required=False, default=1,
-                        help="The minimum number of covered chromosomes for potential clonal clusters (default: 1)")
-    parser.add_argument("-td", "--maxneutralshift", type=float, required=False, default=0.1,
-                        help="Maximum BAF shift for neutral cluster used to automatically infer the diploid/tetraploid cluster (default: 0.1)")
-    parser.add_argument("--merge", action='store_true', default=False,
-                        required=False, help="Merge the clusters (default: false)")
-    parser.add_argument("-mR", "--mergeRDR", type=float, required=False, default=0.08,
-                        help="RDR tolerance used for finding the clonal copy numbers (default: 0.08)")
-    parser.add_argument("-mB", "--mergeBAF", type=float, required=False, default=0.04,
-                        help="BAF tolerance used for finding the clonal copy numbers (default: 0.04)")
-    parser.add_argument("-l", "--limitinc", type=float, required=False, default=None,
-                        help="Upper bound to the relative increase of objective function. When there are significant small CNAs, their effect on the objective function may be confounded by only larger events, use this value to limit the relative increase of OBJ so that fitting small CNAs is more considered (default: None)")
-    parser.add_argument("-g", "--ghostprop", type=float, required=False, default=0.3,
-                        help="Increasing proportion used to compute the value of the first ghost point added in the solution selection (default: 0.3)")
-    parser.add_argument("-tR", "--toleranceRDR", type=float, required=False, default=0.08,
-                        help="RDR tolerance used for finding the clonal copy numbers (default: 0.08)")
-    parser.add_argument("-tB", "--toleranceBAF", type=float, required=False, default=0.04,
-                        help="BAF tolerance used for finding the clonal copy numbers (default: 0.04)")
-    parser.add_argument("-p", "--seeds", type=int, required=False, default=400,
-                        help="Number of seeds for coordinate-descent method (default: 400)")
-    parser.add_argument("-j", "--jobs", type=int, required=False, default=mp.cpu_count(),
-                        help="Number of parallel jobs (default: maximum available on the machine)")
-    parser.add_argument("-r", "--randomseed", type=int, required=False,
-                        default=None, help="Random seed (default: None)")
-    parser.add_argument("-s", "--timelimit", type=int, required=False,
-                        default=None, help="Time limit for each ILP run (default: None)")
-    parser.add_argument("-m", "--memlimit", type=int, required=False,
-                        default=None, help="Memory limit for each ILP run (default: None)")
-    parser.add_argument("-u", "--minprop", type=float, required=False, default=0.03,
-                        help="Minimum clone proporion in each sample (default: 0.03)")
-    parser.add_argument("--maxiterations", type=int, required=False, default=None,
-                        help="Maximum number of iterations composed of C-step/U-step for each seed (default: 10)")
-    parser.add_argument("--mode", type=int, required=False, default=2,
-                        help="Solving mode among: Coordinate Descent + exact ILP (0), exact ILP only (1), and Coordinate-descent only (2) (default: 2)")
-    parser.add_argument("--diploid", action='store_true', default=False, required=False,
-                        help="Force the tumor clones to be diploid without WGD (default: false)")
-    parser.add_argument("--tetraploid", action='store_true', default=False, required=False,
-                        help="Force the tumor clones to be tetraploid with an occured WGD (default: false)")
-    parser.add_argument("-v", "--verbosity", type=int, required=False, default=2,
-                        help="Level of verbosity among: none (0), essential (1), verbose (2), and debug (3) (default: 1)")
+    parser.add_argument("-i","--input", type=str, required=True, help="Prefix path to seg and bbc input files (required)")
+    parser.add_argument("-x","--runningdir", type=str, required=False, default=config.solver.runningdir, help="Running directory (default: ./)")
+    parser.add_argument("-n","--clones", type=str, required=False, default=config.solver.clones, help="Either an estimated number of clones or an interval where the\nnumber of clones should be looked for given in the form LOWER,UPPER where LOWER and UPPER are two integer defining the interval (default: 2,8)")
+    parser.add_argument("-f","--noampdel", action='store_true', default=config.solver.noampdel, required=False, help="Remove amp-del assumption where each mutated allele of every segment can be either amplified or deleted in all tumor clones w.r.t. base (2 for diploid and 4 for tetraploid) (default: use assumption)")
+    parser.add_argument("-c","--clonal", type=str, required=False, default=config.solver.clonal, help="Clonal clusters to fix for tetraploid (default: automatically inferred)")
+    parser.add_argument("-d","--cnstates", type=int, required=False, default=config.solver.cnstates, help="Maximum number of distinct copy-number states for each segment (default: None, no limit)")
+    parser.add_argument("-eD","--diploidcmax", type=int, required=False, default=config.solver.diploidcmax, help="Maximum copy-number value overall segments (default: 6, 0 means inferred from scaled fractional copy numbers)")
+    parser.add_argument("-eT","--tetraploidcmax", type=int, required=False, default=config.solver.tetraploidcmax, help="Maximum copy-number value overall segments (default: 12, 0 means inferred from scaled fractional copy numbers)")
+    parser.add_argument("-ts","--minsize", type=float, required=False, default=config.solver.minsize, help="The minimum proportion of covered genome for potential clonal clusters (default: 0.008)")
+    parser.add_argument("-tc","--minchrs", type=int, required=False, default=config.solver.minchrs, help="The minimum number of covered chromosomes for potential clonal clusters (default: 1)")
+    parser.add_argument("-td","--maxneutralshift", type=float, required=False, default=config.solver.maxneutralshift, help="Maximum BAF shift for neutral cluster used to automatically infer the diploid/tetraploid cluster (default: 0.1)")
+    parser.add_argument("--merge", action='store_true', default=config.solver.merge, required=False, help="Merge the clusters (default: false)")
+    parser.add_argument("-mR","--mergeRDR", type=float, required=False, default=config.solver.mergerdr, help="RDR tolerance used for finding the clonal copy numbers (default: 0.08)")
+    parser.add_argument("-mB","--mergeBAF", type=float, required=False, default=config.solver.mergebaf, help="BAF tolerance used for finding the clonal copy numbers (default: 0.04)")
+    parser.add_argument("-l", "--limitinc", type=float, required=False, default=config.solver.limitinc, help="Upper bound to the relative increase of objective function. When there are significant small CNAs, their effect on the objective function may be confounded by only larger events, use this value to limit the relative increase of OBJ so that fitting small CNAs is more considered (default: None)")
+    parser.add_argument("-g", "--ghostprop", type=float, required=False, default=config.solver.ghostprop, help="Increasing proportion used to compute the value of the first ghost point added in the solution selection (default: 0.3)")
+    parser.add_argument("-tR","--toleranceRDR", type=float, required=False, default=config.solver.tolerancerdr, help="RDR tolerance used for finding the clonal copy numbers (default: 0.08)")
+    parser.add_argument("-tB","--toleranceBAF", type=float, required=False, default=config.solver.tolerancebaf, help="BAF tolerance used for finding the clonal copy numbers (default: 0.04)")
+    parser.add_argument("-p","--seeds", type=int, required=False, default=config.solver.seeds, help="Number of seeds for coordinate-descent method (default: 400)")
+    parser.add_argument("-j","--jobs", type=int, required=False, default=config.solver.jobs, help="Number of parallel jobs (default: maximum available on the machine)")
+    parser.add_argument("-r","--randomseed", type=int, required=False, default=config.solver.randomseed, help="Random seed (default: None)")
+    parser.add_argument("-s","--timelimit", type=int, required=False, default=config.solver.timelimit, help="Time limit for each ILP run (default: None)")
+    parser.add_argument("-m","--memlimit", type=int, required=False, default=config.solver.memlimit, help="Memory limit for each ILP run (default: None)")
+    parser.add_argument("-u","--minprop", type=float, required=False, default=config.solver.minprop, help="Minimum clone proporion in each sample (default: 0.03)")
+    parser.add_argument("--maxiterations", type=int, required=False, default=config.solver.maxiterations, help="Maximum number of iterations composed of C-step/U-step for each seed (default: 10)")
+    parser.add_argument("--mode", type=int, required=False, default=config.solver.mode, help="Solving mode among: Coordinate Descent + exact ILP (0), exact ILP only (1), and Coordinate-descent only (2) (default: 2)")
+    parser.add_argument("--diploid", action='store_true', default=config.solver.diploid, required=False, help="Force the tumor clones to be diploid without WGD (default: false)")
+    parser.add_argument("--tetraploid", action='store_true', default=config.solver.tetraploid, required=False, help="Force the tumor clones to be tetraploid with an occured WGD (default: false)")
+    parser.add_argument("-v","--verbosity", type=int, required=False, default=config.solver.verbosity, help="Level of verbosity among: none (0), essential (1), verbose (2), and debug (3) (default: 1)")
     args = parser.parse_args(args)
 
     if not os.path.isfile(args.SOLVER):
@@ -137,9 +110,8 @@ def parsing_arguments(args=None):
         raise ValueError(
             error("The RDR tolerance for merging clusters must be in [0, 1]!"))
     if args.mergeBAF < 0.0 or args.mergeBAF > 1.0:
-        raise ValueError(
-            error("The BAF tolerance for merging clusters must be in [0, 1]!"))
-    if args.limitinc is not None and args.limitinc < 0.0 or args.limitinc > 1.0:
+        raise ValueError(error("The BAF tolerance for merging clusters must be in [0, 1]!"))
+    if args.limitinc is not None and (args.limitinc < 0.0 or args.limitinc > 1.0):
         raise ValueError(error("The increasing limit must be in [0, 1]!"))
     if args.ghostprop < 0.0 or args.ghostprop > 1.0:
         raise ValueError(
@@ -246,14 +218,11 @@ def main(args=None):
         diploidObjs = runningDiploid(neutral=neutral, args=args)
 
         if args['clonal'] is None:
-            sys.stderr.write(
-                log("# Finding clonal clusters and their copy numbers\n"))
-            clonal, scale = findClonalClusters(
-                fseg=fseg, neutral=neutral, size=size, tB=args['tB'], tR=args['tR'], samples=samples, v=args['v'])
+            sys.stderr.write(log("# Finding clonal clusters and their copy numbers\n"))
+            clonal, scale = findClonalClusters(fseg=fseg, neutral=neutral, size=size, tB=args['tB'], tR=args['tR'], samples=samples, v=args['v'])
         else:
             sys.stderr.write(log("# Parsing given clonal copy numbers\n"))
-            clonal, scale = parseClonalClusters(
-                clonal=args['clonal'], fseg=fseg, neutral=neutral, size=size, samples=samples, v=args['v'])
+            clonal, scale = parseClonalClusters(clonal=args['clonal'], fseg=fseg, neutral=neutral, size=size, samples=samples, v=args['v'])
 
         if len(clonal) > 0:
             sys.stderr.write(log("# Running tetraploid\n"))
@@ -280,14 +249,11 @@ def main(args=None):
 
     elif args['tetraploid']:
         if args['clonal'] is None:
-            sys.stderr.write(
-                log("# Finding clonal clusters and their copy numbers\n"))
-            clonal, scale = findClonalClusters(
-                fseg=fseg, neutral=neutral, size=size, tB=args['tB'], tR=args['tR'], samples=samples, v=args['v'])
+            sys.stderr.write(log("# Finding clonal clusters and their copy numbers\n"))
+            clonal, scale = findClonalClusters(fseg=fseg, neutral=neutral, size=size, tB=args['tB'], tR=args['tR'], samples=samples, v=args['v'])
         else:
             sys.stderr.write(log("# Parsing given clonal copy numbers\n"))
-            clonal, scale = parseClonalClusters(
-                clonal=args['clonal'], fseg=fseg, neutral=neutral, size=size, samples=samples, v=args['v'])
+            clonal, scale = parseClonalClusters(clonal=args['clonal'], fseg=fseg, neutral=neutral, size=size, samples=samples, v=args['v'])
 
         if len(clonal) > 0:
             sys.stderr.write(log("# Running tetraploid\n"))
@@ -543,10 +509,8 @@ def findClonalClusters(fseg, neutral, size, tB, tR, samples, v):
                 location[idx] = loc
                 break
 
-    clusters = sorted([idx for idx in fseg if idx != neutral and idx in location], key=(
-        lambda i: size[i]), reverse=True)
-    allclonal = [(2, 0), (2, 1), (3, 2), (4, 2),
-                 (1, 0), (3, 0), (3, 1), (4, 0)]
+    clusters = sorted([idx for idx in fseg if idx != neutral and idx in location], key=(lambda i : size[i]), reverse=True)
+    allclonal = [(2, 0), (2, 1), (3, 2), (4, 2), (1, 0), (3, 0), (3, 1), (4, 0), (4, 1), (5, 0)]
     found_pattern = []
     best_pattern = {}
     best_scale = ()
@@ -728,8 +692,7 @@ def execute(args, basecmd, n, outprefix):
         sys.stderr.write(debug('### Running command: {}\n'.format(cmd)))
 
     FNULL = open(os.devnull, 'w')
-    process = subprocess.Popen(shlex.split(
-        cmd), stdout=FNULL, stderr=subprocess.PIPE)
+    process = subprocess.Popen(shlex.split(cmd), stdout=FNULL, stderr=subprocess.PIPE, universal_newlines=True)
     buffer = []
 
     if args['v'] >= 2:
@@ -784,10 +747,8 @@ def select(diploid, tetraploid, v, rundir, g, limit):
         for tet in tetraploid:
             tscores[tet[0]] = tet[1]
         if v >= 2:
-            sys.stderr.write(
-                info('## Objective value is used as scores for tetraploid results\n'))
-            sys.stderr.write(info('\n'.format(['## Tetraploid with {} clones - OBJ: {} - score: {}'.format(
-                t[0], t[1], tscores[d[0]]) for t in tetraploid]) + '\n'))
+            sys.stderr.write(info('## Objective value is used as scores for tetraploid results\n'))
+            sys.stderr.write(info('\n'.format(['## Tetraploid with {} clones - OBJ: {} - score: {}'.format(t[0], t[1], tscores[t[0]]) for t in tetraploid]) + '\n'))
     else:
         for i, dip in enumerate(diploid):
             if i == 0:
@@ -1031,7 +992,7 @@ def debug(msg):
 
 class ProgressBar:
 
-    def __init__(self, total, length, counter=0, verbose=False, decimals=1, fill=chr(9608), prefix='Progress:', suffix='Complete'):
+    def __init__(self, total, length, counter=0, verbose=False, decimals=1, fill=chr(9608), prefix = 'Progress:', suffix = 'Complete'):
         self.total = total
         self.length = length
         self.decimals = decimals
