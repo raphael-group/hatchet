@@ -1,7 +1,7 @@
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 
 import os.path
-from importlib_resources import path
+from importlib.resources import path
 import hatchet
 from hatchet.utils.config import Config
 
