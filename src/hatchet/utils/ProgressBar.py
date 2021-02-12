@@ -1,12 +1,10 @@
 import sys
 import datetime
-import Supporting as sp
-
-
+import hatchet.utils.Supporting as sp
 
 class ProgressBar:
 
-    def __init__(self, total, length, counter=0, verbose=False, decimals=1, fill=unichr(9608), lock=None, prefix = 'Progress:', suffix = 'Complete'):
+    def __init__(self, total, length, counter=0, verbose=False, decimals=1, fill=chr(9608), lock=None, prefix = 'Progress:', suffix = 'Complete'):
         self.total = total
         self.length = length
         self.decimals = decimals

@@ -4,7 +4,7 @@ import shlex
 import subprocess
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 
-import ProgressBar as pb
+import hatchet.utils.ProgressBar as pb
 
 
 

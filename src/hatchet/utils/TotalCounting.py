@@ -4,8 +4,8 @@ import shlex
 import subprocess
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 
-import ProgressBar as pb
-import Supporting as sp
+import hatchet.utils.ProgressBar as pb
+import hatchet.utils.Supporting as sp
 
 
 def tcount(samtools, samples, chromosomes, num_workers, q, verbose=False):

@@ -6,9 +6,9 @@ import copy
 import numpy as np
 from scipy.stats import beta
 
-import ProgressBar as pb
-import Supporting as sp
-from ArgParsing import parse_combbo_args
+import hatchet.utils.ProgressBar as pb
+import hatchet.utils.Supporting as sp
+from hatchet.utils.ArgParsing import parse_combbo_args
 
 
 def main(args=None):

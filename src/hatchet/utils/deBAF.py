@@ -8,11 +8,11 @@ from scipy.stats import beta
 # from statsmodels.stats.proportion import *
 
 
-import SNPCalling
-import AlleleCounting
-import ArgParsing as ap
-from Supporting import *
-import Supporting as sp
+import hatchet.utils.SNPCalling
+import hatchet.utils.AlleleCounting
+import hatchet.utils.ArgParsing as ap
+from hatchet.utils.Supporting import *
+import hatchet.utils.Supporting as sp
 
 
 def main(args=None):
