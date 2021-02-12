@@ -84,12 +84,11 @@ setup(
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 
-    python_requires='~=2.7',
+    python_requires='~=3.7',
 
     install_requires=[
         'configparser',
         'biopython==1.76',
-        'bnpy',
         'futures',
         'importlib_resources>=1.0.2',
         'matplotlib',
