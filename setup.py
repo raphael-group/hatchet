@@ -76,7 +76,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.2.3',
+    version='0.2.4',
     packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini']},
@@ -84,16 +84,12 @@ setup(
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 
-    python_requires='>=3',
+    python_requires='>=3.7',
 
     install_requires=[
         'biopython',
         'bnpy@git+https://github.com/raphael-group/bnpy.git',
-        'futures',
-        'importlib_resources>=1.0.2',
         'matplotlib',
-        'matplotlib-venn',
-        'opencv-python',
         'pandas',
         'psutil',
         'pysam',
