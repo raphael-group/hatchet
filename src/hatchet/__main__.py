@@ -30,13 +30,13 @@ if __name__ == '__main__':
 
     commands = ('binBAM', 'deBAF', 'comBBo', 'cluBB', 'BBot', 'solve', 'BBeval')
     if len(sys.argv) < 2:
-        print 'Usage: python -m hatchet <command> <arguments ..>'
+        print('Usage: python -m hatchet <command> <arguments ..>')
         sys.exit(0)
 
     command = sys.argv[1]
     args = sys.argv[2:]
     if command not in commands:
-        print 'The following commands are supported: ' + ' '.join(commands)
+        print('The following commands are supported: ' + ' '.join(commands))
         sys.exit(1)
 
     if command != 'solve':
