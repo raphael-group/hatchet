@@ -26,7 +26,7 @@ def main(args=None):
         clouds = generateClouds(points=points, density=args["cloud"], seed=args["seed"], sdeven=args["ratiodeviation"], sdodd=args["bafdeviation"])
 
     sp.log(msg="# Clustering bins by RD and BAF across tumor samples\n", level="STEP")
-    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, clouds=clouds, K=args["initclusters"], concentration_prior = args["tuning"], restarts=args['restarts'])
+    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, clouds=clouds, K=args["initclusters"], concentration_prior = args["concentration"], restarts=args['restarts'], seed = args['seed'])
 
     if args['rdtol'] > 0.0 or args['baftol'] > 0.0:
         sp.log(msg="# Refining clustering using given tolerances\n", level="STEP")
@@ -107,15 +107,18 @@ def getPoints(data, samples):
     return points, bintoidx
 
 
-def cluster(points, clouds=None, concentration_prior = 0.01, K=15, restarts=10):
+def cluster(points, clouds=None, concentration_prior = None, K = 100, restarts=10, seed = 0):
     """
     Clusters a set of data points lying in an arbitrary number of clusters.
     Arguments:
         data (list of lists of floats): list of data points to be clustered.
+        clouds (list or lists of floats, same second dimension as data): bootstrapped bins for clustering
         sampleName (string): The name of the input sample.
-        sf (float): Tuning parameter for clustering; used to determine initial size of
-                    distribution covariances. Small sf indicates a belief that clusters
-                    are of small size.
+        concentration_prior (float): Tuning parameter for clustering, must be between 0 and 1. Used to determine concentration
+            of points in clusters -- higher favors more clusters, lower favors fewer clusters.
+        K (int): maximum number of clusters to infer
+        restarts (int): number of initializations to try for GMM
+        seed (int): random number generator seed for GMM
     Returns:
         mus (list of lists of floats): List of cluster means.
         sigmas (list of 2D lists of floats): List of cluster covariances.
@@ -137,8 +140,7 @@ def cluster(points, clouds=None, concentration_prior = 0.01, K=15, restarts=10):
     if np.min(npArray.shape) < K:
         K = np.min(npArray.shape)
 
-    # TODO: expose priors (weight_concentration_prior is easiest, just a float)
-    gmm = BayesianGaussianMixture(n_components = K, n_init = restarts, weight_concentration_prior = concentration_prior, max_iter = int(1e6))
+    gmm = BayesianGaussianMixture(n_components = K, n_init = restarts, weight_concentration_prior = concentration_prior, max_iter = int(1e6), random_state = seed)
     targetAssignments = gmm.fit_predict(npArray)
     mus = gmm.means_
     sigmas = gmm.covariances_
