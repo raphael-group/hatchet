@@ -17,7 +17,7 @@ Feel free to rename the standard out (out.txt) and standard error (err.txt) file
 
 ## 2b) HATCHet with phasing
 
-Running HATCHet **with** phasing is currently a two part process. It's a little more labor intensive on the user end but may produce cleaner results.
+Running HATCHet with phasing is currently a two part process. It's a little more labor intensive on the user end but may produce cleaner results.
 
 First run `01_runPhased.sh`, which executes the first three steps of HATCHet:
 ```
