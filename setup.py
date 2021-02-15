@@ -96,6 +96,7 @@ setup(
         'pandas',
         'psutil',
         'pysam',
+        'requests',
         'seaborn',
         'scikit-learn',
         'scipy'
