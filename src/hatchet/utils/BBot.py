@@ -385,13 +385,13 @@ def select(bbc, clusters, args):
     sys.stderr.write(info('## Selected clusters: \n{}\n'.format('\n'.join(s))))
 
     order = sorted(sel, key=(lambda x: count[x]['SIZE']), reverse=True)    
-    [ order.append(i) if not i in sel else next for i in alls]    
+    [ order.insert(0,i) if not i in sel else next for i in alls]    
     if len(sel) <= len(sns.color_palette(args['cmap'])): # are there more colors than selected clusters?    
         pal = sns.color_palette(args['cmap'])[0:len(sel)-1]    
-        [ pal.append('0.5') for i in range( len(alls) - len(sel) ) ]    
+        [ pal.insert(0,'0.75') for i in range( len(alls) - len(sel) ) ]    
     else:    
         pal = sns.color_palette(args['cmap'])    
-        [ pal.append('0.5') for i in range( len(alls) - len(sns.color_palette(args['cmap'])) ) ]    
+        [ pal.insert(0,'0.75') for i in range( len(alls) - len(sns.color_palette(args['cmap'])) ) ]    
 
     return order, pal
 
