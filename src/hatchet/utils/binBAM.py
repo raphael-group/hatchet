@@ -4,17 +4,10 @@ import sys
 import os.path
 import argparse
 
-<<<<<<< HEAD
-import hatchet.utils.BAMBinning as bb
-import hatchet.utils.TotalCounting as tc
-import hatchet.utils.ArgParsing as ap
-from hatchet.utils.Supporting import *
-=======
 from . import BAMBinning as bb
 from . import TotalCounting as tc
 from . import ArgParsing as ap
 from .Supporting import *
->>>>>>> 8e72a2f288e8d7fbad456f7ef5fb77703541698d
 
 
 
