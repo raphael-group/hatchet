@@ -699,7 +699,7 @@ def execute(args, basecmd, n, outprefix):
         while True:
             nextline = process.stderr.readline().strip()
             buffer.append(nextline)
-            if b';' in nextline:
+            if ';' in nextline:
                 progressbar.progress(advance=True, msg="Obj value {}".format(
                     float(nextline.split()[-2][:-1])))
             if not nextline and process.poll() is not None:
@@ -710,7 +710,7 @@ def execute(args, basecmd, n, outprefix):
     if exitcode == 0:
         obj = -1
         for line in reversed(buffer):
-            if b'Final objective' in line:
+            if 'Final objective' in line:
                 for e in line.split():
                     if isfloat(e):
                         obj = float(e)
