@@ -41,21 +41,13 @@ export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 
 cd ${XDIR}
-RDR="rdr/"
 mkdir -p ${RDR}
-SNP="snps/"
 mkdir -p ${SNP}
-BAF="baf/"
 mkdir -p ${BAF}
-BB="bb/"
 mkdir -p ${BB}
-BBC="bbc/"
 mkdir -p ${BBC}
-PLO="plots/"
 mkdir -p ${PLO}
-RES="results/"
 mkdir -p ${RES}
-SUM="summary/"
 mkdir -p ${SUM}
 
 python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BIN} -g ${REF} -j ${J} -O ${RDR}normal.1bed -o ${RDR}tumor.1bed -t ${RDR}total.tsv |& tee ${RDR}bins.log

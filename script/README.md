@@ -21,7 +21,7 @@ Running HATCHet with phasing is currently a two part process. It's a little more
 
 First run `01_runPhased.sh`, which executes the first three steps of HATCHet:
 ```
-bash 01_runPhased.sh > out1.txt 2> err1.txt
+bash runPhased_01.sh > out1.txt 2> err1.txt
 ```
 
 After this script finishes, go to the `snps` subdirectory within the working directory given to HATCHet in `config.txt`. Here you will find a collection of VCF files, one for each chromosome. These must then be phased (e.g. [Michigan Imputation Server](https://imputationserver.sph.umich.edu/index.html#!)), and the location of the phased VCF file is specified in `config.txt` under the `PHASE` variable. If you use the Michigan imputation server, you may have to use `bcftools annotate` to convert between chromosome names (e.g. chr20 -> 20), and the by-chromosome phased VCF files you receive must be combined with the `bcftools concat` command to give HATCHet a single phased VCF file.
@@ -29,5 +29,5 @@ After this script finishes, go to the `snps` subdirectory within the working dir
 Then, run the second half of the HATCHet workflow, which should have a shorter runtime than the first part:
 
 ```
-bash 02_runPhased.sh > out2.txt 2> err2.txt
+bash runPhased_02.sh > out2.txt 2> err2.txt
 ```
