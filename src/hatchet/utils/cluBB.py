@@ -130,7 +130,11 @@ def cluster(points, clouds=None, concentration_prior = None, K = 100, restarts=1
     """
     from sklearn.mixture import BayesianGaussianMixture
     from collections import Counter
-        
+    
+    from hatchet import config
+    if config.clubb.concentration == 0.02:
+        concentration_prior = None
+            
     sp.log(msg="## Clustering...\n", level="INFO")
     total = list(points)
     if clouds is not None:
