@@ -33,3 +33,17 @@ BIN="50kb"   #Bin size for calculating RDR and BAF
 ################################################################################################################################
 PHASE="None"  #Path to phased file; specify "None" to run hatchet without phasing
 BLOCK="50kb"  #Haplotype block size  used for combining SNPs
+
+
+# These specify the subdirectories created and used by HATCHet and do not need to be changed
+
+RDR="rdr/"
+SNP="snps/"
+BAF="baf/"
+BB="bb/"
+BBC="bbc/"
+PLO="plots/"
+RES="results/"
+SUM="summary/"
+
+

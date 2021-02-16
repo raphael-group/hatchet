@@ -17,15 +17,10 @@ export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 
 cd ${XDIR}
-BB="bb/"
 mkdir -p ${BB}
-BBC="bbc/"
 mkdir -p ${BBC}
-PLO="plots/"
 mkdir -p ${PLO}
-RES="results/"
 mkdir -p ${RES}
-SUM="summary/"
 mkdir -p ${SUM}
 
 ################################################################################################################################
