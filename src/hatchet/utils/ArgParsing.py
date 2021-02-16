@@ -378,7 +378,7 @@ def parse_clubb_args(args=None):
     parser.add_argument("-dB","--bafdeviation", type=float, required=False, default=config.clubb.bafdeviation, help='Standard deviation of the BAFs used to generate the points in the clouds (default: 0.02)')
     parser.add_argument("-e","--seed", type=int, required=False, default=config.clubb.seed, help='Random seed used for clustering AND the normal distributions used in the clouds (default: 0)')
     parser.add_argument("-K","--initclusters", type=int, required=False, default=config.clubb.initclusters, help="The maximum number of clusters to infer (default: 50)")
-    parser.add_argument("-c","--concentration", type=float, required=False, default=config.clubb.concentration, help="Tuning parameter for clustering (concentration parameter for Dirichlet process prior). Higher favors more clusters, lower favors fewer clusters (default 1/K).")
+    parser.add_argument("-c","--concentration", type=float, required=False, default=config.clubb.concentration, help="Tuning parameter for clustering (concentration parameter for Dirichlet process prior). Higher favors more clusters, lower favors fewer clusters (default 0.02 = 1/K).")
     parser.add_argument("-R","--restarts", type=int, required=False, default=config.clubb.restarts, help="Number of restarts performed by the clustering to choose the best (default: 10)")
     parser.add_argument("-v","--verbose", action='store_true', default=config.clubb.verbose, required=False, help="Use verbose log messages")
     parser.add_argument("--disablebar", action='store_true', default=config.clubb.disablebar, required=False, help="Disable progress bar")

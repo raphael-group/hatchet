@@ -130,10 +130,6 @@ def cluster(points, clouds=None, concentration_prior = None, K = 100, restarts=1
     """
     from sklearn.mixture import BayesianGaussianMixture
     from collections import Counter
-    
-    from hatchet import config
-    if config.clubb.concentration == 0.02:
-        concentration_prior = None
             
     sp.log(msg="## Clustering...\n", level="INFO")
     total = list(points)
@@ -144,6 +140,7 @@ def cluster(points, clouds=None, concentration_prior = None, K = 100, restarts=1
     if np.min(npArray.shape) < K:
         K = np.min(npArray.shape)
 
+    #print("Weight concentration prior = {}".format(concentration_prior))
     gmm = BayesianGaussianMixture(n_components = K, n_init = restarts, weight_concentration_prior = concentration_prior, max_iter = int(1e6), random_state = seed)
     targetAssignments = gmm.fit_predict(npArray)
     mus = gmm.means_
