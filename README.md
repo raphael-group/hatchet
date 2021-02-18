@@ -73,8 +73,35 @@ The setup process is composed of 3 steps:
 ### Installation
 <a name="installation"></a>
 
+#### Installing HATCHet from bioconda
+
+By far the easiest method to start using the latest released version of `HATCHet` is to create a new `conda` environment
+and install `HATCHet` using the `bioconda` channel.
+
+ ```shell
+ conda create --name hatchet python=3.8
+ conda activate hatchet
+ conda install -c bioconda hatchet
+ ```
+
+If you do not already have `samtools` and `bcftools` installed and in your `PATH`, you can install these from the
+`bioconda` channel as well. **It is important that you use exactly the same versions of `samtools` and `bcftools`**
+(whether installed in your `conda` environment or otherwise) to avoid inconsistent behavior between the two tools.
+We have extensively tested out `HATCHet` using version `1.7` of these tools, so it's probably safest to use:
+ ```shell
+ conda install -c bioconda samtools==1.7 bcftools==1.7
+ ```
+
+Installing `HATCHet` from `bioconda` will also automatically install
+[Gurobi](https://www.gurobi.com/downloads/gurobi-optimizer-eula/), but make sure you have a valid license of as
+explained in the [Using Gurobi](#usinggurobi) section.
+
+#### Installing HATCHet from source
+
+If you wish to install `HATCHet` directly from this repository, the steps are a bit more involved.
 The core module of HATCHet is written in C++11 and thus requires a modern C++ compiler (GCC >= 4.8.1, or Clang).
-As long as you have a recent version of GCC or Clang installed, `setuptools` should automatically be able to download a recent version of `cmake` and compile the Hatchet code into a working package.
+As long as you have a recent version of GCC or Clang installed, `setuptools` should automatically be able to download a
+recent version of `cmake` and compile the Hatchet code into a working package.
 
 The installation process can be broken down into the following steps:
 
@@ -85,7 +112,7 @@ The installation process can be broken down into the following steps:
 
 2. **Set GUROBI_HOME environment variable**
     ```shell
-    $ export GUROBI_HOME /path/to/gurobiXXX
+    $ export GUROBI_HOME=/path/to/gurobiXXX
     ```
     Set `GUROBI_HOME` to where you download Gurobi. Here `XXX` is the 3-digit version of gurobi.
 
@@ -201,7 +228,6 @@ As such, we also provide here an overview of the entire pipeline and we describe
 
 HATCHet is in active development, please report any issue or question as this could help the devolment and imporvement of HATCHet. Current known issues with current version are reported here below:
 
-- HATCHet currently only supports versions 1.5, 1.6, 1.7 of SAMtools and BCFtools.
 - The allele-swapping feature of comBBo has been temporarily disabled due to conflicts with recent SAMtools versions.
 - HATCHet has not been tested on Windows yet.
 
