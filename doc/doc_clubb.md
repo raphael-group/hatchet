@@ -57,8 +57,8 @@ BBot provides informative plots that can be used to assess the quality of the cl
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-K`, `--initclusters` | Initialization for the number of clusters | The parameter is used to increase or decrease the number of inferred clusters | 15 |
-| `sf`, `--tuning` | Tuning parameter for clustering | The parameter is used to specify the confidence in clusters of small size. Decreasing the value (e.g. 0.001, 0.0001) results in more refined clusters, while increasing (e.g. 0.1) results in less and larger clusters | 0.01 |
+| `-K`, `--initclusters` | Initialization for the number of clusters | The parameter is used specify the maximum number of clusters to infer | 50 |
+| `-c`, `--concentration` | Concentration parameter for clustering | This parameter determines how much confidence the GMM has in different types of clusterings. Higher values (e.g., 10 or 100)  favor fewer clusters, and smaller values (e.g., 0.01 or 0.001) favor more clusters. For experts, this is the alpha parameter for the Dirichlet process prior. | 1/K |
 
 3. cluBB offers a bootstraping approach that allows a succesfull clustering even when there is a limited number genomic bins that are considred. The bootstraping approach generates sinthetic (i.e. used only for clustering) bins based on the data of the given bins. The bootstraping is controlled by the following parameters.
 
