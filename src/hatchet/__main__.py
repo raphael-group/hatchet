@@ -24,19 +24,22 @@ from hatchet.utils.cluBB import main as cluBB
 from hatchet.utils.BBot import main as BBot
 from hatchet.bin.HATCHet import main as solve
 from hatchet.utils.BBeval import main as BBeval
+from hatchet.utils.preprocess import main as preprocess
+from hatchet.utils.countPos import main as countPos
 
 solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
 if __name__ == '__main__':
 
-    commands = ('binBAM', 'SNPCaller', 'deBAF', 'comBBo', 'cluBB', 'BBot', 'solve', 'BBeval')
+    commands = ('binBAM', 'SNPCaller', 'deBAF', 'comBBo', 'cluBB', 'BBot', 'solve', 'BBeval', 'preprocess', 'countPos')
     if len(sys.argv) < 2:
         print('Usage: python -m hatchet <command> <arguments ..>')
         sys.exit(0)
 
     command = sys.argv[1]
     args = sys.argv[2:]
+
     if command not in commands:
         print('The following commands are supported: ' + ' '.join(commands))
         sys.exit(1)

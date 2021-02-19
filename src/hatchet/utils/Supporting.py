@@ -1,15 +1,18 @@
+from multiprocessing import Value
 import sys
 import datetime
 import requests
-
+from string import ascii_uppercase
 
 def naturalOrder(text):
     return [int(s) if s.isdigit() else ord(s) for s in text]
 
-
 def numericOrder(text):
-    return int(digits(text))
-
+    if len(digits(text)) > 0:
+        return int(digits(text))
+    else:
+        if not (text.endswith('X') or text.endswith('Y')): raise ValueError("Found chromosome ID that is not numeric or X/Y: {}".format(text))
+        return ascii_uppercase.index(text[-1])
 
 def digits(string):
     return "".join(x for x in string if x.isdigit())

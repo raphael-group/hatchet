@@ -7,6 +7,51 @@ import shlex
 from . import Supporting as sp
 from hatchet import config
 
+def parse_count_arguments(args=None):
+    """
+    Parses command line arguments for countPos
+    """
+    parser = argparse.ArgumentParser(description = 'Count the reads that start at and cover each position.')
+    parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
+    parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
+    parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
+    parser.add_argument("-S","--samples", required=False, default=config.baf.samples, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
+    parser.add_argument("-st", "--samtools", required = False, type = str, default = config.paths.samtools, help = 'Path to samtools executable')   
+    parser.add_argument("-j", "--processes", type = int, help = 'Number of concurrent jobs', default = 24)   
+    args = parser.parse_args(args)
+
+    if not os.path.exists(args.outdir):
+        raise ValueError(sp.error("The specified output directory does not exist!"))
+
+    # Parse BAM files, check their existence, and infer or parse the corresponding sample names
+    normal = args.normal
+    if not os.path.isfile(normal): raise ValueError(sp.error("The specified normal BAM file does not exist"))
+    tumors = args.tumors
+    for tumor in tumors:
+        if(not os.path.isfile(tumor)): raise ValueError(sp.error("The specified tumor BAM file does not exist"))
+    names = args.samples
+    if names != None and (len(tumors)+1) != len(names):
+        raise ValueError(sp.error("A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample"))
+    if names is None:
+        names = []
+        names.append(os.path.splitext(os.path.basename(normal))[0])
+        for tumor in tumors:
+            names.append(os.path.splitext(os.path.basename(tumor))[0])
+    
+    # In default mode, check the existence and compatibility of samtools
+    samtools = os.path.join(args.samtools, "samtools")
+    if sp.which(samtools) is None:
+        raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
+    
+    chromosomes = extractChromosomes(samtools, [args.normal, "normal"], [(x, "") for x in args.tumors])
+
+    return {"bams" : [args.normal] + args.tumors,
+            "names" : names,
+            "outdir" : args.outdir,
+            "chromosomes" : chromosomes,
+            "samtools" : samtools,
+            "j" : args.processes     
+    }
 
 def parse_snp_arguments(args=None):
     """
@@ -501,6 +546,95 @@ def parse_bbot_args(args=None):
     }
 
 
+def parse_preprocess_args(args=None):
+    description = "This command automatically runs HATCHet's preprocessing pipeline."
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-t","--tumor", required=True, type=str, help="White-space separated list of input tumor BAM files, corresponding to multiple samples from the same patient (list must be within quotes)")
+    parser.add_argument("-n","--normal", required=True, type=str, help="Matched-normal BAM file")
+    parser.add_argument("-r","--reference", type=str, required=True, help="Reference genome")
+    parser.add_argument("-s","--samplenames", required=False, type=str, default=config.preprocess.samplenames, help="Tumor sample names in a white-space separated list in the same order as the corresponding BAM files (default: file names are used as names)")
+    parser.add_argument("-b","--size", type=str, required=False, default=config.preprocess.size, help="Bin size, with or without \"kb\" or \"Mb\" (default: 250kb)")
+    parser.add_argument("-c","--minreads", type=int, required=False, default=config.preprocess.minreads, help="Minimum read counts for heterozygous germline SNPs (default: 8)")
+    parser.add_argument("-C","--maxreads", type=int, required=False, default=config.preprocess.maxreads, help="Maximum read counts for heterozygous germline SNPs (default: 1000)")
+    parser.add_argument("-p","--phred", type=int, required=False, default=config.preprocess.phred, help="Phred quality score (default: 11)")
+    parser.add_argument("-x","--rundir", required=False, default=config.preprocess.rundir, type=str, help="Running directory (default: current directory)")
+    parser.add_argument("--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
+    parser.add_argument("--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
+    parser.add_argument("--seed", required=False, type=int, default=config.preprocess.seed, help="Random seed for replication (default: None)")
+    parser.add_argument("-j","--jobs", required=False, type=int, default=config.preprocess.jobs, help="Number of parallel jobs to use (default: equal to number of available processors)")
+    args = parser.parse_args(args)
+
+    # In default mode, check the existence and compatibility of samtools and bcftools
+    samtools = os.path.join(args.samtools, "samtools")
+    bcftools = os.path.join(args.bcftools, "bcftools")
+    if sp.which(samtools) is None:
+        raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
+    elif sp.which(bcftools) is None:
+        raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
+    elif not checkVersions(samtools, bcftools):
+        raise ValueError(sp.error("The versions of samtools and bcftools are different! Please provide the tools with the same version to avoid inconsistent behaviors!{}"))
+
+    tumor = set(t for t in args.tumor.split())
+    for t in tumor:
+        if not os.path.isfile(t):
+            raise ValueError("The following BAM file does not exist: {}".format(t))
+    if args.samplenames is None:
+        names = set(os.path.splitext(os.path.basename(t))[0] for t in tumor)
+        if len(names) != len(tumor):
+            names = tumor
+    else:
+        names = set(t for t in args.samplenames.split())
+        if len(names) != len(tumor):
+            raise ValueError("A different number of samples names has been provided compared to the number of BAM files, remember to add the list within quotes!")
+        
+    tumor = set(os.path.abspath(t) for t in tumor)
+    if not os.path.isdir(args.rundir):
+        raise ValueError("Running directory does not exists: {}".format(args.rundir))
+    if not os.path.isfile(args.normal):
+        raise ValueError("Matched-normal BAM file does not exist: {}".format(args.normal))
+    if not os.path.isfile(args.reference):
+        raise ValueError("Reference genome file does not exist: {}".format(args.reference))
+    if args.seed and args.seed < 1:
+        raise ValueError("The random seed  must be positive!")
+    if args.minreads < 1:
+        raise ValueError("The minimum number of reads must be positive!")
+    if args.maxreads < 1:
+        raise ValueError("The maximum number of reads must be positive!")
+
+    size = 0
+    try:
+        if args.size[-2:] == "kb":
+            size = int(args.size[:-2]) * 1000
+        elif args.size[-2:] == "Mb":
+            size = int(args.size[:-2]) * 1000000
+        else:
+            size = int(args.size)
+    except:
+        raise ValueError("Size must be a number, optionally ending with either \"kb\" or \"Mb\"!")
+
+    from multiprocessing import cpu_count
+    if not args.jobs:
+        args.jobs = cpu_count()
+    if args.jobs < 1:
+        raise ValueError("The number of jobs must be positive!")
+
+    return {
+        "tumor" : list(tumor),
+        "normal" : os.path.abspath(args.normal),
+        "ref" : os.path.abspath(args.reference),
+        "names" : list(names),
+        "size" : size,
+        "samtools" : args.samtools,
+        "bcftools" : args.bcftools,
+        "J" : args.jobs,
+        "minreads" : args.minreads,
+        "maxreads" : args.maxreads,
+        "phred" : args.phred,
+        "rundir" : os.path.abspath(args.rundir),
+        "seed" : args.seed
+    }
+
+
 def extractChromosomes(samtools, normal, tumors, reference=None):
     # Read the names of sequences in normal BAM file
     normal_sq = getSQNames(samtools, normal[0])
@@ -515,6 +649,14 @@ def extractChromosomes(samtools, normal, tumors, reference=None):
             chrm.add("chr" + str(i))
         else:
             sys.stderr.write("WARNING: a chromosome named either {} or a variant of CHR{} cannot be found in the normal BAM file\n".format(i, i))
+
+    for c in ['X', 'Y']:
+        if c in normal_sq:
+            no_chrm.add(c)
+        elif "chr" + c in normal_sq:
+            chrm.add("chr" + c)
+        else:
+            sys.stderr.write("WARNING: a chromosome named either {} or a variant of CHR{} cannot be found in the normal BAM file\n".format(c, c))
 
     if len(chrm) == 0 and len(no_chrm) == 0: raise ValueError("No chromosomes found in the normal BAM")
     chromosomes = set()
@@ -549,8 +691,8 @@ def getSQNames(samtools, bamfile):
     names = set()
     for line in header.strip().split('\n'):
         line = line.split()
-        if line[0] == '@SQ':
-            names.add(line[1].split(':')[1])
+        if len(line) > 0 and line[0] == '@SQ':
+            names.add(line[1].split(':')[1].strip())
     return names
 
 
