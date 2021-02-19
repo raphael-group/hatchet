@@ -39,9 +39,9 @@ def bams():
 @pytest.fixture(scope='module')
 def output_folder():
     out = os.path.join(this_dir, 'out')
-    #shutil.rmtree(out, ignore_errors=True)
-    #for sub_folder in ('bin', 'snps', 'baf', 'bb', 'bbc', 'plots', 'results', 'evaluation', 'analysis'):
-    #    os.makedirs(os.path.join(out, sub_folder))
+    shutil.rmtree(out, ignore_errors=True)
+    for sub_folder in ('bin', 'snps', 'baf', 'bb', 'bbc', 'plots', 'results', 'evaluation', 'analysis'):
+       os.makedirs(os.path.join(out, sub_folder))
     return out
 
 
@@ -52,94 +52,94 @@ def output_folder():
 def test_script(_, bams, output_folder):
     normal_bam, tumor_bams = bams
 
-    # binBAM(
-    #     args=[
-    #         '-N', normal_bam,
-    #         '-T'
-    #     ] + tumor_bams + [
-    #         '-b', '50kb',
-    #         '-st', config.paths.samtools,
-    #         '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
-    #         '-g', config.paths.reference,
-    #         '-j', '12',
-    #         '-q', '11',
-    #         '-O', os.path.join(output_folder, 'bin/normal.1bed'),
-    #         '-o', os.path.join(output_folder, 'bin/bulk.1bed'),
-    #         '-v'
-    #     ]
-    # )
-    #
-    # SNPCaller(
-    #     args=[
-    #         '-N', normal_bam,
-    #         '-r', config.paths.reference,
-    #         '-c', '290',    # min reads
-    #         '-C', '300',  # max reads
-    #         '-R', '',
-    #         '-o', os.path.join(output_folder, 'snps'),
-    #         '-st', config.paths.samtools,
-    #         '-bt', config.paths.bcftools,
-    #         '-j', '1'
-    #     ]
-    # )
-    #
-    # deBAF(
-    #     args=[
-    #         '-bt', config.paths.bcftools,
-    #         '-st', config.paths.samtools,
-    #         '-N', normal_bam,
-    #         '-T'
-    #     ] + tumor_bams + [
-    #         '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
-    #         '-r', config.paths.reference,
-    #         '-j', '12',
-    #         '-q', '11',
-    #         '-Q', '11',
-    #         '-U', '11',
-    #         '-c', '8',
-    #         '-C', '300',
-    #         '-O', os.path.join(output_folder, 'baf/normal.1bed'),
-    #         '-o', os.path.join(output_folder, 'baf/bulk.1bed'),
-    #         '-L', os.path.join(output_folder, 'snps', 'chr22.vcf.gz'),
-    #         '-v'
-    #     ]
-    # )
-    #
-    # _stdout = sys.stdout
-    # sys.stdout = StringIO()
-    #
-    # comBBo(args=[
-    #     '-c', os.path.join(output_folder, 'bin/normal.1bed'),
-    #     '-C', os.path.join(output_folder, 'bin/bulk.1bed'),
-    #     '-B', os.path.join(output_folder, 'baf/bulk.1bed'),
-    #     '-e', '12'
-    # ])
-    #
-    # out = sys.stdout.getvalue()
-    # sys.stdout.close()
-    # sys.stdout = _stdout
-    #
-    # with open(os.path.join(output_folder, 'bb/bulk.bb'), 'w') as f:
-    #     f.write(out)
-    #
-    # cluBB(args=[
-    #     os.path.join(output_folder, 'bb/bulk.bb'),
-    #     '-o', os.path.join(output_folder, 'bbc/bulk.seg'),
-    #     '-O', os.path.join(output_folder, 'bbc/bulk.bbc'),
-    #     '-e', '22171',  # random seed
-    #     '-tB', '0.04',
-    #     '-tR', '0.15',
-    #     '-d', '0.4'
-    # ])
-    #
-    # df1 = pd.read_csv(os.path.join(output_folder, 'bbc/bulk.seg'), sep='\t')
-    # df2 = pd.read_csv(os.path.join(this_dir, 'data', 'bulk.seg'), sep='\t')
-    # assert_frame_equal(df1, df2)
-    #
-    # BBot(args=[
-    #     os.path.join(output_folder, 'bbc/bulk.bbc'),
-    #     '--rundir', os.path.join(output_folder, 'plots')
-    # ])
+    binBAM(
+        args=[
+            '-N', normal_bam,
+            '-T'
+        ] + tumor_bams + [
+            '-b', '50kb',
+            '-st', config.paths.samtools,
+            '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
+            '-g', config.paths.reference,
+            '-j', '12',
+            '-q', '11',
+            '-O', os.path.join(output_folder, 'bin/normal.1bed'),
+            '-o', os.path.join(output_folder, 'bin/bulk.1bed'),
+            '-v'
+        ]
+    )
+
+    SNPCaller(
+        args=[
+            '-N', normal_bam,
+            '-r', config.paths.reference,
+            '-c', '290',    # min reads
+            '-C', '300',  # max reads
+            '-R', '',
+            '-o', os.path.join(output_folder, 'snps'),
+            '-st', config.paths.samtools,
+            '-bt', config.paths.bcftools,
+            '-j', '1'
+        ]
+    )
+
+    deBAF(
+        args=[
+            '-bt', config.paths.bcftools,
+            '-st', config.paths.samtools,
+            '-N', normal_bam,
+            '-T'
+        ] + tumor_bams + [
+            '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
+            '-r', config.paths.reference,
+            '-j', '12',
+            '-q', '11',
+            '-Q', '11',
+            '-U', '11',
+            '-c', '8',
+            '-C', '300',
+            '-O', os.path.join(output_folder, 'baf/normal.1bed'),
+            '-o', os.path.join(output_folder, 'baf/bulk.1bed'),
+            '-L', os.path.join(output_folder, 'snps', 'chr22.vcf.gz'),
+            '-v'
+        ]
+    )
+
+    _stdout = sys.stdout
+    sys.stdout = StringIO()
+
+    comBBo(args=[
+        '-c', os.path.join(output_folder, 'bin/normal.1bed'),
+        '-C', os.path.join(output_folder, 'bin/bulk.1bed'),
+        '-B', os.path.join(output_folder, 'baf/bulk.1bed'),
+        '-e', '12'
+    ])
+
+    out = sys.stdout.getvalue()
+    sys.stdout.close()
+    sys.stdout = _stdout
+
+    with open(os.path.join(output_folder, 'bb/bulk.bb'), 'w') as f:
+        f.write(out)
+
+    cluBB(args=[
+        os.path.join(output_folder, 'bb/bulk.bb'),
+        '-o', os.path.join(output_folder, 'bbc/bulk.seg'),
+        '-O', os.path.join(output_folder, 'bbc/bulk.bbc'),
+        '-e', '22171',  # random seed
+        '-tB', '0.04',
+        '-tR', '0.15',
+        '-d', '0.4'
+    ])
+
+    df1 = pd.read_csv(os.path.join(output_folder, 'bbc/bulk.seg'), sep='\t')
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'bulk.seg'), sep='\t')
+    assert_frame_equal(df1, df2)
+
+    BBot(args=[
+        os.path.join(output_folder, 'bbc/bulk.bbc'),
+        '--rundir', os.path.join(output_folder, 'plots')
+    ])
 
     if os.getenv('GRB_LICENSE_FILE') is not None:
         main(args=[
@@ -161,8 +161,8 @@ def test_script(_, bams, output_folder):
         df1 = pd.read_csv(os.path.join(output_folder, 'results/best.bbc.ucn'), sep='\t')
         df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
         assert_frame_equal(df1, df2)
-        #
-        # BBeval(args=[
-        #     os.path.join(output_folder, 'results/best.bbc.ucn'),
-        #     '--rundir', os.path.join(output_folder, 'evaluation')
-        # ])
+
+        BBeval(args=[
+            os.path.join(output_folder, 'results/best.bbc.ucn'),
+            '--rundir', os.path.join(output_folder, 'evaluation')
+        ])
