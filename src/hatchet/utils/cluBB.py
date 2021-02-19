@@ -26,7 +26,7 @@ def main(args=None):
         clouds = generateClouds(points=points, density=args["cloud"], seed=args["seed"], sdeven=args["ratiodeviation"], sdodd=args["bafdeviation"])
 
     sp.log(msg="# Clustering bins by RD and BAF across tumor samples\n", level="STEP")
-    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, output=args["outsegments"], samples=samples, clouds=clouds, K=args["initclusters"], sf=args["tuning"], restarts=args['restarts'])
+    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, clouds=clouds, K=args["initclusters"], concentration_prior = args["tuning"], restarts=args['restarts'])
 
     if args['rdtol'] > 0.0 or args['baftol'] > 0.0:
         sp.log(msg="# Refining clustering using given tolerances\n", level="STEP")
@@ -107,7 +107,7 @@ def getPoints(data, samples):
     return points, bintoidx
 
 
-def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10):
+def cluster(points, clouds=None, concentration_prior = 0.01, K=15, restarts=10):
     """
     Clusters a set of data points lying in an arbitrary number of clusters.
     Arguments:
@@ -125,51 +125,27 @@ def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10):
         numPoints (list of ints): Number of points assigned to each cluster
         numClusters (int): The number of clusters.
     """
-    sp.log(msg="## Loading BNPY\n", level="INFO")
-    tmp = os.path.splitext(output)[0] + "_TMPDIR/"
-    if os.path.exists(tmp):
-        shutil.rmtree(tmp)
-    os.makedirs(tmp)
-    os.environ["BNPYOUTDIR"] = tmp
-    import bnpy
-    
+    from sklearn.mixture import BayesianGaussianMixture
+    from collections import Counter
+        
     sp.log(msg="## Clustering...\n", level="INFO")
     total = list(points)
     if clouds is not None:
         total.extend(list(clouds))
     npArray = np.array(total)
-    Data = bnpy.data.XData(X=npArray)
-    Data.name = "Clustering tumor samples by RD and BAF"
-    Data.summary = "Clustering the following samples: {}".format(",".join(samples))
 
-    if Data.X.shape[0] < K:
-        K = Data.X.shape[0]
+    if np.min(npArray.shape) < K:
+        K = np.min(npArray.shape)
 
-    if hasattr(bnpy.learnalg, "MOVBBirthMergeAlg"):
-        hmodel, Info = bnpy.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
-    elif hasattr(bnpy.learnalg, "MemoVBMovesAlg"):
-        hmodel, Info = bnpy.run(Data, 'DPMixtureModel', 'DiagGauss', 'memoVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
-    else:
-        raise ValueError(sp.error("BNPY learnalg module does not contain either MOVBBirthMergeAlg or MemoVBMovesAlg, please use the right version!"))
-
-    observationModel = hmodel.obsModel
-    numClusters = observationModel.K
-
-    mus = [observationModel.get_mean_for_comp(k=i) for i in range(numClusters)]
-    sigmas = [observationModel.get_covar_mat_for_comp(k=i) for i in range(numClusters)]
-
-    target = bnpy.data.XData(X=(np.array(points)))
-    LP = hmodel.calc_local_params(target)
-    targetAssignments = np.argmax(LP['resp'], axis=1)
-
-    LP = hmodel.calc_local_params(Data)
-    fullAssignments = np.argmax(LP['resp'], axis=1)
-
-    numPoints = []
-    for i in range(numClusters):
-        currX = np.array([Data.X[j] for j in range(len(Data.X)) if fullAssignments[j] == i])
-        numPoints.append(currX.shape[0])
-
+    # TODO: expose priors (weight_concentration_prior is easiest, just a float)
+    gmm = BayesianGaussianMixture(n_components = K, n_init = restarts, weight_concentration_prior = concentration_prior, max_iter = int(1e6))
+    targetAssignments = gmm.fit_predict(npArray)
+    mus = gmm.means_
+    sigmas = gmm.covariances_
+    cntr = Counter(targetAssignments)
+    numPoints = [cntr[i] if i in cntr else 0 for i in range(K)]
+    numClusters = len(cntr)
+    
     return mus, sigmas, targetAssignments, numPoints, numClusters
 
 
