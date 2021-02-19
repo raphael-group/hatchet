@@ -85,7 +85,7 @@ The installation process can be broken down into the following steps:
 
 2. **Set GUROBI_HOME environment variable**
     ```shell
-    $ export GUROBI_HOME /path/to/gurobiXXX
+    $ export GUROBI_HOME=/path/to/gurobiXXX
     ```
     Set `GUROBI_HOME` to where you download Gurobi. Here `XXX` is the 3-digit version of gurobi.
 
@@ -201,7 +201,6 @@ As such, we also provide here an overview of the entire pipeline and we describe
 
 HATCHet is in active development, please report any issue or question as this could help the devolment and imporvement of HATCHet. Current known issues with current version are reported here below:
 
-- HATCHet currently only supports versions 1.5, 1.6, 1.7 of SAMtools and BCFtools.
 - The allele-swapping feature of comBBo has been temporarily disabled due to conflicts with recent SAMtools versions.
 - HATCHet has not been tested on Windows yet.
 
