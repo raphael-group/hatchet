@@ -41,7 +41,7 @@ def output_folder():
     out = os.path.join(this_dir, 'out')
     shutil.rmtree(out, ignore_errors=True)
     for sub_folder in ('bin', 'snps', 'baf', 'bb', 'bbc', 'plots', 'results', 'evaluation', 'analysis'):
-        os.makedirs(os.path.join(out, sub_folder))
+       os.makedirs(os.path.join(out, sub_folder))
     return out
 
 
