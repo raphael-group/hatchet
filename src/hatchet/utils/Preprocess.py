@@ -13,8 +13,8 @@ utils = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, 'uti
 if not os.path.isdir(utils):
     raise ValueError("utils directory not found in HATCHet's home directory i.e. {}, is anything been moved?".format(utils))
 sys.path.append(utils)
-from Supporting import *
-from hatchet import config
+from .Supporting import *
+from . import config
 
 
 def parse_args():
