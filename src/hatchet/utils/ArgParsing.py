@@ -552,6 +552,7 @@ def parse_preprocess_args(args=None):
     parser.add_argument("-t","--tumor", required=True, type=str, help="White-space separated list of input tumor BAM files, corresponding to multiple samples from the same patient (list must be within quotes)")
     parser.add_argument("-n","--normal", required=True, type=str, help="Matched-normal BAM file")
     parser.add_argument("-r","--reference", type=str, required=True, help="Reference genome")
+    parser.add_argument("-o","--output", type=str, required=False, default = config.preprocess.output, help="Output filename")   
     parser.add_argument("-s","--samplenames", required=False, type=str, default=config.preprocess.samplenames, help="Tumor sample names in a white-space separated list in the same order as the corresponding BAM files (default: file names are used as names)")
     parser.add_argument("-b","--size", type=str, required=False, default=config.preprocess.size, help="Bin size, with or without \"kb\" or \"Mb\" (default: 250kb)")
     parser.add_argument("-c","--minreads", type=int, required=False, default=config.preprocess.minreads, help="Minimum read counts for heterozygous germline SNPs (default: 8)")
@@ -631,7 +632,8 @@ def parse_preprocess_args(args=None):
         "maxreads" : args.maxreads,
         "phred" : args.phred,
         "rundir" : os.path.abspath(args.rundir),
-        "seed" : args.seed
+        "seed" : args.seed,
+        "output" : args.output
     }
 
 
