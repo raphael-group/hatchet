@@ -41,7 +41,7 @@ def main(args=None):
     else: outbins = open(args["outbins"], 'w')
     outbins.write("#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\tCLUSTER\n")
     for key in sorted(combo, key=(lambda x : (sp.numericOrder(x[0]), int(x[1]), int(x[2])))):
-        for sample in combo[key]:
+        for sample in sorted(combo[key]):
             outbins.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key[0], key[1], key[2], sample[0], sample[1], sample[2], sample[3], sample[4], sample[5], sample[6], clusterAssignments[bintoidx[key]]))
 
     sp.log(msg="# Segmenting bins\n", level="STEP")
