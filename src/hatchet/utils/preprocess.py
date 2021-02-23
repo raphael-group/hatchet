@@ -30,10 +30,8 @@ def main(args=None):
     alleles_list = os.path.join(pathlib.Path(__file__).parent.parent.absolute(), 'resources', 'risk_alleles.pos')
     all_params = []
     for i in range(len(all_samples)):
-        
         my_cmd = cmd.format(samtools, all_samples[i], args['ref'], alleles_list, 
                             os.path.join(drisk, all_names[i] + '.pileup'))
-        
         all_params.append((my_cmd, all_names[i]))
         
     with mp.Pool(min([args['J'], len(all_params)])) as p:
