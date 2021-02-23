@@ -60,7 +60,7 @@ def main(args=None):
     counts = {c : {o : form(het(c[1])[o][0][0], het(c[1])[o][1][0], rcounts[c][o]) for o in rcounts[c]} for c in rcounts}
 
     log(msg="# Writing the allele counts of tumor samples for selected SNPs\n", level="STEP")
-    map(lambda f : os.remove(hetsnpsfiles[f]), hetsnpsfiles)
+    [os.remove(f) for f in hetsnpsfiles.values()]
     handle = open(args['outputTumors'], 'w') if args['outputTumors'] is not None else sys.stdout
     for sample in args["samples"]:
         for chro in args["chromosomes"]:
