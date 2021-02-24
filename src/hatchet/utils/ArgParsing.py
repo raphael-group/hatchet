@@ -615,7 +615,7 @@ def parse_preprocess_args(args=None):
 
     from multiprocessing import cpu_count
     if not args.jobs:
-        args.jobs = cpu_count()
+        args.jobs = min(cpu_count(), 24)
     if args.jobs < 1:
         raise ValueError("The number of jobs must be positive!")
 
