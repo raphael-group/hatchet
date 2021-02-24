@@ -12,7 +12,7 @@ import pathlib
 
 from .Supporting import *
 from hatchet import config
-from.ArgParsing import parse_preprocess_args
+from.ArgParsing import extractChromosomes, parse_preprocess_args
 
 def main(args=None):
     log('Parsing and checking arguments\n', level='PROGRESS')
@@ -25,8 +25,8 @@ def main(args=None):
     log("Getting read counts at risk allele sites\n", level="PROGRESS")
     cmd = '{} mpileup {} -f {} -l {} -o {} -s'
     samtools = os.path.join(args["samtools"], "samtools")
-    all_samples =  [args['normal']] + args['tumor']
     all_names = ['normal'] + args['names']
+    all_samples =  [args['normal']] + args['tumor']
     alleles_list = os.path.join(pathlib.Path(__file__).parent.parent.absolute(), 'resources', 'risk_alleles.pos')
     all_params = []
     for i in range(len(all_samples)):
@@ -84,6 +84,66 @@ def main(args=None):
     if args['samtools'] is not None and len(args['samtools']) > 0:
         cmd += " --samtools {}".format(args['samtools'])
     runcmd(cmd, dcounts, log="counts.log", rundir=args['rundir'])
+
+    log('Checking for output files\n', level='PROGRESS')
+    missing = []
+    # risk allele pileups (risk)
+    for name in all_names:
+        fname = os.path.join(drisk, name + '.pileup')
+        if not os.path.exists(fname):
+            missing.append('RISK: Missing file {}'.format(fname))
+
+    # position counting (counts)
+    chrs = extractChromosomes(samtools,  [args["normal"], "normal"], [(x, "") for x in args["tumor"]])
+    
+    counts_files = os.listdir(dcounts)
+    if len(counts_files) != 1 + 24 * (1 + len(args['tumor'])):
+        if len(counts_files) <= 1:
+            missing.append("COUNTS: Missing all count files from directory {}".format(dcounts))
+        else:
+            for chr in chrs:
+                fname = os.path.join(dcounts, args['normal'], chr, '.txt')
+                if not os.path.exists(fname):
+                    missing.append("COUNTS: Missing file {}".format(fname))
+                for tumorbam in args['tumor']:
+                    fname = os.path.join(dcounts, tumorbam, chr, '.txt')
+                    if not os.path.exists(fname):
+                        missing.append("COUNTS: Missing file {}".format(fname))
+    
+    # SNP files (snps)
+    for chr in chrs:
+        fname = os.path.join(dsnps, chr + '.vcf.gz')
+        if not os.path.exists(fname):
+            missing.append("SNPS: Missing file {}".format(fname))
+    
+    # deBAF output (baf)
+    beds = ['bulk.1bed', 'normal.1bed']
+    for file in beds:
+        fname = os.path.join(dbaf, file)
+        if not os.path.exists(fname):
+            missing.append("BAF: Missing file {}".format(fname))
+    
+    # binBAM output (rdr)
+    for file in beds:
+        fname = os.path.join(drdr, file)
+        if not os.path.exists(fname):
+            missing.append("RDR: Missing file {}".format(fname))
+    if not os.path.exists(ctot):
+        missing.append("RDR: Missing file {}".format(ctot))
+
+    # comBBo (bb)
+    fname = os.path.join(dbb, 'bulk.bb')
+    if not os.path.exists(fname):
+        missing.append("BB: Missing file {}".format(fname))
+
+
+    with open(os.path.join(args['rundir'], 'missing_files.log'), 'w') as f:
+        if len(missing) == 0:
+            log("No output files missing.\n", level="INFO")
+            # leave log file empty
+        else:
+            log("Found missing output files (see missing_files.log).\n", level="INFO")
+            f.write('\n'.join(missing))
 
     log('Preparing gzip file for transfer\n', level='PROGRESS')
     cmd = 'tar -czvf {} {} {} {} {} {} {} {}'

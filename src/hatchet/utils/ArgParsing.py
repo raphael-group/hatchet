@@ -638,6 +638,14 @@ def parse_preprocess_args(args=None):
 
 
 def extractChromosomes(samtools, normal, tumors, reference=None):
+    """
+    Parameters:
+        samtools: path to samtools executable
+        normal: tuple of (path to normal BAM file, string name)
+        tumor: list of tuples (path to BAM file, string name)
+        reference: path to FASTA file
+    """
+    
     # Read the names of sequences in normal BAM file
     normal_sq = getSQNames(samtools, normal[0])
 
