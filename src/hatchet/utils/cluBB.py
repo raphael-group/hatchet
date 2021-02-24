@@ -26,7 +26,7 @@ def main(args=None):
         clouds = generateClouds(points=points, density=args["cloud"], seed=args["seed"], sdeven=args["ratiodeviation"], sdodd=args["bafdeviation"])
 
     sp.log(msg="# Clustering bins by RD and BAF across tumor samples\n", level="STEP")
-    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, output=args["outsegments"], samples=samples, clouds=clouds, K=args["initclusters"], sf=args["tuning"], restarts=args['restarts'])
+    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(points=points, clouds=clouds, K=args["initclusters"], concentration_prior = args["concentration"], restarts=args['restarts'], seed = args['seed'])
 
     if args['rdtol'] > 0.0 or args['baftol'] > 0.0:
         sp.log(msg="# Refining clustering using given tolerances\n", level="STEP")
@@ -41,7 +41,7 @@ def main(args=None):
     else: outbins = open(args["outbins"], 'w')
     outbins.write("#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\tCLUSTER\n")
     for key in sorted(combo, key=(lambda x : (sp.numericOrder(x[0]), int(x[1]), int(x[2])))):
-        for sample in combo[key]:
+        for sample in sorted(combo[key]):
             outbins.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key[0], key[1], key[2], sample[0], sample[1], sample[2], sample[3], sample[4], sample[5], sample[6], clusterAssignments[bintoidx[key]]))
 
     sp.log(msg="# Segmenting bins\n", level="STEP")
@@ -107,15 +107,18 @@ def getPoints(data, samples):
     return points, bintoidx
 
 
-def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10):
+def cluster(points, clouds=None, concentration_prior = None, K = 100, restarts=10, seed = 0):
     """
     Clusters a set of data points lying in an arbitrary number of clusters.
     Arguments:
         data (list of lists of floats): list of data points to be clustered.
+        clouds (list or lists of floats, same second dimension as data): bootstrapped bins for clustering
         sampleName (string): The name of the input sample.
-        sf (float): Tuning parameter for clustering; used to determine initial size of
-                    distribution covariances. Small sf indicates a belief that clusters
-                    are of small size.
+        concentration_prior (float): Tuning parameter for clustering, must be between 0 and 1. Used to determine concentration
+            of points in clusters -- higher favors more clusters, lower favors fewer clusters.
+        K (int): maximum number of clusters to infer
+        restarts (int): number of initializations to try for GMM
+        seed (int): random number generator seed for GMM
     Returns:
         mus (list of lists of floats): List of cluster means.
         sigmas (list of 2D lists of floats): List of cluster covariances.
@@ -125,51 +128,23 @@ def cluster(points, output, samples, clouds=None, K=15, sf=0.01, restarts=10):
         numPoints (list of ints): Number of points assigned to each cluster
         numClusters (int): The number of clusters.
     """
-    sp.log(msg="## Loading BNPY\n", level="INFO")
-    tmp = os.path.splitext(output)[0] + "_TMPDIR/"
-    if os.path.exists(tmp):
-        shutil.rmtree(tmp)
-    os.makedirs(tmp)
-    os.environ["BNPYOUTDIR"] = tmp
-    import bnpy
-    
-    sp.log(msg="## Clustering...\n", level="INFO")
+    from sklearn.mixture import BayesianGaussianMixture
+    from collections import Counter
+            
+    sp.log(msg="## Clustering with K={} and c={}...\n".format(K, concentration_prior), level="INFO")
     total = list(points)
     if clouds is not None:
         total.extend(list(clouds))
     npArray = np.array(total)
-    Data = bnpy.data.XData(X=npArray)
-    Data.name = "Clustering tumor samples by RD and BAF"
-    Data.summary = "Clustering the following samples: {}".format(",".join(samples))
-
-    if Data.X.shape[0] < K:
-        K = Data.X.shape[0]
-
-    if hasattr(bnpy.learnalg, "MOVBBirthMergeAlg"):
-        hmodel, Info = bnpy.run(Data, 'DPMixtureModel', 'DiagGauss', 'moVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
-    elif hasattr(bnpy.learnalg, "MemoVBMovesAlg"):
-        hmodel, Info = bnpy.run(Data, 'DPMixtureModel', 'DiagGauss', 'memoVB', nLap=100, nTask=restarts, K=K, moves='birth,merge', ECovMat='eye', sF=sf, doWriteStdOut=False)
-    else:
-        raise ValueError(sp.error("BNPY learnalg module does not contain either MOVBBirthMergeAlg or MemoVBMovesAlg, please use the right version!"))
-
-    observationModel = hmodel.obsModel
-    numClusters = observationModel.K
-
-    mus = [observationModel.get_mean_for_comp(k=i) for i in range(numClusters)]
-    sigmas = [observationModel.get_covar_mat_for_comp(k=i) for i in range(numClusters)]
-
-    target = bnpy.data.XData(X=(np.array(points)))
-    LP = hmodel.calc_local_params(target)
-    targetAssignments = np.argmax(LP['resp'], axis=1)
-
-    LP = hmodel.calc_local_params(Data)
-    fullAssignments = np.argmax(LP['resp'], axis=1)
-
-    numPoints = []
-    for i in range(numClusters):
-        currX = np.array([Data.X[j] for j in range(len(Data.X)) if fullAssignments[j] == i])
-        numPoints.append(currX.shape[0])
-
+    
+    gmm = BayesianGaussianMixture(n_components = K, n_init = restarts, weight_concentration_prior = concentration_prior, max_iter = int(1e6), random_state = seed)
+    targetAssignments = gmm.fit_predict(npArray)
+    mus = gmm.means_
+    sigmas = gmm.covariances_
+    cntr = Counter(targetAssignments)
+    numPoints = [cntr[i] if i in cntr else 0 for i in range(K)]
+    numClusters = len(cntr)
+    
     return mus, sigmas, targetAssignments, numPoints, numClusters
 
 

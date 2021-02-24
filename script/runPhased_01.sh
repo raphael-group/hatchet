@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+source ./config.txt
+
+LIST=""
+# Select list of known SNPs based on reference genome
+if [ "$REF_VERS" =  "hg19" ]
+then
+    if [ "$CHR_NOTATION" = true ]
+    then
+        LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"
+    else
+        LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz"
+    fi
+else
+    if [ "$REF_VERS" =  "hg38" ]
+    then
+        if [ "$CHR_NOTATION" = true ]
+        then
+            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/GATK/00-All.vcf.gz"
+        else
+            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz"
+        fi
+    fi
+fi
+####################################################################################
+
+
+##################################################################
+# For default run please execute the following without changes   #
+# Otherwise please follow the related HATCHet's reccommendations #
+# To run HATCHet with phasing of SNPs please see below           #
+##################################################################
+set -e
+set -o xtrace
+PS4='\''[\t]'\'
+ALLNAMES="Normal ${NAMES}"
+export PATH=$PATH:${SAM}
+export PATH=$PATH:${BCF}
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+
+cd ${XDIR}
+mkdir -p ${RDR}
+mkdir -p ${SNP}
+mkdir -p ${BAF}
+
+python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BIN} -g ${REF} -j ${J} -O ${RDR}normal.1bed -o ${RDR}tumor.1bed -t ${RDR}total.tsv |& tee ${RDR}bins.log
+
+python3 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
+
+python3 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP}*.vcf.gz -O ${BAF}normal.1bed -o ${BAF}tumor.1bed |& tee ${BAF}bafs.log
+

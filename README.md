@@ -73,81 +73,42 @@ The setup process is composed of 3 steps:
 ### Installation
 <a name="installation"></a>
 
-The core module of HATCHet is written in C++11 and thus requires a modern C++ compiler (GCC >= 4.8.1, or Clang).
-As long as you have a recent version of GCC or Clang installed, `setuptools` should automatically be able to download a recent version of `cmake` and compile the Hatchet code into a working package.
+#### Standard Installation
 
-The installation process can be broken down into the following steps:
+`HATCHet` can be installed using an existing installation of `conda` (e.g. either the compact
+[Miniconda](https://docs.conda.io/en/latest/miniconda.html) or the complete [Anaconda](https://www.anaconda.com/)).
+First, `bioconda` [requires](https://bioconda.github.io/user/index.html) to set the following channels in this exact order:
+```shell
+conda config --add channels defaults
+conda config --add channels bioconda
+conda config --add channels conda-forge
+```
 
-1. **Get [Gurobi](http://www.gurobi.com/)** (>= 6.0)
+Next, `HATCHet` can be installed with the following one-time command:
+```shell
+conda install hatchet
+```
 
-    The coordinate-method applied by HATCHet is based on several integer linear programming (ILP) formulations. Gurobi is a commercial ILP solver with two licensing options: (1) a single-host license where the license is tied to a single computer and (2) a network license for use in a compute cluster (using a license server in the cluster). Both options are freely and [easily available](http://www.gurobi.com/academia/academia-center) for users in academia.
-[Download](https://www.gurobi.com/downloads/gurobi-optimizer-eula) Gurobi for your specific platform.
+This command installs `hatchet` in the base conda environment, however best practices generally recommend, especially in computing servers, to keep distinct packages independent.
+Therefore, it is preferable to use the following command to install `hatchet`:
+```shell
+conda create -n hatchet hatchet
+```
 
-2. **Set GUROBI_HOME environment variable**
-    ```shell
-    $ export GUROBI_HOME /path/to/gurobiXXX
-    ```
-    Set `GUROBI_HOME` to where you download Gurobi. Here `XXX` is the 3-digit version of gurobi.
+In this case, `hatchet` must be activated before every session with the following command
+```shell
+source activate hatchet
+```
 
-3. **Build Gurobi**
-    ```shell
-    $ cd "${GUROBI_HOME}"
-    $ cd linux64/src/build/
-    $ make
-    $ cp libgurobi_c++.a ../../lib
-    ```
-    Substitute `mac64` for `linux64` if using the Mac OSX platform.
+#### Manual Installation
 
-4. **Create a new venv/conda environment for Hatchet**
-
-    `Hatchet` is a Python 3 package. Unless you want to compile/install it in your default Python 3 environment, you will
-want to create either a new Conda environment for Python 3 and activate it:
-    ```
-    conda create --name hatchet python=3.8
-    conda activate hatchet
-    ```
-    or use `virtualenv` through `pip`:
-    ```
-    python3 -m pip virtualenv env
-    source env/bin/activate
-    ```
-
-5. **Install basic packages**
-
-    It is **highly recommended** that you upgrade your `pip` and `setuptools` versions to the latest, using:
-    ```shell
-    pip install -U pip
-    pip install -U setuptools
-    ```
-    
-6. **Build and install HATCHet**
-
-    Execute the following commands from the root of HATCHet's repository.
-    ```shell
-    $ pip install .
-    ```
-
-    **NOTE**: If you experience a failure of compilation with an error message like:
-    ```
-    _undefined reference to symbol 'pthread_create@@GLIBC_2.2.5'_.
-    ```
-
-    you may need to set `CXXFLAGS` to `-pthread` before invoking the command:
-    ```shell
-    $ CXXFLAGS=-pthread pip install .
-    ```
-
-    When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed intructions](doc/doc_compilation.md).
-
-7. **Install required utilities**
-
-    For reading BAM files, read counting, allele counting, and SNP calling, you need to install [SAMtools and BCFtools](http://www.htslib.org/doc/).
-    *Currently, HATCHet support only the following versions of these software: 1.5, 1.6, 1.7*
+If you wish to install `HATCHet` directly from this repository, the steps are a bit more involved. Please refer to the
+[Manual Installation](doc/doc_manual_install.md) document for more details.
 
 ### Using Gurobi
 <a name="usinggurobi"></a>
 
-Every run of HATCHet (especially, the `hatchet` step) needs to use Gurobi which requires a valid license pointed by the enviromental variable `GRB_LICENSE_FILE`. This can be easily obtained depending on the type of free academic license available:
+Every run of HATCHet (especially, the `hatchet` step) needs to use Gurobi which requires a valid license pointed by the environmental variable `GRB_LICENSE_FILE`. This can be easily obtained depending on the type of free academic license available:
 
 1. **Individual license**. This license can be obtained [easily](http://www.gurobi.com/academia/academia-center) by any academic user with an institutional email. This license is user and machine-specific, meaning that the user needs to require a different license for every used machine. Assuming the license is stored at `/path/to/gurobi.lic`, set the environment variable `GRB_LICENSE_FILE` to point to it:
 
@@ -201,7 +162,6 @@ As such, we also provide here an overview of the entire pipeline and we describe
 
 HATCHet is in active development, please report any issue or question as this could help the devolment and imporvement of HATCHet. Current known issues with current version are reported here below:
 
-- HATCHet currently only supports versions 1.5, 1.6, 1.7 of SAMtools and BCFtools.
 - The allele-swapping feature of comBBo has been temporarily disabled due to conflicts with recent SAMtools versions.
 - HATCHet has not been tested on Windows yet.
 
