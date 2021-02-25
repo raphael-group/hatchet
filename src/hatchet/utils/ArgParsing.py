@@ -15,7 +15,7 @@ def parse_count_arguments(args=None):
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
-    parser.add_argument("-S","--samples", required=False, default=config.baf.samples, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
+    parser.add_argument("-S","--samples", required=False, default=config.baf.samples, type=str, nargs='+', help="Sample names for each BAM (given as \"normal tumor1 tumor2 ... \")")
     parser.add_argument("-st", "--samtools", required = False, type = str, default = config.paths.samtools, help = 'Path to samtools executable')   
     parser.add_argument("-j", "--processes", type = int, help = 'Number of concurrent jobs', default = 24)   
     args = parser.parse_args(args)

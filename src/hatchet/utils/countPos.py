@@ -6,15 +6,16 @@ from datetime import datetime
 from collections import Counter, defaultdict
 import numpy as np
 import argparse
+import gzip
 
 from .ArgParsing import parse_count_arguments
-from .Supporting import log
+from .Supporting import log, logArgs
 from hatchet import config
 
 def main(args=None):
     log(msg="# Parsing and checking input arguments\n", level="STEP")
     args = parse_count_arguments(args)
-    print(args)
+    logArgs(args, 80)
     
     bams = args["bams"]
     names = args["names"]
@@ -36,19 +37,18 @@ def main(args=None):
 def process_chromosome(ch, outdir, samtools, bam, sample_name):
     # TODO: replace print statements with sp.log
     
-    outfile = os.path.join(outdir, f'{sample_name}.{ch}.txt')
+    outfile = os.path.join(outdir, f'{sample_name}.{ch}.gz')
     if os.path.exists(outfile):
-        print(f"Skipping sample {bam}-chromosome {ch} (output file exists)")
+        print(f"Skipping sample {sample_name}-chromosome {ch} (output file exists)")
         return
     
-    print(datetime.now(), f"Sample {bam} -- Starting chromosome {ch}")
+    print(datetime.now(), f"Sample {sample_name} -- Starting chromosome {ch}")
     
     # Get start positions
     cmd = " ".join([samtools, 'view', bam,  ch, '|',  'awk', "-F'\t'", "'{print $4}'"])
     #print(cmd)
     result = sp.run(cmd, shell = True, capture_output = True)
     result.check_returncode()
-    print(datetime.now(), f"Sample {bam} -- Starting chromosome {ch}")
 
 
     starts = Counter(result.stdout.decode('utf-8').strip().split('\n'))
@@ -67,13 +67,13 @@ def process_chromosome(ch, outdir, samtools, bam, sample_name):
 
 
     starts_dict = {int(k):v for k,v in starts.items()}
-    with open(os.path.join(outdir, f'{sample_name}.{ch}.txt'), 'w') as f:
-        f.write(f'{startpos}\n')
-        [f.write(f'{int(starts_dict[i + startpos]) if (i + startpos) in starts_dict else 0},{cov_per_pos[i]}\n')
+    with gzip.open(outfile, 'wb') as f:
+        f.write(f'{startpos}\n'.encode())
+        [f.write(f'{int(starts_dict[i + startpos]) if (i + startpos) in starts_dict else 0},{cov_per_pos[i]}\n'.encode())
          for i in range(len(cov_per_pos))]
-    
-    print(datetime.now(), f'Done {ch}')
 
+    print(datetime.now(), f"Sample {sample_name} -- Done chromosome {ch}")
+    
 def process_chromosome_wrapper(param):
     process_chromosome(*param)
 

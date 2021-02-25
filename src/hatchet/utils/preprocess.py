@@ -26,7 +26,7 @@ def main(args=None):
     cmd = '{} mpileup {} -f {} -l {} -o {} -s'
     samtools = os.path.join(args["samtools"], "samtools")
     all_names = ['normal'] + args['names']
-    all_samples =  [args['normal']] + args['tumor']
+    all_samples =  [args['normal']] + args['tumor']    
     alleles_list = os.path.join(pathlib.Path(__file__).parent.parent.absolute(), 'resources', 'risk_alleles.pos')
     all_params = []
     for i in range(len(all_samples)):
@@ -85,6 +85,7 @@ def main(args=None):
         cmd += " --samtools {}".format(args['samtools'])
     runcmd(cmd, dcounts, log="counts.log", rundir=args['rundir'])
 
+    
     log('Checking for output files\n', level='PROGRESS')
     missing = []
     # risk allele pileups (risk)
@@ -102,11 +103,11 @@ def main(args=None):
             missing.append("COUNTS: Missing all count files from directory {}".format(dcounts))
         else:
             for chr in chrs:
-                fname = os.path.join(dcounts, args['normal'], chr, '.txt')
+                fname = os.path.join(dcounts, args['normal'], chr, '.gz')
                 if not os.path.exists(fname):
                     missing.append("COUNTS: Missing file {}".format(fname))
                 for tumorbam in args['tumor']:
-                    fname = os.path.join(dcounts, tumorbam, chr, '.txt')
+                    fname = os.path.join(dcounts, tumorbam, chr, '.gz')
                     if not os.path.exists(fname):
                         missing.append("COUNTS: Missing file {}".format(fname))
     
