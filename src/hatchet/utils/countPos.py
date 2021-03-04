@@ -1,5 +1,6 @@
-from multiprocessing import Pool
+import multiprocessing as mp
 import os
+from resource import RUSAGE_SELF
 import sys
 import subprocess as sp
 from datetime import datetime
@@ -7,10 +8,14 @@ from collections import Counter, defaultdict
 import numpy as np
 import argparse
 import gzip
+import logging
+import pysam
 
 from .ArgParsing import parse_count_arguments
 from .Supporting import log, logArgs
 from hatchet import config
+
+import tracemalloc
 
 def main(args=None):
     log(msg="# Parsing and checking input arguments\n", level="STEP")
@@ -24,55 +29,47 @@ def main(args=None):
     jobs = args["j"]
     outdir = args["outdir"]
     
+    logger = mp.log_to_stderr(logging.INFO)
     params = zip(np.repeat(chromosomes,  len(bams)), 
         [outdir] * len(bams) * len(chromosomes), 
         [samtools] * len(bams) * len(chromosomes), 
         bams * len(chromosomes),
-        names * len(chromosomes))
+        names * len(chromosomes), [logger] * len(bams) * len(chromosomes))
 
-    with Pool(jobs) as p:
-        # TODO: incorporate ProgressBar, logging
+    with mp.Pool(np.round(jobs / 2)) as p: # divide by 2 because each worker starts 2 processes
         p.map(process_chromosome_wrapper, params)
+        
+    mosdepth = sp.run()
 
-def process_chromosome(ch, outdir, samtools, bam, sample_name):
-    # TODO: replace print statements with sp.log
-    
-    outfile = os.path.join(outdir, f'{sample_name}.{ch}.gz')
-    if os.path.exists(outfile):
-        print(f"Skipping sample {sample_name}-chromosome {ch} (output file exists)")
-        return
-    
-    print(datetime.now(), f"Sample {sample_name} -- Starting chromosome {ch}")
-    
-    # Get start positions
-    cmd = " ".join([samtools, 'view', bam,  ch, '|',  'awk', "-F'\t'", "'{print $4}'"])
-    #print(cmd)
-    result = sp.run(cmd, shell = True, capture_output = True)
-    result.check_returncode()
+def process_chromosome(ch, outdir, samtools, bam, sample_name, logger):
+    try:    
+        tracemalloc.start()
+        outfile = os.path.join(outdir, f'{sample_name}.{ch}.starts')
+        if os.path.exists(outfile):
+            logger.info(f"Skipping sample {sample_name}-chromosome {ch} (output file exists)")
+            return
+        
+        logger.info(f"{datetime.now()} Sample {sample_name} -- Starting chromosome {ch}")
+        
+        # Get start positions
+        st = sp.Popen((samtools, 'view', bam,  ch), stdout=sp.PIPE)
+        cut = sp.Popen(('cut', '-f', '4'), stdin=st.stdout, stdout=open(outfile, 'w'))
+        st.wait()
+        cut.wait()
+        if st.returncode != 0:
+            raise ValueError("samtools subprocess returned nonzero value: {}".format(st.returncode))
+        if cut.returncode != 0:
+            raise ValueError("cut subprocess returned nonzero value: {}".format(cut.returncode))
 
-
-    starts = Counter(result.stdout.decode('utf-8').strip().split('\n'))
-    
-    # Count reads per position
-    read_length = 151
-
-    startpos = min([int(a) for a in starts.keys()])
-    endpos = max([int(a) for a in starts.keys()])
-
-    cov_per_pos = np.zeros(endpos - startpos + read_length, dtype = np.int32)
-
-    for pos, n in starts.items():
-        pos = int(pos)
-        cov_per_pos[pos - startpos:pos - startpos + read_length - 1] += n
-
-
-    starts_dict = {int(k):v for k,v in starts.items()}
-    with gzip.open(outfile, 'wb') as f:
-        f.write(f'{startpos}\n'.encode())
-        [f.write(f'{int(starts_dict[i + startpos]) if (i + startpos) in starts_dict else 0},{cov_per_pos[i]}\n'.encode())
-         for i in range(len(cov_per_pos))]
-
-    print(datetime.now(), f"Sample {sample_name} -- Done chromosome {ch}")
+        logger.info(f"{datetime.now()} Sample {sample_name} -- Done chromosome {ch}")
+        current, peak = tracemalloc.get_traced_memory()
+        logger.info(f"Current memory usage is {current / 10**6}MB; Peak was {peak / 10**6}MB")
+        
+        tracemalloc.stop()
+        
+    except Exception as e:
+        logger.exception(e)
+        pass
     
 def process_chromosome_wrapper(param):
     process_chromosome(*param)
