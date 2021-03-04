@@ -1,7 +1,7 @@
 ## Full pipeline and tutorial
 <a name="fullpipelineandtutorial"></a>
 
-We provide an example [BASH script](../script/runHATCHet.sh) that implements the entire pipeline of HATCHet.
+We provide example [BASH scripts](../script/README.md) that implements the entire pipeline of HATCHet.
 This script and its usage are described in detailed in a guided [tutorial](doc_runhatchet.md).
 The user can simply use the script for every execution of HATCHet on different data by copying the script inside the running directory and changing the corresponding paths of the required data and dependencies at the beginning of the script, as described in the guided [tutorial](doc_runhatchet.md).
 
