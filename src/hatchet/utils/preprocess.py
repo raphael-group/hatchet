@@ -33,9 +33,16 @@ def main(args=None):
         my_cmd = cmd.format(samtools, all_samples[i], args['ref'], alleles_list, 
                             os.path.join(drisk, all_names[i] + '.pileup'))
         all_params.append((my_cmd, all_names[i]))
+    
+    #with mp.Pool(min([args['J'], len(all_params)])) as p:
+    #    p.map(pileup_wrapper, all_params)
+   
+    # run sequentially instead
+    for param in all_params:
+        pileup_wrapper(param)
         
-    with mp.Pool(min([args['J'], len(all_params)])) as p:
-        p.map(pileup_wrapper, all_params)
+    log("Done getting read counts at risk allele sites\n", level="PROGRESS")
+
 
     log('Calling SNPs\n', level='PROGRESS')
     cmd =  'python3 -m hatchet SNPCaller -N {} -r {} -j {} -c {} -C {} -o {}'
@@ -155,7 +162,7 @@ def main(args=None):
 def pileup_wrapper(params):
     cmd, name = params
     log("Counting sample \"{}\"\n".format(name), level="INFO")
-    sp.run(cmd.split())
+    sp.run(cmd.split(), capture_output = True)
     log("Done counting sample \"{}\"\n".format(name), level="INFO")
 
 def generate_subdirectories(args):
