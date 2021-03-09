@@ -88,8 +88,6 @@ def parse_snp_arguments(args=None):
         raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
     elif sp.which(bcftools) is None:
         raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
-    elif not checkVersions(samtools, bcftools):
-        raise ValueError(sp.error("The versions of samtools and bcftools are different! Please provide the tools with the same version to avoid inconsistent behaviors!{}"))
 
     # Check that SNP, reference, and region files exist when given in input
     if not os.path.isfile(args.reference):
@@ -187,8 +185,6 @@ def parse_baf_arguments(args=None):
         raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
     elif sp.which(bcftools) is None:
         raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
-    elif not checkVersions(samtools, bcftools):
-        raise ValueError(sp.error("The versions of samtools and bcftools are different! Please provide the tools with the same version to avoid inconsistent behaviors!{}"))
 
     # Check that SNP, reference, and region files exist when given in input
     snplists = {}
@@ -704,12 +700,6 @@ def getSQNames(samtools, bamfile):
         if len(line) > 0 and line[0] == '@SQ':
             names.add(line[1].split(':')[1].strip())
     return names
-
-
-def checkVersions(samtools, bcftools):
-    samtools_version, samtools_stderr = subprocess.Popen([samtools, "--version-only"], stdout=subprocess.PIPE, shell=False, universal_newlines=True).communicate()
-    bcftools_version, bcftools_stderr = subprocess.Popen([bcftools, "--version-only"], stdout=subprocess.PIPE, shell=False, universal_newlines=True).communicate()
-    return samtools_version == bcftools_version and samtools_stderr is None and bcftools_stderr is None
 
 
 def parseRegions(region_file, chromosomes):

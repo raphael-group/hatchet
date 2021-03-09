@@ -14,13 +14,12 @@ binBAM takes in input sorted and indexed BAM files for multiple tumor samples fr
 
 ## Output
 
-binBAM produces three tab-separated files: the first contains the read counts for every genomic bin in every tumor sample, the second contains the read counts for every genomic bin the matched-normal sample, and the third contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.
+binBAM produces three tab-separated files: the first contains the read counts for every genomic bin in every tumor sample (raw counts not normalized), the second contains the read counts for every genomic bin the matched-normal sample (raw counts not normalized), and the third contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.
 
 | Name | Description |
 |------|-------------|
 | `-O`, `--outputnormal` | The output file for the read counts from matched-normal sample |
 | `-o`, `--outputtumors` | The output file for the read counts from the tumor samples |
-| `-l`, `--outputsnps` | the output file for the list of identified heterozygous germline SNPs |
 
 ## Main parameters
 

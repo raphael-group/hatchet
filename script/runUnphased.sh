@@ -1,32 +1,28 @@
 #!/usr/bin/env bash
 
-####################################################################################
-# Please set up the correct configuration values here below before running HATCHet #
-####################################################################################
+source ./config.txt
 
-REF="/path/to/reference.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
-SAM="/path/to/samtools-home/bin/" #Uncomment if samtools is already in PATH
-BCF="/path/to/bcftools-home/bin/" #Uncomment if bcftools is already in PATH
-XDIR="/path/to/running-dir/"
-NORMAL="/path/to/matched-normal.bam"
-BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
-NAMES="Primary Met" #Use the same order as the related tumor BAM files in BAMS above
-J=$(python -c 'import multiprocessing as mp; print mp.cpu_count()') #Replace with fixed number if you do not want to use all available cpus 
-MINREADS=8 #Use 8 for WGS with >30x and 20 for WES with ~100x
-MAXREADS=300 #Use 300 for WGS with >30x and Use 1000 for WES with ~100x
 LIST=""
-#We reccommend to provide a list of known SNPs, please uncomment the appropriate one below according to the provided reference genome
-#If a list is not provided, all genomic positions will be genotyped by BCFtools and will be considered for selection of heterozygous SNPs
-#To improve running time or in case of slow download speeed, please do not provide a list.
-#Uncomment the following for reference genome hg19 with `chr` notation
-#LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"
-#Uncomment the following for reference genome hg19 without `chr` notation
-#LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz"
-#Uncomment the following for reference genome hg38 with `chr` notation
-#LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/GATK/00-All.vcf.gz"
-#Uncomment the following for reference genome hg38 without `chr` notation
-#LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz"
-
+# Select list of known SNPs based on reference genome
+if [ "$REF_VERS" =  "hg19" ]
+then
+    if [ "$CHR_NOTATION" = true ]
+    then
+        LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"
+    else
+        LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz"
+    fi
+else
+    if [ "$REF_VERS" =  "hg38" ]
+    then
+        if [ "$CHR_NOTATION" = true ]
+        then
+            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/GATK/00-All.vcf.gz"
+        else
+            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz"
+        fi
+    fi
+fi
 ####################################################################################
 
 
@@ -45,24 +41,16 @@ export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 
 cd ${XDIR}
-RDR="rdr/"
 mkdir -p ${RDR}
-SNP="snps/"
 mkdir -p ${SNP}
-BAF="baf/"
 mkdir -p ${BAF}
-BB="bb/"
 mkdir -p ${BB}
-BBC="bbc/"
 mkdir -p ${BBC}
-PLO="plots/"
 mkdir -p ${PLO}
-RES="results/"
 mkdir -p ${RES}
-SUM="summary/"
 mkdir -p ${SUM}
 
-python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b 50kb -g ${REF} -j ${J} -O ${RDR}normal.1bed -o ${RDR}tumor.1bed -t ${RDR}total.tsv |& tee ${RDR}bins.log
+python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BIN} -g ${REF} -j ${J} -O ${RDR}normal.1bed -o ${RDR}tumor.1bed -t ${RDR}total.tsv |& tee ${RDR}bins.log
 
 python3 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
 
@@ -81,8 +69,6 @@ python3 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J
 # If using reference-phasing algorithm please make sure the ouput VCF are w.r.t. same reference genome, otherwise please       #
 # use LiftOver to convert it or bcftools --annotate to add or remove `chr` notation                                            #
 ################################################################################################################################
-PHASE="None"
-BLOCK="50kb"
 
 python3 -m hatchet comBBo -c ${RDR}normal.1bed -C ${RDR}tumor.1bed -B ${BAF}tumor.1bed -t ${RDR}total.tsv -p ${PHASE} -l ${BLOCK} -e ${RANDOM} > ${BB}bulk.bb
 

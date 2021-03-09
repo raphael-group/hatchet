@@ -17,7 +17,6 @@ import seaborn as sns
 import pandas as pd
 import matplotlib.colors as col
 from matplotlib.pyplot import cm
-import matplotlib_venn
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.colors import ListedColormap
 from matplotlib.colors import LinearSegmentedColormap

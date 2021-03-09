@@ -76,7 +76,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.2.3',
+    version='0.2.9',
     packages=['hatchet', 'hatchet.utils', 'hatchet.bin', 'hatchet.resources'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini'],
@@ -85,15 +85,11 @@ setup(
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 
-    python_requires='>=3',
+    python_requires='>=3.7',
 
     install_requires=[
         'biopython',
-        'futures',
-        'importlib_resources>=1.0.2',
         'matplotlib',
-        'matplotlib-venn',
-        'opencv-python',
         'pandas',
         'psutil',
         'pysam',
