@@ -18,7 +18,7 @@ def main(args=None):
     log('\n'.join(['Arguments:'] + ['\t{} : {}'.format(a, args[a]) for a in args]) + '\n', level='INFO')
 
     log('Setting directories\n', level='PROGRESS')
-    dbaf, drdr, dbb, dsnps, dcounts, drisk = generate_subdirectories(args)
+    dbaf, drdr, dbb, dsnps, dcounts = generate_subdirectories(args)
     
     samtools = os.path.join(args["samtools"], "samtools")
     all_names = ['normal'] + args['names']
@@ -141,7 +141,7 @@ def main(args=None):
     if args['zip']:
         log('Collecting and compressing output files\n', level='PROGRESS')
         cmd = 'tar -czvf {} {} {} {} {} {} {} {}'
-        cmd = cmd.format(args['output'] + '.tar.gz', dbaf, drdr, dbb, dsnps, dcounts, drisk, ctot)
+        cmd = cmd.format(args['output'] + '.tar.gz', dbaf, drdr, dbb, dsnps, dcounts, ctot)
         sp.run(cmd.split())
         
     log('Done\n', level='PROGRESS')
@@ -174,11 +174,7 @@ def generate_subdirectories(args):
     if not os.path.isdir(dcounts):
         os.mkdir(dcounts)
 
-    drisk = os.path.join(args['rundir'], 'risk')
-    if not os.path.isdir(drisk):
-        os.mkdir(drisk)
-
-    return dbaf, drdr, dbb, dsnps, dcounts, drisk
+    return dbaf, drdr, dbb, dsnps, dcounts
 
 def runcmd(cmd, xdir, out=None, log="log", rundir=None):
     j = os.path.join
