@@ -545,11 +545,11 @@ def parse_bbot_args(args=None):
 def parse_preprocess_args(args=None):
     description = "This command automatically runs HATCHet's preprocessing pipeline."
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("-t","--tumor", required=True, type=str, help="White-space separated list of input tumor BAM files, corresponding to multiple samples from the same patient (list must be within quotes)")
+    parser.add_argument("-t","--tumor", required=True, type=str, nargs = '+', help="White-space separated list of input tumor BAM files, corresponding to multiple samples from the same patient")
     parser.add_argument("-n","--normal", required=True, type=str, help="Matched-normal BAM file")
     parser.add_argument("-r","--reference", type=str, required=True, help="Reference genome")
     parser.add_argument("-o","--output", type=str, required=False, default = config.preprocess.output, help="Output filename")   
-    parser.add_argument("-s","--samplenames", required=False, type=str, default=config.preprocess.samplenames, help="Tumor sample names in a white-space separated list in the same order as the corresponding BAM files (default: file names are used as names)")
+    parser.add_argument("-s","--samplenames", required=False, type=str, nargs = '+', default=config.preprocess.samplenames, help="Tumor sample names in a white-space separated list in the same order as the corresponding BAM files (default: file names are used as names)")
     parser.add_argument("-b","--size", type=str, required=False, default=config.preprocess.size, help="Bin size, with or without \"kb\" or \"Mb\" (default: 250kb)")
     parser.add_argument("-c","--minreads", type=int, required=False, default=config.preprocess.minreads, help="Minimum read counts for heterozygous germline SNPs (default: 8)")
     parser.add_argument("-C","--maxreads", type=int, required=False, default=config.preprocess.maxreads, help="Maximum read counts for heterozygous germline SNPs (default: 1000)")
@@ -559,6 +559,7 @@ def parse_preprocess_args(args=None):
     parser.add_argument("--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("--seed", required=False, type=int, default=config.preprocess.seed, help="Random seed for replication (default: None)")
     parser.add_argument("-j","--jobs", required=False, type=int, default=config.preprocess.jobs, help="Number of parallel jobs to use (default: equal to number of available processors)")
+    parser.add_argument("-z", "--zip", required = False, action = "store_true", help = "Zip and compress output (default: False)")
     args = parser.parse_args(args)
 
     # In default mode, check the existence and compatibility of samtools and bcftools
@@ -568,10 +569,8 @@ def parse_preprocess_args(args=None):
         raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
     elif sp.which(bcftools) is None:
         raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
-    elif not checkVersions(samtools, bcftools):
-        raise ValueError(sp.error("The versions of samtools and bcftools are different! Please provide the tools with the same version to avoid inconsistent behaviors!{}"))
 
-    tumor = set(t for t in args.tumor.split())
+    tumor = args.tumor
     for t in tumor:
         if not os.path.isfile(t):
             raise ValueError("The following BAM file does not exist: {}".format(t))
@@ -580,7 +579,7 @@ def parse_preprocess_args(args=None):
         if len(names) != len(tumor):
             names = tumor
     else:
-        names = set(t for t in args.samplenames.split())
+        names = args.samplenames
         if len(names) != len(tumor):
             raise ValueError("A different number of samples names has been provided compared to the number of BAM files, remember to add the list within quotes!")
         
@@ -629,7 +628,8 @@ def parse_preprocess_args(args=None):
         "phred" : args.phred,
         "rundir" : os.path.abspath(args.rundir),
         "seed" : args.seed,
-        "output" : args.output
+        "output" : args.output,
+        "zip" : args.zip
     }
 
 

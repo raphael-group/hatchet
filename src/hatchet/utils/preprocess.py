@@ -20,29 +20,9 @@ def main(args=None):
     log('Setting directories\n', level='PROGRESS')
     dbaf, drdr, dbb, dsnps, dcounts, drisk = generate_subdirectories(args)
     
-    log("Getting read counts at risk allele sites\n", level="PROGRESS")
-    cmd = '{} mpileup {} -f {} -l {} -o {} -s'
     samtools = os.path.join(args["samtools"], "samtools")
     all_names = ['normal'] + args['names']
     all_samples =  [args['normal']] + args['tumor']    
-    alleles_list = os.path.join(pathlib.Path(__file__).parent.parent.absolute(), 'resources', 'risk_alleles.pos')
-    if not os.path.exists(alleles_list):
-        raise ValueError(error(f"Risk alleles file not found at {alleles_list}!"))
-    
-    all_params = []
-    for i in range(len(all_samples)):
-        my_cmd = cmd.format(samtools, all_samples[i], args['ref'], alleles_list, 
-                            os.path.join(drisk, all_names[i] + '.pileup'))
-        #all_params.append((my_cmd, all_names[i]))
-        log(f"Running mpileup on sample {all_names[i]}\n", level="STEP")
-
-        runcmd(my_cmd, drisk, log = f"risk_{all_names[i]}.log", rundir = args['rundir'])
-        
-    #with mp.Pool(min([args['J'], len(all_params)])) as p:
-    #    p.map(pileup_wrapper, all_params)
-        
-    log("Done getting read counts at risk allele sites\n", level="PROGRESS")
-
 
     log('Calling SNPs\n', level='PROGRESS')
     cmd =  'python3 -m hatchet SNPCaller -N {} -r {} -j {} -c {} -C {} -o {}'
@@ -94,15 +74,9 @@ def main(args=None):
 
     log('Checking for output files\n', level='PROGRESS')
     missing = []
-    # risk allele pileups (risk)
-    for name in all_names:
-        fname = os.path.join(drisk, name + '.pileup')
-        if not os.path.exists(fname):
-            missing.append('RISK: Missing file {}'.format(fname))
 
-    # position counting (counts)
+    ### position counting (counts)
     chrs = extractChromosomes(samtools,  [args["normal"], "normal"], [(x, "") for x in args["tumor"]])
-    
     # samtools output
     counts_files = [a for a in os.listdir(dcounts) if a.endswith('starts')]
     if len(counts_files) <= 1:
@@ -127,7 +101,6 @@ def main(args=None):
             fname = os.path.join(dcounts, name + '.per-base.bed.gz.csi')
             if not os.path.exists(fname):
                 missing.append("COUNTS: Missing mosdepth output file {}".format(fname))   
-                
                 
     # SNP files (snps)
     for chr in chrs:
@@ -165,10 +138,12 @@ def main(args=None):
             f.write('\n'.join(missing))
             f.write('\n')
 
-    log('Preparing gzip file for transfer\n', level='PROGRESS')
-    cmd = 'tar -czvf {} {} {} {} {} {} {} {}'
-    cmd = cmd.format(args['output'] + '.tar.gz', dbaf, drdr, dbb, dsnps, dcounts, drisk, ctot)
-    sp.run(cmd.split())
+    if args['zip']:
+        log('Collecting and compressing output files\n', level='PROGRESS')
+        cmd = 'tar -czvf {} {} {} {} {} {} {} {}'
+        cmd = cmd.format(args['output'] + '.tar.gz', dbaf, drdr, dbb, dsnps, dcounts, drisk, ctot)
+        sp.run(cmd.split())
+        
     log('Done\n', level='PROGRESS')
 
 def pileup_wrapper(params):
