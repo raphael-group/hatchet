@@ -12,45 +12,48 @@ def parse_count_arguments(args=None):
     Parses command line arguments for countPos
     """
     parser = argparse.ArgumentParser(description = 'Count the reads that start at and cover each position.')
-    parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
-    parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
+    parser.add_argument("-B","--bams", required=True, type=str, nargs='+', help="BAM files corresponding to samples (normal or tumor)")
     parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
-    parser.add_argument("-S","--samples", required=False, default=config.baf.samples, type=str, nargs='+', help="Sample names for each BAM (given as \"normal tumor1 tumor2 ... \")")
+    parser.add_argument("-S","--samples", required=False, default=config.baf.samples, type=str, nargs='+', help="Sample names for each BAM (given as e.g. \"normal tumor1 tumor2 ... \")")
     parser.add_argument("-st", "--samtools", required = False, type = str, default = config.paths.samtools, help = 'Path to samtools executable')   
     parser.add_argument("-j", "--processes", type = int, help = 'Number of concurrent jobs', default = 24)   
+    parser.add_argument("-c", "--compression", type = int, help = 'Level of gzip compression from 1 to 9 (default 6)', default = 6)   
+
     args = parser.parse_args(args)
 
     if not os.path.exists(args.outdir):
         raise ValueError(sp.error("The specified output directory does not exist!"))
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
-    normal = args.normal
-    if not os.path.isfile(normal): raise ValueError(sp.error("The specified normal BAM file does not exist"))
-    tumors = args.tumors
-    for tumor in tumors:
-        if(not os.path.isfile(tumor)): raise ValueError(sp.error("The specified tumor BAM file does not exist"))
+    bams = args.bams
+    for bamfile in bams:
+        if(not os.path.isfile(bamfile)): raise ValueError(sp.error("The specified tumor BAM file does not exist"))
     names = args.samples
-    if names != None and (len(tumors)+1) != len(names):
+    if names != None and len(bams) != len(names):
         raise ValueError(sp.error("A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample"))
     if names is None:
         names = []
         names.append(os.path.splitext(os.path.basename(normal))[0])
-        for tumor in tumors:
-            names.append(os.path.splitext(os.path.basename(tumor))[0])
+        for bamfile in bams:
+            names.append(os.path.splitext(os.path.basename(bamfile))[0])
     
     # In default mode, check the existence and compatibility of samtools
     samtools = os.path.join(args.samtools, "samtools")
     if sp.which(samtools) is None:
         raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
     
-    chromosomes = extractChromosomes(samtools, [args.normal, "normal"], [(x, "") for x in args.tumors])
+    if args.compression < 1 or args.compression > 9:
+        raise ValueError(sp.error("Compression argument must be an integer between 1 and 9, inclusive (see gzip documentation for details)."))
+    
+    chromosomes = extractChromosomes(samtools, [bams[0], names[0]], [(bams[i], names[i]) for i in range(1, len(bams))])
 
-    return {"bams" : [args.normal] + args.tumors,
+    return {"bams" : bams,
             "names" : names,
             "outdir" : args.outdir,
             "chromosomes" : chromosomes,
             "samtools" : samtools,
-            "j" : args.processes     
+            "j" : args.processes,
+            "compression" : args.compression   
     }
 
 def parse_snp_arguments(args=None):
@@ -583,7 +586,7 @@ def parse_preprocess_args(args=None):
         if len(names) != len(tumor):
             raise ValueError("A different number of samples names has been provided compared to the number of BAM files, remember to add the list within quotes!")
         
-    tumor = set(os.path.abspath(t) for t in tumor)
+    tumor = [os.path.abspath(t) for t in tumor]
     if not os.path.isdir(args.rundir):
         raise ValueError("Running directory does not exists: {}".format(args.rundir))
     if not os.path.isfile(args.normal):

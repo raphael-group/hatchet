@@ -23,60 +23,137 @@ def main(args=None):
     samtools = os.path.join(args["samtools"], "samtools")
     all_names = ['normal'] + args['names']
     all_samples =  [args['normal']] + args['tumor']    
+    chrs = extractChromosomes(samtools,  [args["normal"], "normal"], [(x, "") for x in args["tumor"]])
 
-    log('Calling SNPs\n', level='PROGRESS')
-    cmd =  'python3 -m hatchet SNPCaller -N {} -r {} -j {} -c {} -C {} -o {}'
-    # TODO: include -R reference SNPs list?
-    nbin = os.path.join(drdr, 'normal.1bed')
-    tbin = os.path.join(drdr, 'bulk.1bed')
-    cmd = cmd.format(args['normal'], args['ref'], args['J'], args['minreads'], args['maxreads'], dsnps)
-    if args['samtools'] is not None and len(args['samtools']) > 0:
-        cmd += " --samtools {}".format(args['samtools'])
-    runcmd(cmd, dsnps, log="snps.log", rundir=args['rundir'])
 
-    log('Computing BAFs\n', level='PROGRESS')
-    cmd = 'python3 -m hatchet deBAF -N {} -T {} -S {} -r {} -j {} -q {} -Q {} -U {} -c {} -C {} -O {} -o {} -L {} -l {}'
+    ctot = os.path.join(args['rundir'], config.bin.outputtotal)
     nbaf = os.path.join(dbaf, 'normal.1bed')
     tbaf = os.path.join(dbaf, 'bulk.1bed')
-    vcfs = [os.path.join(dsnps, f) for f in os.listdir(dsnps) if f.endswith('.vcf.gz')]
-    cmd = cmd.format(args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), 
-                     args['ref'], args['J'], args['phred'], args['phred'], args['phred'], 
-                     args['minreads'], args['maxreads'], nbaf, tbaf, " ".join(vcfs), dbaf)
-    if args['samtools'] is not None and len(args['samtools']) > 0:
-        cmd += " --samtools {}".format(args['samtools'])
-    if args['bcftools'] is not None and len(args['bcftools']) > 0:
-        cmd += " --bcftools {}".format(args['bcftools'])
-    runcmd(cmd, dbaf, log="bafs.log", rundir=args['rundir'])
-
-    log('Computing RDRs\n', level='PROGRESS')
-    cmd = 'python3 -m hatchet binBAM -N {} -T {} -S {} -b {} -g {} -j {} -q {} -O {} -o {}'
     nbin = os.path.join(drdr, 'normal.1bed')
     tbin = os.path.join(drdr, 'bulk.1bed')
-    cmd = cmd.format(args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), args['size'], args['ref'], args['J'], args['phred'], nbin, tbin)
-    if args['samtools'] is not None and len(args['samtools']) > 0:
-        cmd += " --samtools {}".format(args['samtools'])
-    runcmd(cmd, drdr, log="bins.log", rundir=args['rundir'])
-
-    log('Combining RDRs and BAFs\n', level='PROGRESS')
-    ctot = os.path.join(args['rundir'], config.bin.outputtotal)
-    cmd = 'python3 -m hatchet comBBo -c {} -C {} -B {} -t {}'
-    cmd = cmd.format(nbin, tbin, tbaf, ctot)
-    if args['seed'] is not None:
-        cmd += " -e {}".format(args['seed'])
-    runcmd(cmd, dbb, out='bulk.bb', log="combo.log", rundir=args['rundir'])
-
-    log('Counting reads at each position\n', level='PROGRESS')
-    cmd = 'python3 -m hatchet countPos -N {} -T {} -O {} -j {} -S {}'
-    cmd = cmd.format(args['normal'], ' '.join(args['tumor']), dcounts, args['J'], ' '.join(all_names))
-    if args['samtools'] is not None and len(args['samtools']) > 0:
-        cmd += " --samtools {}".format(args['samtools'])
-    runcmd(cmd, dcounts, log="counts.log", rundir=args['rundir'])
+    
+    if len(missing_snps(dsnps, chrs)) > 0:
+        log('Calling SNPs\n', level='PROGRESS')
+        cmd =  'python3 -m hatchet SNPCaller -N {} -r {} -j {} -c {} -C {} -o {}'
+        # TODO: expose -R reference SNPs list?
+        cmd = cmd.format(args['normal'], args['ref'], args['J'], args['minreads'], args['maxreads'], dsnps)
+        if args['samtools'] is not None and len(args['samtools']) > 0:
+            cmd += " --samtools {}".format(args['samtools'])
+        runcmd(cmd, dsnps, log="snps.log", rundir=args['rundir'])
+    else:
+        log('Found all SNPCaller output, skipping step.\n', level='PROGRESS')
+     
+    if len(missing_baf(dbaf)) > 0:
+        log('Computing BAFs\n', level='PROGRESS')
+        cmd = 'python3 -m hatchet deBAF -N {} -T {} -S {} -r {} -j {} -q {} -Q {} -U {} -c {} -C {} -O {} -o {} -L {} -l {}'
+        vcfs = [os.path.join(dsnps, f) for f in os.listdir(dsnps) if f.endswith('.vcf.gz')]
+        cmd = cmd.format(args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), 
+                        args['ref'], args['J'], args['phred'], args['phred'], args['phred'], 
+                        args['minreads'], args['maxreads'], nbaf, tbaf, " ".join(vcfs), dbaf)
+        if args['samtools'] is not None and len(args['samtools']) > 0:
+            cmd += " --samtools {}".format(args['samtools'])
+        if args['bcftools'] is not None and len(args['bcftools']) > 0:
+            cmd += " --bcftools {}".format(args['bcftools'])
+        runcmd(cmd, dbaf, log="bafs.log", rundir=args['rundir'])
+    else:
+        log('Found all deBAF output, skipping step.\n', level='PROGRESS')
+    
+    if len(missing_rdr(drdr, ctot)) > 0:
+        log('Computing RDRs\n', level='PROGRESS')
+        cmd = 'python3 -m hatchet binBAM -N {} -T {} -S {} -b {} -g {} -j {} -q {} -O {} -o {}'
+        cmd = cmd.format(args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), args['size'], args['ref'], args['J'], args['phred'], nbin, tbin)
+        if args['samtools'] is not None and len(args['samtools']) > 0:
+            cmd += " --samtools {}".format(args['samtools'])
+        runcmd(cmd, drdr, log="bins.log", rundir=args['rundir'])
+    else:
+        log('Found all bimBAM output, skipping step.\n', level='PROGRESS')
+       
+    if len(missing_bb(dbb)) > 0:
+        log('Combining RDRs and BAFs\n', level='PROGRESS')
+        cmd = 'python3 -m hatchet comBBo -c {} -C {} -B {} -t {}'
+        cmd = cmd.format(nbin, tbin, tbaf, ctot)
+        if args['seed'] is not None:
+            cmd += " -e {}".format(args['seed'])
+        runcmd(cmd, dbb, out='bulk.bb', log="combo.log", rundir=args['rundir'])
+    else:
+        log('Found all comBBo output, skipping step.\n', level='PROGRESS')
+    
+    if len(missing_counts(dcounts, chrs, all_names)) > 0:
+        log('Counting reads at each position\n', level='PROGRESS')
+        cmd = 'python3 -m hatchet countPos -B {} -O {} -j {} -S {}'
+        cmd = cmd.format(' '.join([args['normal']] + args['tumor']), dcounts, args['J'], ' '.join(all_names))
+        if args['samtools'] is not None and len(args['samtools']) > 0:
+            cmd += " --samtools {}".format(args['samtools'])
+        runcmd(cmd, dcounts, log="counts.log", rundir=args['rundir'])
+    else:
+        log('Found all countPos output, skipping step.\n', level='PROGRESS')
 
     log('Checking for output files\n', level='PROGRESS')
     missing = []
+    missing.extend(missing_snps(dsnps, chrs))
+    missing.extend(missing_baf(dbaf))
+    missing.extend(missing_rdr(drdr, ctot))
+    missing.extend(missing_bb(dbb))
+    missing.extend(missing_counts(dcounts, chrs, all_names))
+    
+    with open(os.path.join(args['rundir'], 'missing_files.log'), 'w') as f:
+        if len(missing) == 0:
+            log("No output files missing.\n", level="INFO")
+            # leave log file empty
+        else:
+            log("Found missing output files (see missing_files.log).\n", level="INFO")
+            f.write('\n'.join(missing))
+            f.write('\n')
 
+    if args['zip']:
+        log('Collecting and compressing output files\n', level='PROGRESS')
+        cmd = 'tar -czvf {} {} {} {} {} {} {} {}'
+        cmd = cmd.format(args['output'] + '.tar.gz', dbaf, drdr, dbb, dsnps, dcounts, ctot)
+        sp.run(cmd.split())
+        
+    log('Done\n', level='PROGRESS')
+
+def missing_snps(dsnps, chrs):
+    missing = []
+    for chr in chrs:
+        fname = os.path.join(dsnps, chr + '.vcf.gz')
+        if not os.path.exists(fname):
+            missing.append("SNPS: Missing file {}".format(fname))
+    return missing
+
+def missing_baf(dbaf):
+    # deBAF output (baf)
+    missing = []
+    beds = ['bulk.1bed', 'normal.1bed']
+    for file in beds:
+        fname = os.path.join(dbaf, file)
+        if not os.path.exists(fname):
+            missing.append("BAF: Missing file {}".format(fname))
+    return missing
+
+def missing_rdr(drdr, ctot):
+    # binBAM output (rdr)
+    missing = []
+    beds = ['bulk.1bed', 'normal.1bed']
+    for file in beds:
+        fname = os.path.join(drdr, file)
+        if not os.path.exists(fname):
+            missing.append("RDR: Missing file {}".format(fname))
+    if not os.path.exists(ctot):
+        missing.append("RDR: Missing file {}".format(ctot))
+    return missing
+
+def missing_bb(dbb):
+    missing = []
+    # comBBo (bb)
+    fname = os.path.join(dbb, 'bulk.bb')
+    if not os.path.exists(fname):
+        missing.append("BB: Missing file {}".format(fname))
+    return missing
+  
+def missing_counts(dcounts, chrs, all_names):
+    missing = []
     ### position counting (counts)
-    chrs = extractChromosomes(samtools,  [args["normal"], "normal"], [(x, "") for x in args["tumor"]])
     # samtools output
     counts_files = [a for a in os.listdir(dcounts) if a.endswith('starts')]
     if len(counts_files) <= 1:
@@ -101,50 +178,7 @@ def main(args=None):
             fname = os.path.join(dcounts, name + '.per-base.bed.gz.csi')
             if not os.path.exists(fname):
                 missing.append("COUNTS: Missing mosdepth output file {}".format(fname))   
-                
-    # SNP files (snps)
-    for chr in chrs:
-        fname = os.path.join(dsnps, chr + '.vcf.gz')
-        if not os.path.exists(fname):
-            missing.append("SNPS: Missing file {}".format(fname))
-    
-    # deBAF output (baf)
-    beds = ['bulk.1bed', 'normal.1bed']
-    for file in beds:
-        fname = os.path.join(dbaf, file)
-        if not os.path.exists(fname):
-            missing.append("BAF: Missing file {}".format(fname))
-    
-    # binBAM output (rdr)
-    for file in beds:
-        fname = os.path.join(drdr, file)
-        if not os.path.exists(fname):
-            missing.append("RDR: Missing file {}".format(fname))
-    if not os.path.exists(ctot):
-        missing.append("RDR: Missing file {}".format(ctot))
-
-    # comBBo (bb)
-    fname = os.path.join(dbb, 'bulk.bb')
-    if not os.path.exists(fname):
-        missing.append("BB: Missing file {}".format(fname))
-
-
-    with open(os.path.join(args['rundir'], 'missing_files.log'), 'w') as f:
-        if len(missing) == 0:
-            log("No output files missing.\n", level="INFO")
-            # leave log file empty
-        else:
-            log("Found missing output files (see missing_files.log).\n", level="INFO")
-            f.write('\n'.join(missing))
-            f.write('\n')
-
-    if args['zip']:
-        log('Collecting and compressing output files\n', level='PROGRESS')
-        cmd = 'tar -czvf {} {} {} {} {} {} {} {}'
-        cmd = cmd.format(args['output'] + '.tar.gz', dbaf, drdr, dbb, dsnps, dcounts, ctot)
-        sp.run(cmd.split())
-        
-    log('Done\n', level='PROGRESS')
+    return missing
 
 def pileup_wrapper(params):
     cmd, name = params

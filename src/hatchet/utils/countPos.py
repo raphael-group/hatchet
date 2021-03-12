@@ -19,6 +19,7 @@ def main(args=None):
     samtools = args["samtools"]
     jobs = args["j"]
     outdir = args["outdir"]
+    compression = args['compression']
     
     if which("mosdepth") is None:
         raise ValueError(error("The 'mosdepth' executable was not found on PATH."))
@@ -28,7 +29,8 @@ def main(args=None):
         [outdir] * len(bams) * len(chromosomes), 
         [samtools] * len(bams) * len(chromosomes), 
         bams * len(chromosomes),
-        names * len(chromosomes))
+        names * len(chromosomes),
+        [compression] * len(bams) * len(chromosomes))
 
     n_workers_samtools = min(int(np.round(jobs / 2)), len(bams) * len(chromosomes))
     with mp.Pool(n_workers_samtools) as p: # divide by 2 because each worker starts 2 processes
@@ -76,7 +78,7 @@ def run_mosdepth(outdir, sample_name, bam, threads):
         log("Exception in countPos: {}\n".format(e), level = "ERROR")
         raise e  
 
-def process_chromosome(ch, outdir, samtools, bam, sample_name):
+def process_chromosome(ch, outdir, samtools, bam, sample_name, compression):
     try:    
         outfile = os.path.join(outdir, f'{sample_name}.{ch}.starts')
         if os.path.exists(outfile):
@@ -88,9 +90,11 @@ def process_chromosome(ch, outdir, samtools, bam, sample_name):
         
         # Get start positions
         st = sp.Popen((samtools, 'view', bam,  ch), stdout=sp.PIPE)
-        cut = sp.Popen(('cut', '-f', '4'), stdin=st.stdout, stdout=open(outfile, 'w'))
+        cut = sp.Popen(('cut', '-f', '4'), stdin=st.stdout, stdout=sp.PIPE)
+        gzip = sp.Popen(('gzip', '-{}'.format(compression)),  stdin = cut.stdout, stdout=open(outfile + ".gz", 'w'))
         st.wait()
         cut.wait()
+        gzip.wait()
         if st.returncode != 0:
             raise ValueError("samtools subprocess returned nonzero value: {}".format(st.returncode))
         if cut.returncode != 0:
