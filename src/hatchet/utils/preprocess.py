@@ -155,13 +155,13 @@ def missing_counts(dcounts, chrs, all_names):
     missing = []
     ### position counting (counts)
     # samtools output
-    counts_files = [a for a in os.listdir(dcounts) if a.endswith('starts')]
+    counts_files = [a for a in os.listdir(dcounts) if a.endswith('starts.gz')]
     if len(counts_files) <= 1:
         missing.append("COUNTS: Missing all count files from directory {}".format(dcounts))
     else:
         for chr in chrs:
             for name in all_names:
-                fname = os.path.join(dcounts, '.'.join([name, chr, 'starts']))
+                fname = os.path.join(dcounts, '.'.join([name, chr, 'starts.gz']))
                 if not os.path.exists(fname):
                     missing.append("COUNTS: Missing samtools output file {}".format(fname))
         # mosdepth output
