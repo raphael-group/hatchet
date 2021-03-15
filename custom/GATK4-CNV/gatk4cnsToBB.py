@@ -74,17 +74,17 @@ def main():
     bins = binning(segs, size=args['binsize'], drdr=args['devrdr'], dbaf=args['devbaf'])
 
     log('Writing the corresponding BB file')
-    print '\t'.join(["#CHR", "START", "END", "SAMPLE", "RD", "#SNPS", "COV", "ALPHA", "BETA", "BAF"])
+    print('\t'.join(["#CHR", "START", "END", "SAMPLE", "RD", "#SNPS", "COV", "ALPHA", "BETA", "BAF"]))
     orderchrs = (lambda x : int(''.join([l for l in x if l.isdigit()])))
     nsnp = (lambda L : int(round(L / 1000.0)))
     cov = (lambda R : R * 60.0)
     AB = (lambda R, B, L : list(splitBAF(baf=B, scale=max(1000, R * L / 250.0))))
     dat = (lambda c, b, p, L, R, B : [R, nsnp(L), cov(R)] + AB(R, B, L) + [B])
     row = (lambda c, b, p : [c, b[0], b[1], p] + dat(c, b, p, float(b[1] - b[0]), bins[c][b][p]['RDR'], bins[c][b][p]['BAF']))
-    print '\n'.join(['\t'.join(map(str, row(c, b, p)))
+    print('\n'.join(['\t'.join(map(str, row(c, b, p)))
                      for c in sorted(bins, key=orderchrs)
                      for b in sorted(bins[c])
-                     for p in sorted(bins[c][b])])
+                     for p in sorted(bins[c][b])]))
 
 
 def read_segs(samples):
@@ -184,7 +184,7 @@ def binning(segs, size, drdr, dbaf):
         bins[c] = {}
         for s in pos[c]:
             assert s[1] - s[0] > 0, "ERROR: START and END cannot be equal: {}:{}-{}".format(c, s[0], s[1])
-            part = range(s[0], s[1], size)
+            part = list(range(s[0], s[1], size))
             part = part + [s[1]] if part[-1] != s[1] else part
             for b in zip(part[:-1], part[1:]):
                 bins[c][b] = {p : gen(segs[p][c][s]) for p in segs}
