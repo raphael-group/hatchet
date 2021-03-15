@@ -71,55 +71,62 @@ samtools dict data/hg19.fa > data/hg19.dict
 
 We follow the template of the HATCHet's [script](../../doc/doc_fullpipeline.md#fullpipelineandtutorial).
 
-1. We specify the correct path to the reference genome
+1. We copy over the default config.sh and make custom changes to it at the end
 ```shell
-echo 'REF="data/hg19.fa"' > runHATCHet.sh
+cp ../../script/config.sh config.sh
+:<<'```shell' # Ignore this line
+```
+ 
+2. We specify the correct path to the reference genome
+```shell
+echo 'REF="data/hg19.fa"' >> config.sh
 :<<'```shell' # Ignore this line
 ```
 
-2. We specify the current folder as the running one
+3. We specify the current folder as the running one
 ```shell
-echo 'XDIR="./"' >> runHATCHet.sh
+echo 'XDIR="./"' >> config.sh
 :<<'```shell' # Ignore this line
 ```
 
-3. We specify the path to the matched-normal BAM files
+4. We specify the path to the matched-normal BAM files
 ```shell
-echo 'NORMAL="data/normal.bam"' >> runHATCHet.sh
+echo 'NORMAL="data/normal.bam"' >> config.sh
 :<<'```shell' # Ignore this line
 ```
 
-4. We specify the list of paths to the tumor BAM files and corresponding names
+5. We specify the list of paths to the tumor BAM files and corresponding names
 ```shell
-echo 'BAMS="data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam"' >> runHATCHet.sh
-echo 'NAMES="TumorSample1 TumorSample2 TumorSample3"' >> runHATCHet.sh
+echo 'BAMS="data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam"' >> config.sh
+echo 'NAMES="TumorSample1 TumorSample2 TumorSample3"' >> config.sh
 :<<'```shell' # Ignore this line
 ```
 
-5. We keep the default number of reads and number of parallel processes
+6. We keep the default number of reads and number of parallel processes
 ```shell
-echo 'J=$(python -c "import multiprocessing as mp; print mp.cpu_count()")' >> runHATCHet.sh
-echo "MINREADS=8" >> runHATCHet.sh
-echo "MAXREADS=300" >> runHATCHet.sh
+echo 'J=$(python -c "import multiprocessing as mp; print(mp.cpu_count())")' >> config.sh
+echo "MINREADS=8" >> config.sh
+echo "MAXREADS=300" >> config.sh
 :<<'```shell' # Ignore this line
 ```
 
-6. We specify the appropriate list of known SNPs (the first in the provided list)
+7. We specify the reference genome and chr notation
 ```shell
-echo 'LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"' >> runHATCHet.sh
+echo 'REF_VERS="hg19"' >> config.sh
+echo 'CHR_NOTATION=true' >> config.sh
 :<<'```shell' # Ignore this line
 ```
 
-7. We add all the remaining part of the template of HATCHet's script
+8. We add the unphased version of HATCHet's script
 ```shell
-tail -n 80 ../../script/runHATCHet.sh >> runHATCHet.sh
+cp ../../script/runUnphased.sh runUnphased.sh
 :<<'```shell' # Ignore this line
 ```
 
 ## Running HATCHet
 
 ```shell
-bash runHATCHet.sh |& tee hatchet.log
+bash runUnphased.sh |& tee hatchet.log
 exit $?
 ```
 
