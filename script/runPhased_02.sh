@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ./config.txt
+source ./config.sh
 
 ##################################################################
 # For default run please execute the following without changes   #

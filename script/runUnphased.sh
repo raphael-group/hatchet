@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ./config.txt
+source ./config.sh
 
 LIST=""
 # Select list of known SNPs based on reference genome
