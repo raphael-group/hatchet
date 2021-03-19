@@ -3,9 +3,162 @@ import os.path
 import argparse
 import subprocess
 import shlex
+import pandas as pd
 
 from . import Supporting as sp
 from hatchet import config
+
+def parse_clubb_kde_args(args=None):
+    """
+    Parse command line arguments
+    Returns:
+    """
+    description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
+    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("BBFILE", help="A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)")
+    parser.add_argument("-t","--totalcounts", required=True, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample')
+    parser.add_argument("-o", "--outsegments", required=False, default=config.kdebb.outsegments, type=str, help=f"Output filename for the segments computed by clustering bins (default: {config.kdebb.outsegments})")
+    parser.add_argument("-O", "--outbins", required=False, default=config.kdebb.outbins, type=str, help=f"Output filename for a BB file adding the clusters (default: {config.kdebb.outbins})")
+    parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.kdebb.diploidbaf, help=f"Maximum BAF shift (from 0.5) for a cluster to be considered balanced (default: {config.kdebb.diploidbaf})")
+    parser.add_argument("-b","--bandwidth", type=float, required=False, default=config.kdebb.bandwidth, help=f"Bandwidth to use for KDE (default: {config.kdebb.bandwidth})")
+    parser.add_argument("-c","--centroiddensity", type=float, required=False, default=config.kdebb.min_center_density, help=f"Minimum density for KDE mesh centroids (default: {config.kdebb.min_center_density})")
+    parser.add_argument("-m","--mesh", type=int, required=False, default=config.kdebb.grid_dimension, help=f"Resolution/number of points per axis for KDE mesh (default: {config.kdebb.grid_dimension})")
+    parser.add_argument("-v","--variance", type=float, required=False, default=config.kdebb.yvariance, help=f"RDR variance for copy-number grid vertices (default: {config.kdebb.yvariance})")
+    parser.add_argument("-g","--griddensity", type=float, required=False, default=config.kdebb.min_grid_density, help=f"Minimum density for copy-number grid centroids (default: {config.kdebb.min_grid_density})")
+    parser.add_argument("-x","--maxcopies", type=int, required=False, default=config.kdebb.max_copies, help=f"Maximum number of copies per allele, used to find centroids using fitted copy-number grid (default: {config.kdebb.max_copies})")
+    parser.add_argument("-f","--outfigure", required=False, default=config.kdebb.kde_fig_filename, help=f"Filename to output optional KDE figure (default: {config.kdebb.kde_fig_filename})")
+    parser.add_argument("-S","--snpsfile", required=False, default=config.kdebb.snpsfile, help=f"Filename containing SNP data for binomial model (default: None)")
+
+    #TODO:  SNPs file for binomial model?
+
+    args = parser.parse_args(args)
+
+    if not os.path.isfile(args.BBFILE):
+        raise ValueError(sp.error("The specified BB file does not exist!"))
+    if args.diploidbaf != None and not 0.0 <= args.diploidbaf <= 0.5:
+        raise ValueError(sp.error("The specified maximum diploid-BAF shift (-d) must be a value in [0.0, 0.5]"))
+    
+    # totalcounts file
+    if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
+        raise ValueError(sp.error("The specified file for total read counts does not exist!"))
+    
+    # bandwidth
+    if args.bandwidth <= 0:
+        raise ValueError(sp.error("Bandwidth must be positive."))
+    
+    # min center density
+    if args.centroiddensity <= 0:
+        raise ValueError(sp.error("Minimum mesh centroid density must be positive."))
+    
+    # grid dimension
+    if args.mesh < 1:
+        raise ValueError(sp.error("Mesh must have at least 1 point per dimension."))
+    
+    # y variance
+    if args.variance <= 0:
+        raise ValueError(sp.error("RDR variance must be positive."))
+    
+    # min_grid_density
+    if args.griddensity <= 0:
+        raise ValueError(sp.error("Minimum grid centroid density must be positive."))
+    
+    # max_copies
+    if args.maxcopies <= 0:
+        raise ValueError(sp.error("Max copies per allele must be positive."))
+
+    return {"bbfile" : args.BBFILE,
+            "diploidbaf" : args.diploidbaf,
+            "outbins" : args.outbins,
+            "outsegments" : args.outsegments,
+            "totalcounts" : args.totalcounts,
+            "bandwidth" : args.bandwidth,
+            "centroiddensity" : args.centroiddensity,
+            "mesh" : args.mesh,
+            "variance" : args.variance,
+            "griddensity" : args.griddensity,
+            "maxcopies" : args.maxcopies,
+            "outfigure" : args.outfigure,
+            "snpsfile" : args.snpsfile
+            }
+
+def parse_abin_arguments(args=None):    
+    parser = argparse.ArgumentParser(description = "Perform adaptive binning, compute RDR and BAF for each bin, and produce a BB file.")
+    parser.add_argument('-s', '--stem', type = str, help = 'Path to HATCHet working directory with /baf and /counts subdirectories (default: current directory', default = config.abin.stem)
+    parser.add_argument('-o', '--outfile', type = str, help = 'Filename for output')   
+    parser.add_argument('-n', '--normal', type = str, help = f'Filename stem corresponding to normal sample (default "{config.abin.normal}")', default = config.abin.normal)   
+    parser.add_argument('--msr', type = int, help = f'Minimum SNP reads per bin (default {config.abin.msr})', default = config.abin.msr)
+    parser.add_argument('--mtr', type = int, help = f'Minimum total reads per bin (default {config.abin.mtr})', default = config.abin.mtr)
+    parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.abin.processes})', default = config.abin.processes)   
+    parser.add_argument('-C', '--centromeres', type = str, help = 'Centromere locations file', 
+                        default = '/n/fs/ragr-data/datasets/ref-genomes/centromeres/hg19.centromeres.txt')   
+    args = parser.parse_args(args)
+    
+    stem = args.stem
+    if len(stem) > 0 and not os.path.exists(stem):
+        raise ValueError(sp.error("The specified stem directory does not exist!"))
+
+    if not os.path.exists(os.path.join(stem, 'counts')):
+        raise ValueError(sp.error("There is no 'counts' subdirectory in the provided stem directory -- try running countPos first."))
+
+    names = set()
+    chromosomes = set()
+    compressed = True
+    for f in os.listdir(os.path.join(stem, 'counts')):
+        if "starts" in f:
+            tkns = f.split('.')
+            names.add(tkns[0])
+            chromosomes.add(tkns[1])
+            if not f.endswith('gz'):
+                compressed = False
+
+    names = sorted(names)
+    sp.log(msg = f"Identified {len(names)} samples: {list(names)}\n", level = "INFO")
+    if not args.normal in names:
+        raise ValueError(sp.error("Designated normal sample not found in 'counts' subdirectory."))
+    names.remove(args.normal)
+    names = [args.normal] + names
+        
+    sp.log(msg = f"Identified {len(chromosomes)} chromosomes.\n", level = "INFO")
+    sp.log(msg = f"Identified {'gzip-compressed' if compressed else 'uncompressed'} starts files.\n", level = "INFO")
+    
+    tail = '.gz' if compressed else ''
+    for name in names:
+        for ch in chromosomes:
+            f = os.path.join(stem, 'counts', '.'.join([name, ch, 'starts']) + tail)
+            if not os.path.exists(f):
+                raise ValueError(sp.error(f"Missing expected counts file: {f}"))
+
+    if not os.path.exists(args.centromeres):
+        raise ValueError(sp.error("Centromeres file does not exist."))
+    
+    using_chr = [a.startswith('chr') for a in chromosomes]
+    if any(using_chr):
+        if not all(using_chr):
+            raise ValueError(sp.error("Some starts files use 'chr' notation while others do not."))
+        use_chr = True
+    else:
+        use_chr = False
+        
+
+    if args.processes <= 0:
+        raise ValueError("The number of jobs must be positive.")
+    if args.msr <= 0:
+        raise ValueError("The minimum number of SNP-covering reads must be positive.")
+    if args.mtr <= 0:
+        raise ValueError("The minimum number of total reads must be positive.")
+    
+    return {
+        "stem":args.stem,
+        "outfile":args.outfile,
+        "sample_names": names,
+        "min_snp_reads" : args.msr,
+        "min_total_reads" : args.mtr,
+        "use_chr":use_chr,
+        "processes":args.processes,
+        "centromeres":args.centromeres,
+        "chromosomes":chromosomes,
+        "compressed":compressed   
+    }
 
 def parse_count_arguments(args=None):
     """

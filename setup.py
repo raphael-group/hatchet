@@ -96,6 +96,7 @@ setup(
         'requests',
         'seaborn',
         'scikit-learn',
+        'scikit-image',
         'scipy'
     ],
 
