@@ -9,7 +9,7 @@ from scipy.stats import multivariate_normal, poisson, beta, binom, gaussian_kde
 from skimage.feature import peak_local_max
 import matplotlib.pyplot as plt
 import pandas as pd
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from .ArgParsing import parse_clubb_kde_args
 from . import Supporting as sp
@@ -74,6 +74,9 @@ def main(args=None):
             raise ValueError(sp.error(f"Found {len(bad_bins)} bins with no SNPs: {bad_bins}"))
     else:
         labels, affinities, _, _ = assign_bins_beta(bb, centers)
+
+    # Reindex labels to be numbered from 1 to n_clusters
+    labels = reindex(labels)
 
     # Form bbc output file
     columns = [chr_col, 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF']
@@ -247,7 +250,6 @@ def assign_bins_binom(bins, snps, centers, chr_col):
     affinities = np.array(affinities)
     labels = np.argmax(affinities, axis = 1)
     return labels, affinities, term1s, term2s, bad_bins
-
 
 def kde_centers_gridfit(arr, min_center_density, bandwidth, grid_dim, yvar, 
                         min_grid_density, max_copies, fname, verbose):
@@ -440,6 +442,20 @@ def compute_means(purity, scaling, max_copies):
 
 def vertex_gaussians(means, x_variance, y_variance):
     return [multivariate_normal(mean = means[i], cov = [[x_variance, 0], [0, y_variance]]) for i in range((len(means)))]
+
+def reindex(labels):
+    """
+    Given a list of labels, reindex them as integers from 1 to n_labels
+    Also orders them in nonincreasing order of prevalence
+    """
+    old2new = {}
+    j = 1
+    for i, _ in Counter(labels).most_common():
+        old2new[i] = j
+        j += 1
+    old2newf = lambda x: old2new[x]
+
+    return [old2newf(a) for a in labels]
 
 if __name__ == '__main__':
     main()
