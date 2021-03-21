@@ -26,13 +26,17 @@ from hatchet.bin.HATCHet import main as solve
 from hatchet.utils.BBeval import main as BBeval
 from hatchet.utils.preprocess import main as preprocess
 from hatchet.utils.countPos import main as countPos
+from hatchet.utils.cluBB_KDE import main as kdeBB
+from hatchet.utils.adaptiveBin import main as abin
+from hatchet.utils.formArray import main as array
 
 solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
 if __name__ == '__main__':
 
-    commands = ('binBAM', 'SNPCaller', 'deBAF', 'comBBo', 'cluBB', 'BBot', 'solve', 'BBeval', 'preprocess', 'countPos')
+    commands = ('binBAM', 'SNPCaller', 'deBAF', 'comBBo', 'cluBB', 'BBot', 'solve', 'BBeval', 
+                'preprocess', 'countPos', 'kdeBB', 'abin', 'array')
     if len(sys.argv) < 2:
         print('Usage: python -m hatchet <command> <arguments ..>')
         sys.exit(0)

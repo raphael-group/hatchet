@@ -21,7 +21,13 @@ def main(args=None):
     args = parse_clubb_kde_args(args)
     
     sp.log(msg="# Reading the combined BB file\n", level="STEP")
-    bb = pd.read_table(args["bbfile"]).sort_values(['SAMPLE', '#CHR', 'START']) 
+    
+    bb = pd.read_table(args["bbfile"])
+    if 'CHR' in bb:
+        chr_col = 'CHR'
+    else:
+        chr_col = '#CHR'
+    bb = bb.sort_values(['SAMPLE', chr_col, 'START']) 
     if len(bb.SAMPLE.unique()) > 1:
         raise ValueError(sp.error("ERROR: This dataframe has multiple samples, but cluBB_KDE supports only single-sample data."))
 
@@ -63,14 +69,14 @@ def main(args=None):
     sp.log(msg="# Assigning bins to centroids\n", level="STEP")
     if args['snpsfile'] is not None:
         snps = read_SNPs_iter(args['snpsfile'], bb)
-        labels, affinities, _, _, bad_bins = assign_bins_binom(bb, snps, centers)
+        labels, affinities, _, _, bad_bins = assign_bins_binom(bb, snps, centers, chr_col)
         if len(bad_bins) > 0:
             raise ValueError(sp.error(f"Found {len(bad_bins)} bins with no SNPs: {bad_bins}"))
     else:
         labels, affinities, _, _ = assign_bins_beta(bb, centers)
 
     # Form bbc output file
-    columns = ['#CHR', 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF']
+    columns = [chr_col, 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF']
     bbc = bb.copy()[columns]
     bbc['CLUSTER'] = labels
     bbc.to_csv(args['outbins'], index = False, sep = '\t')
@@ -90,12 +96,12 @@ def main(args=None):
     seg = pd.DataFrame(rows, columns = ['#ID', 'SAMPLE', '#BINS', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF'])
     seg.to_csv(args['outsegments'], index = False, sep = '\t')
 
-def read_SNPs_iter(path, bb, suppress_warnings = False):  
+def read_SNPs_iter(snpsfile, bb, suppress_warnings = True):  
     """
     Assumes that bins in both the snps dataframe and bins in bb are sorted in the same order
     """
     
-    snps = pd.read_csv(os.path.join(path, 'baf', 'bulk.1bed'), delimiter = '\t', 
+    snps = pd.read_csv(snpsfile, delimiter = '\t', 
                        header = None, names = ['CHR', 'POS', 'SAMPLE', 'REF', 'ALT'],
                        dtype = {'CHR':np.object, 'POS':np.uint64, 'SAMPLE':np.object, 'REF':np.uint32, 'ALT':np.uint32}).sort_values(['CHR', 'POS'])     
     snps = snps.reset_index(drop = True)
@@ -108,7 +114,7 @@ def read_SNPs_iter(path, bb, suppress_warnings = False):
     
     data = defaultdict(list)
     
-    sp.log(msg= f"Reading SNPs file: {os.path.join(path, 'baf', 'bulk.1bed')}\n", level = "INFO")
+    sp.log(msg= f"Reading SNPs file: {snpsfile}\n", level = "INFO")
     for i, row in snps.iterrows():
         # TODO: progressbar that moves in increments of 100k rows
                 
@@ -119,8 +125,7 @@ def read_SNPs_iter(path, bb, suppress_warnings = False):
         alt = row.ALT
         
         if ch not in bins:
-            if not suppress_warnings:
-                sp.log(msg=f"WARNING: missing chromosome {ch}.\n", level = "WARN")
+            sp.log(msg=f"WARNING: missing chromosome {ch}.\n", level = "WARN")
             continue
     
         # find the bin that contains this SNP
@@ -201,7 +206,7 @@ def assign_bins_beta(bins, centers):
     labels = np.argmax(affinities, axis = 1)
     return labels, affinities, term1s, term2s
 
-def assign_bins_binom(bins, snps, centers):
+def assign_bins_binom(bins, snps, centers, chr_col):
     """
     Assign bins according to a probabilistic model, using a binomial distribution for SNP read counts.
     """
@@ -219,7 +224,7 @@ def assign_bins_binom(bins, snps, centers):
     for _, row in bins.iterrows():
         t = row.CORRECTED_READS
         y = row.NORMAL_READS
-        bin_id = row.ID
+        bin_id = (row[chr_col], row.START, row.END)
         
         if bin_id not in snps:
             bad_bins.append(bin_id)

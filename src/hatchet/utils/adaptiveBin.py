@@ -56,9 +56,17 @@ def main(args=None):
         if ch not in chr2centro:
             raise ValueError(sp.error(f"Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument."))
 
+    if args['array'] is not None:
+        arraystems = {ch:args['array'] + '.' + ch for ch in chromosomes}
+    else:
+        arraystems = {ch:None for ch in chromosomes}
+
+    hasX = np.any([a.endswith('X') for a in chromosomes])
+    hasY = np.any([a.endswith('Y') for a in chromosomes])
+
     # form parameters for each worker
     params = [(stem, all_names, ch, outfile + f'.{ch}', threads_per_worker, 
-               chr2centro[ch][0], chr2centro[ch][1], msr, mtr, compressed)
+               chr2centro[ch][0], chr2centro[ch][1], msr, mtr, compressed, arraystems[ch], hasX and hasY)
               for ch in chromosomes]
     
     # dispatch workers
@@ -73,6 +81,7 @@ def main(args=None):
     outfiles = [a[3] for a in params]
     bbs = [pd.read_table(bb) for bb in outfiles]
     big_bb = pd.concat(bbs)
+    big_bb = big_bb.sort_values(by = ['CHR', 'START', 'SAMPLE'])
     big_bb.to_csv(outfile, index = False, sep = '\t')
 
     # Uncommend to remove all intermediate bb files (once I know the previous steps work)
@@ -128,7 +137,7 @@ def read_snps(baf_file, ch, all_names):
     
     return np.array(snp_counts.index), np.array(snp_counts), snpsv
 
-def form_counts_array(starts_files, perpos_files, thresholds, chromosome, chunksize = 1e5, tabix = 'tabix'):
+def form_counts_array(starts_files, perpos_files, thresholds, chromosome, tabix = 'tabix'):
     """
         NOTE: Assumes that starts_files[i] corresponds to the same sample as perpos_files[i]
         Parameters:
@@ -207,7 +216,11 @@ def form_counts_array(starts_files, perpos_files, thresholds, chromosome, chunks
 
                 # count the number of reads covering the chromosome end
                 arr[idx, 0] = end_reads
-
+                
+        # Clean up after myself (files can be up to 5GB per chromosome and are created quickly from .bed.gz file)
+        if os.path.exists(chr_sample_file):
+            os.remove(chr_sample_file)
+            
     return arr, thresholds
 
 def adaptive_bins_arm(snp_thresholds, total_counts, snp_positions, snp_counts,
@@ -319,12 +332,12 @@ def EM(totals_in, alts_in, start, tol=1e-6):
             
             # E-step
             assert 0 + tol < baf < 1 - tol, (baf, totals, alts, start)
-            M = (totals - 2*alts) * np.log(baf) + (2*alts - totals) * np.log(1.0 - baf)
+            M = (totals - 2.0*alts) * np.log(baf) + (2.0*alts - totals) * np.log(1.0 - baf)
             M = np.exp(np.clip(a = M, a_min = -100, a_max = 100))
             phases = np.reciprocal(1 + M)
             
             # M-step
-            baf = float(np.sum(totals * (1 - phases) + alts * (2*phases - 1))) / float(np.sum(totals))
+            baf = float(np.sum(totals * (1 - phases) + alts * (2.0*phases - 1))) / float(np.sum(totals))
 
         assert 0 + tol < baf < 1 - tol, (baf, totals, alts, start)
         lpmf = binom.logpmf
@@ -332,7 +345,7 @@ def EM(totals_in, alts_in, start, tol=1e-6):
                              (1 - phases) * lpmf(k = alts, n = totals, p = 1-baf)))
         return baf, phases, log_likelihood
 
-def apply_EM(totals_in, alts_in, n_samples, significance, cutoff):
+def apply_EM(totals_in, alts_in):
     baf, phases, logl = max((EM(totals_in, alts_in, start = st) 
                     for st in np.linspace(0.01, 0.49, 50)), key=(lambda x : x[2]))
     refs = totals_in - alts_in
@@ -347,10 +360,7 @@ def compute_baf_task(bin_snps):
         my_snps = bin_snps[bin_snps.SAMPLE == sample]
 
         baf, alpha, beta = apply_EM(totals_in = my_snps.TOTAL, 
-                                                 alts_in = my_snps.ALT, 
-                                                 n_samples = 100, 
-                                                 significance = 0.05, 
-                                                 cutoff = 0.3)   
+                                    alts_in = my_snps.ALT)   
         n_snps = len(my_snps)
         cov = np.sum(alpha + beta) / len(my_snps)
         
@@ -358,17 +368,6 @@ def compute_baf_task(bin_snps):
         #assert np.isclose(np.sum(alpha + beta), my_snps.TOTAL.sum()), (alpha + beta, my_snps.TOTAL.sum, my_snps.iloc[0].POS)
         
         result[sample] = n_snps, cov, baf, alpha, beta
-    return result
-
-def compute_bafs_parallel(snp_dfs, threads):
-    #print(datetime.now(), "Starting BAF computation")
-    
-    #with Pool(threads) as p:
-    #    result = p.map(compute_baf_task, snp_dfs)
-    result = [compute_baf_task(d) for d in snp_dfs]
-        
-    #print(datetime.now(), "Done BAF computation")
-
     return result
 
 def merge_data(bins, dfs, bafs, sample_names, chromosome):
@@ -409,30 +408,22 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
     return pd.DataFrame(rows, columns = ['CHR', 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF', 'TOTAL_READS', 'NORMAL_READS'])
 
 def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_start, centromere_end, 
-         min_snp_reads, min_total_reads, compressed):
+         min_snp_reads, min_total_reads, compressed, arraystem, xy):
     """
     Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
     """
 
     try:
         tracemalloc.start()
-
+                
         if os.path.exists(outfile):
             sp.log(msg=f"Output file already exists, skipping chromosome {chromosome}\n", level = "INFO")
             return
-
-        sp.log(msg=f"Loading chromosome {chromosome}\n", level = "INFO")
-        # Per-position coverage bed files for each sample
-        perpos_files = [os.path.join(stem, 'counts', name + '.per-base.bed.gz') for name in all_names]
         
-        # Identify the start-positions files for this chromosome
-        starts_files = []
-        for name in all_names:
-            if compressed:
-                starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts.gz'))    
-            else:
-                starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts'))    
-
+        if xy and chromosome.endswith('X') or chromosome.endswith('Y'):
+            sp.log(msg='Ignoring min SNP reads for heterogeneous sex chromosomes', level = "INFO")
+            min_snp_reads = 0
+        
         #sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
         # Load SNP positions and counts for this chromosome
         positions, snp_counts, snpsv = read_snps(os.path.join(stem, 'baf', 'bulk.1bed'), chromosome, all_names)
@@ -443,10 +434,27 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
         all_thresholds = np.concatenate([[1], thresholds[:last_idx_p], [centromere_start], 
                                         [centromere_end], thresholds[first_idx_q:]])
         
-        
-        #sp.log(msg=f"Loading counts for chromosome {chromosome}\n", level = "INFO")
-        # Load read count arrays from file (also adds end of chromosome as a threshold)
-        total_counts, complete_thresholds = form_counts_array(starts_files, perpos_files, all_thresholds, chromosome) 
+            
+        if arraystem is not None:
+            sp.log(msg=f"Loading intermediate files for chromosome {chromosome}\n", level = "INFO")
+            total_counts = np.loadtxt(arraystem + '.total', dtype = np.uint32)
+            complete_thresholds = np.loadtxt(arraystem + '.thresholds', dtype = np.uint32)
+        else:
+            sp.log(msg=f"Loading chromosome {chromosome}\n", level = "INFO")
+            # Per-position coverage bed files for each sample
+            perpos_files = [os.path.join(stem, 'counts', name + '.per-base.bed.gz') for name in all_names]
+            
+            # Identify the start-positions files for this chromosome
+            starts_files = []
+            for name in all_names:
+                if compressed:
+                    starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts.gz'))    
+                else:
+                    starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts'))    
+
+            #sp.log(msg=f"Loading counts for chromosome {chromosome}\n", level = "INFO")
+            # Load read count arrays from file (also adds end of chromosome as a threshold)
+            total_counts, complete_thresholds = form_counts_array(starts_files, perpos_files, all_thresholds, chromosome) 
 
 
         sp.log(msg=f"Binning p arm of chromosome {chromosome}\n", level = "INFO")
@@ -454,7 +462,7 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
             # There may not be a SNP between the centromere end and the next SNP threshold
             # Goal for p arm is to END at the FIRST threshold that is AFTER the LAST SNP BEFORE the centromere
             last_snp_before_centromere = positions[np.where(positions <= centromere_start)[0][-1]]
-            last_threshold_before_centromere = complete_thresholds[np.where(complete_thresholds >= last_snp_before_centromere)[0][0]]  
+            last_threshold_before_centromere = complete_thresholds[np.where(complete_thresholds > last_snp_before_centromere)[0][0]]  
             
             p_idx = np.where(complete_thresholds <= last_threshold_before_centromere)[0]
             p_thresholds = complete_thresholds[p_idx]
@@ -481,7 +489,7 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
                 assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
                     
             # Infer BAF
-            bafs_p = compute_bafs_parallel(dfs_p, threads = nthreads) 
+            bafs_p = [compute_baf_task(d) for d in dfs_p] 
             bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
         else:
             sp.log(msg=f"No SNPs found in p arm for {chromosome}\n", level = "INFO")
@@ -494,7 +502,7 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
             # There may not be a SNP between the centromere end and the next SNP threshold
             # Goal for q arm is to start at the latest threshold that is before the first SNP after the centromere
             first_snp_after_centromere = positions[np.where(positions >= centromere_end)[0][0]]
-            first_threshold_after_centromere = complete_thresholds[np.where(complete_thresholds <= first_snp_after_centromere)[0][-1]]  
+            first_threshold_after_centromere = complete_thresholds[np.where(complete_thresholds < first_snp_after_centromere)[0][-1]]  
             
             q_idx = np.where(complete_thresholds >= first_threshold_after_centromere)[0]
             q_thresholds = complete_thresholds[q_idx]
@@ -521,7 +529,7 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
                 assert np.all(dfs_q[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
                     
             # Infer BAF
-            bafs_q = compute_bafs_parallel(dfs_q, threads = nthreads)
+            bafs_q = [compute_baf_task(d) for d in dfs_q]
             bb_q = merge_data(bins_q, dfs_q, bafs_q, all_names, chromosome)
         else:
             sp.log(msg=f"No SNPs found in q arm for {chromosome}\n", level = "INFO")
@@ -532,16 +540,12 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
         
         bb = pd.concat([bb_p, bb_q])
         bb.to_csv(outfile, index = False, sep = '\t')
-        np.savetxt(outfile + '.totalcounts', total_counts)
-        np.savetxt(outfile + '.thresholds', complete_thresholds)
+        #np.savetxt(outfile + '.totalcounts', total_counts)
+        #np.savetxt(outfile + '.thresholds', complete_thresholds)
         
-        #sp.log(msg=f"Loading counts for chromosome {chromosome}\n", level = "INFO")
-        # Load read count arrays from file (also adds end of chromosome as a threshold)
-        total_counts, complete_thresholds
-
         sp.log(msg=f"Done chromosome {chromosome}\n", level ="INFO")
         current, peak = tracemalloc.get_traced_memory()
-        sp.log(msg=f"Chr {chromosome} -- Current memory usage is {int(current / 10**6)}MB; Peak was {int(peak / 10**6)}MB",
+        sp.log(msg=f"Chr {chromosome} -- Current memory usage is {int(current / 10**6)}MB; Peak was {int(peak / 10**6)}MB\n",
             level = "INFO")
         tracemalloc.stop()
     except Exception as e: 

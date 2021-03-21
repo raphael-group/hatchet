@@ -8,6 +8,77 @@ import pandas as pd
 from . import Supporting as sp
 from hatchet import config
 
+
+def parse_array_arguments(args=None):    
+    parser = argparse.ArgumentParser(description = "Aggregate count information to form input to adaptive binning.")
+    parser.add_argument('-s', '--stem', type = str, help = 'Path to HATCHet working directory with /baf and /counts subdirectories (default: current directory', default = config.abin.stem)
+    parser.add_argument('-o', '--outstem', type = str, help = 'Filename stem for output')   
+    parser.add_argument('-n', '--normal', type = str, help = f'Filename stem corresponding to normal sample (default "{config.abin.normal}")', default = config.abin.normal)   
+    parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.abin.processes})', default = config.abin.processes)   
+    parser.add_argument('-C', '--centromeres', type = str, help = 'Centromere locations file', 
+                        default = '/n/fs/ragr-data/datasets/ref-genomes/centromeres/hg19.centromeres.txt')   
+    args = parser.parse_args(args)
+    
+    stem = args.stem
+    if len(stem) > 0 and not os.path.exists(stem):
+        raise ValueError(sp.error("The specified stem directory does not exist!"))
+
+    if not os.path.exists(os.path.join(stem, 'counts')):
+        raise ValueError(sp.error("There is no 'counts' subdirectory in the provided stem directory -- try running countPos first."))
+
+    names = set()
+    chromosomes = set()
+    compressed = True
+    for f in os.listdir(os.path.join(stem, 'counts')):
+        if "starts" in f:
+            tkns = f.split('.')
+            names.add(tkns[0])
+            chromosomes.add(tkns[1])
+            if not f.endswith('gz'):
+                compressed = False
+
+    names = sorted(names)
+    sp.log(msg = f"Identified {len(names)} samples: {list(names)}\n", level = "INFO")
+    if not args.normal in names:
+        raise ValueError(sp.error("Designated normal sample not found in 'counts' subdirectory."))
+    names.remove(args.normal)
+    names = [args.normal] + names
+        
+    sp.log(msg = f"Identified {len(chromosomes)} chromosomes.\n", level = "INFO")
+    sp.log(msg = f"Identified {'gzip-compressed' if compressed else 'uncompressed'} starts files.\n", level = "INFO")
+    
+    tail = '.gz' if compressed else ''
+    for name in names:
+        for ch in chromosomes:
+            f = os.path.join(stem, 'counts', '.'.join([name, ch, 'starts']) + tail)
+            if not os.path.exists(f):
+                raise ValueError(sp.error(f"Missing expected counts file: {f}"))
+
+    if not os.path.exists(args.centromeres):
+        raise ValueError(sp.error("Centromeres file does not exist."))
+    
+    using_chr = [a.startswith('chr') for a in chromosomes]
+    if any(using_chr):
+        if not all(using_chr):
+            raise ValueError(sp.error("Some starts files use 'chr' notation while others do not."))
+        use_chr = True
+    else:
+        use_chr = False
+        
+    if args.processes <= 0:
+        raise ValueError("The number of jobs must be positive.")
+
+    return {
+        "stem":args.stem,
+        "outstem":args.outstem,
+        "sample_names": names,
+        "use_chr":use_chr,
+        "processes":args.processes,
+        "centromeres":args.centromeres,
+        "chromosomes":chromosomes,
+        "compressed":compressed   
+    }
+
 def parse_clubb_kde_args(args=None):
     """
     Parse command line arguments
@@ -84,13 +155,14 @@ def parse_clubb_kde_args(args=None):
 def parse_abin_arguments(args=None):    
     parser = argparse.ArgumentParser(description = "Perform adaptive binning, compute RDR and BAF for each bin, and produce a BB file.")
     parser.add_argument('-s', '--stem', type = str, help = 'Path to HATCHet working directory with /baf and /counts subdirectories (default: current directory', default = config.abin.stem)
-    parser.add_argument('-o', '--outfile', type = str, help = 'Filename for output')   
+    parser.add_argument('-o', '--outfile', required = True, type = str, help = 'Filename for output')   
     parser.add_argument('-n', '--normal', type = str, help = f'Filename stem corresponding to normal sample (default "{config.abin.normal}")', default = config.abin.normal)   
     parser.add_argument('--msr', type = int, help = f'Minimum SNP reads per bin (default {config.abin.msr})', default = config.abin.msr)
     parser.add_argument('--mtr', type = int, help = f'Minimum total reads per bin (default {config.abin.mtr})', default = config.abin.mtr)
     parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.abin.processes})', default = config.abin.processes)   
     parser.add_argument('-C', '--centromeres', type = str, help = 'Centromere locations file', 
                         default = '/n/fs/ragr-data/datasets/ref-genomes/centromeres/hg19.centromeres.txt')   
+    parser.add_argument('-A', '--array', type = str, help = f'Filename stem corresponding to array files (default None)', default = config.abin.array)   
     args = parser.parse_args(args)
     
     stem = args.stem
@@ -147,6 +219,16 @@ def parse_abin_arguments(args=None):
     if args.mtr <= 0:
         raise ValueError("The minimum number of total reads must be positive.")
     
+    if not args.array is None:
+        for ch in chromosomes:
+            totals_arr = args.array + f'.{ch}.total'
+            thresholds_arr = args.array + f'.{ch}.thresholds'
+            if not os.path.exists(totals_arr):
+                raise ValueError(sp.error("Missing array file: {}".format(totals_arr)))
+            if not os.path.exists(thresholds_arr):
+                raise ValueError(sp.error("Missing array file: {}".format(thresholds_arr)))
+        
+    
     return {
         "stem":args.stem,
         "outfile":args.outfile,
@@ -157,7 +239,8 @@ def parse_abin_arguments(args=None):
         "processes":args.processes,
         "centromeres":args.centromeres,
         "chromosomes":chromosomes,
-        "compressed":compressed   
+        "compressed":compressed,
+        "array":args.array 
     }
 
 def parse_count_arguments(args=None):
