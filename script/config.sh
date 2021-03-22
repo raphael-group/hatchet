@@ -7,8 +7,8 @@
 REF="/path/to/reference.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
 REF_VERS=""         # Reference version used to select list of known SNPs; possible values are "hg19" or "hg38", or leave blank "" if you wish for all positions to be genotyped by bcftools
 CHR_NOTATION=true       # Does your reference name chromosomes with "chr" prefix?; possible values true/false
-SAM="/path/to/samtools-home/bin/" #Uncomment if samtools is already in PATH
-BCF="/path/to/bcftools-home/bin/" #Uncomment if bcftools is already in PATH
+# SAM="/path/to/samtools-home/bin/" #Uncomment if samtools is not already in PATH
+# BCF="/path/to/bcftools-home/bin/" #Uncomment if bcftools is not already in PATH
 XDIR="/path/to/running-dir/"      #Path for output
 NORMAL="/path/to/matched-normal.bam"
 BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
