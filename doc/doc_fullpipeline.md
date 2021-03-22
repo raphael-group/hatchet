@@ -33,7 +33,7 @@ time the following demos are available (more demos will be added in the near fut
 The repository includes custom pipelines which have been designed to adapt the complete pipeline of HATCHet to special
 conditions or to integrate the processed data produced by other pipelines. Each custom pipeline is a variation of the
 main HATCHet's pipeline, we thus recommend the user to always first carefully understand the main
-[BASH script](../script/runHATCHet.sh) through the corresponding guided [tutorial](doc_runhatchet.md) and to carefully
+[BASH script](../script/) through the corresponding guided [tutorial](doc_runhatchet.md) and to carefully
 understand the provided [demos](#demos) to properly apply HATCHet for best-quality results. Each custom pipeline also
 includes a specific demo which represent a guided and executable example on example data.
 
