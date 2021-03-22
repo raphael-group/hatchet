@@ -6,7 +6,6 @@ import pandas as pd
 import gzip
 import subprocess
 import traceback
-import tracemalloc
 
 from .ArgParsing import parse_array_arguments
 from . import Supporting as sp
@@ -206,8 +205,6 @@ def run_chromosome(stem, all_names, chromosome, outstem, centromere_start, centr
     """
 
     try:
-        tracemalloc.start()
-
         totals_out = outstem + '.total'
         thresholds_out = outstem + '.thresholds'
 
@@ -229,7 +226,7 @@ def run_chromosome(stem, all_names, chromosome, outstem, centromere_start, centr
 
         sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
         # Load SNP positions and counts for this chromosome
-        positions, snp_counts, snpsv = read_snps(os.path.join(stem, 'baf', 'bulk.1bed'), chromosome, all_names)
+        positions, _, _ = read_snps(os.path.join(stem, 'baf', 'bulk.1bed'), chromosome, all_names)
         
         thresholds = np.trunc(np.vstack([positions[:-1], positions[1:]]).mean(axis = 0)).astype(np.uint32)
         last_idx_p = np.argwhere(thresholds > centromere_start)[0][0]
@@ -246,11 +243,6 @@ def run_chromosome(stem, all_names, chromosome, outstem, centromere_start, centr
         np.savetxt(thresholds_out, complete_thresholds, fmt = '%d')
         
         sp.log(msg=f"Done chromosome {chromosome}\n", level ="INFO")
-        
-        current, peak = tracemalloc.get_traced_memory()
-        sp.log(msg=f"Chr {chromosome} -- Current memory usage is {int(current / 10**6)}MB; Peak was {int(peak / 10**6)}MB\n",
-            level = "INFO")
-        tracemalloc.stop()
     except Exception as e: 
         print(f"Error in chromosome {chromosome}:")
         print(e)

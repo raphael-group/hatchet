@@ -8,7 +8,6 @@ import gzip
 import subprocess
 import traceback
 
-import tracemalloc
 from .ArgParsing import parse_abin_arguments
 from . import Supporting as sp
 
@@ -81,7 +80,7 @@ def main(args=None):
     outfiles = [a[3] for a in params]
     bbs = [pd.read_table(bb) for bb in outfiles]
     big_bb = pd.concat(bbs)
-    big_bb = big_bb.sort_values(by = ['CHR', 'START', 'SAMPLE'])
+    big_bb = big_bb.sort_values(by = ['#CHR', 'START', 'SAMPLE'])
     big_bb.to_csv(outfile, index = False, sep = '\t')
 
     # Uncommend to remove all intermediate bb files (once I know the previous steps work)
@@ -248,7 +247,7 @@ def adaptive_bins_arm(snp_thresholds, total_counts, snp_positions, snp_counts,
     assert np.all(snp_positions > snp_thresholds[0])
     assert len(snp_positions) > 0
     assert len(snp_thresholds) >= 2
-    
+        
     n_samples = int(total_counts.shape[1] / 2)
             
     
@@ -307,7 +306,7 @@ def adaptive_bins_arm(snp_thresholds, total_counts, snp_positions, snp_counts,
     # add whatever excess at the end to the last bin
     if ends[-1] < snp_thresholds[-1]:
         # combine the last complete bin with the remainder
-        last_start_idx = np.where(snp_thresholds == starts[-1] - 1)[0][0]        
+        last_start_idx = np.where((snp_thresholds == starts[-1] - 1) | (snp_thresholds == starts[-1]))[0][0]        
         bin_total = np.sum(total_counts[last_start_idx:, even_index], 
                            axis = 0) - total_counts[-1, odd_index] 
         totals[-1] = bin_total
@@ -405,7 +404,7 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
             
             rows.append([chromosome, start, end, sample, rdr,  nsnps, cov, alpha, beta, baf, total, normal_reads])
                     
-    return pd.DataFrame(rows, columns = ['CHR', 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF', 'TOTAL_READS', 'NORMAL_READS'])
+    return pd.DataFrame(rows, columns = ['#CHR', 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF', 'TOTAL_READS', 'NORMAL_READS'])
 
 def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_start, centromere_end, 
          min_snp_reads, min_total_reads, compressed, arraystem, xy):
@@ -413,15 +412,13 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
     Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
     """
 
-    try:
-        tracemalloc.start()
-                
+    try:                
         if os.path.exists(outfile):
             sp.log(msg=f"Output file already exists, skipping chromosome {chromosome}\n", level = "INFO")
             return
         
         if xy and chromosome.endswith('X') or chromosome.endswith('Y'):
-            sp.log(msg='Ignoring min SNP reads for heterogeneous sex chromosomes', level = "INFO")
+            sp.log(msg='Ignoring min SNP reads for heterogeneous sex chromosomes\n', level = "INFO")
             min_snp_reads = 0
         
         #sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
@@ -544,10 +541,6 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
         #np.savetxt(outfile + '.thresholds', complete_thresholds)
         
         sp.log(msg=f"Done chromosome {chromosome}\n", level ="INFO")
-        current, peak = tracemalloc.get_traced_memory()
-        sp.log(msg=f"Chr {chromosome} -- Current memory usage is {int(current / 10**6)}MB; Peak was {int(peak / 10**6)}MB\n",
-            level = "INFO")
-        tracemalloc.stop()
     except Exception as e: 
         print(f"Error in chromosome {chromosome}:")
         print(e)
