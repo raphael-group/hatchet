@@ -1,6 +1,6 @@
 # Tutorial
 
-This tutorial illustrates how to use the complete pipeline which is encoded in the main script [runHATCHet.sh](../script/runHATCHet.sh) in `script` folder.
+This tutorial illustrates how to use the complete pipeline which is encoded in the main script [runUnphased.sh](../script/) in the `script` folder, along with the configuration [config.sh](../script/) script that stores all the variables the user needs to specify.
 The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:
 1. [Preliminaries](#preliminaries)
 2. [Setting up running directory](#rundir)
@@ -12,213 +12,198 @@ The tutorial is subdivided into some subsections and each of these describes seq
 8. [solve](#solve)
 9. [BBeval](#bbeval)
 
-We suggest to make a copy of the script, place the script into the designated running directory, and follow the tutorial.
+We suggest to make a copy of the script and configuration file, place them into the designated running directory, and follow the tutorial.
 
 ## Preliminaries
 <a name="preliminaries"></a>
 
-```shell
-REF="/path/to/reference.fa"
-SAM="/path/to/samtools-home/bin/"
-BCF="/path/to/bcftools-home/bin/"
+The following variables, specified in [config.sh](../script/config.sh), should be changed according to the user's data:
 
-XDIR="/path/to/running-dir/"
+```shell
+REF="/path/to/reference.fa" 
+REF_VERS=""      
+CHR_NOTATION=true      
+SAM="/path/to/samtools-home/bin/" 
+BCF="/path/to/bcftools-home/bin/" 
+XDIR="/path/to/running-dir/" 
 NORMAL="/path/to/matched-normal.bam"
 BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
-ALLNAMES="Normal Primary Met"
 NAMES="Primary Met"
-J=22
-
-set -e
-set -o xtrace
-PS4='\''[\t]'\'
-export PATH=$PATH:${SAM}
-export PATH=$PATH:${BCF}
-#source /path/to/virtualenv-python3.8/bin/activate
+J=$(python -c 'import multiprocessing as mp; print(mp.cpu_count())') 
+MINREADS=8
+MAXREADS=300 
+BIN="50kb" 
 ```
 
-This preliminary part of the script contains all the preliminary information that are required to execute the full pipeline.
+Each of these are explained further below.
 
 ***
 
 ```shell
-REF="/path/to/reference.fa"
-SAM="/path/to/samtools-home/bin/"
-BCF="/path/to/bcftools-home/bin/"
+REF="/path/to/reference.fa" 
+REF_VERS=""      
+CHR_NOTATION=true  
 ```
 
-First, one needs to specify the full path to the reference genome with the variable `${REF}`, to the home directory of SAMtools with the variable `${SAM}`, and to the home directory of BCFtools with the variable `${BCF}`. Simply, substitute the value of each variable with the corresponding full path between double apices `"..."`.
+First, you needs to specify the full path to the human reference genome with the variable `${REF}`, along with the specific version of this reference with the `${REF_VERS}` variable, which may be "hg19" or "hg38". This reference version is used to select a list of known germline SNPs to genotype samples. Lastly, the `${CHR_NOTATION}` must be set to true/false depending on whether or not the chromosomes in your reference are prefixed with "chr".
 
 ***
 
 ```shell
-XDIR="/path/to/running-dir/"
+SAM="/path/to/samtools-home/bin/" 
+BCF="/path/to/bcftools-home/bin/" 
+```
+
+If HATCHet was not installed via conda (which installs dependencies for you), then you need to indicate the home directory of SAMtools with the variable `${SAM}`, and to the home directory of BCFtools with the variable `${BCF}`. 
+
+***
+
+```shell
+XDIR="/path/to/running-dir/" 
 NORMAL="/path/to/matched-normal.bam"
 BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
-ALLNAMES="Normal Primary Met"
+NAMES="Primary Met"
+J=$(python -c 'import multiprocessing as mp; print(mp.cpu_count())') 
 ```
 
-Second, the user needs to specify the full paths to the running directory where all the files/directories produced by this run of HATCHet will be made with variable `${XDIR}` and the full paths to the required data:
+Second, the user needs to specify the full paths to the running directory where all the files/directories produced by this run of HATCHet will be made with variable `${XDIR}`. This directory should ideally be empty to avoid potential conflicts, except when re-executing the same run.
+
+Also, the full paths to the required input data:
 1. `${NORMAL}` is the full path to the BAM file of matched-normal samples
 2. `${BAMS}` is a white-space separated list of the BAM files for the multiple tumor samples from the considered patient.
 
-Moreover, `${ALLNAMES}` is a white-space separated list of sample's names where the first is the name of the matched-normal sample and this is follows by the tumor-sample names in the same order as specified in `${BAMS}`.
-The variable `${NAMES}` is also a white-space separated list of tumor-sample names and is generally equal to `${ALLNAMES}` but without the matched-normal sample name.
+The variable `${NAMES}` is also a white-space separated list of tumor sample names (specified in the same order as the BAM files in `${BAMS}`), and these names are used in the plots produced by HATCHet.
+
 Last, `${J}` is the maximum number of threads that the execution can use. Typically, we suggest to use at least 22 threads if possible in order to consider each chromosome in parallele in the pre-processing steps.
 
 ***
 
 ```shell
-set -e
-set -o xtrace
-PS4='\''[\t]'\'
-export PATH=$PATH:${SAM}
-export PATH=$PATH:${BCF}
-#source /path/to/virtualenv-python3.8/bin/activate
+MINREADS=8
+MAXREADS=300 
+BIN="50kb" 
 ```
 
-Third, three commands activate the log trace for the script which terminates in case of error and add time stamps to this.
-The next two commands add the paths to SAMtools and BCFtools directly in `${PATH}`; this is optional and the paths could be explicitly specified in the corresponding steps.
-Last, there is an example command which activates a corresponding python environment.
-The usage of virtual environment or anaconda's environments (which command would replace this) is recommended.
+Both `${MINREADS}` and `${MAXREADS}` specify the minimum and maximum sequencing depth for considering germline snps. For samples that have undergone whole-genome sequencing with depths >30X, values around 8 and 300 should be reasonable for the minimum and maximum, respectively. For samples in which only the exome was sequenced to ~100X, then values around 20 and 1000 should be fine for the minimum and maximum, respectively.
+
+The `${BIN}` variable indicates the size or genomic length of bins used to calculate the read-depth ratio (RDR) and B-Allele frequencies (BAF).
 
 ***
-
-## Setting up running directory
-<a name="rundir"></a>
-
-```shell
-BIN=${XDIR}bin/
-mkdir -p ${BIN}
-BAF=${XDIR}baf/
-mkdir -p ${BAF}
-BB=${XDIR}bb/
-mkdir -p ${BB}
-BBC=${XDIR}bbc/
-mkdir -p ${BBC}
-ANA=${XDIR}analysis/
-mkdir -p ${ANA}
-RES=${XDIR}results/
-mkdir -p ${RES}
-EVA=${XDIR}evaluation/
-mkdir -p ${EVA}
-
-cd ${XDIR}
-```
-
-Next, the script prepare the directories that are used to organize all the outputs from this run of HATCHet.
-To avoid condlicts, user should make sure the running directory is an empty directory, expect when re-executing the same run.
 
 ## binBAM
 <a name="binbam"></a>
 
 ```shell
-\time -v python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
-                                   -b 50kb -g ${REF} -j ${J} \
-                                   -q 20 -O ${BIN}normal.1bed -o ${BIN}bulk.1bed -v &> ${BIN}bins.log
+python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BIN} \
+                           -g ${REF} -j ${J} -O ${RDR}normal.1bed -o ${RDR}tumor.1bed \
+                           -t ${RDR}total.tsv |& tee ${RDR}bins.log
 ```
 
 binBAM computes the read counts in genomic bins of the reference genome from the matched-normal sample `${NORMAL}` and from all tumor samples `${BAMS}` with names `${ALLNAMES}`.
 The size of genomic bins depend on the size of the CNAs that user aims to infer and on the noise in the data.
 More specifically, shorter genomic bins allow to infer more refined CNAs, while larger genomic bins allow to better estimate the values of read-depth ratio (RDR) and B-allele frequency (BAF) for every bin.
 The standard size 50kb typically represents a good compromise in whole-genome sequencing (WGS) data, while larger size (e.g. `200kb` or `250kb`) are better suited for whole-exome sequencing (WES) where we expect a sparser distribution of germline SNPs.
-The reference genome `${REF}` is provided and `${REF}` must be properly indeced such that in the same folder there is a corresponding dictionary with the same name but `.dict` extenion; this is used to know the length of the sequenced chromosomes.
-A standard read quality of 20 is considered and simple parameters are specified including: number of parallel threads, output filenames, verbosity of log, and the log filename of this step.
+The reference genome `${REF}` is provided and `${REF}` must have a sequence dictionary file in the same folder, i.e. a file/dictionary with the same name but with a `.dict` extenion; this is used to know the length of the sequenced chromosomes.
+Other simple parameters are also specified including number of parallel threads, output filenames, and the log filename of this step.
+
+## SNPCaller
+<a name="snpcaller"></a>
+
+```shell
+python3 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} \
+                            -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
+```
+
+SNPCaller genotypes germline SNPs from the matched-normal sample `${NORMAL}`, using positions of known germline variation specified by the file in `${LIST}` (which is automatically fetched based on the user's input in the `config.sh` file for `${REF_VERS}` and `${CHR_NOTATION}`). As mentioned above, SNPs are only considered for downstream analysis if they have a minimum and maximum sequencing depth of `${MINREADS}` and `${MAXREADs}`, respectively.
+
+GATK best practices suggest that the maximum should be at least twice the expected average coverage to avoid mapping artifacts.
+Observe that WES generally requires higher thresholds (e.g. 100 and 3000).
+Also, an increasing in the minimum threshold allow to improve the quality of the estimated BAF (computed in the next step), while a decreasing  it allows us to consider more SNPs.
 
 ## deBAF
 <a name="debaf"></a>
 
-```shell
-\time -v python3 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} \
-                                  -r ${REF} -j ${J} -q 20 -Q 20 -U 20 -c 4 \
-                                  -C 300 -O ${BAF}normal.1bed -o ${BAF}bulk.1bed -v \
-                                  &> ${BAF}bafs.log
+```shell                               
+python3 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} \
+                          -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP}*.vcf.gz \
+                          -O ${BAF}normal.1bed -o ${BAF}tumor.1bed |& tee ${BAF}bafs.log
 ```
 
-deBAF call germline SNPs from the matched-normal sample `${NORMAL}` and computes the corresponding allele counts from all tumor samples `${BAMS}` with names `${ALLNAMES}`.
-The same reference genome used for the BAM files has to be specified by `${REF}`.
-Minimum and maximum thresholds for the read counts of germline SNPs to consider are fixed between 4 and 300.
-GATK best practices suggest that the maximum should be at least twice the expected average coverage to avoid mapping artifacts.
-Observe that WES generally requires higher thresholds (e.g. 100 and 3000).
-Also, an increasing in the minimum threshold allow to improve the quality of the estimated BAF, while a decreasing allow to consider more SNPs.
-Several simple parameters are specified including: number of parallel threads, read/allele/variant standard-quality values at 20, output filenames, verbosity of log, and the log filename of this step.
+deBAF uses these germline SNPs from SNPCaller (specified in the list `${SNP}*.vcf.gz`) and computes the corresponding allele counts from all tumor samples `${BAMS}`.
+As for all steps in this pipeline, the same reference genome used for the BAM files has to be specified by `${REF}`.
+Minimum and maximum thresholds for the read counts of germline SNPs are again specified with `${MINREADS}` and `${MAXREADS}`.
+
+Several simple parameters are also specified including: number of parallel threads, output filenames, and the log filename of this step.
 
 ## comBBo
 <a name="combbo"></a>
 
 ```shell
-\time -v python3 -m hatchet comBBo -c ${BIN}normal.1bed -C ${BIN}bulk.1bed -B ${BAF}bulk.1bed -m MIRROR -e 12 > ${BB}bulk.bb
+python3 -m hatchet comBBo -c ${RDR}normal.1bed -C ${RDR}tumor.1bed -B ${BAF}tumor.1bed \
+                          -t ${RDR}total.tsv -p ${PHASE} -l ${BLOCK} -e ${RANDOM} > ${BB}bulk.bb
 ```
 
-comBBo estimates the RDR and BAF from the read counts of all genomic bins from matched-normal sample in `${BIN}normal.1bed`, from the read counts of all genomic bins from all tumor samples in `${BIN}bulk.bin`, and germline SNPs allele counts in `${BAF}bulk.1bed`.
-The standard method `MIRROR` for estimation is used and a random seed of `12` which allows to replicate the analysis is specified.
+comBBo estimates the read-depth ratio (RDR) and B-Allele frequencies (BAF) from the read counts of all genomic bins from matched-normal sample in `${RDR}normal.1bed`, from the read counts of all genomic bins from all tumor samples in `${RDR}tumor.1bed`, and germline SNPs allele counts in `${BAF}tumor.1bed`. The variables `${PHASE}` and `${BLOCK}` are not described in detail in this tutorial (but see the [script](../script/) directory for a brief explanation of how to run HATCHet with phasing. Briefly, when `${PHASE}` specifies the location of a phased VCF file, HATCHet uses this VCF to combined phased SNPS within a haplotype block size of `${BLOCK}`.
 The output from standard output is correspondingly written in a BB file `${BB}bulk.bb`.
 
 ## cluBB
 <a name="clubb"></a>
 
 ```shell
-\time -v python3 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
-                                               -e 12 -tB 0.04 -tR 0.15 -d 0.08
-#\time -v python3 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
-#                                               -e 12 -tB 0.04 -tR 0.15 -d 0.08 \
-#                                               -u 20 -e 12 -dR 0.002 -dB 0.002
+python3 -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
+                                      -e ${RANDOM} -tB 0.04 -tR 0.15 -d 0.08
 ```
 
 cluBB globally clusters genomic bins based on RDR and BAF jointly along the genome and across all tumor samples, specified in a BB file `${BB}bulk.bb`.
-The home directory of BNPY is specified through `${BNPY}` to perform a Dirichelt-process clustering.
 There are 2 main kind of parameters:
 - The maximum expected BAF shift `-d` for diploid segments equal to `0.08`.
 - Thresholds for clustering refinement `-tB` and `-tR` are used to merge clusters whose difference is no more than these values in all samples.
 
 For all these parameters, these standard values are good for most of the datasets, however very noisy datasets may require higher thresholds.
 In these cases, the values can be estimated and tuned by using the informative plots from BBot.
-Other simple parameters allow to specify the output files containing the data of clusters in `${BBC}bulk.seg`, the one containing the clusterd genomic bins in `${BBC}bulk.bbc`, and a random seed of `12`.
+Other simple parameters allow to specify the output files containing the data of clusters in `${BBC}bulk.seg`, the one containing the clusterd genomic bins in `${BBC}bulk.bbc`.
 
 This set up is generally effective when considering whole-genome sequencing (WGS) data.
 However, a bootstraping approach allows to improve and empower the clustering when considering more sparse data as the ones from whole-exome sequeing (WES).
-The bootsraping can be controlled by adding the following parameters (as in the similar commented command):
+The bootsraping can be controlled by adding the following parameter:
 
 ```shell
--u 20 -dR 0.002 -dB 0.002
+-u 20 -dR 0.02 -dB 0.02
 ```
 
-A total of `20` synthetic genomic bins are added only for the clustering by bootstraping each bin and generating RDR and BAF following normal distributions with `0.002` and `0.002`  variances, respectively.
+A total of `20` synthetic genomic bins are added only for the clustering by bootstraping each bin and generating RDR and BAF following normal distributions with `0.02` and `0.02`  variances, respectively. These values for `-dR` and `-dB` are specified by default, but the default value for `-u` is 0.
 
 ## BBot
 <a name="bbot"></a>
 
 ```shell
-cd ${ANA}
-\time -v python3 -m hatchet BBot -c RD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python3 -m hatchet BBot -c CRD --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python3 -m hatchet BBot -c BAF --figsize 6,3 ${BBC}bulk.bbc &
-\time -v python3 -m hatchet BBot -c BB ${BBC}bulk.bbc &
-\time -v python3 -m hatchet BBot -c CBB ${BBC}bulk.bbc &
-wait
+cd ${PLO}
+python3 -m hatchet BBot -c RD --figsize 6,3 ../${BBC}bulk.bbc
+python3 -m hatchet BBot -c CRD --figsize 6,3 ../${BBC}bulk.bbc
+python3 -m hatchet BBot -c BAF --figsize 6,3 ../${BBC}bulk.bbc
+python3 -m hatchet BBot -c BB ../${BBC}bulk.bbc
+python3 -m hatchet BBot -c CBB ../${BBC}bulk.bbc -tS 0.01
 ```
 
 BBot produces informative plots which are described [here](doc_bbot.md).
 Many of these plots can be very useful to assess the performance of the various steps of HATCHet, especially in the case of noisy datasets.
-The different plots are generated in parallel; this feature can be disabled by removing `&` from the end of each command and removing `wait`.
 
 ## solve
 <a name="solve"></a>
 
 ```shell
-cd ${RES}
-\time -v python3 -m hatchet solve -i ${BBC}bulk -n2,8 -p 400 -v 3 \
-                                  -u 0.03 -r 12 -j ${J} -eD 6 -eT 12
-                                  -g 0.35 -l 0.6 |& tee hatchet.log
+cd ../${RES}
+python3 -m hatchet solve -i ../${BBC}bulk -n2,6 -p 400 -u 0.03 \
+                          -r ${RANDOM} -j ${J} -eD 6 -eT 12 -g 0.35 \
+                          -l 0.6 &> >(tee >(grep -v Progress > hatchet.log))
 ```
 
-solve computes the fractional copy numbers, factorize these into allele and clone-specific copy numbers and clone proportions, and applies a model-selection step to jointly infer the number of clones and predict a whole-genome duplication (WGD).
+solve computes the fractional copy numbers, factorizes these into allele and clone-specific copy numbers and clone proportions, and applies a model-selection step to jointly infer the number of clones and predict a whole-genome duplication (WGD).
 This step requires the common prefix `${BBC}bulk` of the cluster and clustered bins files.
 Some basic parameter include:
-- the interval `2,8`  specifying the minimum and maximum number of clones which can be increased as much as wanted. User can start to use this interval and increasing if the number of clones appear to be higher or close to the maximum.
-- the number of restarts `400` for the coordinate-descent method. This value is typically enough to obtain a good solution close to the optimum, however an increase in this value allows to improve the search of a solution. This can be usefule when observing a number of clusters significantly higher than usual.
-- Verbose log with a level of `3`, a more limited log can be obtained with a level of `2`.
-- Random initializing seed of `12`.
+- the interval `2,6`  specifying the minimum and maximum number of clones which can be increased as much as wanted. User can start to use this interval and increasing if the number of clones appear to be higher or close to the maximum.
+- the number of restarts `400` for the coordinate-descent method. This value is typically enough to obtain a good solution close to the optimum, however an increase in this value allows to improve the search of a solution. This can be useful when observing a number of clusters significantly higher than usual.
+- Random initializing seed with `${RANDOM}`.
 - Number of parallel threads `${J}`
 
 There are also some important parameters which need to be tuned for special or noisy datasets.
@@ -233,8 +218,8 @@ The details of these parameters are the following:
 <a name="bbeval"></a>
 
 ```shell
-cd ${EVA}
-\time -v python -m hatchet BBeval ${RES}/best.bbc.ucn -rC 10 -rG 1
+cd ../${SUM}
+python3 -m hatchet BBeval ../${RES}/best.bbc.ucn
 ```
 
 BBeval produces informative and summary plots for the inferred results.
