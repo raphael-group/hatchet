@@ -427,7 +427,12 @@ def coordinates(args, g=None):
 
 
 def sortchr(x):
-    return int(''.join([d for d in x if d.isdigit()]))
+    if x.endswith('X'):
+        return 23
+    elif x.endswith('Y'):
+        return 24
+    else:
+        return int(''.join([d for d in x if d.isdigit()]))
 
 def argmax(d):
     return max(d, key=(lambda x : d[x]))
