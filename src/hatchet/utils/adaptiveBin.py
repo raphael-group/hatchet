@@ -81,7 +81,11 @@ def main(args=None):
     bbs = [pd.read_table(bb) for bb in outfiles]
     big_bb = pd.concat(bbs)
     big_bb = big_bb.sort_values(by = ['#CHR', 'START', 'SAMPLE'])
-    big_bb.to_csv(outfile, index = False, sep = '\t')
+
+    autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
+    big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index = False, sep = '\t')
+    big_bb.to_csv(outfile + '.withXY', index = False, sep = '\t')
+
 
     # Uncommend to remove all intermediate bb files (once I know the previous steps work)
     # [os.remove(f) for f in outfiles]
