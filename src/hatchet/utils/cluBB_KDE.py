@@ -81,6 +81,7 @@ def main(args=None):
     # Form bbc output file
     columns = [chr_col, 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF']
     bbc = bb.copy()[columns]
+    bbc = bbc.rename(columns=lambda x: '#CHR' if x == 'CHR' else x)
     bbc['CLUSTER'] = labels
     bbc.to_csv(args['outbins'], index = False, sep = '\t')
 
