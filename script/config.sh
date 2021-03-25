@@ -5,8 +5,9 @@
 ####################################################################################
 
 REF="/path/to/reference.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
-REF_VERS=""         # Reference version used to select list of known SNPs; possible values are "hg19" or "hg38", or leave blank "" if you wish for all positions to be genotyped by bcftools
-CHR_NOTATION=true       # Does your reference name chromosomes with "chr" prefix?; possible values true/false
+LIST=""             # If HATCHet has internet, it selects a list of known germline SNPs based on REF_VERS and CHR_NOTATION below. If not, please provide full path to a locally stored list (.vcf.gz) here.
+REF_VERS=""         # Reference version used to select list of known germline SNPs; possible values are "hg19" or "hg38", or leave blank "" if you wish for all positions to be genotyped by bcftools
+CHR_NOTATION=true   # Does your reference name chromosomes with "chr" prefix?; possible values true/false
 # SAM="/path/to/samtools-home/bin/" #Uncomment if samtools is not already in PATH
 # BCF="/path/to/bcftools-home/bin/" #Uncomment if bcftools is not already in PATH
 XDIR="/path/to/running-dir/"      #Path for output
