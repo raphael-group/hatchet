@@ -2,24 +2,26 @@
 
 source ./config.sh
 
-LIST=""
 # Select list of known SNPs based on reference genome
-if [ "$REF_VERS" =  "hg19" ]
+if [ -z "$LIST" ]
 then
-    if [ "$CHR_NOTATION" = true ]
-    then
-        LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"
-    else
-        LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz"
-    fi
-else
-    if [ "$REF_VERS" =  "hg38" ]
+    if [ "$REF_VERS" =  "hg19" ]
     then
         if [ "$CHR_NOTATION" = true ]
         then
-            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/GATK/00-All.vcf.gz"
+            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"
         else
-            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz"
+            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz"
+        fi
+    else
+        if [ "$REF_VERS" =  "hg38" ]
+        then
+            if [ "$CHR_NOTATION" = true ]
+            then
+                LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/GATK/00-All.vcf.gz"
+            else
+                LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz"
+            fi
         fi
     fi
 fi
