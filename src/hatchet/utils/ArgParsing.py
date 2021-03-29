@@ -87,7 +87,6 @@ def parse_clubb_kde_args(args=None):
     description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("BBFILE", help="A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)")
-    parser.add_argument("-t","--totalcounts", required=True, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample')
     parser.add_argument("-o", "--outsegments", required=False, default=config.kdebb.outsegments, type=str, help=f"Output filename for the segments computed by clustering bins (default: {config.kdebb.outsegments})")
     parser.add_argument("-O", "--outbins", required=False, default=config.kdebb.outbins, type=str, help=f"Output filename for a BB file adding the clusters (default: {config.kdebb.outbins})")
     parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.kdebb.diploidbaf, help=f"Maximum BAF shift (from 0.5) for a cluster to be considered balanced (default: {config.kdebb.diploidbaf})")
@@ -108,11 +107,7 @@ def parse_clubb_kde_args(args=None):
         raise ValueError(sp.error("The specified BB file does not exist!"))
     if args.diploidbaf != None and not 0.0 <= args.diploidbaf <= 0.5:
         raise ValueError(sp.error("The specified maximum diploid-BAF shift (-d) must be a value in [0.0, 0.5]"))
-    
-    # totalcounts file
-    if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
-        raise ValueError(sp.error("The specified file for total read counts does not exist!"))
-    
+
     # bandwidth
     if args.bandwidth <= 0:
         raise ValueError(sp.error("Bandwidth must be positive."))
@@ -141,7 +136,6 @@ def parse_clubb_kde_args(args=None):
             "diploidbaf" : args.diploidbaf,
             "outbins" : args.outbins,
             "outsegments" : args.outsegments,
-            "totalcounts" : args.totalcounts,
             "bandwidth" : args.bandwidth,
             "centroiddensity" : args.centroiddensity,
             "mesh" : args.mesh,
@@ -163,6 +157,7 @@ def parse_abin_arguments(args=None):
     parser.add_argument('-C', '--centromeres', type = str, help = 'Centromere locations file', 
                         default = '/n/fs/ragr-data/datasets/ref-genomes/centromeres/hg19.centromeres.txt')   
     parser.add_argument('-A', '--array', type = str, help = f'Filename stem corresponding to array files (default None)', default = config.abin.array)   
+    parser.add_argument("-t","--totalcounts", required=True, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample')
     args = parser.parse_args(args)
     
     stem = args.stem
@@ -171,6 +166,11 @@ def parse_abin_arguments(args=None):
 
     if not os.path.exists(os.path.join(stem, 'counts')):
         raise ValueError(sp.error("There is no 'counts' subdirectory in the provided stem directory -- try running countPos first."))
+    
+    # totalcounts file
+    if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
+        raise ValueError(sp.error("The specified file for total read counts does not exist!"))
+    
 
     names = set()
     chromosomes = set()
@@ -240,7 +240,8 @@ def parse_abin_arguments(args=None):
         "centromeres":args.centromeres,
         "chromosomes":chromosomes,
         "compressed":compressed,
-        "array":args.array 
+        "array":args.array,
+        "totalcounts":args.totalcounts
     }
 
 def parse_count_arguments(args=None):

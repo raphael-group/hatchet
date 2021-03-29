@@ -76,16 +76,43 @@ def main(args=None):
     with Pool(n_workers) as p:
         p.map(run_chromosome_wrapper, params)
     
+    sp.log(msg="# Merging per-chromosome bb files and correcting read counts\n", level="STEP")
     # merge all BB files together to get the one remaining BB file
     outfiles = [a[3] for a in params]
     bbs = [pd.read_table(bb) for bb in outfiles]
     big_bb = pd.concat(bbs)
     big_bb = big_bb.sort_values(by = ['#CHR', 'START', 'SAMPLE'])
+    
+    big_bb['CORRECTED_READS'] = np.NAN
+    
+    
+    # For each sample, correct read counts to account for differences in coverage (as in HATCHet)
+    # (i.e., multiply read counts by total-reads-normal/total-reads-sample)
+    rc = pd.read_table(args['totalcounts'], header = None, names = ['SAMPLE', '#READS'])
+    nreads_normal = rc[rc.SAMPLE == 'normal'].iloc[0]['#READS']
+    for sample in rc.SAMPLE.unique():
+        if sample == 'normal':
+            continue
+        nreads_sample = rc[rc.SAMPLE == sample].iloc[0]['#READS']
+        correction = nreads_normal / nreads_sample
+        my_bb = big_bb[big_bb.SAMPLE == sample]
+        
+        # Correct the tumor reads propotionally to the total reads in corresponding samples
+        big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] = (my_bb.TOTAL_READS * correction).astype(np.int64)
+        
+        # Recompute RDR according to the corrected tumor reads
+        big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] / big_bb.loc[big_bb.SAMPLE == sample, 'NORMAL_READS']
+    
+    if not "NORMAL_READS" in big_bb:
+        sp.log("# NOTE: adding NORMAL_READS column to bb file", level = "INFO")
+        big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(np.uint32)
+
 
     autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
     big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index = False, sep = '\t')
     big_bb.to_csv(outfile + '.withXY', index = False, sep = '\t')
 
+    sp.log(msg="# Done\n", level="STEP")
 
     # Uncommend to remove all intermediate bb files (once I know the previous steps work)
     # [os.remove(f) for f in outfiles]
