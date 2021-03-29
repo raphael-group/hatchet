@@ -97,6 +97,7 @@ def parse_phase_arguments(args=None):
     #parser.add_argument("-o", "--outputphase", required=False, default=config.snp.outputsnps, type=str, help="Output folder for phased VCFs and 1000G reference panel (default: ./)")
     parser.add_argument("-o", "--outputphase", required=False, type=str, help="Output folder for phased VCFs and 1000G reference panel")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
+    parser.add_argument("-j", "--processes", required=False, default=config.snp.processes, type=int, help="Number of available parallel processes (default: 2)")
     args = parser.parse_args(args)
 
     # add safety checks for custom ref panel
@@ -109,10 +110,15 @@ def parse_phase_arguments(args=None):
             raise ValueError(sp.error("The specified SNP file {} does not exist!".format(f)))
         snplists = {os.path.basename(f).split('.')[0] : f for f in args.snps}
 
+    # Get chromosome names from vcf file names, since they're named according to chromosome in SNPCaller
+    chromosomes = [os.path.basename(snplists[i]).replace(".vcf.gz","") for i in snplists]
+
     return {"refpanel" : args.refpanel,
             "genmap" : args.genmap,
             "legend" : args.legend,
             "hap" : args.hap,
+            "j" : args.processes,
+            "chromosomes" : chromosomes,
             "snps" : snplists,
             "outputphase" : os.path.abspath(args.outputphase)}
 
