@@ -47,7 +47,7 @@ mkdir -p ${RDR}
 mkdir -p ${SNP}
 mkdir -p ${BAF}
 
-python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BIN} -g ${REF} -j ${J} -O ${RDR}normal.1bed -o ${RDR}tumor.1bed -t ${RDR}total.tsv |& tee ${RDR}bins.log
+#python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BIN} -g ${REF} -j ${J} -O ${RDR}normal.1bed -o ${RDR}tumor.1bed -t ${RDR}total.tsv |& tee ${RDR}bins.log
 
 python3 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
 

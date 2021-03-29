@@ -1,3 +1,14 @@
+######## STUFF I ADDED BETWEEN POUND SIGNS
+*.swp
+GRCh37p13_00-All.vcf.gz.tbi
+GRCh37p13_00-All.vcf.gz
+script/config.sh
+script/test_run/
+src/hatchet.egg-info/
+src/hatchet/solve
+TODO_BEFORE_MERGING.txt
+########
+
 # Temp
 *~
 *.ucn*

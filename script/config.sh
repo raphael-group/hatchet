@@ -4,19 +4,19 @@
 # Please set up the correct configuration values here below before running HATCHet #
 ####################################################################################
 
-REF="/path/to/reference.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
-LIST=""             # If HATCHet has internet, it selects a list of known germline SNPs based on REF_VERS and CHR_NOTATION below. If not, please provide full path to a locally stored list (.vcf.gz) here.
-REF_VERS=""         # Reference version used to select list of known germline SNPs; possible values are "hg19" or "hg38", or leave blank "" if you wish for all positions to be genotyped by bcftools
-CHR_NOTATION=true   # Does your reference name chromosomes with "chr" prefix?; possible values true/false
+REF="/n/fs/ragr-data/datasets/ref-genomes/hg19_Remixt/Homo_sapiens.GRCh37.70.dna.chromosomes.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
+LIST="/opt/ragr/bjarnold/hatchet_shapeit_phasing/hatchet/GRCh37p13_00-All.vcf.gz"             # If HATCHet has internet, it selects a list of known germline SNPs based on REF_VERS and CHR_NOTATION below. If not, please provide full path to a locally stored list (.vcf.gz) here.
+REF_VERS="hg19"         # Reference version used to select list of known germline SNPs; possible values are "hg19" or "hg38", or leave blank "" if you wish for all positions to be genotyped by bcftools
+CHR_NOTATION=false   # Does your reference name chromosomes with "chr" prefix?; possible values true/false
 # SAM="/path/to/samtools-home/bin/" #Uncomment if samtools is not already in PATH
 # BCF="/path/to/bcftools-home/bin/" #Uncomment if bcftools is not already in PATH
-XDIR="/path/to/running-dir/"      #Path for output
-NORMAL="/path/to/matched-normal.bam"
-BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
-NAMES="Primary Met" #Use the same order as the related tumor BAM files in BAMS above
-J=$(python -c 'import multiprocessing as mp; print(mp.cpu_count())') #Replace with fixed number if you do not want to use all available cpus
+XDIR="/opt/ragr/bjarnold/hatchet_shapeit_phasing/hatchet/script/test_run"      #Path for output
+NORMAL="/opt/ragr/zaccaria/Gundem_15/A12/b627a3ea-5c38-4cc4-8f5b-75b45995dbe6/95bf9ae68444e5e14976fbbe79dc466a.bam"
+BAMS="/opt/ragr/zaccaria/Gundem_15/A12/0e3e44bc-9142-4b02-8d8a-d85504e08ca4/cb5ab4c2dd4074286b87209dfa443944.bam"
+NAMES="Primary" #Use the same order as the related tumor BAM files in BAMS above
+J=22 #Replace with fixed number if you do not want to use all available cpus
 MINREADS=8 #Use 8 for WGS with >30x and 20 for WES with ~100x
-MAXREADS=300 #Use 300 for WGS with >30x and Use 1000 for WES with ~100x
+MAXREADS=1000 #Use 300 for WGS with >30x and Use 1000 for WES with ~100x
 BIN="50kb"   #Bin size for calculating RDR and BAF
 
 ################################################################################################################################
@@ -34,6 +34,8 @@ BIN="50kb"   #Bin size for calculating RDR and BAF
 ################################################################################################################################
 PHASE="None"  #Path to phased file; specify "None" to run hatchet without phasing
 BLOCK="50kb"  #Haplotype block size  used for combining SNPs
+REF_PANEL="1000G"
+
 
 
 # These specify the subdirectories created and used by HATCHet and do not need to be changed
