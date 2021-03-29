@@ -82,6 +82,39 @@ def parse_snp_arguments(args=None):
             "outputsnps" : os.path.abspath(args.outputsnps),
             "verbose" : args.verbose}
 
+def parse_phase_arguments(args=None):
+    """
+    Parse command line arguments
+    Returns:
+    """
+    description = "Phase germline SNPs using a reference panel"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-R","--refpanel", required=True, type=str, help="Path to Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
+    parser.add_argument("-m","--genmap", required=False, type=str, help="prefix of genetic map files for custom reference panel, e.g. \"genetic_map\" for \"genetic_map_chr1.txt\", where all chromosome-specific maps end in \"_chr{1..22}.txt\"")
+    parser.add_argument("-l","--legend", required=False, type=str, help="prefix of legend files for custom reference panel, e.g. \"1000GP\" for \"1000GP_chr1.legend.gz\", where all chromosome-specific legends end in \"_chr{1..22}.legend.gz\"")
+    parser.add_argument("-p","--hap", required=False, type=str, help="prefix of hap files for custom reference panel, e.g. \"1000GP\" for \"1000GP_chr1.hap.gz\", where all chromosome-specific hap files end in \"_chr{1..22}.hap.gz\"")
+    # uncomment after you figure out config.snp.outputsnps
+    #parser.add_argument("-o", "--outputphase", required=False, default=config.snp.outputsnps, type=str, help="Output folder for phased VCFs and 1000G reference panel (default: ./)")
+    parser.add_argument("-o", "--outputphase", required=False, type=str, help="Output folder for phased VCFs and 1000G reference panel")
+    parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
+    args = parser.parse_args(args)
+
+    # add safety checks for custom ref panel
+    #if args.refpanel != "1000GP_Phase3":
+        
+    # Check that SNP files exist when given in input
+    snplists = {}
+    for f in args.snps:
+        if not os.path.isfile(f):
+            raise ValueError(sp.error("The specified SNP file {} does not exist!".format(f)))
+        snplists = {os.path.basename(f).split('.')[0] : f for f in args.snps}
+
+    return {"refpanel" : args.refpanel,
+            "genmap" : args.genmap,
+            "legend" : args.legend,
+            "hap" : args.hap,
+            "snps" : snplists,
+            "outputphase" : os.path.abspath(args.outputphase)}
 
 def parse_baf_arguments(args=None):
     """

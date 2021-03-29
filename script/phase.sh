@@ -3,6 +3,7 @@
 source ./config.sh
 
 
-python3 -m hatchet Phase 
-#-R ${REF_PANEL}  tee ${BAF}bafs.log
+cd ${XDIR}
+mkdir -p ${PHASE}
+python3 -m hatchet Phase -R ${REF_PANEL} -L ${SNP}*.vcf.gz -o ${PHASE}
 
