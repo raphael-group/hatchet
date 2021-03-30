@@ -113,30 +113,64 @@ class Phaser(Process):
                 self.task_queue.task_done()
                 break
 
-            #self.progress_bar.progress(advance=False, msg="{} starts on {} for {})".format(self.name, next_task[1], next_task[2]))
-            self.progress_bar.progress(advance=False, msg="{} starts on vcf {} for chromosome {}".format(self.name, next_task[0], next_task[1]))
-            phased = self.phasevcfs(vcffile=next_task[0], chromosome=next_task[1])
-            self.progress_bar.progress(advance=True, msg="{} ends on vcf {} for chromosome {})".format(self.name, next_task[0], next_task[1]))
+            self.progress_bar.progress(advance=False, msg=f"{self.name} starts on vcf {next_task[0]} for chromosome {next_task[1]}")
+            bi = self.biallelic(infile=next_task[0], chromosome=next_task[1])
+            phased = self.shapeit(infile=next_task[0], chromosome=next_task[1])
+            self.progress_bar.progress(advance=True, msg=f"{self.name} ends on vcf {next_task[0]} for chromosome {next_task[1]})")
             self.task_queue.task_done()
             self.result_queue.put(phased)
         return
 
-    def phasevcfs(self, vcffile, chromosome):
-        errname = os.path.join(self.outdir, "{}_phase.log".format(chromosome))
-        cmd_bcf = "bcftools view --max-alleles 2 --exclude-types indels --output-type z "
-        cmd_bcf += "--output-file {} {}".format( os.path.join(self.outdir, "{}_filtered.vcf.gz".format(chromosome)), self.snplist[chromosome])
-
+    def biallelic(self, infile, chromosome):
+        # discard multi-allelic sites and indels
+        errname = os.path.join(self.outdir, f"{chromosome}_bcftools.log")
+        outfile = os.path.join(self.outdir, f"{chromosome}_filtered.vcf.gz")
+        cmd_bcf = f"bcftools view --max-alleles 2 --exclude-types indels --output-type z "
+        cmd_bcf += f"--output-file {outfile} {infile}"
         with open(errname, 'w') as err:
-            biallelic = pr.Popen(shlex.split(cmd_bcf), stdout=pr.PIPE, stderr=err, universal_newlines=True)
-            # biallilic in list to demonstrate you can pass multiple
-            codes = map(lambda p : p.wait(), [biallelic])
-        if any(c != 0 for c in codes):
-            raise ValueError(sp.error('Phasing failed on {}, please check errors in {}!').format(self.snplist[chromosome], errname))
+            run = pr.run(cmd_bcf, stdout=err, stderr=err, shell=True, universal_newlines=True)
+        if run.returncode != 0:
+            raise ValueError(sp.error(f"Biallelic sites filtering failed on {infile}, please check errors in {errname}!"))
         else:
             os.remove(errname)
-        return os.path.join(self.outdir, '{}_filtered.vcf.gz'.format(chromosome))
+        return os.path.join(outfile)
 
+    def shapeit(self, infile, chromosome): 
+        errname = os.path.join(self.outdir, f"{chromosome}_shapeit.log")
 
+        # define params used across shapeit functions
+        inmap = f"{self.panel}/genetic_map_chr{chromosome}_combined_b37.txt"
+        inref = f"{self.panel}/1000GP_Phase3_chr{chromosome}.hap.gz "
+        inref += f"{self.panel}/1000GP_Phase3_chr{chromosome}.legend.gz "
+        inref += f"{self.panel}/1000GP_Phase3.sample"
+
+        # check data with shapeit -check; get list of sites to exclude, such as sites in target VCF that are not present in reference panel
+        cmd1 = f"shapeit -check --input-vcf {self.outdir}/{chromosome}_filtered.vcf.gz "
+        cmd1 += f"--input-map {inmap} "
+        cmd1 += f"--input-ref {inref} "
+        cmd1 += f"--output-log {self.outdir}/{chromosome}_alignments"
+        cmd1 += "\n"
+        # phase
+        cmd2 = f"shapeit --input-vcf {self.outdir}/{chromosome}_filtered.vcf.gz "
+        cmd2 += f"--input-map {inmap} "
+        cmd2 += f"--input-ref {inref} "
+        cmd2 += f"--exclude-snp {self.outdir}/{chromosome}_alignments.snp.strand.exclude "
+        cmd2 += f"--output-max {self.outdir}/{chromosome}.haps {self.outdir}/{chromosome}.sample "
+        cmd2 += f"--chrX --no-mcmc "
+
+        cmd3 = f"shapeit -convert --input-haps {self.outdir}/{chromosome} "
+        cmd3 += f"--output-vcf {self.outdir}/{chromosome}_phased.vcf"
+        
+        with open(errname, 'w') as err:
+            run1 = pr.run(cmd1, stdout=err, stderr=err, shell=True, universal_newlines=True)
+            run2 = pr.run(cmd2, stdout=err, stderr=err, shell=True, universal_newlines=True)
+            run3 = pr.run(cmd3, stdout=err, stderr=err, shell=True, universal_newlines=True)
+            codes = [run2.returncode, run3.returncode] # not collecting error codes from run1 at moment; has nonzero exit status even when it works
+        if any(c != 0 for c in codes):
+            raise ValueError(sp.error(f"Phasing failed on {infile}, please check errors in {errname}!"))
+        else:
+            os.remove(errname)
+        return os.path.join(self.outdir, f"{chromosome}_phased.vcf.gz")
 
 if __name__ == '__main__':
     main()
