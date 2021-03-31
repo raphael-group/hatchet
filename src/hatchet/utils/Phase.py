@@ -7,7 +7,6 @@ import subprocess as pr
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 import requests
 import tarfile
-from collections import defaultdict
 from . import ArgParsing as ap
 from .Supporting import *
 from . import Supporting as sp
@@ -42,19 +41,21 @@ def main(args=None):
         panel = args["refpanel"]
 
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outputphase"], chromosomes=args["chromosomes"], num_workers=args["j"], verbose=False) 
-    #o = args["outputphase"]
-    #vcfs = [f"{o}/{c}_phased.vcf.gz" for c in args["chromosomes"]]
     concat_vcf = concat(vcfs, outdir=args["outputphase"])
 
     # read shapeit output, get fraction of phased snps
-    """
-    prop_snps = defaultdict(int)
+    out = open( os.path.join(args["outputphase"], "phased.log"), 'w')
+    print("chrom", "phased_snps", "original_snps", "proportion", file=out, sep="\t")
     for c in args["chromosomes"]:
         fn = os.path.join(args["outputphase"], f"{c}_alignments.log")
-        with open(fn, 'w') as f:
-    """ 
-
-    print("SORTED RESULTS!")
+        for l in open (fn, 'r'):
+            if "SNPs included" in l:
+                snps = int(l.split()[1])
+            elif "reference panel sites included" in l:
+                phased_snps = int(l.split()[1])
+        print(c, phased_snps, snps, float(phased_snps/snps), file=out, sep="\t")
+    out.close()
+            
     print(concat_vcf)
 
 def concat(vcfs, outdir):
