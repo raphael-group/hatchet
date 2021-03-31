@@ -489,7 +489,7 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
         if len(np.where(positions <= centromere_start)[0]) > 0:
             # There may not be a SNP between the centromere end and the next SNP threshold
             # Goal for p arm is to END at the FIRST threshold that is AFTER the LAST SNP BEFORE the centromere
-            last_snp_before_centromere = positions[np.where(positions <= centromere_start)[0][-1]]
+            last_snp_before_centromere = positions[np.where(positions < centromere_start)[0][-1]]
             last_threshold_before_centromere = complete_thresholds[np.where(complete_thresholds > last_snp_before_centromere)[0][0]]  
             
             p_idx = np.where(complete_thresholds <= last_threshold_before_centromere)[0]
@@ -529,7 +529,7 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
         if len(np.where(positions >= centromere_end)[0]) > 0:
             # There may not be a SNP between the centromere end and the next SNP threshold
             # Goal for q arm is to start at the latest threshold that is before the first SNP after the centromere
-            first_snp_after_centromere = positions[np.where(positions >= centromere_end)[0][0]]
+            first_snp_after_centromere = positions[np.where(positions > centromere_end)[0][0]]
             first_threshold_after_centromere = complete_thresholds[np.where(complete_thresholds < first_snp_after_centromere)[0][-1]]  
             
             q_idx = np.where(complete_thresholds >= first_threshold_after_centromere)[0]
