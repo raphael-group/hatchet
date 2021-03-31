@@ -3,18 +3,15 @@
 import os, sys
 import os.path
 import argparse
-import shlex
 import subprocess as pr
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 import requests
 import tarfile
-
+from collections import defaultdict
 from . import ArgParsing as ap
 from .Supporting import *
 from . import Supporting as sp
 from . import ProgressBar as pb
-
-
 
 def main(args=None):
     log(msg="# log notes\n", level="STEP")
@@ -45,9 +42,34 @@ def main(args=None):
         panel = args["refpanel"]
 
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outputphase"], chromosomes=args["chromosomes"], num_workers=args["j"], verbose=False) 
+    #o = args["outputphase"]
+    #vcfs = [f"{o}/{c}_phased.vcf.gz" for c in args["chromosomes"]]
+    concat_vcf = concat(vcfs, outdir=args["outputphase"])
+
+    # read shapeit output, get fraction of phased snps
+    """
+    prop_snps = defaultdict(int)
+    for c in args["chromosomes"]:
+        fn = os.path.join(args["outputphase"], f"{c}_alignments.log")
+        with open(fn, 'w') as f:
+    """ 
 
     print("SORTED RESULTS!")
-    print(vcfs)
+    print(concat_vcf)
+
+def concat(vcfs, outdir):
+    errname = os.path.join(outdir, f"concat.log")
+    infiles = ' '.join(vcfs)
+    outfile = os.path.join(outdir, f"phased.vcf.gz")
+    cmd_bcf = f"bcftools concat --output-type z --output {outfile} "
+    cmd_bcf += f"{infiles}"
+    with open(errname, 'w') as err:
+        run = pr.run(cmd_bcf, stdout=err, stderr=err, shell=True, universal_newlines=True)
+    if run.returncode != 0:
+        raise ValueError(sp.error(f"bcftools concat failed, please check errors in {errname}!"))
+    else:
+        os.remove(errname)
+    return(outfile)
 
 def phase(panel, snplist, outdir, chromosomes, num_workers, verbose=False):
     # Define a Lock and a shared value for log printing through ProgressBar
@@ -122,7 +144,7 @@ class Phaser(Process):
         return
 
     def biallelic(self, infile, chromosome):
-        # discard multi-allelic sites and indels
+        # use bcftools to discard multi-allelic sites and indels
         errname = os.path.join(self.outdir, f"{chromosome}_bcftools.log")
         outfile = os.path.join(self.outdir, f"{chromosome}_filtered.vcf.gz")
         cmd_bcf = f"bcftools view --max-alleles 2 --exclude-types indels --output-type z "
@@ -136,6 +158,7 @@ class Phaser(Process):
         return os.path.join(outfile)
 
     def shapeit(self, infile, chromosome): 
+        # use shapeit with reference panel to phase vcf files
         errname = os.path.join(self.outdir, f"{chromosome}_shapeit.log")
 
         # define params used across shapeit functions
@@ -157,19 +180,27 @@ class Phaser(Process):
         cmd2 += f"--exclude-snp {self.outdir}/{chromosome}_alignments.snp.strand.exclude "
         cmd2 += f"--output-max {self.outdir}/{chromosome}.haps {self.outdir}/{chromosome}.sample "
         cmd2 += f"--chrX --no-mcmc "
-
+        # convert output file to vcf
         cmd3 = f"shapeit -convert --input-haps {self.outdir}/{chromosome} "
         cmd3 += f"--output-vcf {self.outdir}/{chromosome}_phased.vcf"
-        
+        # compress vcf 
+        cmd4 = f"bgzip {self.outdir}/{chromosome}_phased.vcf"
+        # index vcf
+        cmd5 = f"bcftools index {self.outdir}/{chromosome}_phased.vcf.gz"
         with open(errname, 'w') as err:
             run1 = pr.run(cmd1, stdout=err, stderr=err, shell=True, universal_newlines=True)
             run2 = pr.run(cmd2, stdout=err, stderr=err, shell=True, universal_newlines=True)
             run3 = pr.run(cmd3, stdout=err, stderr=err, shell=True, universal_newlines=True)
-            codes = [run2.returncode, run3.returncode] # not collecting error codes from run1 at moment; has nonzero exit status even when it works
+            run4 = pr.run(cmd4, stdout=err, stderr=err, shell=True, universal_newlines=True)
+            run5 = pr.run(cmd5, stdout=err, stderr=err, shell=True, universal_newlines=True)
+            codes = [run2.returncode, run3.returncode, run4.returncode, run5.returncode] # not collecting error codes from run1 at moment; has nonzero exit status even when it works
         if any(c != 0 for c in codes):
             raise ValueError(sp.error(f"Phasing failed on {infile}, please check errors in {errname}!"))
         else:
             os.remove(errname)
+            os.remove( os.path.join(self.outdir, f"{chromosome}.haps") )
+            os.remove( os.path.join(self.outdir, f"{chromosome}.sample") )
+            os.remove( os.path.join(self.outdir, f"{chromosome}_alignments.snp.strand") )
         return os.path.join(self.outdir, f"{chromosome}_phased.vcf.gz")
 
 if __name__ == '__main__':
