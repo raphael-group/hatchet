@@ -98,6 +98,7 @@ def parse_clubb_kde_args(args=None):
     parser.add_argument("-x","--maxcopies", type=int, required=False, default=config.kdebb.max_copies, help=f"Maximum number of copies per allele, used to find centroids using fitted copy-number grid (default: {config.kdebb.max_copies})")
     parser.add_argument("-f","--outfigure", required=False, default=config.kdebb.kde_fig_filename, help=f"Filename to output optional KDE figure (default: {config.kdebb.kde_fig_filename})")
     parser.add_argument("-S","--snpsfile", required=False, default=config.kdebb.snpsfile, help=f"Filename containing SNP data for binomial model (default: None)")
+    parser.add_argument("-s","--minsize", required=False, type = int, default=config.kdebb.minsize, help=f"Minimum cluster size (default: {config.kdebb.minsize})")
 
     #TODO:  SNPs file for binomial model?
 
@@ -132,6 +133,10 @@ def parse_clubb_kde_args(args=None):
     if args.maxcopies <= 0:
         raise ValueError(sp.error("Max copies per allele must be positive."))
 
+    if args.minsize < 0:
+        raise ValueError(sp.error("Minimum cluster size must be non-negative."))
+
+
     return {"bbfile" : args.BBFILE,
             "diploidbaf" : args.diploidbaf,
             "outbins" : args.outbins,
@@ -143,7 +148,8 @@ def parse_clubb_kde_args(args=None):
             "griddensity" : args.griddensity,
             "maxcopies" : args.maxcopies,
             "outfigure" : args.outfigure,
-            "snpsfile" : args.snpsfile
+            "snpsfile" : args.snpsfile,
+            "minsize" : args.minsize
             }
 
 def parse_abin_arguments(args=None):    

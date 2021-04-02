@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import os, shutil
+from os.path import expanduser
 import sys
 import math
 import copy
@@ -24,10 +25,19 @@ def main(args=None):
     
     bb = pd.read_table(args["bbfile"])
     if 'CHR' in bb:
-        chr_col = 'CHR'
+        # required for compatibility with
+        raise IndexError(sp.error("BB file chromosome column name should be '#CHR', not 'CHR'."))
+        #chr_col = 'CHR'
     else:
-        chr_col = '#CHR'
+        #chr_col = '#CHR'
+        pass
+    
+    chr_col = '#CHR'
+    if '#CHR' not in bb:
+        raise IndexError(sp.error("BB file is missing '#CHR' column!"))
+    
     bb = bb.sort_values(['SAMPLE', chr_col, 'START']) 
+    bb = bb.reset_index(drop = True)
     if len(bb.SAMPLE.unique()) > 1:
         raise ValueError(sp.error("ERROR: This dataframe has multiple samples, but cluBB_KDE supports only single-sample data."))
 
@@ -35,6 +45,14 @@ def main(args=None):
     missing_columns = [a for a in required_columns if a not in bb]
     if len(missing_columns) > 0:
         raise ValueError(sp.error("Missing columns from BB that are required for modeling: {}".format(missing_columns)))
+
+
+    sp.log(msg="# Removing outlier bins\n", level="STEP")
+    cap = 2 * np.percentile(bb.RD, 99.9)
+    outliers = np.where(bb.RD > cap)[0]
+    bb = bb.drop(index = outliers)
+    #bb = bb.reset_index(drop = True)
+    sp.log(msg=f"Removed {len(outliers)} outlier bins\n", level = 'INFO')
 
     sp.log(msg="# Identifying centroids using KDE\n", level="STEP")
     if "UNCORRECTED" in bb:
@@ -48,32 +66,27 @@ def main(args=None):
 
     
 
-    sp.log(msg="# Correcting total read counts\n", level="STEP")
-    bb['CORRECTED_READS'] = np.NAN
-    
-    # For each sample, correct read counts to account for differences in coverage (as in HATCHet)
-    # (i.e., multiply read counts by total-reads-normal/total-reads-sample)
-    rc = pd.read_table(args['totalcounts'], header = None, names = ['SAMPLE', '#READS'])
-    nreads_normal = rc[rc.SAMPLE == 'normal'].iloc[0]['#READS']
-    for sample in rc.SAMPLE.unique():
-        if sample == 'normal':
-            continue
-        nreads_sample = rc[rc.SAMPLE == sample].iloc[0]['#READS']
-        correction = nreads_normal / nreads_sample
-        my_bb = bb[bb.SAMPLE == sample]
-        bb.loc[bb.SAMPLE == sample, 'CORRECTED_READS'] = (my_bb.TOTAL_READS * correction).astype(np.int64)
-    
-    if not "NORMAL_READS" in bb:
-        bb['NORMAL_READS'] = (bb.CORRECTED_READS / bb.RD).astype(np.uint32)
 
     sp.log(msg="# Assigning bins to centroids\n", level="STEP")
     if args['snpsfile'] is not None:
         snps = read_SNPs_iter(args['snpsfile'], bb)
-        labels, affinities, _, _, bad_bins = assign_bins_binom(bb, snps, centers, chr_col)
-        if len(bad_bins) > 0:
-            raise ValueError(sp.error(f"Found {len(bad_bins)} bins with no SNPs: {bad_bins}"))
-    else:
-        labels, affinities, _, _ = assign_bins_beta(bb, centers)
+    
+    # Re-assign until all clusters are at least size [-s, --minsize]
+    min_cluster_size = args['minsize']
+    while True:
+        if args['snpsfile'] is not None:
+            labels, affinities, _, _, bad_bins = assign_bins_binom(bb, snps, centers, chr_col)
+            if len(bad_bins) > 0:
+                raise ValueError(sp.error(f"Found {len(bad_bins)} bins with no SNPs: {bad_bins}"))
+        else:
+            labels, affinities, _, _ = assign_bins_beta(bb, centers)
+    
+        cntr = Counter(labels)
+        if cntr.most_common()[-1][1] >= min_cluster_size:
+            break
+        else:
+            keep_ids = [i for (i, v) in Counter(labels).items() if v >= min_cluster_size]
+            centers = centers[keep_ids]
 
     # Reindex labels to be numbered from 1 to n_clusters
     labels = reindex(labels)
@@ -91,8 +104,7 @@ def main(args=None):
     d = args['diploidbaf']
     for i, df in cluster_dfs:
         assert len(df.SAMPLE.unique()) == 1
-    
-        row = [i + 1, sample, len(df), df.RD.mean(), df['#SNPS'].sum(), df.COV.mean(), 
+        row = [i, df.SAMPLE.unique()[0], len(df), df.RD.mean(), df['#SNPS'].sum(), df.COV.mean(), 
                df.ALPHA.sum(), df.BETA.sum(), df.BAF.mean()]
         if row[-1] > 0.5 - d:
             row[-1] = 0.5
@@ -111,7 +123,7 @@ def read_SNPs_iter(snpsfile, bb, suppress_warnings = True):
     snps = snps.reset_index(drop = True)
     
     # sorted list of bins for each chromosome
-    bins = {str(ch):sorted(set([(row.START, row.END) for _, row in bb[bb['CHR'] == ch].iterrows()])) for ch in bb['CHR'].unique()}
+    bins = {str(ch):sorted(set([(row.START, row.END) for _, row in bb[bb['#CHR'] == ch].iterrows()])) for ch in bb['#CHR'].unique()}
     
     # mapping from chromosome to current index in the list of bins
     chr2pos = {ch:0 for ch in snps.CHR.unique()}
@@ -129,7 +141,8 @@ def read_SNPs_iter(snpsfile, bb, suppress_warnings = True):
         alt = row.ALT
         
         if ch not in bins:
-            sp.log(msg=f"WARNING: missing chromosome {ch}.\n", level = "WARN")
+            if not (ch.endswith('X') or ch.endswith('Y')):
+                sp.log(msg=f"WARNING: missing chromosome {ch}.\n", level = "WARN")
             continue
     
         # find the bin that contains this SNP
@@ -258,7 +271,8 @@ def kde_centers_gridfit(arr, min_center_density, bandwidth, grid_dim, yvar,
     y = arr[:, 1]
  
     xmin, ymin = np.min(arr, axis = 0)
-    _, ymax = np.max(arr, axis = 0)
+    ymax = np.max(y)
+    #_, ymax = np.max(arr, axis = 0)
     xmax = 0.5
     
     # Compute KDE
@@ -323,8 +337,6 @@ def kde_centers_gridfit(arr, min_center_density, bandwidth, grid_dim, yvar,
         sp.log(msg=f"Found optima. Original: {len(lm_orig)}, grid: {len(lm_grid)}, threshold: {len(lm)}, union: {len(result)}\n", level = "INFO")
     
     if fname is not None:
-        if verbose:
-            sp.log(msg="Computing KDE\n", level = "INFO")
         ### Mark local maxima on grids for visualization
         # Original local maxima (no thresholding)
         probs_show_orig = probs_grid.copy()
@@ -447,7 +459,7 @@ def vertex_gaussians(means, x_variance, y_variance):
 def reindex(labels):
     """
     Given a list of labels, reindex them as integers from 1 to n_labels
-    Also orders them in nonincreasing order of prevalence
+    Labels are in nonincreasing order of prevalence
     """
     old2new = {}
     j = 1
