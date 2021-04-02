@@ -23,6 +23,7 @@ time the following demos are available (more demos will be added in the near fut
 
 | Name | Demo | Description |
 |------|------|-------------|
+| [demo-complete](../examples/demo-complete/) | [demo-complete](../examples/demo-complete/demo-complete.sh) | A demo of the complete HATCHet pipeline starting from an example dataset of tumour and matched normal BAM files |
 | [demo-WGS-sim](../examples/demo-WGS-sim/) | [demo-wgs-sim](../examples/demo-WGS-sim/demo-wgs-sim.sh) | A demo on a typical WGS (whole-genome sequencing) multi-sample dataset with standard noise and variance of the data |
 | [demo-WGS-cancer](../examples/demo-WGS-cancer/) | [demo-wgs-cancer](../examples/demo-WGS-cancer/demo-wgs-cancer.sh) | A demo on a cancer WGS (whole-genome sequencing) multi-sample dataset with high noise and variance of the data |
 | [demo-WES](../examples/demo-WES/) | [demo-wes](../examples/demo-WES/demo-wes.sh) | A demo on a cancer WES (whole-exome sequencing) multi-sample dataset, which is typycally characterized by very high variance of RDR |
