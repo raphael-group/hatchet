@@ -7,6 +7,7 @@ import subprocess as pr
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 import requests
 import tarfile
+import glob
 from . import ArgParsing as ap
 from .Supporting import *
 from . import Supporting as sp
@@ -21,55 +22,66 @@ def main(args=None):
         print(i, args[i])
 
     if args["refpanel"] == "1000GP_Phase3":
-        """
-        url = "https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz"
-        out = args["outputphase"] + "/1000GP_Phase3.tgz"
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(out, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            f.write(r.content)
-        # extract tar file, remove
-        t = tarfile.open(out)
-        t.extractall(args["outputphase"])
-        t.close()
-        os.remove(out)
-        """
-        panel = '{}/1000GP_Phase3'.format(args["outputphase"])
+        if not os.path.isfile( os.path.join(args["outputphase"], "1000GP_Phase3", "1000GP_Phase3.sample") ):
+            dwnld_1kgp(path = args["outputphase"])
+        panel = os.path.join( args["outputphase"], "1000GP_Phase3" )
     else:
         panel = args["refpanel"]
 
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outputphase"], chromosomes=args["chromosomes"], num_workers=args["j"], verbose=False) 
-    concat_vcf = concat(vcfs, outdir=args["outputphase"])
+    concat_vcf = concat(vcfs, outdir=args["outputphase"], chromosomes=args["chromosomes"])
 
-    # read shapeit output, get fraction of phased snps
-    out = open( os.path.join(args["outputphase"], "phased.log"), 'w')
+    # read shapeit output, print fraction of phased snps per chromosome
+    print_log(path=args["outputphase"], chromosomes = args["chromosomes"])
+
+    # remove other shapeit logs
+    f = []
+    [ f.extend( glob.glob(f"shapeit*{ext}"))  for ext in [".log", ".mm", ".hh"]]
+    [ os.remove(i) for i in f]
+            
+    print(concat_vcf)
+
+def dwnld_1kgp(path):
+    url = "https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz"
+    out = os.path.join(path + "1000GP_Phase3.tgz")
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(out, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+        f.write(r.content)
+    # extract tar file, remove
+    t = tarfile.open(out)
+    t.extractall(args["outputphase"])
+    t.close()
+    os.remove(out)
+
+def print_log(path, chromosomes):
+    out = open( os.path.join(path, "phased.log"), 'w')
     print("chrom", "phased_snps", "original_snps", "proportion", file=out, sep="\t")
-    for c in args["chromosomes"]:
-        fn = os.path.join(args["outputphase"], f"{c}_alignments.log")
-        for l in open (fn, 'r'):
+    for c in chromosomes:
+        for l in open( os.path.join(path, f"{c}_alignments.log"), 'r' ):
             if "SNPs included" in l:
                 snps = int(l.split()[1])
             elif "reference panel sites included" in l:
                 phased_snps = int(l.split()[1])
         print(c, phased_snps, snps, float(phased_snps/snps), file=out, sep="\t")
-    out.close()
-            
-    print(concat_vcf)
 
-def concat(vcfs, outdir):
+def concat(vcfs, outdir, chromosomes):
     errname = os.path.join(outdir, f"concat.log")
     infiles = ' '.join(vcfs)
     outfile = os.path.join(outdir, f"phased.vcf.gz")
-    cmd_bcf = f"bcftools concat --output-type z --output {outfile} "
-    cmd_bcf += f"{infiles}"
+    cmd_bcf = f"bcftools concat --output-type z --output {outfile} {infiles}"
     with open(errname, 'w') as err:
         run = pr.run(cmd_bcf, stdout=err, stderr=err, shell=True, universal_newlines=True)
     if run.returncode != 0:
         raise ValueError(sp.error(f"bcftools concat failed, please check errors in {errname}!"))
     else:
         os.remove(errname)
+        exts = ["_phased.vcf.gz", "_phased.vcf.gz.csi"]
+        f = []
+        [ f.extend( glob.glob( os.path.join(outdir, f"{c}{e}" ))) for c in chromosomes for e in exts]
+        [os.remove(i) for i in f] 
     return(outfile)
 
 def phase(panel, snplist, outdir, chromosomes, num_workers, verbose=False):
@@ -199,9 +211,10 @@ class Phaser(Process):
             raise ValueError(sp.error(f"Phasing failed on {infile}, please check errors in {errname}!"))
         else:
             os.remove(errname)
-            os.remove( os.path.join(self.outdir, f"{chromosome}.haps") )
-            os.remove( os.path.join(self.outdir, f"{chromosome}.sample") )
-            os.remove( os.path.join(self.outdir, f"{chromosome}_alignments.snp.strand") )
+            exts = ["_filtered.vcf.gz", ".haps", ".sample", "_alignments.snp.strand", "_alignments.snp.strand.exclude"]
+            f = []
+            [ f.extend( glob.glob( os.path.join(self.outdir, f"{chromosome}{e}" ))) for e in exts]
+            [os.remove(i) for i in f]
         return os.path.join(self.outdir, f"{chromosome}_phased.vcf.gz")
 
 if __name__ == '__main__':

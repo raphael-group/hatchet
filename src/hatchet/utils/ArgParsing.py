@@ -90,6 +90,8 @@ def parse_phase_arguments(args=None):
     description = "Phase germline SNPs using a reference panel"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("-R","--refpanel", required=True, type=str, help="Path to Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
+    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
+    parser.add_argument("-N","--chrnotation", required=True, type=str, help="Notation of chromosomes, with or without \"chr\"")
     parser.add_argument("-m","--genmap", required=False, type=str, help="prefix of genetic map files for custom reference panel, e.g. \"genetic_map\" for \"genetic_map_chr1.txt\", where all chromosome-specific maps end in \"_chr{1..22}.txt\"")
     parser.add_argument("-l","--legend", required=False, type=str, help="prefix of legend files for custom reference panel, e.g. \"1000GP\" for \"1000GP_chr1.legend.gz\", where all chromosome-specific legends end in \"_chr{1..22}.legend.gz\"")
     parser.add_argument("-p","--hap", required=False, type=str, help="prefix of hap files for custom reference panel, e.g. \"1000GP\" for \"1000GP_chr1.hap.gz\", where all chromosome-specific hap files end in \"_chr{1..22}.hap.gz\"")
@@ -120,6 +122,8 @@ def parse_phase_arguments(args=None):
             "j" : args.processes,
             "chromosomes" : chromosomes,
             "snps" : snplists,
+            "refversion" : args.refversion,
+            "chrnotation" : args.chrnotation,
             "outputphase" : os.path.abspath(args.outputphase)}
 
 def parse_baf_arguments(args=None):
