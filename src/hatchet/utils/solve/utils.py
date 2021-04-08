@@ -76,7 +76,9 @@ def scale_rdr(rdr, copy_numbers, purity_tol=0.05):
 
 def segmentation(cA, cB, u, bbc_file, bbc_out_file=None, seg_out_file=None):
     df = pd.read_csv(bbc_file, sep='\t')
-    # TODO: The C++ implementation interprets the 'coverage' column as an int
+    # Chromosomes may or may not have chr notation - force a string dtype anyway
+    df['#CHR'] = df['#CHR'].astype(str)
+    # TODO: The legacy C++ implementation interprets the 'coverage' column as an int
     df['COV'] = df['COV'].astype(int)
 
     n_cluster, n_clone = cA.shape
@@ -94,6 +96,7 @@ def segmentation(cA, cB, u, bbc_file, bbc_out_file=None, seg_out_file=None):
     # Sorting the values by start/end position critical for merging contiguous
     # segments with identical copy numbers later on
     df = df.sort_values(['#CHR', 'START', 'END', 'SAMPLE'])
+    df = df.reset_index(drop=True)
 
     # last 2*n_clone columns names = [cn_normal, u_normal, cn_clone1, u_clone1, cn_clone2, ...]
     extra_columns = [col for sublist in zip(cN.columns, u.columns) for col in sublist]
@@ -123,14 +126,17 @@ def segmentation(cA, cB, u, bbc_file, bbc_out_file=None, seg_out_file=None):
                 # Find indices where we see the first sample name AND
                 (df['SAMPLE'] == _first_sample_name) &
                 (
-                    # Any of the copy-numbers changed from the previous row
-                    # OR the START changed from the END in the previous row
+                    # The chromosome changed values from the previous row OR
+                    # any of the copy-numbers changed from the previous row OR
+                    # the START changed from the END in the previous row
+                    (df['#CHR'] != df['#CHR'].shift()) |
                     (df['all_copy_numbers'] != df['all_copy_numbers'].shift()) |
                     (df['START'] != df['END'].shift())
                 )
-            ).cumsum()
+            ).cumsum(),
             # cumulative sum increments whenever a True is encountered, thus creating a series of monotonically
             # increasing values we can use as segment numbers
+            sort=False
         ).indices
         # 'indices' of a Pandas GroupBy object gives us a mapping from the group 'name'
         # (numbers starting from 1) -> indices in the Dataframe
@@ -138,8 +144,8 @@ def segmentation(cA, cB, u, bbc_file, bbc_out_file=None, seg_out_file=None):
         for group_name, indices in group_name_to_indices.items():
             df.loc[indices, 'segment'] = group_name
 
-        aggregation_rules = {'#CHR': 'min', 'START': 'min', 'END': 'max', 'SAMPLE': 'min'}
-        aggregation_rules.update({c: 'min' for c in extra_columns})
-
+        aggregation_rules = {'#CHR': 'first', 'START': 'min', 'END': 'max', 'SAMPLE': 'first'}
+        aggregation_rules.update({c: 'first' for c in extra_columns})
         df = df.groupby(['segment', 'SAMPLE']).agg(aggregation_rules)
+
         df.to_csv(seg_out_file, sep='\t', index=False)

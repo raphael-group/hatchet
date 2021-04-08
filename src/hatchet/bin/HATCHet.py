@@ -10,6 +10,8 @@ import shlex
 from collections import Counter
 
 from hatchet import config
+from hatchet.utils.solve import solve
+from hatchet.utils.solve.utils import segmentation
 
 
 def parsing_arguments(args=None):
@@ -605,7 +607,47 @@ def runningTetraploid(clonal, scale, size, args):
     return results
 
 
+def execute_python(args, basecmd, n, outprefix):
+
+    cmd = basecmd + ' -n {} -o {}'.format(n, outprefix)
+    if args['v'] >= 3:
+        sys.stderr.write(debug('### Running command: {}\n'.format(cmd)))
+
+    try:
+        obj, cA, cB, u = solve(
+            clonal=None,                          # -c, examples: 28:1:1/28:2:2,24:2:0,15:1:2/None
+            seg_file='bbc/bulk.seg',
+            n=2,                                  # -n, Number of distinct clones, 2-6 sweep by default
+            solve_mode='ilp',                      # 'cd' or 'ilp'; corresponds closely to
+                                                  # -M, 0=ILP+COORD_DESC, 1=ILP, 2=COORD_DESC (default 2)
+            d=-1,                                 # -d, Maximum number of distinct copy-number states, -1 = no limit
+            cn_max=6,                             # -e, Maximum copy number
+            mu=0.03,                              # -u, Minimum tumor-clone threshold
+            diploid_threshold=0.1,                # -t, hardcoded; argument exposed but not used in C++
+            ampdel=True,                          # -f, mutated allele amplification/deletion across tumor clones
+            n_seed=400,                           # -p, no. of seeds for coordinate descent
+            n_worker=8,                           # -j, no. of parallel workers for coordinate descent
+        )
+
+        segmentation(cA, cB, u, bbc_file='bbc/bulk.bbc', bbc_out_file='bbc/outp.bbc.ucn.tsv',
+                                       seg_out_file='bbc/outp.seg.ucn.tsv')
+
+    except:
+        raise
+
+    else:
+        if obj >= 0:
+            if args['v'] >= 1:
+                sys.stderr.write(info('# Best objective found with {} clones: {}\n'.format(n, obj)))
+        else:
+            raise RuntimeError(error('Failed to parse the output of the following command because the final objective was not found: \n\t\t{}\n'.format(cmd)))
+
+    return obj
+
+
 def execute(args, basecmd, n, outprefix):
+    if config.solver.python:
+        return execute_python(args, basecmd, n, outprefix)
     progressbar = ProgressBar(total=args['p'], length=min(50, args['p']), verbose=False)
     cmd = basecmd + ' -n {} -o {}'.format(n, outprefix)
     if args['v'] >= 3:

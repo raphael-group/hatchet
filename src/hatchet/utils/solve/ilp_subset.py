@@ -465,7 +465,6 @@ class ILPSubset:
             # generate n_parts random positions from all available positions
             positions = np.random.choice(np.arange(n), n_parts, replace=False)
 
-            # TODO: Could use better documentation here!
             bubbles = np.sort(np.random.choice(np.arange(1, size_bubbles), n_parts - 1, replace=False)) / size_bubbles
             _result = np.diff(bubbles, prepend=0, append=1)
 
@@ -504,5 +503,5 @@ class ILPSubset:
             self.model.objVal,
             self.optimized_cA.applymap(_value).astype(int),
             self.optimized_cB.applymap(_value).astype(int),
-            self.optimized_u.applymap(_value).round(5)
+            self.optimized_u.applymap(_value)
         )
