@@ -11,14 +11,15 @@ class Worker:
 
     def run(self, cA, cB, u, max_iters, max_convergence_iters, tol=0.001):
         _iters = _convergence_iters = 0
-        _obj_u = _cA = _cB = _u = None
+        _obj_u = _u = None
+        _cA, _cB = cA, cB  # first hot-start values
 
         while (_iters < max_iters) and (_convergence_iters < max_convergence_iters):
 
             carch = copy(self.ilp)
             carch.fix_u(u)
             carch.create_model()
-            carch.hot_start(cA, cB)
+            carch.hot_start(_cA, _cB)
             _obj_c, _cA, _cB, _ = carch.run()
 
             uarch = copy(self.ilp)

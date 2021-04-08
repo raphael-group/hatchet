@@ -76,7 +76,8 @@ def scale_rdr(rdr, copy_numbers, purity_tol=0.05):
 
 def segmentation(cA, cB, u, bbc_file, bbc_out_file=None, seg_out_file=None):
     df = pd.read_csv(bbc_file, sep='\t')
-    # df = df.sort_values(['#CHR', 'START', 'END', 'SAMPLE'])
+    # TODO: The C++ implementation interprets the 'coverage' column as an int
+    df['COV'] = df['COV'].astype(int)
 
     n_cluster, n_clone = cA.shape
 
@@ -90,15 +91,54 @@ def segmentation(cA, cB, u, bbc_file, bbc_out_file=None, seg_out_file=None):
     u.columns = ['u_normal'] + [f'u_clone{i}' for i in range(1, n_clone)]
     df = df.merge(u, left_on='SAMPLE', right_index=True)
 
+    # Sorting the values by start/end position critical for merging contiguous
+    # segments with identical copy numbers later on
+    df = df.sort_values(['#CHR', 'START', 'END', 'SAMPLE'])
+
+    # last 2*n_clone columns names = [cn_normal, u_normal, cn_clone1, u_clone1, cn_clone2, ...]
+    extra_columns = [col for sublist in zip(cN.columns, u.columns) for col in sublist]
+    all_columns = df.columns.values[:-2*n_clone].tolist() + extra_columns
+
     if bbc_out_file is not None:
-        # rearrange columns and sort rows for easy comparison to legacy files
-        # last 2*n_clone columns = [cn_normal, u_normal, cn_clone1, u_clone1, cn_clone2, ...]
-        columns = df.columns.values[:-2*n_clone].tolist() + \
-                  [col for sublist in zip(cN.columns, u.columns) for col in sublist]
-        df = df[columns]
-        df = df.sort_values(['#CHR', 'START', 'END', 'SAMPLE'])
+        # rearrange columns for easy comparison to legacy files
+        df = df[all_columns]
         df.to_csv(bbc_out_file, sep='\t', index=False)
 
-    return df
+    if seg_out_file is not None:
+        # create a new column that will use to store the contiguous segment number (1-indexed)
+        df['segment'] = 0
+        # all column names with cnA|cnB information (normal + clones)
+        cN_column_names = cN.columns.tolist()
+        # all columns names with mixture information (normal + clone)
+        u_column_names = u.columns.tolist()
+        # create a new column with all cnA|cnB strings joined as a single column
+        df['all_copy_numbers'] = df[cN_column_names].apply(lambda x: ','.join(x), axis=1)
 
+        _first_sample_name = df['SAMPLE'].iloc[0]
 
+        # Grouping by consecutive identical values
+        # See https://towardsdatascience.com/pandas-dataframe-group-by-consecutive-same-values-128913875dba
+        group_name_to_indices = df.groupby(
+            (
+                # Find indices where we see the first sample name AND
+                (df['SAMPLE'] == _first_sample_name) &
+                (
+                    # Any of the copy-numbers changed from the previous row
+                    # OR the START changed from the END in the previous row
+                    (df['all_copy_numbers'] != df['all_copy_numbers'].shift()) |
+                    (df['START'] != df['END'].shift())
+                )
+            ).cumsum()
+            # cumulative sum increments whenever a True is encountered, thus creating a series of monotonically
+            # increasing values we can use as segment numbers
+        ).indices
+        # 'indices' of a Pandas GroupBy object gives us the group name -> group indices mapping
+
+        for group_name, indices in group_name_to_indices.items():
+            df.loc[indices, 'segment'] = group_name
+
+        aggregation_rules = {'#CHR': 'min', 'START': 'min', 'END': 'max', 'SAMPLE': 'min'}
+        aggregation_rules.update({c: 'min' for c in extra_columns})
+
+        df = df.groupby(['segment', 'SAMPLE']).agg(aggregation_rules)
+        df.to_csv(seg_out_file, sep='\t', index=False)
