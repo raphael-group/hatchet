@@ -132,7 +132,8 @@ def segmentation(cA, cB, u, bbc_file, bbc_out_file=None, seg_out_file=None):
             # cumulative sum increments whenever a True is encountered, thus creating a series of monotonically
             # increasing values we can use as segment numbers
         ).indices
-        # 'indices' of a Pandas GroupBy object gives us the group name -> group indices mapping
+        # 'indices' of a Pandas GroupBy object gives us a mapping from the group 'name'
+        # (numbers starting from 1) -> indices in the Dataframe
 
         for group_name, indices in group_name_to_indices.items():
             df.loc[indices, 'segment'] = group_name
