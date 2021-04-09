@@ -4,6 +4,7 @@
 
 Set all variables in `config.sh` with appropriate values. You likely will not need to change anything in the `*.sh` scripts.
 
+Note that if the `LIST` variable is blank, HATCHet automatically downloads a list of known germline SNP positions based on your reference genome. If your internet connection is unstable (or if the SNPcaller step is failing), please specify the path to a locally stored list in VCF format.
 
 ## 2a) HATCHet without phasing
 
