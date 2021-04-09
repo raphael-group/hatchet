@@ -106,6 +106,7 @@ class ILPSubset:
         yB = {}
         adA = {}
         adB = {}
+        z = {}
 
         for _m in range(m):
 
@@ -174,6 +175,14 @@ class ILPSubset:
             for _n in range(n):
                 for _k in range(k):
                     x[(_n, _k)] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'x_{_n + 1}_{_k + 1}')
+
+        # buildOptionalVariables
+        z = {}
+        if (mode_t in ('FULL', 'CARCH')) and d > 0:
+            for _m in range(self.m):
+                for _n in range(1, self.n):
+                    for _d in range(d):
+                        z[(_m, _n, _d)] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'z+{_m + 1}_{_n + 1}_{_d + 1}')
 
         # CONSTRAINTS
 
@@ -313,8 +322,32 @@ class ILPSubset:
                     model.addConstr(x[(_n, _k)] >= self.u.iloc[_n][_k])
                     model.addConstr(self.u.iloc[_n][_k] >= self.mu * x[(_n, _k)])
 
+        # buildOptionalConstraints
         if (mode_t in ('FULL', 'CARCH')) and d > 0:
-            self.build_optional_contraints()
+            for _m in range(self.m):
+                for _n in range(1, self.n):
+                    _sum = 0
+                    for _d in range(self.d):
+                        _sum += z[(_m, _n, _d)]
+                    model.addConstr(_sum == 1)
+
+            for _m in range(self.m):
+                for _M in range(self.M):
+                    for _d in range(d):
+                        for _i in range(1, self.n-1):
+                            for _j in range(1, self.n):
+                                model.addConstr(bitcA[(_M, _m, _i)] - bitcA[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
+                                model.addConstr(bitcA[(_M, _m, _j)] - bitcA[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
+                                model.addConstr(bitcB[(_M, _m, _i)] - bitcB[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
+                                model.addConstr(bitcB[(_M, _m, _j)] - bitcB[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
+
+            for _m in range(self.m):
+                for _d in range(d - 1):
+                    _sum_l = _sum_l1 = 0
+                    for _n in range(1, self.n):
+                        _sum_l += z[(_m, _n, _d)] * self.symmCoeff(_n)
+                        _sum_l1 += z[(_m, _n, _d+1)] * self.symmCoeff(_n)
+                        model.addConstr(_sum_l <= _sum_l1)
 
         if mode_t in ('FULL', 'CARCH'):
             self.build_symmetry_breaking(model)
@@ -333,9 +366,6 @@ class ILPSubset:
         model.update()
 
         self.model = model
-
-    def build_optional_constraints(self):
-        pass
 
     def build_symmetry_breaking(self, model):
         for i in range(1, self.n - 1):
@@ -357,9 +387,18 @@ class ILPSubset:
                     model.addConstr(self.cB.iloc[_m][_n] == _cnB)
 
     def first_hot_start(self):
-        assert self.d < 0, "not implemented yet"
-        targetA = np.round(self.f_a.values)
-        targetB = np.round(self.f_b.values)
+
+        if self.d > 0:
+            targetA = np.empty((self.m, self.d))
+            targetB = np.empty_like(targetA)
+            for _m in range(self.m):
+                targetA[_m, :] = np.random.choice(self.f_a.iloc[_m].values, self.d, replace=False)
+                targetB[_m, :] = np.random.choice(self.f_b.iloc[_m].values, self.d, replace=False)
+            targetA = targetA.round()
+            targetB = targetB.round()
+        else:
+            targetA = np.round(self.f_a.values)
+            targetB = np.round(self.f_b.values)
 
         hcA = np.zeros((self.m, self.n))
         hcB = np.zeros((self.m, self.n))
