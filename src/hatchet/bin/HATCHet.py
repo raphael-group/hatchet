@@ -373,7 +373,9 @@ def findNeutralCluster(seg, size, td, samples, v):
 
 def runningDiploid(neutral, args):
     results = []
-    basecmd = makeBaseCMD(args, args['eD']) + " -c {}".format('{}:1:1'.format(neutral))
+    args['c'] = '{}:1:1'.format(neutral)
+    args['e'] = args['eD']
+    basecmd = makeBaseCMD(args, args['eD']) + " -c " + args['c']
 
     for n in range(args['ln'], args['un'] + 1):
         if args['v'] >= 2:
@@ -596,6 +598,9 @@ def runningTetraploid(clonal, scale, size, args):
     cn += ',{}:{}:{}'.format(scale[1], clonal[scale[1]][0], clonal[scale[1]][1])
     if len(clonal) > 2:
         cn = cn + ',' + ','.join(['{}:{}:{}'.format(s, clonal[s][0], clonal[s][1]) for s in clonal if s not in scale])
+
+    args['c'] = cn
+    args['e'] = args['eT']
     basecmd = makeBaseCMD(args, args['eT']) + " -c {}".format(cn)
 
     for n in range(args['ln'], args['un'] + 1):
@@ -609,38 +614,34 @@ def runningTetraploid(clonal, scale, size, args):
 
 def execute_python(args, basecmd, n, outprefix):
 
-    cmd = basecmd + ' -n {} -o {}'.format(n, outprefix)
-    if args['v'] >= 3:
-        sys.stderr.write(debug('### Running command: {}\n'.format(cmd)))
+    bbc_out_file = outprefix + '.bbc.ucn.tsv'
+    seg_out_file = outprefix + '.seg.ucn.tsv'
 
-    try:
-        obj, cA, cB, u = solve(
-            clonal=None,                          # -c, examples: 28:1:1/28:2:2,24:2:0,15:1:2/None
-            seg_file='bbc/bulk.seg',
-            n=2,                                  # -n, Number of distinct clones, 2-6 sweep by default
-            solve_mode='ilp',                      # 'cd' or 'ilp'; corresponds closely to
-                                                  # -M, 0=ILP+COORD_DESC, 1=ILP, 2=COORD_DESC (default 2)
-            d=-1,                                 # -d, Maximum number of distinct copy-number states, -1 = no limit
-            cn_max=6,                             # -e, Maximum copy number
-            mu=0.03,                              # -u, Minimum tumor-clone threshold
-            diploid_threshold=0.1,                # -t, hardcoded; argument exposed but not used in C++
-            ampdel=True,                          # -f, mutated allele amplification/deletion across tumor clones
-            n_seed=400,                           # -p, no. of seeds for coordinate descent
-            n_worker=8,                           # -j, no. of parallel workers for coordinate descent
-        )
+    _mode = ('both', 'ilp', 'cd')[args['M']]
 
-        segmentation(cA, cB, u, bbc_file='bbc/bulk.bbc', bbc_out_file='bbc/outp.bbc.ucn.tsv',
-                                       seg_out_file='bbc/outp.seg.ucn.tsv')
+    obj, cA, cB, u = solve(
+        clonal=args['c'],
+        seg_file=args['seg'],
+        n=n,
+        solve_mode=_mode,
+        d=-1 if args['d'] is None else args['d'],
+        cn_max=args['e'],
+        mu=args['u'],
+        diploid_threshold=0.1,
+        ampdel=args['ampdel'],
+        n_seed=args['p'],
+        n_worker=args['j'],
+        random_seed=args['r'],
+        max_iters=args['f']
+    )
 
-    except:
-        raise
+    segmentation(cA, cB, u, bbc_file=args['bbc'], bbc_out_file=bbc_out_file, seg_out_file=seg_out_file)
 
+    if obj >= 0:
+        if args['v'] >= 1:
+            sys.stderr.write(info('# Best objective found with {} clones: {}\n'.format(n, obj)))
     else:
-        if obj >= 0:
-            if args['v'] >= 1:
-                sys.stderr.write(info('# Best objective found with {} clones: {}\n'.format(n, obj)))
-        else:
-            raise RuntimeError(error('Failed to parse the output of the following command because the final objective was not found: \n\t\t{}\n'.format(cmd)))
+        raise RuntimeError(error('Failed to parse the output of the solve step command because the final objective was not found: \n\t\t{}\n'))
 
     return obj
 

@@ -411,7 +411,12 @@ class ILPSubset:
                         assert hcA[_m][_n] >= 0
                         assert hcB[_m][_n] >= 0
 
-        return hcA, hcB
+        cA = pd.DataFrame(index=self.cluster_ids, columns=range(self.n))
+        cA[:] = hcA
+        cB = pd.DataFrame(index=self.cluster_ids, columns=range(self.n))
+        cB[:] = hcB
+
+        return cA, cB
 
     def hot_start(self, f_a=None, f_b=None):
         def get_rank(hcA, hcB):
@@ -420,7 +425,7 @@ class ILPSubset:
             rank[0] = -1
             for _m in range(m):
                 for _n in range(1, n):
-                    rank[_n] += hcA[_m][_n] * self.symmCoeff(_m) + hcB[_m][_n] * self.symmCoeff(_m)
+                    rank[_n] += hcA.iloc[(_m, _n)] * self.symmCoeff(_m) + hcB.iloc[(_m, _n)] * self.symmCoeff(_m)
 
             return rank
 
@@ -431,8 +436,8 @@ class ILPSubset:
 
         for _m in range(self.m):
             for _n in range(0, self.n):
-                self.cA.iloc[_m][rank_indices[_n]].start = f_a[_m][_n]
-                self.cB.iloc[_m][rank_indices[_n]].start = f_a[_m][_n]
+                self.cA.iloc[_m][rank_indices[_n]].start = f_a.iloc[(_m, _n)]
+                self.cB.iloc[_m][rank_indices[_n]].start = f_b.iloc[(_m, _n)]
 
     def fix_u(self, u):
         self._fixed_u[:] = u
