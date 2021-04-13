@@ -104,16 +104,19 @@ def parse_phase_arguments(args=None):
 
     # add safety checks for custom ref panel
     #if args.refpanel != "1000GP_Phase3":
+
         
     # Check that SNP files exist when given in input
     snplists = {}
     for f in args.snps:
         if not os.path.isfile(f):
             raise ValueError(sp.error("The specified SNP file {} does not exist!".format(f)))
-        snplists = {os.path.basename(f).split('.')[0] : f for f in args.snps}
+        # use keys that correspond to chromosomes names used (below)
+        snplists = {os.path.basename(f).split('.')[0].replace("chr","") : f for f in args.snps}
 
     # Get chromosome names from vcf file names, since they're named according to chromosome in SNPCaller
-    chromosomes = [os.path.basename(snplists[i]).replace(".vcf.gz","") for i in snplists]
+    # rename chromosomes if they have chr prefix; used to locate ref panel files! 
+    chromosomes = [os.path.basename(snplists[i]).replace(".vcf.gz","").replace("chr","") for i in snplists]
 
     return {"refpanel" : args.refpanel,
             "genmap" : args.genmap,

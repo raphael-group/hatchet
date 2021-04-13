@@ -46,29 +46,14 @@ def main(args=None):
         raise ValueError(sp.error("Currently, only the 1000 genome panel aligned to GRCh37 without \"chr\" prefix is supported\n")) 
         #panel = args["refpanel"]       # for future: include custom panel
 
-
-
-
-    # DO THIS IN ARG PARSING FUNCTION????
-    if args["chrnot"] == "true":
-        chromosomes = [ i.replace("chr","") for i in args["chromosomes"] ] # rename chromosomes; used to locate ref panel files!
-        snplist = {k.replace("chr","") : v for k,v in args["snps"].items()} # keeps values -> filenames don't change
-    else:
-        chromosomes = args["chromosomes"]
-        snplist = args["snps"]
-
-
-
-
-
     # liftover VCFs, phase, liftover again to original coordinates 
-    vcfs = phase(panel, snplist=snplist, outdir=args["outdir"], chromosomes=chromosomes, 
+    vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=args["chromosomes"], 
                 hg19=hg19_path, chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
                 num_workers=args["j"], verbose=False) 
-    concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=chromosomes)
+    concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=args["chromosomes"])
 
     # read shapeit output, print fraction of phased snps per chromosome
-    print_log(path=args["outdir"], chromosomes = chromosomes)
+    print_log(path=args["outdir"], chromosomes=args["chromosomes"])
     cleanup(args["outdir"])
             
     print(concat_vcf)
