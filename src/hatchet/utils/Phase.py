@@ -8,6 +8,8 @@ from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 import requests
 import tarfile
 import glob
+import gzip
+import shutil
 from . import ArgParsing as ap
 from .Supporting import *
 from . import Supporting as sp
@@ -21,18 +23,50 @@ def main(args=None):
     for i in args:
         print(i, args[i])
 
-    if args["refpanel"] == "1000GP_Phase3":
-        if not os.path.isfile( os.path.join(args["outputphase"], "1000GP_Phase3", "1000GP_Phase3.sample") ):
-            dwnld_1kgp(path = args["outputphase"])
-        panel = os.path.join( args["outputphase"], "1000GP_Phase3" )
-    else:
-        panel = args["refpanel"]
+    if args["refvers"] not in ["hg19", "hg38"]:
+        raise ValueError(sp.error("The reference genome version of your samples is not \"hg19\" or \"hg38\", please specify one of these two options!\n"))
 
-    vcfs = phase(panel, snplist=args["snps"], outdir=args["outputphase"], chromosomes=args["chromosomes"], num_workers=args["j"], verbose=False) 
-    concat_vcf = concat(vcfs, outdir=args["outputphase"], chromosomes=args["chromosomes"])
+    # download reference panel, prepare files for liftover
+    hg19_path = ""      # path to hg19, 1000GP in hg19 coords, potentially needed for liftover
+    chains = ""         # chain files for liftover, chains["hg38_hg19"]=path, chains["hg19_hg38"]=path
+    rename_files = ""   # file for renaming chrs with bcftools, rename_files[0] for removing "chr, rename_files[1] for adding "chr" 
+    if args["refpanel"] == "1000GP_Phase3":
+        # download 1000GP ref panel
+        if not os.path.isfile( os.path.join(args["outdir"], "1000GP_Phase3", "1000GP_Phase3.sample") ):
+            dwnld_1kgp(path = args["outdir"])
+        panel = os.path.join( args["outdir"], "1000GP_Phase3" )
+        # download necessary liftover files; 1000GP in hg19 coordinates
+        if args["refvers"] == "hg38":
+            #dwnld reference panel genome and chain files
+            hg19_path = dwnld_refpanel_genome(path=args["outdir"])
+            chains = dwnld_chains(path=args["outdir"], refpanel_chr="false", sample_chr=args["chrnot"] )
+        elif args["refvers"] == "hg19" and args["chrnot"] == "true":
+            rename_files = mk_rename_file(path = args["outdir"]) 
+    else:
+        raise ValueError(sp.error("Currently, only the 1000 genome panel aligned to GRCh37 without \"chr\" prefix is supported\n")) 
+        #panel = args["refpanel"]       # for future: include custom panel
+
+
+
+    # DO THIS IN ARG PARSING FUNCTION????
+    if args["chrnot"] == "true":
+        chromosomes = [ i.replace("chr","") for i in args["chromosomes"] ] # rename chromosomes; used to locate ref panel files!
+        snplist = {k.replace("chr","") : v for k,v in args["snps"].items()} # keeps values -> filenames don't change
+    else:
+        chromosomes = args["chromosomes"]
+        snplist = args["snps"]
+
+
+
+
+    # liftover VCFs, phase, liftover again to original coordinates 
+    vcfs = phase(panel, snplist=snplist, outdir=args["outdir"], chromosomes=chromosomes, 
+                hg19=hg19_path, chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
+                num_workers=args["j"], verbose=False) 
+    concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=chromosomes)
 
     # read shapeit output, print fraction of phased snps per chromosome
-    print_log(path=args["outputphase"], chromosomes = args["chromosomes"])
+    print_log(path=args["outdir"], chromosomes = chromosomes)
 
     # remove other shapeit logs
     f = []
@@ -40,6 +74,58 @@ def main(args=None):
     [ os.remove(i) for i in f]
             
     print(concat_vcf)
+
+def dwnld_chains(path, refpanel_chr, sample_chr):
+    # order of urls important! [0] chain for sample -> ref panel, [1] chain for ref panel -> sample
+    urls = ("https://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz", "http://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/hg19ToHg38.over.chain.gz")
+    paths = [os.path.join(path, os.path.basename(i)) for i in urls] # paths for url downloads
+    for i, url in enumerate(urls):
+        r = requests.get(url, allow_redirects=True)
+        open(paths[i], 'wb').write(r.content)
+    c1 = mod_chain(paths[0], refpanel_chr, sample_chr, refpanel_index=7, sample_index=2) # modify chr notation of hg38ToHg19, ref panel chr in 7th field, sample chr in 2nd field
+    c2 = mod_chain(paths[1], refpanel_chr, sample_chr, refpanel_index=2, sample_index=7) # modify chr notation of hg19ToHg38, ref panel chr in 2th field, sample chr in 7nd field
+    [ os.remove(p) for p in paths ] # remove original chain files
+    return {"hg38_hg19" : c1, "hg19_hg38" : c2}
+
+def mod_chain(infile, refpanel_chr, sample_chr, refpanel_index, sample_index):
+    name = infile.strip(".gz").replace("over", "renamed")
+    with open(name, 'w') as new:
+        with gzip.open(infile, 'rt') as f:
+            for l in f:
+                if l.startswith("chain"):
+                    l = l.split()
+                    if refpanel_chr == "false": l[refpanel_index] = l[refpanel_index].replace("chr","") 
+                    if sample_chr == "false": l[sample_index] = l[sample_index].replace("chr","") 
+                    new.write(" ".join(l) + "\n")
+                else:
+                    new.write(l)
+    return name
+
+def dwnld_refpanel_genome(path):
+    url = "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz"
+    out = os.path.join(path, "hg19.fa.gz")
+    # download hg19
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(out, 'wb') as f:                                                                                                                    
+            for chunk in r.iter_content(chunk_size=8192):                                                                                             
+                f.write(chunk)      
+    # change chr notation
+    newref = os.path.join(path, "hg19_renamed.fa")
+    with open(newref, 'w') as new:
+        with gzip.open(out, 'rt') as f:
+            [ new.write(l.replace("chr","")) if l.startswith(">") else new.write(l) for l in f ]
+    os.remove(out)
+    return newref
+
+def mk_rename_file(path):
+    # makes rename_chrs1.txt for removing "chr", rename_chrs2.txt for adding "chr"
+    names = [ os.path.join(path, f"rename_chrs{i}.txt") for i in range(1,3) ]
+    for i, n in enumerate(names):
+        with open(n, 'w') as f:
+            for j in range(1,23):
+                f.write(f"chr{j} {j}\n") if i == 0 else f.write(f"{j} chr{j}\n") 
+    return names
 
 def dwnld_1kgp(path):
     url = "https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz"
@@ -49,10 +135,10 @@ def dwnld_1kgp(path):
         with open(out, 'wb') as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
-        f.write(r.content)
+        #f.write(r.content)
     # extract tar file, remove
     t = tarfile.open(out)
-    t.extractall(args["outputphase"])
+    t.extractall(path)
     t.close()
     os.remove(out)
 
@@ -84,7 +170,7 @@ def concat(vcfs, outdir, chromosomes):
         [os.remove(i) for i in f] 
     return(outfile)
 
-def phase(panel, snplist, outdir, chromosomes, num_workers, verbose=False):
+def phase(panel, snplist, outdir, chromosomes, hg19, chains, rename, refvers, chrnot, num_workers, verbose=False):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
     counter = Value('i', 0)
@@ -101,7 +187,8 @@ def phase(panel, snplist, outdir, chromosomes, num_workers, verbose=False):
         jobs_count += 1
 
     # Setting up the workers
-    workers = [Phaser(tasks, results, progress_bar, panel, outdir, snplist, verbose) for i in range(min(num_workers, jobs_count))]
+    workers = [ Phaser(tasks, results, progress_bar, panel, outdir, snplist, hg19, chains, rename, refvers, chrnot, verbose) 
+                for i in range(min(num_workers, jobs_count)) ]
 
     # Add a poison pill for each worker
     for i in range(len(workers)):
@@ -130,7 +217,7 @@ def phase(panel, snplist, outdir, chromosomes, num_workers, verbose=False):
 
 class Phaser(Process):
 
-    def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, verbose):
+    def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, hg19, chains, rename, refvers, chrnot, verbose):
         Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -138,23 +225,64 @@ class Phaser(Process):
         self.panel = panel 
         self.outdir = outdir
         self.snplist = snplist
+        self.hg19 = hg19
+        self.chains = chains
+        self.rename = rename
+        self.refvers = refvers
+        self.chrnot = chrnot
         self.verbose = verbose
 
     def run(self):
         while True:
-            next_task = self.task_queue.get()
+            next_task = self.task_queue.get() # tuple (snplist[chro], chro)
             if next_task is None:
                 # Poison pill means shutdown
                 self.task_queue.task_done()
                 break
 
+            # begin work
             self.progress_bar.progress(advance=False, msg=f"{self.name} starts on vcf {next_task[0]} for chromosome {next_task[1]}")
-            bi = self.biallelic(infile=next_task[0], chromosome=next_task[1])
-            phased = self.shapeit(infile=next_task[0], chromosome=next_task[1])
+            if self.refvers == "hg19":
+                # no need for liftover, just deal with chr annotation
+                if self.chrnot == "true":
+                    vcf_toFilter = self.change_chr(infile=next_task[0], chromosome=next_task[1], rename=self.rename[0])
+                else:
+                    vcf_toFilter = self.stage_vcfs(infile=next_task[0], chromosome=next_task[1])
+            else:
+                print("Do nothing for now!")
+                # liftover
+            vcf_toPhase = self.biallelic(infile=vcf_toFilter, chromosome=next_task[1]) # filter out multi-allelic sites and indels
+            vcf_phased = self.shapeit(infile=vcf_toPhase, chromosome=next_task[1]) # phase
             self.progress_bar.progress(advance=True, msg=f"{self.name} ends on vcf {next_task[0]} for chromosome {next_task[1]})")
             self.task_queue.task_done()
-            self.result_queue.put(phased)
+            #self.result_queue.put(phased)
+            self.result_queue.put(vcf_phased)
         return
+
+    def change_chr(self, infile, chromosome, rename):
+        # use bcftools to rename chromosomes
+        errname = os.path.join(self.outdir, f"{chromosome}_bcftools.log")
+        outfile = os.path.join(self.outdir, f"{chromosome}_toFilter.vcf.gz")
+        cmd_bcf = f"bcftools annotate --rename-chrs {rename} --output-type z --output {outfile} {infile}"
+        print(cmd_bcf)
+        with open(errname, 'w') as err:
+            run = pr.run(cmd_bcf, stdout=err, stderr=err, shell=True, universal_newlines=True)
+        if run.returncode != 0:
+            raise ValueError(sp.error(f"Failed to reannotate chromosomes with bcftools on {infile}, please check errors in {errname}!"))
+        else:
+            os.remove(errname)
+        return outfile
+
+    def stage_vcfs(self, infile, chromosome):
+        # copy file, so that phasing takes same input file name regardless of conditions, unzip
+        outfile = os.path.join(self.outdir, f"{chromosome}_toFilter.vcf.gz") 
+        shutil.copyfile(infile, outfile)
+        """
+        with gzip.open(infile, 'rb') as f_in:
+            with open(outfile, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        """
+        return outfile
 
     def biallelic(self, infile, chromosome):
         # use bcftools to discard multi-allelic sites and indels
@@ -168,7 +296,7 @@ class Phaser(Process):
             raise ValueError(sp.error(f"Biallelic sites filtering failed on {infile}, please check errors in {errname}!"))
         else:
             os.remove(errname)
-        return os.path.join(outfile)
+        return outfile
 
     def shapeit(self, infile, chromosome): 
         # use shapeit with reference panel to phase vcf files

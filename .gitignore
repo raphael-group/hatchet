@@ -1,4 +1,6 @@
 ######## STUFF I ADDED BETWEEN POUND SIGNS
+script/config_lo.sh
+script/lo/
 script/rm.sh
 *.swp
 GRCh37p13_00-All.vcf.gz.tbi

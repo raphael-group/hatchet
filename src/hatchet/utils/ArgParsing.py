@@ -97,7 +97,7 @@ def parse_phase_arguments(args=None):
     parser.add_argument("-p","--hap", required=False, type=str, help="prefix of hap files for custom reference panel, e.g. \"1000GP\" for \"1000GP_chr1.hap.gz\", where all chromosome-specific hap files end in \"_chr{1..22}.hap.gz\"")
     # uncomment after you figure out config.snp.outputsnps
     #parser.add_argument("-o", "--outputphase", required=False, default=config.snp.outputsnps, type=str, help="Output folder for phased VCFs and 1000G reference panel (default: ./)")
-    parser.add_argument("-o", "--outputphase", required=False, type=str, help="Output folder for phased VCFs and 1000G reference panel")
+    parser.add_argument("-o", "--outdir", required=False, type=str, help="Output folder for phased VCFs and 1000G reference panel")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
     parser.add_argument("-j", "--processes", required=False, default=config.snp.processes, type=int, help="Number of available parallel processes (default: 2)")
     args = parser.parse_args(args)
@@ -122,9 +122,9 @@ def parse_phase_arguments(args=None):
             "j" : args.processes,
             "chromosomes" : chromosomes,
             "snps" : snplists,
-            "refversion" : args.refversion,
-            "chrnotation" : args.chrnotation,
-            "outputphase" : os.path.abspath(args.outputphase)}
+            "refvers" : args.refversion,
+            "chrnot" : args.chrnotation,
+            "outdir" : os.path.abspath(args.outdir)}
 
 def parse_baf_arguments(args=None):
     """

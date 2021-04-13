@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-source ./config.sh
+source ./config_lo.sh
+#source ./config.sh
 
 
 cd ${XDIR}
