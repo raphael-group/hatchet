@@ -48,6 +48,7 @@ def main(args=None):
 
 
 
+
     # DO THIS IN ARG PARSING FUNCTION????
     if args["chrnot"] == "true":
         chromosomes = [ i.replace("chr","") for i in args["chromosomes"] ] # rename chromosomes; used to locate ref panel files!
@@ -55,6 +56,7 @@ def main(args=None):
     else:
         chromosomes = args["chromosomes"]
         snplist = args["snps"]
+
 
 
 
@@ -67,13 +69,20 @@ def main(args=None):
 
     # read shapeit output, print fraction of phased snps per chromosome
     print_log(path=args["outdir"], chromosomes = chromosomes)
-
-    # remove other shapeit logs
-    f = []
-    [ f.extend( glob.glob(f"shapeit*{ext}"))  for ext in [".log", ".mm", ".hh"]]
-    [ os.remove(i) for i in f]
+    cleanup(args["outdir"])
             
     print(concat_vcf)
+
+def cleanup(outdir):
+    f = []
+    # shapeit logs
+    [ f.extend( glob.glob(f"shapeit*{ext}"))  for ext in [".log", ".mm", ".hh"]]
+    # intermediate files
+    exts = ["_phased.vcf.gz", "_phased.vcf.gz.csi", "_filtered.vcf.gz", 
+            "_toFilter.vcf.gz", "_toConcat.vcf.gz", "_toConcat.vcf.gz.csi", 
+            ".haps", ".sample", "_alignments.snp.strand", "_alignments.snp.strand.exclude"]
+    [ f.append( os.path.join(outdir, f"{c}{e}") ) for c in range(1,23) for e in exts]
+    [os.remove(i) for i in f]
 
 def dwnld_chains(path, refpanel_chr, sample_chr):
     # order of urls important! [0] chain for sample -> ref panel, [1] chain for ref panel -> sample
@@ -164,10 +173,6 @@ def concat(vcfs, outdir, chromosomes):
         raise ValueError(sp.error(f"bcftools concat failed, please check errors in {errname}!"))
     else:
         os.remove(errname)
-        exts = ["_phased.vcf.gz", "_phased.vcf.gz.csi"]
-        f = []
-        [ f.extend( glob.glob( os.path.join(outdir, f"{c}{e}" ))) for c in chromosomes for e in exts]
-        [os.remove(i) for i in f] 
     return(outfile)
 
 def phase(panel, snplist, outdir, chromosomes, hg19, chains, rename, refvers, chrnot, num_workers, verbose=False):
@@ -242,27 +247,41 @@ class Phaser(Process):
 
             # begin work
             self.progress_bar.progress(advance=False, msg=f"{self.name} starts on vcf {next_task[0]} for chromosome {next_task[1]}")
+            # (1) PREPROCESS
             if self.refvers == "hg19":
                 # no need for liftover, just deal with chr annotation
                 if self.chrnot == "true":
-                    vcf_toFilter = self.change_chr(infile=next_task[0], chromosome=next_task[1], rename=self.rename[0])
+                    vcf_toFilter = self.change_chr(infile=next_task[0], chromosome=next_task[1], outname="toFilter", rename=self.rename[0])
                 else:
                     vcf_toFilter = self.stage_vcfs(infile=next_task[0], chromosome=next_task[1])
             else:
                 print("Do nothing for now!")
                 # liftover
+
+            # (2) FILTERING AND PHASING
             vcf_toPhase = self.biallelic(infile=vcf_toFilter, chromosome=next_task[1]) # filter out multi-allelic sites and indels
             vcf_phased = self.shapeit(infile=vcf_toPhase, chromosome=next_task[1]) # phase
+
+            # (3) POSTPROCESS
+            if self.refvers == "hg19":
+                if self.chrnot == "true":
+                    vcf_toConcat = self.change_chr(infile=vcf_phased, chromosome=next_task[1], outname="toConcat", rename=self.rename[1])
+                    self.index(infile=vcf_toConcat, chromosome=next_task[1]) # re-index with bcftools after renaming
+                else:
+                    vcf_toConcat = vcf_phased
+            else:
+                print("Do nothing for now!")
+
             self.progress_bar.progress(advance=True, msg=f"{self.name} ends on vcf {next_task[0]} for chromosome {next_task[1]})")
             self.task_queue.task_done()
             #self.result_queue.put(phased)
-            self.result_queue.put(vcf_phased)
+            self.result_queue.put(vcf_toConcat)
         return
 
-    def change_chr(self, infile, chromosome, rename):
+    def change_chr(self, infile, chromosome, outname, rename):
         # use bcftools to rename chromosomes
         errname = os.path.join(self.outdir, f"{chromosome}_bcftools.log")
-        outfile = os.path.join(self.outdir, f"{chromosome}_toFilter.vcf.gz")
+        outfile = os.path.join(self.outdir, f"{chromosome}_{outname}.vcf.gz")
         cmd_bcf = f"bcftools annotate --rename-chrs {rename} --output-type z --output {outfile} {infile}"
         print(cmd_bcf)
         with open(errname, 'w') as err:
@@ -277,11 +296,6 @@ class Phaser(Process):
         # copy file, so that phasing takes same input file name regardless of conditions, unzip
         outfile = os.path.join(self.outdir, f"{chromosome}_toFilter.vcf.gz") 
         shutil.copyfile(infile, outfile)
-        """
-        with gzip.open(infile, 'rb') as f_in:
-            with open(outfile, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-        """
         return outfile
 
     def biallelic(self, infile, chromosome):
@@ -339,11 +353,19 @@ class Phaser(Process):
             raise ValueError(sp.error(f"Phasing failed on {infile}, please check errors in {errname}!"))
         else:
             os.remove(errname)
-            exts = ["_filtered.vcf.gz", ".haps", ".sample", "_alignments.snp.strand", "_alignments.snp.strand.exclude"]
-            f = []
-            [ f.extend( glob.glob( os.path.join(self.outdir, f"{chromosome}{e}" ))) for e in exts]
-            [os.remove(i) for i in f]
         return os.path.join(self.outdir, f"{chromosome}_phased.vcf.gz")
+
+    def index(self, infile, chromosome): 
+        # use bcftools to rename chromosomes
+        errname = os.path.join(self.outdir, f"{chromosome}_bcftools.log")
+        cmd = f"bcftools index {infile}"
+        with open(errname, 'w') as err:
+            run = pr.run(cmd, stdout=err, stderr=err, shell=True, universal_newlines=True)
+        if run.returncode != 0:
+            raise ValueError(sp.error(f"Failed to index {infile}with bcftools, please check errors in {errname}!"))
+        else:
+            os.remove(errname)
+        return 
 
 if __name__ == '__main__':
     main()
