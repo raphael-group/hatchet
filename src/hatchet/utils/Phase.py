@@ -9,6 +9,7 @@ import requests
 import tarfile
 import glob
 import gzip
+import shlex
 import shutil
 from . import ArgParsing as ap
 from .Supporting import *
@@ -48,13 +49,14 @@ def main(args=None):
 
     # liftover VCFs, phase, liftover again to original coordinates 
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=args["chromosomes"], 
-                hg19=hg19_path, chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
+                hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
                 num_workers=args["j"], verbose=False) 
+    print(vcfs)
     concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=args["chromosomes"])
 
     # read shapeit output, print fraction of phased snps per chromosome
     print_log(path=args["outdir"], chromosomes=args["chromosomes"])
-    cleanup(args["outdir"])
+    #cleanup(args["outdir"])
             
     print(concat_vcf)
 
@@ -66,8 +68,8 @@ def cleanup(outdir):
     exts = ["_phased.vcf.gz", "_phased.vcf.gz.csi", "_filtered.vcf.gz", 
             "_toFilter.vcf.gz", "_toConcat.vcf.gz", "_toConcat.vcf.gz.csi", 
             ".haps", ".sample", "_alignments.snp.strand", "_alignments.snp.strand.exclude"]
-    [ f.append( os.path.join(outdir, f"{c}{e}") ) for c in range(1,23) for e in exts]
-    [os.remove(i) for i in f]
+    [ f.append( os.path.join(outdir, f"{c}{e}") ) for c in range(1,23) for e in exts ]
+    [ os.remove(i) for i in f if os.path.isfile(i) ]
 
 def dwnld_chains(path, refpanel_chr, sample_chr):
     # order of urls important! [0] chain for sample -> ref panel, [1] chain for ref panel -> sample
@@ -98,18 +100,29 @@ def mod_chain(infile, refpanel_chr, sample_chr, refpanel_index, sample_index):
 def dwnld_refpanel_genome(path):
     url = "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz"
     out = os.path.join(path, "hg19.fa.gz")
-    # download hg19
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(out, 'wb') as f:                                                                                                                    
-            for chunk in r.iter_content(chunk_size=8192):                                                                                             
-                f.write(chunk)      
-    # change chr notation
     newref = os.path.join(path, "hg19_renamed.fa")
-    with open(newref, 'w') as new:
-        with gzip.open(out, 'rt') as f:
-            [ new.write(l.replace("chr","")) if l.startswith(">") else new.write(l) for l in f ]
-    os.remove(out)
+    if not os.path.isfile(newref):
+        # download hg19
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(out, 'wb') as f:                                                                                                                    
+                for chunk in r.iter_content(chunk_size=8192):                                                                                             
+                    f.write(chunk)      
+        # change chr notation
+        with open(newref, 'w') as new:
+            with gzip.open(out, 'rt') as f:
+                [ new.write(l.replace("chr","")) if l.startswith(">") else new.write(l) for l in f ]
+        os.remove(out)
+        # make dict file
+        dict_file = newref.replace(".fa",".dict")
+        cmd = f"samtools dict {newref} > {dict_file}"
+        errname = os.path.join(path, f"samtools.log")
+        with open(errname, 'w') as err:
+            run = pr.run(cmd, stdout=err, stderr=err, shell=True, universal_newlines=True)
+        if run.returncode != 0:
+            raise ValueError(sp.error(f"Samtools dict creation failed, please check errors in {errname}!"))
+        else:
+            os.remove(errname)
     return newref
 
 def mk_rename_file(path):
@@ -160,7 +173,7 @@ def concat(vcfs, outdir, chromosomes):
         os.remove(errname)
     return(outfile)
 
-def phase(panel, snplist, outdir, chromosomes, hg19, chains, rename, refvers, chrnot, num_workers, verbose=False):
+def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refvers, chrnot, num_workers, verbose=False):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
     counter = Value('i', 0)
@@ -177,7 +190,7 @@ def phase(panel, snplist, outdir, chromosomes, hg19, chains, rename, refvers, ch
         jobs_count += 1
 
     # Setting up the workers
-    workers = [ Phaser(tasks, results, progress_bar, panel, outdir, snplist, hg19, chains, rename, refvers, chrnot, verbose) 
+    workers = [ Phaser(tasks, results, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose) 
                 for i in range(min(num_workers, jobs_count)) ]
 
     # Add a poison pill for each worker
@@ -207,7 +220,7 @@ def phase(panel, snplist, outdir, chromosomes, hg19, chains, rename, refvers, ch
 
 class Phaser(Process):
 
-    def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, hg19, chains, rename, refvers, chrnot, verbose):
+    def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose):
         Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -216,6 +229,7 @@ class Phaser(Process):
         self.outdir = outdir
         self.snplist = snplist
         self.hg19 = hg19
+        self.ref = ref
         self.chains = chains
         self.rename = rename
         self.refvers = refvers
@@ -238,14 +252,14 @@ class Phaser(Process):
                 if self.chrnot == "true":
                     vcf_toFilter = self.change_chr(infile=next_task[0], chromosome=next_task[1], outname="toFilter", rename=self.rename[0])
                 else:
-                    vcf_toFilter = self.stage_vcfs(infile=next_task[0], chromosome=next_task[1])
+                    vcf_toFilter = self.stage_vcfs(infile=next_task[0], chromosome=next_task[1]) # just copy files, vcfs already appropriately formatted
             else:
-                print("Do nothing for now!")
                 # liftover
+                vcf_toFilter = self.liftover(infile=next_task[0], chromosome=next_task[1], outname="toFilter", chain=self.chains["hg38_hg19"], refgen=self.hg19, ch="false")
 
             # (2) FILTERING AND PHASING
-            vcf_toPhase = self.biallelic(infile=vcf_toFilter, chromosome=next_task[1]) # filter out multi-allelic sites and indels
-            vcf_phased = self.shapeit(infile=vcf_toPhase, chromosome=next_task[1]) # phase
+            vcf_filtered = self.biallelic(infile=vcf_toFilter, chromosome=next_task[1]) # filter out multi-allelic sites and indels
+            vcf_phased = self.shapeit(infile=vcf_filtered, chromosome=next_task[1]) # phase
 
             # (3) POSTPROCESS
             if self.refvers == "hg19":
@@ -253,15 +267,34 @@ class Phaser(Process):
                     vcf_toConcat = self.change_chr(infile=vcf_phased, chromosome=next_task[1], outname="toConcat", rename=self.rename[1])
                     self.index(infile=vcf_toConcat, chromosome=next_task[1]) # re-index with bcftools after renaming
                 else:
-                    vcf_toConcat = vcf_phased
+                    vcf_toConcat = vcf_phased # do nothing; vcfs already in original format
             else:
-                print("Do nothing for now!")
+                vcf_toConcat = self.liftover(infile=vcf_phased, chromosome=next_task[1], outname="toConcat", chain=self.chains["hg19_hg38"], refgen=self.ref, ch=self.chrnot)
 
             self.progress_bar.progress(advance=True, msg=f"{self.name} ends on vcf {next_task[0]} for chromosome {next_task[1]})")
             self.task_queue.task_done()
-            #self.result_queue.put(phased)
             self.result_queue.put(vcf_toConcat)
         return
+
+    def liftover(self, infile, chromosome, outname, chain, refgen, ch):
+        errname = os.path.join(self.outdir, f"{chromosome}_picard.log")
+        tmpfile = os.path.join(self.outdir, f"{chromosome}_lifted.vcf.gz") # output from picard liftover, to be filtered
+        outfile = os.path.join(self.outdir, f"{chromosome}_{outname}.vcf.gz") # filtered with bcftools
+        rejfile = os.path.join(self.outdir, f"{chromosome}_rejected.vcf.gz") # required file of SNPs that didn't liftover
+        cmd1 = f"picard LiftoverVcf -Xmx4g I={infile} O={tmpfile} CHAIN={chain} R={refgen} REJECT={rejfile}"
+        c = chromosome if ch == "false" else f"chr{chromosome}" # need to change "chr" notation depending on liftover direction
+        cmd2 = f"bcftools filter --output-type z --regions {c} {tmpfile}" # filter out mapping to other chromosomes/contigs!
+        cmd3 = f"bcftools norm --remove-duplicates --output {outfile}" # remove duplicate sites from liftover
+        with open(errname, 'w') as err:
+            pic = pr.run(cmd1, stdout=err, stderr=err, shell=True, universal_newlines=True)
+            filt = pr.Popen(shlex.split(cmd2), stdout=pr.PIPE, stderr=err, universal_newlines=True)
+            norm = pr.Popen(shlex.split(cmd3), stdin=filt.stdout, stdout=err, stderr=err, universal_newlines=True)
+            codes = map(lambda p : p.wait(), [filt, norm])
+        if any(c != 0 for c in codes) or pic.returncode != 0:
+            raise ValueError(sp.error(f"Failed to liftover chromosomes with picard on {infile}, please check errors in {errname}!"))
+        else:
+            os.remove(errname)
+        return outfile
 
     def change_chr(self, infile, chromosome, outname, rename):
         # use bcftools to rename chromosomes

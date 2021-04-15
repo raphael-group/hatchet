@@ -1,4 +1,6 @@
 ######## STUFF I ADDED BETWEEN POUND SIGNS
+script/config_hg38.sh
+script/hg38/
 script/config_lo.sh
 script/lo/
 script/rm.sh
