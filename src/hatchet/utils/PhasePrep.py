@@ -4,17 +4,12 @@ import os, sys
 import os.path
 import argparse
 import subprocess as pr
-from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 import requests
 import tarfile
-import glob
 import gzip
-import shlex
-import shutil
 from . import ArgParsing as ap
 from .Supporting import *
 from . import Supporting as sp
-from . import ProgressBar as pb
 
 def main(args=None):
     log(msg="# log notes\n", level="STEP")

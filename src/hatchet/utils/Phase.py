@@ -6,7 +6,6 @@ import argparse
 import subprocess as pr
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 import glob
-import gzip
 import shlex
 import shutil
 from . import ArgParsing as ap
@@ -22,34 +21,33 @@ def main(args=None):
     if args["refvers"] not in ["hg19", "hg38"]:
         raise ValueError(sp.error("The reference genome version of your samples is not \"hg19\" or \"hg38\", please specify one of these two options!\n"))
 
-    # download reference panel, prepare files for liftover
+    rpd = args["refpaneldir"]
     try:
-        open( os.path.join(args["refpaneldir"], "1000GP_Phase3", "1000GP_Phase3.sample"), 'r' ) 
+        open( os.path.join(rpd, "1000GP_Phase3", "1000GP_Phase3.sample"), 'r' ) 
     except FileNotFoundError:
         print("Please download the 1000GP reference panel before proceeding")
-    panel = os.path.join( args["refpaneldir"], "1000GP_Phase3" )
+    panel = os.path.join(rpd, "1000GP_Phase3" )
             
     hg19_path = ""      # path to hg19, 1000GP in hg19 coords, potentially needed for liftover
     chains = ""         # chain files for liftover, chains["hg38_hg19"]=path, chains["hg19_hg38"]=path
     rename_files = ""   # file for renaming chrs with bcftools, rename_files[0] for removing "chr, rename_files[1] for adding "chr" 
     if args["refvers"] == "hg38":
         #dwnld reference panel genome and chain files
-        hg19_path = os.path.join(args["refpaneldir"], "hg19_renamed.fa")
-        chains = {"hg38_hg19" : os.path.join(args["refpaneldir"], "hg38ToHg19.renamed.chain"), 
-                "hg19_hg38" : os.path.join(args["refpaneldir"], "hg19ToHg38.renamed.chain")}
+        hg19_path = os.path.join(rpd, "hg19_renamed.fa")
+        chains = {"hg38_hg19" : os.path.join(rpd, "hg38ToHg19.renamed.chain"), 
+                "hg19_hg38" : os.path.join(rpd, "hg19ToHg38.renamed.chain")}
     elif args["refvers"] == "hg19" and args["chrnot"] == "true":
-        rename_files = [ os.path.join(args["refpaneldir"], f"rename_chrs{i}.txt") for i in range(1,3) ] 
+        rename_files = [ os.path.join(rpd, f"rename_chrs{i}.txt") for i in range(1,3) ] 
 
     # liftover VCFs, phase, liftover again to original coordinates 
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=args["chromosomes"], 
                 hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
                 num_workers=args["j"], verbose=False) 
-    print(vcfs)
     concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=args["chromosomes"])
 
     # read shapeit output, print fraction of phased snps per chromosome
     print_log(path=args["outdir"], chromosomes=args["chromosomes"])
-    #cleanup(args["outdir"])
+    cleanup(args["outdir"])
             
     print(concat_vcf)
 
@@ -281,7 +279,8 @@ class Phaser(Process):
             run3 = pr.run(cmd3, stdout=err, stderr=err, shell=True, universal_newlines=True)
             run4 = pr.run(cmd4, stdout=err, stderr=err, shell=True, universal_newlines=True)
             run5 = pr.run(cmd5, stdout=err, stderr=err, shell=True, universal_newlines=True)
-            codes = [run2.returncode, run3.returncode, run4.returncode, run5.returncode] # not collecting error codes from run1 at moment; has nonzero exit status even when it works
+            codes = map(lambda p : p.returncode, [run2, run3, run4, run5])
+            #codes = [run2.returncode, run3.returncode, run4.returncode, run5.returncode] # not collecting error codes from run1 at moment; has nonzero exit status even when it works
         if any(c != 0 for c in codes):
             raise ValueError(sp.error(f"Phasing failed on {infile}, please check errors in {errname}!"))
         else:
