@@ -18,6 +18,7 @@ import os.path
 import hatchet
 from hatchet.utils.binBAM import main as binBAM
 from hatchet.utils.SNPCaller import main as SNPCaller
+from hatchet.utils.PhasePrep import main as PhasePrep
 from hatchet.utils.Phase import main as Phase
 from hatchet.utils.deBAF import main as deBAF
 from hatchet.utils.comBBo import main as comBBo
@@ -31,7 +32,7 @@ solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 if __name__ == '__main__':
 
-    commands = ('binBAM', 'SNPCaller', 'Phase', 'deBAF', 'comBBo', 'cluBB', 'BBot', 'solve', 'BBeval')
+    commands = ('binBAM', 'SNPCaller', 'PhasePrep', 'Phase', 'deBAF', 'comBBo', 'cluBB', 'BBot', 'solve', 'BBeval')
     if len(sys.argv) < 2:
         print('Usage: python -m hatchet <command> <arguments ..>')
         sys.exit(0)

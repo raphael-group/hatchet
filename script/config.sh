@@ -34,7 +34,8 @@ BIN="50kb"   #Bin size for calculating RDR and BAF
 ################################################################################################################################
 PHASE="None"  #Path to phased file; specify "None" to run hatchet without phasing
 BLOCK="50kb"  #Haplotype block size  used for combining SNPs
-REF_PANEL="1000GP_Phase3"
+REF_PANEL="1000GP_Phase3" # Currently, only "1000GP_Phase3" is supported 
+REF_PANEL_DIR="/opt/ragr/bjarnold/hatchet_shapeit_phasing/hatchet/script/refpanel"
 
 
 

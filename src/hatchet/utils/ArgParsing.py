@@ -82,6 +82,27 @@ def parse_snp_arguments(args=None):
             "outputsnps" : os.path.abspath(args.outputsnps),
             "verbose" : args.verbose}
 
+def parse_phaseprep_arguments(args=None):
+    """
+    Parse command line arguments
+    Returns:
+    """
+    description = "Download and prepare files for phasing germline SNPs using a reference panel"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
+    parser.add_argument("-R","--refpanel", required=True, type=str, help="Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
+    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
+    parser.add_argument("-N","--chrnotation", required=True, type=str, help="Notation of chromosomes, with or without \"chr\"")
+    args = parser.parse_args(args)
+
+    # add safety checks for custom ref panel
+    #if args.refpanel != "1000GP_Phase3":
+
+    return {"refpanel" : args.refpanel,
+            "refpaneldir" : os.path.abspath(args.refpaneldir),
+            "refvers" : args.refversion,
+            "chrnot" : args.chrnotation}
+
 def parse_phase_arguments(args=None):
     """
     Parse command line arguments
@@ -89,7 +110,7 @@ def parse_phase_arguments(args=None):
     """
     description = "Phase germline SNPs using a reference panel"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("-R","--refpanel", required=True, type=str, help="Path to Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
+    parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
     parser.add_argument("-g","--refgenome", required=True, type=str, help="Path to Reference genome used in BAM files")
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     parser.add_argument("-N","--chrnotation", required=True, type=str, help="Notation of chromosomes, with or without \"chr\"")
@@ -119,7 +140,7 @@ def parse_phase_arguments(args=None):
     # rename chromosomes if they have chr prefix; used to locate ref panel files! 
     chromosomes = [os.path.basename(snplists[i]).replace(".vcf.gz","").replace("chr","") for i in snplists]
 
-    return {"refpanel" : args.refpanel,
+    return {"refpaneldir" : args.refpaneldir,
             "genmap" : args.genmap,
             "legend" : args.legend,
             "hap" : args.hap,
