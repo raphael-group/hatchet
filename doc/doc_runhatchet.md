@@ -1,6 +1,6 @@
 # Tutorial
 
-This tutorial illustrates how to use the complete pipeline which is encoded in the main script [hatchet_unphased](../script/) in the `script` folder, along with the configuration [config.sh](../script/) script that stores all the variables the user needs to specify.
+This tutorial illustrates how to use the complete pipeline which is encoded in the main script [hatchet_unphased](../script/) in the `script` folder, along with the configuration [hatchet_config](../script/) script that stores all the variables the user needs to specify.
 The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:
 1. [Preliminaries](#preliminaries)
 2. [Setting up running directory](#rundir)
@@ -17,7 +17,7 @@ We suggest to make a copy of the script and configuration file, place them into 
 ## Preliminaries
 <a name="preliminaries"></a>
 
-The following variables, specified in [config.sh](../script/config.sh), should be changed according to the user's data:
+The following variables, specified in [hatchet_config](../script/hatchet_config), should be changed according to the user's data:
 
 ```shell
 REF="/path/to/reference.fa" 
@@ -114,7 +114,7 @@ python3 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${
                             -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
 ```
 
-SNPCaller genotypes germline SNPs from the matched-normal sample `${NORMAL}`, using positions of known germline variation specified by the file in `${LIST}` (which is automatically fetched based on the user's input in the `config.sh` file for `${REF_VERS}` and `${CHR_NOTATION}`). As mentioned above, SNPs are only considered for downstream analysis if they have a minimum and maximum sequencing depth of `${MINREADS}` and `${MAXREADs}`, respectively.
+SNPCaller genotypes germline SNPs from the matched-normal sample `${NORMAL}`, using positions of known germline variation specified by the file in `${LIST}` (which is automatically fetched based on the user's input in the `hatchet_config` file for `${REF_VERS}` and `${CHR_NOTATION}`). As mentioned above, SNPs are only considered for downstream analysis if they have a minimum and maximum sequencing depth of `${MINREADS}` and `${MAXREADs}`, respectively.
 
 GATK best practices suggest that the maximum should be at least twice the expected average coverage to avoid mapping artifacts.
 Observe that WES generally requires higher thresholds (e.g. 100 and 3000).
