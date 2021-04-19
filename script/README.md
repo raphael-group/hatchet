@@ -11,7 +11,7 @@ Note that if the `LIST` variable is blank, HATCHet automatically downloads a lis
 Use the following command To run HATCHet without phasing:
 
 ```
-bash runUnphased.sh > out.txt 2> err.txt
+bash hatchet_unphased > out.txt 2> err.txt
 ```
 
 Feel free to rename the standard out (out.txt) and standard error (err.txt) files to whatever you wish.
@@ -20,9 +20,9 @@ Feel free to rename the standard out (out.txt) and standard error (err.txt) file
 
 Running HATCHet with phasing is currently a two part process. It's a little more labor intensive on the user end but may produce cleaner results.
 
-First run `runPhased_01.sh`, which executes the first three steps of HATCHet:
+First run `hatchet_phased_1`, which executes the first three steps of HATCHet:
 ```
-bash runPhased_01.sh > out1.txt 2> err1.txt
+bash hatchet_phased_1 > out1.txt 2> err1.txt
 ```
 
 After this script finishes, go to the `snps` subdirectory within the working directory given to HATCHet in `config.sh`. Here you will find a collection of VCF files, one for each chromosome. These must then be phased (e.g. [Michigan Imputation Server](https://imputationserver.sph.umich.edu/index.html#!)), and the location of the phased VCF file is specified in `config.sh` under the `PHASE` variable. If you use the Michigan imputation server: 
@@ -36,5 +36,5 @@ Also in the `config.sh` file is the `BLOCK` parameter, which is the haplotype bl
 Then, run the second half of the HATCHet workflow, which should have a shorter runtime than the first part:
 
 ```
-bash runPhased_02.sh > out2.txt 2> err2.txt
+bash hatchet_phased_2 > out2.txt 2> err2.txt
 ```
