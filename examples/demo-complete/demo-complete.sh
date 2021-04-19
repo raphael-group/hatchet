@@ -71,49 +71,49 @@ samtools dict data/hg19.fa > data/hg19.dict
 
 We follow the template of the HATCHet's [script](../../doc/doc_fullpipeline.md#fullpipelineandtutorial).
 
-1. We copy over the default config.sh and make custom changes to it at the end
+1. We copy over the default hatchet_config and make custom changes to it at the end
 ```shell
-cp ../../script/config.sh config.sh
+cp ../../script/hatchet_config hatchet_config
 :<<'```shell' # Ignore this line
 ```
  
 2. We specify the correct path to the reference genome
 ```shell
-echo 'REF="data/hg19.fa"' >> config.sh
+echo 'REF="data/hg19.fa"' >> hatchet_config
 :<<'```shell' # Ignore this line
 ```
 
 3. We specify the current folder as the running one
 ```shell
-echo 'XDIR="./"' >> config.sh
+echo 'XDIR="./"' >> hatchet_config
 :<<'```shell' # Ignore this line
 ```
 
 4. We specify the path to the matched-normal BAM files
 ```shell
-echo 'NORMAL="data/normal.bam"' >> config.sh
+echo 'NORMAL="data/normal.bam"' >> hatchet_config
 :<<'```shell' # Ignore this line
 ```
 
 5. We specify the list of paths to the tumor BAM files and corresponding names
 ```shell
-echo 'BAMS="data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam"' >> config.sh
-echo 'NAMES="TumorSample1 TumorSample2 TumorSample3"' >> config.sh
+echo 'BAMS="data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam"' >> hatchet_config
+echo 'NAMES="TumorSample1 TumorSample2 TumorSample3"' >> hatchet_config
 :<<'```shell' # Ignore this line
 ```
 
 6. We keep the default number of reads and number of parallel processes
 ```shell
-echo 'J=$(python -c "import multiprocessing as mp; print(mp.cpu_count())")' >> config.sh
-echo "MINREADS=8" >> config.sh
-echo "MAXREADS=300" >> config.sh
+echo 'J=$(python -c "import multiprocessing as mp; print(mp.cpu_count())")' >> hatchet_config
+echo "MINREADS=8" >> hatchet_config
+echo "MAXREADS=300" >> hatchet_config
 :<<'```shell' # Ignore this line
 ```
 
 7. We specify the reference genome and chr notation
 ```shell
-echo 'REF_VERS="hg19"' >> config.sh
-echo 'CHR_NOTATION=true' >> config.sh
+echo 'REF_VERS="hg19"' >> hatchet_config
+echo 'CHR_NOTATION=true' >> hatchet_config
 :<<'```shell' # Ignore this line
 ```
 
