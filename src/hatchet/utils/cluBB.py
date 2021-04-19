@@ -139,6 +139,7 @@ def cluster(points, clouds=None, concentration_prior = None, K = 100, restarts=1
     
     gmm = BayesianGaussianMixture(n_components = K, n_init = restarts, weight_concentration_prior = concentration_prior, max_iter = int(1e6), random_state = seed)
     targetAssignments = gmm.fit_predict(npArray)
+    targetAssignments = targetAssignments[:len(points)]
     mus = gmm.means_
     sigmas = gmm.covariances_
     cntr = Counter(targetAssignments)
