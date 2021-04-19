@@ -1,6 +1,6 @@
 # Tutorial
 
-This tutorial illustrates how to use the complete pipeline which is encoded in the main script [runUnphased.sh](../script/) in the `script` folder, along with the configuration [config.sh](../script/) script that stores all the variables the user needs to specify.
+This tutorial illustrates how to use the complete pipeline which is encoded in the main script [hatchet_unphased](../script/) in the `script` folder, along with the configuration [config.sh](../script/) script that stores all the variables the user needs to specify.
 The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:
 1. [Preliminaries](#preliminaries)
 2. [Setting up running directory](#rundir)

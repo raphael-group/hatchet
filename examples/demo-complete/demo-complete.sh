@@ -119,14 +119,14 @@ echo 'CHR_NOTATION=true' >> config.sh
 
 8. We add the unphased version of HATCHet's script
 ```shell
-cp ../../script/runUnphased.sh runUnphased.sh
+cp ../../script/hatchet_unphased hatchet_unphased
 :<<'```shell' # Ignore this line
 ```
 
 ## Running HATCHet
 
 ```shell
-bash runUnphased.sh |& tee hatchet.log
+bash hatchet_unphased |& tee hatchet.log
 exit $?
 ```
 

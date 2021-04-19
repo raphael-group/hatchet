@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ./config.sh
+source ./hatchet_config
 
 # Select list of known SNPs based on reference genome
 if [ -z "$LIST" ]
