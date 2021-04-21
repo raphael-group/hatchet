@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import gurobipy as gp
 from gurobipy import GRB
+from pyomo import environ as pe
 
 from .utils import Random
 
@@ -12,6 +13,7 @@ class ILPSubset:
 
         # Each ILPSubset maintains its own data, so make a deep-copy of passed-in DataFrames
         f_a, f_b = f_a.copy(deep=True), f_b.copy(deep=True)
+        f2_a, f2_b = f_a.copy(deep=True), f_b.copy(deep=True)
 
         assert f_a.shape == f_b.shape
         assert np.all(f_a.index == f_b.index)
@@ -20,6 +22,8 @@ class ILPSubset:
         self.m, self.k = f_a.shape
         self.f_a = f_a
         self.f_b = f_b
+        self.f2_a = f2_a
+        self.f2_b = f2_b
         self.cluster_ids = f_a.index
         self.sample_ids = f_a.columns
 
@@ -45,7 +49,19 @@ class ILPSubset:
         self._fixed_cB = pd.DataFrame(index=self.cluster_ids, columns=range(n))
         self._fixed_u = pd.DataFrame(index=range(n), columns=self.sample_ids)
 
-        self.model = None  # initialized on create_model()
+        self.model1 = None  # initialized on create_model()
+
+        # Values we want to optimize for, as dataframes
+        self.c2A = pd.DataFrame(index=self.cluster_ids, columns=range(n))
+        self.c2B = pd.DataFrame(index=self.cluster_ids, columns=range(n))
+        self.u2 = pd.DataFrame(index=range(n), columns=self.sample_ids)
+
+        # Fixed values of cA/cB/u
+        self._fixed2_cA = pd.DataFrame(index=self.cluster_ids, columns=range(n))
+        self._fixed2_cB = pd.DataFrame(index=self.cluster_ids, columns=range(n))
+        self._fixed2_u = pd.DataFrame(index=range(n), columns=self.sample_ids)
+
+        self.model2 = None
 
     def __copy__(self):
         return ILPSubset(
@@ -86,10 +102,32 @@ class ILPSubset:
         else:
             return self.u
 
+    @property
+    def optimized2_cA(self):
+        if self.mode == 'UARCH':
+            return self._fixed2_cA
+        else:
+            return self.c2A
+
+    @property
+    def optimized2_cB(self):
+        if self.mode == 'UARCH':
+            return self._fixed2_cB
+        else:
+            return self.c2B
+
+    @property
+    def optimized2_u(self):
+        if self.mode == 'CARCH':
+            return self._fixed2_u
+        else:
+            return self.u2
+
     def create_model(self):
 
         m, n, k = self.m, self.n, self.k
         f_a, f_b = self.f_a, self.f_b
+        f2_a, f2_b = self.f2_a, self.f2_b
         cn_max = self.cn_max
         ampdel = self.ampdel
         copy_numbers = self.copy_numbers
@@ -98,7 +136,7 @@ class ILPSubset:
         _M = self.M
         _base = self.base
 
-        model = gp.Model()
+        model1 = gp.Model()
 
         fA = {}
         fB = {}
@@ -106,7 +144,15 @@ class ILPSubset:
         yB = {}
         adA = {}
         adB = {}
-        z = {}
+
+        model2 = pe.ConcreteModel()
+
+        f2A = {}
+        f2B = {}
+        y2A = {}
+        y2B = {}
+        ad2A = {}
+        ad2B = {}
 
         for _m in range(m):
 
@@ -116,12 +162,21 @@ class ILPSubset:
             ub = max(sum(copy_numbers.get(cluster_id, (0, 0))), cn_max)
 
             for _k in range(k):
-                yA[(_m, _k)] = model.addVar(lb=0, ub=GRB.INFINITY, obj=0, vtype=GRB.CONTINUOUS,
+                yA[(_m, _k)] = model1.addVar(lb=0, ub=GRB.INFINITY, obj=0, vtype=GRB.CONTINUOUS,
                                             name=f'yA_{_m + 1}_{_k + 1}')
-                yB[(_m, _k)] = model.addVar(lb=0, ub=GRB.INFINITY, obj=0, vtype=GRB.CONTINUOUS,
+                yB[(_m, _k)] = model1.addVar(lb=0, ub=GRB.INFINITY, obj=0, vtype=GRB.CONTINUOUS,
                                             name=f'yB_{_m + 1}_{_k + 1}')
-                fA[(_m, _k)] = model.addVar(lb=0, ub=ub, obj=0, vtype=GRB.CONTINUOUS, name=f'fA_{_m + 1}_{_k + 1}')
-                fB[(_m, _k)] = model.addVar(lb=0, ub=ub, obj=0, vtype=GRB.CONTINUOUS, name=f'fB_{_m + 1}_{_k + 1}')
+                fA[(_m, _k)] = model1.addVar(lb=0, ub=ub, obj=0, vtype=GRB.CONTINUOUS, name=f'fA_{_m + 1}_{_k + 1}')
+                fB[(_m, _k)] = model1.addVar(lb=0, ub=ub, obj=0, vtype=GRB.CONTINUOUS, name=f'fB_{_m + 1}_{_k + 1}')
+
+                y2A[(_m, _k)] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                model2.add_component(f'yA_{_m + 1}_{_k + 1}', y2A[(_m, _k)])
+                y2B[(_m, _k)] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                model2.add_component(f'yB_{_m + 1}_{_k + 1}', y2B[(_m, _k)])
+                f2A[(_m, _k)] = pe.Var(bounds=(0, ub), domain=pe.Reals)
+                model2.add_component(f'fA_{_m + 1}_{_k + 1}', f2A[(_m, _k)])
+                f2B[(_m, _k)] = pe.Var(bounds=(0, ub), domain=pe.Reals)
+                model2.add_component(f'fB_{_m + 1}_{_k + 1}', f2B[(_m, _k)])
 
         if mode_t in ('FULL', 'CARCH'):
             for _m in range(m):
@@ -132,59 +187,95 @@ class ILPSubset:
                 ub = max(sum(copy_numbers.get(cluster_id, (0, 0))), cn_max)
 
                 for _n in range(n):
-                    self.cA.iloc[_m][_n] = model.addVar(lb=0, ub=ub, obj=0, vtype=GRB.INTEGER, name=f'cA_{_m + 1}_{_n + 1}')
-                    self.cB.iloc[_m][_n] = model.addVar(lb=0, ub=ub, obj=0, vtype=GRB.INTEGER, name=f'cB_{_m + 1}_{_n + 1}')
+                    self.cA.iloc[_m][_n] = model1.addVar(lb=0, ub=ub, obj=0, vtype=GRB.INTEGER, name=f'cA_{_m + 1}_{_n + 1}')
+                    self.cB.iloc[_m][_n] = model1.addVar(lb=0, ub=ub, obj=0, vtype=GRB.INTEGER, name=f'cB_{_m + 1}_{_n + 1}')
+
+                    self.c2A.iloc[_m][_n] = pe.Var(bounds=(0, ub), domain=pe.Integers)
+                    model2.add_component(f'cA_{_m + 1}_{_n + 1}', self.c2A.iloc[_m][_n])
+                    self.c2B.iloc[_m][_n] = pe.Var(bounds=(0, ub), domain=pe.Integers)
+                    model2.add_component(f'cB_{_m + 1}_{_n + 1}', self.c2B.iloc[_m][_n])
 
             if ampdel:
                 for _m in range(m):
                     cluster_id = f_a.index[_m]
                     if cluster_id not in copy_numbers:
-                        adA[_m] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'adA_{_m + 1}')
-                        adB[_m] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'adB_{_m + 1}')
+                        adA[_m] = model1.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'adA_{_m + 1}')
+                        adB[_m] = model1.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'adB_{_m + 1}')
+
+                        ad2A[_m] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model2.add_component(f'adA_{_m + 1}', ad2A[_m])
+                        ad2B[_m] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model2.add_component(f'adB_{_m + 1}', ad2B[_m])
 
         bitcA = {}
         bitcB = {}
+        bitc2A = {}
+        bitc2B = {}
         if (mode_t == 'FULL') or (d > 0 and mode_t == 'CARCH'):
             for _b in range(_M):
                 for _m in range(m):
                     for _n in range(n):
-                        bitcA[(_b, _m, _n)] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY,
+                        bitcA[(_b, _m, _n)] = model1.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY,
                                                            name=f'bitcA_{_b + 1}_{_m + 1}_{_n + 1}')
-                        bitcB[(_b, _m, _n)] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY,
+                        bitcB[(_b, _m, _n)] = model1.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY,
                                                            name=f'bitcB_{_b + 1}_{_m + 1}_{_n + 1}')
+
+                        bitc2A[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model2.add_component(f'bitcA_{_b + 1}_{_m + 1}_{_n + 1}', bitc2A[(_b, _m, _n)])
+                        bitc2B[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model2.add_component(f'bitcB_{_b + 1}_{_m + 1}_{_n + 1}', bitc2B[(_b, _m, _n)])
 
         if mode_t in ('FULL', 'UARCH'):
             for _n in range(n):
                 for _k in range(k):
-                    self.u.iloc[_n][_k] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.CONTINUOUS, name=f'u_{_n + 1}_{_k + 1}')
+                    self.u.iloc[_n][_k] = model1.addVar(lb=0, ub=1, obj=0, vtype=GRB.CONTINUOUS, name=f'u_{_n + 1}_{_k + 1}')
+
+                    self.u2.iloc[_n][_k] = pe.Var(bounds=(0, 1), domain=pe.Reals)
+                    model2.add_component(f'u_{_n + 1}_{_k + 1}', self.u2.iloc[_n][_k])
 
         vA = {}
         vB = {}
+        v2A = {}
+        v2B = {}
         if mode_t == 'FULL':
             for _b in range(_M):
                 for _m in range(m):
                     for _n in range(n):
                         for _k in range(k):
-                            vA[(_b, _m, _n, _k)] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.CONTINUOUS,
+                            vA[(_b, _m, _n, _k)] = model1.addVar(lb=0, ub=1, obj=0, vtype=GRB.CONTINUOUS,
                                                                 name=f'vA_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}')
-                            vB[(_b, _m, _n, _k)] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.CONTINUOUS,
+                            vB[(_b, _m, _n, _k)] = model1.addVar(lb=0, ub=1, obj=0, vtype=GRB.CONTINUOUS,
                                                                 name=f'vB_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}')
 
+                            v2A[(_b, _m, _n, _k)] = pe.Var(bounds=(0, 1), domain=pe.Reals)
+                            model2.add_component(f'vA_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}', v2A[(_b, _m, _n, _k)])
+                            v2B[(_b, _m, _n, _k)] = pe.Var(bounds=(0, 1), domain=pe.Reals)
+                            model2.add_component(f'vB_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}', v2B[(_b, _m, _n, _k)])
+
         x = {}
+        x2 = {}
         if (mode_t in ('FULL', 'UARCH')) and (self.mu > 0):
             for _n in range(n):
                 for _k in range(k):
-                    x[(_n, _k)] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'x_{_n + 1}_{_k + 1}')
+                    x[(_n, _k)] = model1.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'x_{_n + 1}_{_k + 1}')
+
+                    x2[(_n, _k)] = pe.Var(domain=pe.Binary)
+                    model2.add_component(f'x_{_n + 1}_{_k + 1}', x2[(_n, _k)])
 
         # buildOptionalVariables
         z = {}
+        z2 = {}
         if (mode_t in ('FULL', 'CARCH')) and d > 0:
             for _m in range(self.m):
                 for _n in range(1, self.n):
                     for _d in range(d):
-                        z[(_m, _n, _d)] = model.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'z+{_m + 1}_{_n + 1}_{_d + 1}')
+                        z[(_m, _n, _d)] = model1.addVar(lb=0, ub=1, obj=0, vtype=GRB.BINARY, name=f'z_{_m + 1}_{_n + 1}_{_d + 1}')
+
+                        z2[(_m, _n, _d)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model2.add_component(f'z_{_m + 1}_{_n + 1}_{_d + 1}', z2[(_m, _n, _d)])
 
         # CONSTRAINTS
+        model2.constraints = pe.ConstraintList()
 
         for _m in range(m):
 
@@ -196,45 +287,75 @@ class ILPSubset:
                 _yA, _yB = yA[(_m, _k)], yB[(_m, _k)]
                 _fA, _fB = fA[(_m, _k)], fB[(_m, _k)]
 
-                model.addConstr(f_a_values[_k] - _fA <= _yA)
-                model.addConstr(_fA - f_a_values[_k] <= _yA)
-                model.addConstr(f_b_values[_k] - _fB <= _yB)
-                model.addConstr(_fB - f_b_values[_k] <= _yB)
+                model1.addConstr(f_a_values[_k] - _fA <= _yA)
+                model1.addConstr(_fA - f_a_values[_k] <= _yA)
+                model1.addConstr(f_b_values[_k] - _fB <= _yB)
+                model1.addConstr(_fB - f_b_values[_k] <= _yB)
+
+            cluster_id = f2_a.index[_m]
+            f2_a_values = f2_a.loc[cluster_id].values
+            f2_b_values = f2_b.loc[cluster_id].values
+
+            for _k in range(k):
+                _yA, _yB = y2A[(_m, _k)], y2B[(_m, _k)]
+                _fA, _fB = f2A[(_m, _k)], f2B[(_m, _k)]
+
+                model2.constraints.add(float(f2_a_values[_k]) - _fA <= _yA)
+                model2.constraints.add(_fA - float(f2_a_values[_k]) <= _yA)
+                model2.constraints.add(float(f2_b_values[_k]) - _fB <= _yB)
+                model2.constraints.add(_fB - float(f2_b_values[_k]) <= _yB)
 
         if mode_t == 'FULL':
             for _m in range(m):
                 for _k in range(k):
 
                     sum_a = 0
+                    sum2_a = 0
                     for _n in range(n):
                         for _b in range(_M):
                             sum_a += vA[(_b, _m, _n, _k)] * math.pow(2, _b)
-                            model.addConstr(vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)])
-                            model.addConstr(vA[(_b, _m, _n, _k)] <= self.u.iloc[_n][_k])
-                            model.addConstr(vA[(_b, _m, _n, _k)] >= bitcA[(_b, _m, _n)] + self.u.iloc[_n][_k] - 1)
+                            sum2_a += v2A[(_b, _m, _n, _k)] * math.pow(2, _b)
+                            model1.addConstr(vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)])
+                            model1.addConstr(vA[(_b, _m, _n, _k)] <= self.u.iloc[_n][_k])
+                            model1.addConstr(vA[(_b, _m, _n, _k)] >= bitcA[(_b, _m, _n)] + self.u.iloc[_n][_k] - 1)
 
-                    model.addConstr(fA[(_m, _k)] == sum_a)
+                            model2.constraints.add(v2A[(_b, _m, _n, _k)] <= bitc2A[(_b, _m, _n)])
+                            model2.constraints.add(v2A[(_b, _m, _n, _k)] <= self.u2.iloc[_n][_k])
+                            model2.constraints.add(v2A[(_b, _m, _n, _k)] >= bitc2A[(_b, _m, _n)] + self.u2.iloc[_n][_k] - 1)
+
+                    model1.addConstr(fA[(_m, _k)] == sum_a)
+                    model2.constraints.add(f2A[(_m, _k)] == sum2_a)
 
             for _m in range(m):
                 for _k in range(k):
 
                     sum_b = 0
+                    sum2_b = 0
                     for _n in range(n):
                         for _b in range(_M):
                             sum_b += vB[(_b, _m, _n, _k)] * math.pow(2, _b)
-                            model.addConstr(vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)])
-                            model.addConstr(vB[(_b, _m, _n, _k)] <= self.u.iloc[_n][_k])
-                            model.addConstr(vB[(_b, _m, _n, _k)] >= bitcB[(_b, _m, _n)] + self.u.iloc[_n][_k] - 1)
+                            model1.addConstr(vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)])
+                            model1.addConstr(vB[(_b, _m, _n, _k)] <= self.u.iloc[_n][_k])
+                            model1.addConstr(vB[(_b, _m, _n, _k)] >= bitcB[(_b, _m, _n)] + self.u.iloc[_n][_k] - 1)
 
-                    model.addConstr(fB[(_m, _k)] == sum_b)
+                            sum2_b += v2B[(_b, _m, _n, _k)] * math.pow(2, _b)
+                            model2.constraints.add(v2B[(_b, _m, _n, _k)] <= bitc2B[(_b, _m, _n)])
+                            model2.constraints.add(v2B[(_b, _m, _n, _k)] <= self.u2.iloc[_n][_k])
+                            model2.constraints.add(v2B[(_b, _m, _n, _k)] >= bitc2B[(_b, _m, _n)] + self.u2.iloc[_n][_k] - 1)
+
+                    model1.addConstr(fB[(_m, _k)] == sum_b)
+                    model2.constraints.add(f2B[(_m, _k)] == sum2_b)
 
             for _n in range(n):
                 for _k in range(k):
                     _sum = 0
+                    _sum2 = 0
                     for _m in range(m):
                         for _b in range(_M):
                             _sum += bitcA[(_b, _m, _n)] + bitcB[(_b, _m, _n)]
-                    model.addConstr(_sum >= self.u.iloc[_n][_k])
+                            _sum2 += bitc2A[(_b, _m, _n)] + bitc2B[(_b, _m, _n)]
+                    model1.addConstr(_sum >= self.u.iloc[_n][_k])
+                    model2.constraints.add(_sum2 >= self.u2.iloc[_n][_k])
 
         if (mode_t == 'FULL') or (d > 0 and mode_t == 'CARCH'):
             for _m in range(m):
@@ -245,113 +366,162 @@ class ILPSubset:
                 for _n in range(n):
                     sum_a = 0
                     sum_b = 0
+                    sum2_a = 0
+                    sum2_b = 0
                     for _b in range(_M):
                         sum_a += bitcA[(_b, _m, _n)] * math.pow(2, _b)
                         sum_b += bitcB[(_b, _m, _n)] * math.pow(2, _b)
+                        sum2_a += bitc2A[(_b, _m, _n)] * math.pow(2, _b)
+                        sum2_b += bitc2B[(_b, _m, _n)] * math.pow(2, _b)
 
-                    model.addConstr(self.cA.iloc[_m][_n] == sum_a)
-                    model.addConstr(self.cB.iloc[_m][_n] == sum_b)
-                    model.addConstr(self.cA.iloc[_m][_n] + self.cB.iloc[_m][_n] <= ub)
+                    model1.addConstr(self.cA.iloc[_m][_n] == sum_a)
+                    model1.addConstr(self.cB.iloc[_m][_n] == sum_b)
+                    model1.addConstr(self.cA.iloc[_m][_n] + self.cB.iloc[_m][_n] <= ub)
+
+                    model2.constraints.add(self.c2A.iloc[_m][_n] == sum2_a)
+                    model2.constraints.add(self.c2B.iloc[_m][_n] == sum2_b)
+                    model2.constraints.add(self.c2A.iloc[_m][_n] + self.c2B.iloc[_m][_n] <= ub)
 
         if mode_t == 'CARCH':
             # TODO: These loops can be collapsed once validation against C++ is complete
             for _m in range(m):
                 for _k in range(k):
                     _sum = 0
+                    _sum2 = 0
                     for _n in range(n):
                         if self._fixed_u.iloc[_n][_k] >= self.mu - self.tol:
                             _sum += self.cA.iloc[_m][_n] * self._fixed_u.iloc[_n][_k]
-                    model.addConstr(fA[(_m, _k)] == _sum)
+                        if self._fixed2_u.iloc[_n][_k] >= self.mu - self.tol:
+                            _sum2 += self.c2A.iloc[_m][_n] * self._fixed2_u.iloc[_n][_k]
+                    model1.addConstr(fA[(_m, _k)] == _sum)
+                    model2.constraints.add(f2A[(_m, _k)] == _sum2)
 
             for _m in range(m):
                 for _k in range(k):
                     _sum = 0
+                    _sum2 = 0
                     for _n in range(n):
                         if self._fixed_u.iloc[_n][_k] >= self.mu - self.tol:
                             _sum += self.cB.iloc[_m][_n] * self._fixed_u.iloc[_n][_k]
-                    model.addConstr(fB[(_m, _k)] == _sum)
+                        if self._fixed2_u.iloc[_n][_k] >= self.mu - self.tol:
+                            _sum2 += self.c2B.iloc[_m][_n] * self._fixed2_u.iloc[_n][_k]
+                    model1.addConstr(fB[(_m, _k)] == _sum)
+                    model2.constraints.add(f2B[(_m, _k)] == _sum2)
 
             for _m in range(m):
                 cluster_id = f_a.index[_m]
                 # upper bound for solver
                 ub = max(sum(copy_numbers.get(cluster_id, (0, 0))), cn_max)
                 for _n in range(n):
-                    model.addConstr(self.cA.iloc[_m][_n] + self.cB.iloc[_m][_n] <= ub)
+                    model1.addConstr(self.cA.iloc[_m][_n] + self.cB.iloc[_m][_n] <= ub)
+                    model2.constraints.add(self.c2A.iloc[_m][_n] + self.c2B.iloc[_m][_n] <= ub)
 
         if mode_t in ('FULL', 'CARCH'):
             for _m in range(m):
-                model.addConstr(self.cA.iloc[_m][0] == 1)
-                model.addConstr(self.cB.iloc[_m][0] == 1)
+                model1.addConstr(self.cA.iloc[_m][0] == 1)
+                model1.addConstr(self.cB.iloc[_m][0] == 1)
+                model2.constraints.add(self.c2A.iloc[_m][0] == 1)
+                model2.constraints.add(self.c2B.iloc[_m][0] == 1)
 
             if ampdel:
                 for _m in range(m):
                     cluster_id = f_a.index[_m]
                     if cluster_id not in copy_numbers:
                         for _n in range(1, n):
-                            model.addConstr(self.cA.iloc[_m][_n] <= cn_max * adA[_m] + _base - _base * adA[_m])
-                            model.addConstr(self.cA.iloc[_m][_n] >= _base * adA[_m])
-                            model.addConstr(self.cB.iloc[_m][_n] <= cn_max * adB[_m] + _base - _base * adB[_m])
-                            model.addConstr(self.cB.iloc[_m][_n] >= _base * adB[_m])
+                            model1.addConstr(self.cA.iloc[_m][_n] <= cn_max * adA[_m] + _base - _base * adA[_m])
+                            model1.addConstr(self.cA.iloc[_m][_n] >= _base * adA[_m])
+                            model1.addConstr(self.cB.iloc[_m][_n] <= cn_max * adB[_m] + _base - _base * adB[_m])
+                            model1.addConstr(self.cB.iloc[_m][_n] >= _base * adB[_m])
+                    cluster_id = f2_a.index[_m]
+                    if cluster_id not in copy_numbers:
+                        for _n in range(1, n):
+                            model2.constraints.add(self.c2A.iloc[_m][_n] <= cn_max * ad2A[_m] + _base - _base * ad2A[_m])
+                            model2.constraints.add(self.c2A.iloc[_m][_n] >= _base * ad2A[_m])
+                            model2.constraints.add(self.c2B.iloc[_m][_n] <= cn_max * ad2B[_m] + _base - _base * ad2B[_m])
+                            model2.constraints.add(self.c2B.iloc[_m][_n] >= _base * ad2B[_m])
 
         if mode_t == 'UARCH':
             # TODO: These loops can be collapsed once validation against C++ is complete
             for _m in range(m):
                 for _k in range(k):
                     _sum = 0
+                    _sum2 = 0
                     for _n in range(n):
                         _sum += self._fixed_cA.iloc[_m][_n] * self.u.iloc[_n][_k]
-                    model.addConstr(fA[(_m, _k)] == _sum)
+                        _sum2 += int(self._fixed2_cA.iloc[_m][_n]) * self.u2.iloc[_n][_k]
+                    model1.addConstr(fA[(_m, _k)] == _sum)
+                    model2.constraints.add(f2A[(_m, _k)] == _sum2)
 
             for _m in range(m):
                 for _k in range(k):
                     _sum = 0
+                    _sum2 = 0
                     for _n in range(n):
                         _sum += self._fixed_cB.iloc[_m][_n] * self.u.iloc[_n][_k]
-                    model.addConstr(fB[(_m, _k)] == _sum)
+                        _sum2 += int(self._fixed2_cB.iloc[_m][_n]) * self.u2.iloc[_n][_k]
+                    model1.addConstr(fB[(_m, _k)] == _sum)
+                    model2.constraints.add(f2B[(_m, _k)] == _sum2)
 
         if mode_t in ('FULL', 'UARCH'):
             for _k in range(k):
                 _sum = 0
+                _sum2 = 0
                 for _n in range(n):
                     _sum += self.u.iloc[_n][_k]
-                model.addConstr(_sum == 1)
+                    _sum2 += self.u2.iloc[_n][_k]
+                model1.addConstr(_sum == 1)
+                model2.constraints.add(_sum2 == 1)
 
         if (mode_t in ('FULL', 'UARCH')) and self.mu > 0:
             for _k in range(k):
                 for _n in range(1, n):
-                    model.addConstr(x[(_n, _k)] >= self.u.iloc[_n][_k])
-                    model.addConstr(self.u.iloc[_n][_k] >= self.mu * x[(_n, _k)])
+                    model1.addConstr(x[(_n, _k)] >= self.u.iloc[_n][_k])
+                    model1.addConstr(self.u.iloc[_n][_k] >= self.mu * x[(_n, _k)])
+                    model2.constraints.add(x2[(_n, _k)] >= self.u2.iloc[_n][_k])
+                    model2.constraints.add(self.u2.iloc[_n][_k] >= self.mu * x2[(_n, _k)])
 
         # buildOptionalConstraints
         if (mode_t in ('FULL', 'CARCH')) and d > 0:
             for _m in range(self.m):
                 for _n in range(1, self.n):
                     _sum = 0
+                    _sum2 = 0
                     for _d in range(self.d):
                         _sum += z[(_m, _n, _d)]
-                    model.addConstr(_sum == 1)
+                        _sum2 += z2[(_m, _n, _d)]
+                    model1.addConstr(_sum == 1)
+                    model2.constraints.add(_sum2 == 1)
 
             for _m in range(self.m):
                 for _M in range(self.M):
                     for _d in range(d):
                         for _i in range(1, self.n-1):
                             for _j in range(1, self.n):
-                                model.addConstr(bitcA[(_M, _m, _i)] - bitcA[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
-                                model.addConstr(bitcA[(_M, _m, _j)] - bitcA[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
-                                model.addConstr(bitcB[(_M, _m, _i)] - bitcB[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
-                                model.addConstr(bitcB[(_M, _m, _j)] - bitcB[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
+                                model1.addConstr(bitcA[(_M, _m, _i)] - bitcA[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
+                                model1.addConstr(bitcA[(_M, _m, _j)] - bitcA[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
+                                model1.addConstr(bitcB[(_M, _m, _i)] - bitcB[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
+                                model1.addConstr(bitcB[(_M, _m, _j)] - bitcB[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)])
+
+                                model2.constraints.add(bitc2A[(_M, _m, _i)] - bitc2A[(_M, _m, _j)] <= 2 - z2[(_m, _i, _d)] - z2[(_m, _j, _d)])
+                                model2.constraints.add(bitc2A[(_M, _m, _j)] - bitc2A[(_M, _m, _i)] <= 2 - z2[(_m, _i, _d)] - z2[(_m, _j, _d)])
+                                model2.constraints.add(bitc2B[(_M, _m, _i)] - bitc2B[(_M, _m, _j)] <= 2 - z2[(_m, _i, _d)] - z2[(_m, _j, _d)])
+                                model2.constraints.add(bitc2B[(_M, _m, _j)] - bitc2B[(_M, _m, _i)] <= 2 - z2[(_m, _i, _d)] - z2[(_m, _j, _d)])
 
             for _m in range(self.m):
                 for _d in range(d - 1):
                     _sum_l = _sum_l1 = 0
+                    _sum2_l = _sum2_l1 = 0
                     for _n in range(1, self.n):
                         _sum_l += z[(_m, _n, _d)] * self.symmCoeff(_n)
                         _sum_l1 += z[(_m, _n, _d+1)] * self.symmCoeff(_n)
-                        model.addConstr(_sum_l <= _sum_l1)
+                        model1.addConstr(_sum_l <= _sum_l1)
+                        _sum2_l += z2[(_m, _n, _d)] * self.symmCoeff(_n)
+                        _sum2_l1 += z2[(_m, _n, _d+1)] * self.symmCoeff(_n)
+                        model2.constraints.add(_sum2_l <= _sum2_l1)
 
         if mode_t in ('FULL', 'CARCH'):
-            self.build_symmetry_breaking(model)
-            self.fix_given_cn(model)
+            self.build_symmetry_breaking(model1, model2)
+            self.fix_given_cn(model1, model2)
 
         if mode_t == 'FULL':
             self.hot_start()
@@ -362,12 +532,22 @@ class ILPSubset:
                 cluster_id = self.cluster_ids[_m]
                 obj += (yA[(_m, _k)] + yB[(_m, _k)]) * self.w[cluster_id]
 
-        model.setObjective(obj, GRB.MINIMIZE)
-        model.update()
+        model1.setObjective(obj, GRB.MINIMIZE)
+        model1.update()
 
-        self.model = model
+        self.model1 = model1
 
-    def build_symmetry_breaking(self, model):
+        obj = 0
+        for _m in range(m):
+            for _k in range(k):
+                cluster_id = self.cluster_ids[_m]
+                # obj += (y2A[(_m, _k)] + y2B[(_m, _k)]) * self.w[cluster_id]
+                obj += float(self.w[cluster_id]) * y2A[(_m, _k)] + float(self.w[cluster_id]) * y2B[(_m, _k)]
+
+        model2.obj = pe.Objective(expr=obj, sense=pe.minimize)
+        self.model2 = model2
+
+    def build_symmetry_breaking(self, model1, model2):
         for i in range(1, self.n - 1):
             _sum1 = 0
             _sum2 = 0
@@ -375,16 +555,32 @@ class ILPSubset:
                 _symCoeff = self.symmCoeff(_m)
                 _sum1 += self.cA.iloc[_m][i] * _symCoeff + self.cB.iloc[_m][i] * _symCoeff
                 _sum2 += self.cA.iloc[_m][i] * _symCoeff + self.cB.iloc[_m][i] * _symCoeff
-            model.addConstr(_sum1 <= _sum2)
+            model1.addConstr(_sum1 <= _sum2)
 
-    def fix_given_cn(self, model):
+            _sum1 = 0
+            _sum2 = 0
+            for _m in range(self.m):
+                _symCoeff = self.symmCoeff(_m)
+                _sum1 += self.c2A.iloc[_m][i] * _symCoeff + self.c2B.iloc[_m][i] * _symCoeff
+                _sum2 += self.c2A.iloc[_m][i] * _symCoeff + self.c2B.iloc[_m][i] * _symCoeff
+            model2.constraints.add(_sum1 <= _sum2)
+
+    def fix_given_cn(self, model1, model2):
         for _m in range(self.m):
             cluster_id = self.f_a.index[_m]
             if cluster_id in self.copy_numbers:
                 _cnA, _cnB = self.copy_numbers[cluster_id]
                 for _n in range(1, self.n):
-                    model.addConstr(self.cA.iloc[_m][_n] == _cnA)
-                    model.addConstr(self.cB.iloc[_m][_n] == _cnB)
+                    model1.addConstr(self.cA.iloc[_m][_n] == _cnA)
+                    model1.addConstr(self.cB.iloc[_m][_n] == _cnB)
+
+        for _m in range(self.m):
+            cluster_id = self.f2_a.index[_m]
+            if cluster_id in self.copy_numbers:
+                _cnA, _cnB = self.copy_numbers[cluster_id]
+                for _n in range(1, self.n):
+                    model2.constraints.add(self.c2A.iloc[_m][_n] == _cnA)
+                    model2.constraints.add(self.c2B.iloc[_m][_n] == _cnB)
 
     def first_hot_start(self):
 
@@ -477,15 +673,20 @@ class ILPSubset:
             for _n in range(0, self.n):
                 self.cA.iloc[_m][rank_indices[_n]].start = f_a.iloc[(_m, _n)]
                 self.cB.iloc[_m][rank_indices[_n]].start = f_b.iloc[(_m, _n)]
+                self.c2A.iloc[_m][rank_indices[_n]].start = f_a.iloc[(_m, _n)]
+                self.c2B.iloc[_m][rank_indices[_n]].start = f_b.iloc[(_m, _n)]
 
     def fix_u(self, u):
         self._fixed_u[:] = u
+        self._fixed2_u[:] = u
         self.mode = 'CARCH'
         # TODO: sanity checks in fixU
 
     def fix_c(self, cA, cB):
         self._fixed_cA[:] = cA
         self._fixed_cB[:] = cB
+        self._fixed2_cA[:] = cA
+        self._fixed2_cB[:] = cB
         self.mode = 'UARCH'
         # TODO: sanity checks in fixC
 
@@ -530,22 +731,34 @@ class ILPSubset:
                 n_parts = min(max(_n0, _n1), size_bubbles)  # no. of clones with non-zero proportion in the mix
                 v = _build_partition_vector(self.n, n_parts, size_bubbles, mu=self.mu)
                 U[:, _k] = v
-
         return U
 
     def run(self, write_path=None):
-        self.model.optimize()
+        self.model1.optimize()
+
+        solver = pe.SolverFactory('gurobi', solver_io='python')
+        solver.solve(self.model2)
         if write_path is not None:
-            self.model.write(write_path)
+            self.model2.write(write_path)
 
         # The dataframes cA/cB/u contain Gurobi variables with optimized values as the 'X' attribute in each variable
         # We define a function to extract the optimized values out of these Dataframes
         # In cases where we have a frozen value (e.g. when cA/cB/u are fixed), we simply return the value as-is.
-        def _value(var): return getattr(var, 'X', var)
+        def _value_old(var): return getattr(var, 'X', var)
+
+        # The dataframes cA/cB/u contain Variables with optimized values as the 'value' attribute in each variable
+        # We define a function to extract the optimized values out of these Dataframes
+        # In cases where we have a frozen value (e.g. when cA/cB/u are fixed), we simply return the value as-is.
+        def _value(var): return getattr(var, 'value', var)
+
+        assert np.allclose(self.model1.objVal, self.model2.obj())
+        assert self.optimized_cA.applymap(_value_old).astype(int).equals(self.optimized2_cA.applymap(_value).astype(int))
+        assert self.optimized_cB.applymap(_value_old).astype(int).equals(self.optimized2_cB.applymap(_value).astype(int))
+        assert self.optimized_u.applymap(_value_old).equals(self.optimized2_u.applymap(_value))
 
         return (
-            self.model.objVal,
-            self.optimized_cA.applymap(_value).astype(int),
-            self.optimized_cB.applymap(_value).astype(int),
-            self.optimized_u.applymap(_value)
+            self.model2.obj(),
+            self.optimized2_cA.applymap(_value).astype(int),
+            self.optimized2_cB.applymap(_value).astype(int),
+            self.optimized2_u.applymap(_value)
         )
