@@ -612,7 +612,7 @@ def runningTetraploid(clonal, scale, size, args):
     return results
 
 
-def execute_python(args, basecmd, n, outprefix):
+def execute_python(solver, args, n, outprefix):
 
     bbc_out_file = outprefix + '.bbc.ucn.tsv'
     seg_out_file = outprefix + '.seg.ucn.tsv'
@@ -620,6 +620,7 @@ def execute_python(args, basecmd, n, outprefix):
     _mode = ('both', 'ilp', 'cd')[args['M']]
 
     obj, cA, cB, u = solve(
+        solver=solver,
         clonal=args['c'],
         seg_file=args['seg'],
         n=n,
@@ -647,8 +648,8 @@ def execute_python(args, basecmd, n, outprefix):
 
 
 def execute(args, basecmd, n, outprefix):
-    if config.solver.python:
-        return execute_python(args, basecmd, n, outprefix)
+    if config.solver.solver != 'cpp':
+        return execute_python(config.solver.solver, args, n, outprefix)
     progressbar = ProgressBar(total=args['p'], length=min(50, args['p']), verbose=False)
     cmd = basecmd + ' -n {} -o {}'.format(n, outprefix)
     if args['v'] >= 3:

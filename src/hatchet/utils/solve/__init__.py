@@ -6,8 +6,8 @@ from .cd import CoordinateDescent
 from .utils import parse_clonal, scale_rdr
 
 
-def solve(clonal, seg_file, n, solve_mode='cd', d=-1, cn_max=-1, mu=0.01, diploid_threshold=0.1, ampdel=True,
-          n_seed=400, n_worker=8, random_seed=None, max_iters=None):
+def solve(clonal, seg_file, n, solver='gurobipy', solve_mode='cd', d=-1, cn_max=-1, mu=0.01, diploid_threshold=0.1,
+          ampdel=True, n_seed=400, n_worker=8, random_seed=None, max_iters=None):
 
     assert solve_mode in ('ilp', 'cd', 'both'), 'Unrecognized solve_mode'
     if max_iters is None:
@@ -51,17 +51,17 @@ def solve(clonal, seg_file, n, solve_mode='cd', d=-1, cn_max=-1, mu=0.01, diploi
     if solve_mode == 'ilp':
         ilp = ILPSubset(n, cn_max, d=d, mu=mu, ampdel=ampdel, copy_numbers=copy_numbers, f_a=f_a, f_b=f_b, w=weights)
         ilp.create_model()
-        return ilp.run()
+        return ilp.run(solver_type=solver)
     elif solve_mode == 'cd':
         cd = CoordinateDescent(f_a=f_a, f_b=f_b, n=n, mu=mu, d=d, cn_max=cn_max, w=weights, ampdel=ampdel,
                                cn=copy_numbers)
-        return cd.run(max_iters=max_iters, n_seed=n_seed, j=n_worker, random_seed=random_seed)
+        return cd.run(solver_type=solver, max_iters=max_iters, n_seed=n_seed, j=n_worker, random_seed=random_seed)
     else:
         cd = CoordinateDescent(f_a=f_a, f_b=f_b, n=n, mu=mu, d=d, cn_max=cn_max, w=weights, ampdel=ampdel,
                                cn=copy_numbers)
-        _, cA, cB, _ = cd.run(max_iters=max_iters, n_seed=n_seed, j=n_worker, random_seed=random_seed)
+        _, cA, cB, _ = cd.run(solver_type=solver, max_iters=max_iters, n_seed=n_seed, j=n_worker, random_seed=random_seed)
 
         ilp = ILPSubset(n, cn_max, d=d, mu=mu, ampdel=ampdel, copy_numbers=copy_numbers, f_a=f_a, f_b=f_b, w=weights)
         ilp.create_model()
         ilp.hot_start(cA, cB)
-        return ilp.run()
+        return ilp.run(solver_type=solver)

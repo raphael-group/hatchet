@@ -4,6 +4,7 @@ import shutil
 import pytest
 import pandas as pd
 from pandas.testing import assert_frame_equal
+from pyomo.opt import SolverFactory
 import hatchet
 from hatchet.bin.HATCHet import main as main
 from hatchet import config
@@ -38,8 +39,8 @@ def test_solve_binary():
 
 @pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
 def test_solve_command_cpp(output_folder):
-    old_value = config.solver.python
-    config.solver.python = False
+    old_value = config.solver.solver
+    config.solver.solver = 'cpp'
 
     main(args=[
         SOLVE,
@@ -62,13 +63,13 @@ def test_solve_command_cpp(output_folder):
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
-    config.solver.python = old_value
+    config.solver.solver = old_value
 
 
 @pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
-def test_solve_command_python(output_folder):
-    old_value = config.solver.python
-    config.solver.python = True
+def test_solve_command_gurobipy(output_folder):
+    old_value = config.solver.solver
+    config.solver.solver = 'gurobipy'
 
     main(args=[
         SOLVE,
@@ -91,4 +92,63 @@ def test_solve_command_python(output_folder):
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
-    config.solver.python = old_value
+    config.solver.solver = old_value
+
+
+@pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
+@pytest.mark.skipif(not SolverFactory('gurobi').available(), reason='gurobi solver not available for pyomo')
+def test_solve_command_gurobi(output_folder):
+    old_value = config.solver.solver
+    config.solver.solver = 'gurobi'
+
+    main(args=[
+        SOLVE,
+        '-x', os.path.join(output_folder),
+        '-i', os.path.join(this_dir, 'data/bulk'),
+        '-n2',
+        '-p', '400',
+        '-v', '3',
+        '-u', '0.03',
+        '--mode', '1',
+        '-r', '6700',
+        '-j', '8',
+        '-eD', '6',
+        '-eT', '12',
+        '-g', '0.35',
+        '-l', '0.6'
+    ])
+
+    df1 = pd.read_csv(os.path.join(output_folder, 'best.bbc.ucn'), sep='\t')
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
+    assert_frame_equal(df1, df2)
+
+    config.solver.solver = old_value
+
+
+@pytest.mark.skipif(not SolverFactory('cbc').available(), reason='cbc solver not available for pyomo')
+def test_solve_command_cbc(output_folder):
+    old_value = config.solver.solver
+    config.solver.solver = 'cbc'
+
+    main(args=[
+        SOLVE,
+        '-x', os.path.join(output_folder),
+        '-i', os.path.join(this_dir, 'data/bulk'),
+        '-n2',
+        '-p', '400',
+        '-v', '3',
+        '-u', '0.03',
+        '--mode', '1',
+        '-r', '6700',
+        '-j', '8',
+        '-eD', '6',
+        '-eT', '12',
+        '-g', '0.35',
+        '-l', '0.6'
+    ])
+
+    df1 = pd.read_csv(os.path.join(output_folder, 'best.bbc.ucn'), sep='\t')
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
+    assert_frame_equal(df1, df2)
+
+    config.solver.solver = old_value

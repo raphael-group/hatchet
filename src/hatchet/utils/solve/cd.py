@@ -6,8 +6,9 @@ from .utils import Random
 
 class Worker:
 
-    def __init__(self, ilp):
+    def __init__(self, ilp, solver):
         self.ilp = ilp
+        self.solver_type = solver
 
     def run(self, cA, cB, u, max_iters, max_convergence_iters, tol=0.001):
         _iters = _convergence_iters = 0
@@ -20,12 +21,12 @@ class Worker:
             carch.fix_u(u)
             carch.create_model()
             carch.hot_start(_cA, _cB)
-            _obj_c, _cA, _cB, _ = carch.run()
+            _obj_c, _cA, _cB, _ = carch.run(self.solver_type)
 
             uarch = copy(self.ilp)
             uarch.fix_c(_cA, _cB)
             uarch.create_model()
-            _obj_u, _, _, _u = uarch.run()
+            _obj_u, _, _, _u = uarch.run(self.solver_type)
 
             if abs(_obj_c - _obj_u) < tol:
                 _convergence_iters += 1
@@ -46,12 +47,12 @@ class CoordinateDescent:
 
         self.seeds = None
 
-    def run(self, max_iters=10, max_convergence_iters=2, n_seed=400, j=8, random_seed=None):
+    def run(self, solver_type='gurobipy', max_iters=10, max_convergence_iters=2, n_seed=400, j=8, random_seed=None):
         with Random(random_seed):
             seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
 
         def _work(u):
-            worker = Worker(self.ilp)
+            worker = Worker(self.ilp, solver_type)
             return worker.run(self.hcA, self.hcB, u, max_iters=max_iters, max_convergence_iters=max_convergence_iters)
 
         result = {}  # obj. value => (cA, cB, u) mapping

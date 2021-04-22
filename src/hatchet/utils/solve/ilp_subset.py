@@ -528,8 +528,12 @@ class ILPSubset:
                 U[:, _k] = v
         return U
 
-    def run(self, write_path=None):
-        solver = pe.SolverFactory('gurobi', solver_io='python')
+    def run(self, solver_type='gurobipy', write_path=None):
+        if solver_type == 'gurobipy':
+            solver = pe.SolverFactory('gurobi', solver_io='python')
+        else:
+            solver = pe.SolverFactory(solver_type)
+
         solver.solve(self.model)
         if write_path is not None:
             self.model.write(write_path)
