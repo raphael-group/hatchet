@@ -265,21 +265,15 @@ class ILPSubset:
             # TODO: These loops can be collapsed once validation against C++ is complete
             for _m in range(m):
                 for _k in range(k):
-                    _sum = 0
+                    _sumA = 0
+                    _sumB = 0
                     for _n in range(n):
                         if self._fixed_u.iloc[_n][_k] >= self.mu - self.tol:
-                            _sum += self.cA.iloc[_m][_n] * self._fixed_u.iloc[_n][_k]
-                    model.constraints.add(fA[(_m, _k)] == _sum)
+                            _sumA += self.cA.iloc[_m][_n] * self._fixed_u.iloc[_n][_k]
+                            _sumB += self.cB.iloc[_m][_n] * self._fixed_u.iloc[_n][_k]
+                    model.constraints.add(fA[(_m, _k)] == _sumA)
+                    model.constraints.add(fB[(_m, _k)] == _sumB)
 
-            for _m in range(m):
-                for _k in range(k):
-                    _sum = 0
-                    for _n in range(n):
-                        if self._fixed_u.iloc[_n][_k] >= self.mu - self.tol:
-                            _sum += self.cB.iloc[_m][_n] * self._fixed_u.iloc[_n][_k]
-                    model.constraints.add(fB[(_m, _k)] == _sum)
-
-            for _m in range(m):
                 cluster_id = f_a.index[_m]
                 # upper bound for solver
                 ub = max(sum(copy_numbers.get(cluster_id, (0, 0))), cn_max)
@@ -305,17 +299,13 @@ class ILPSubset:
             # TODO: These loops can be collapsed once validation against C++ is complete
             for _m in range(m):
                 for _k in range(k):
-                    _sum = 0
+                    _sumA = 0
+                    _sumB = 0
                     for _n in range(n):
-                        _sum += int(self._fixed_cA.iloc[_m][_n]) * self.u.iloc[_n][_k]
-                    model.constraints.add(fA[(_m, _k)] == _sum)
-
-            for _m in range(m):
-                for _k in range(k):
-                    _sum = 0
-                    for _n in range(n):
-                        _sum += int(self._fixed_cB.iloc[_m][_n]) * self.u.iloc[_n][_k]
-                    model.constraints.add(fB[(_m, _k)] == _sum)
+                        _sumA += int(self._fixed_cA.iloc[_m][_n]) * self.u.iloc[_n][_k]
+                        _sumB += int(self._fixed_cB.iloc[_m][_n]) * self.u.iloc[_n][_k]
+                    model.constraints.add(fA[(_m, _k)] == _sumA)
+                    model.constraints.add(fB[(_m, _k)] == _sumB)
 
         if mode_t in ('FULL', 'UARCH'):
             for _k in range(k):
