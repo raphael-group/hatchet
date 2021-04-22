@@ -92,6 +92,7 @@ setup(
         'matplotlib',
         'pandas',
         'psutil',
+        'pyomo',
         'pysam',
         'requests',
         'seaborn',
