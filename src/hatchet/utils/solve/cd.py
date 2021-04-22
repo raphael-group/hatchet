@@ -1,5 +1,5 @@
 from copy import copy
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from .ilp_subset import ILPSubset
 from .utils import Random
 
@@ -38,6 +38,12 @@ class Worker:
         return _obj_u, _cA, _cB, _u
 
 
+# Top-level 'work' function that can be pickled for multiprocessing
+def _work(cd, u, solver_type, max_iters, max_convergence_iters):
+    worker = Worker(cd.ilp, solver_type)
+    return worker.run(cd.hcA, cd.hcB, u, max_iters=max_iters, max_convergence_iters=max_convergence_iters)
+
+
 class CoordinateDescent:
 
     def __init__(self, f_a, f_b, n, mu, d, cn_max, cn, w, ampdel=True):
@@ -51,15 +57,11 @@ class CoordinateDescent:
         with Random(random_seed):
             seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
 
-        def _work(u):
-            worker = Worker(self.ilp, solver_type)
-            return worker.run(self.hcA, self.hcB, u, max_iters=max_iters, max_convergence_iters=max_convergence_iters)
-
         result = {}  # obj. value => (cA, cB, u) mapping
         to_do = []
-        with ThreadPoolExecutor(max_workers=min(j, n_seed)) as executor:
+        with ProcessPoolExecutor(max_workers=min(j, n_seed)) as executor:
             for u in seeds:
-                future = executor.submit(_work, u)
+                future = executor.submit(_work, self, u, solver_type, max_iters, max_convergence_iters)
                 to_do.append(future)
 
             for future in as_completed(to_do):
