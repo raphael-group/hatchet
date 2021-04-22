@@ -39,7 +39,7 @@ jobs:
 
       - name: Install coinor-cbc
         run: |
-          apt install coinor-cbc
+          sudo apt install coinor-cbc
 
       - name: Install Gurobi
         run: |
