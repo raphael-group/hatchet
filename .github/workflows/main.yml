@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master, develop, py3, ci ]
+    branches: [ master, develop, pyomo ]
   pull_request:
-    branches: [ master, develop, py3, ci ]
+    branches: [ master, develop ]
 
 jobs:
   build:
@@ -37,9 +37,9 @@ jobs:
           pip3 install zenodo-get
           python3 -m zenodo_get 10.5281/zenodo.4046906 --output-dir=testdata
 
-      - name: Set Testing Data Envvar
+      - name: Install coinor-cbc
         run: |
-          echo "HATCHET_TESTS_BAM_DIRECTORY=$(realpath testdata)" >> $GITHUB_ENV
+          apt install coinor-cbc
 
       - name: Install Gurobi
         run: |
@@ -76,6 +76,11 @@ jobs:
           $HATCHET_PATHS_SAMTOOLS/samtools faidx hg19.fa
           $HATCHET_PATHS_SAMTOOLS/samtools dict hg19.fa > hg19.dict
           echo "HATCHET_PATHS_REFERENCE=$(realpath hg19.fa)" >> $GITHUB_ENV
+
+      - name: Set Envvars
+        run: |
+          echo "HATCHET_TESTS_BAM_DIRECTORY=$(realpath testdata)" >> $GITHUB_ENV
+          echo "HATCHET_SOLVER_SOLVER=cbc" >> $GITHUB_ENV
 
       - name: Setup Python
         uses: actions/setup-python@v2
