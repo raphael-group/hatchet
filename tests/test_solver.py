@@ -37,6 +37,29 @@ def test_solve_binary():
     assert p.returncode == 0
 
 
+def test_solve_command_default(output_folder):
+    main(args=[
+        SOLVE,
+        '-x', os.path.join(output_folder),
+        '-i', os.path.join(this_dir, 'data/bulk'),
+        '-n2',
+        '-p', '400',
+        '-v', '3',
+        '-u', '0.03',
+        '--mode', '1',
+        '-r', '6700',
+        '-j', '8',
+        '-eD', '6',
+        '-eT', '12',
+        '-g', '0.35',
+        '-l', '0.6'
+    ])
+
+    df1 = pd.read_csv(os.path.join(output_folder, 'best.bbc.ucn'), sep='\t')
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
+    assert_frame_equal(df1, df2)
+
+
 @pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
 def test_solve_command_cpp(output_folder):
     old_value = config.solver.solver
