@@ -4,13 +4,13 @@
 # Please set up the correct configuration values here below before running HATCHet #
 ####################################################################################
 
-REF="/n/fs/ragr-data/datasets/ref-genomes/hg19_Remixt/Homo_sapiens.GRCh37.70.dna.chromosomes.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
-LIST="/opt/ragr/bjarnold/hatchet_shapeit_phasing/hatchet/GRCh37p13_00-All.vcf.gz"             # If HATCHet has internet, it selects a list of known germline SNPs based on REF_VERS and CHR_NOTATION below. If not, please provide full path to a locally stored list (.vcf.gz) here.
+REF="/n/fs/ragr-data/datasets/ref-genomes/GRCh37_NCBI/GRCh37.p13.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
+LIST=""             # If HATCHet has internet, it selects a list of known germline SNPs based on REF_VERS and CHR_NOTATION below. If not, please provide full path to a locally stored list (.vcf.gz) here.
 REF_VERS="hg19"         # Reference version used to select list of known germline SNPs; possible values are "hg19" or "hg38", or leave blank "" if you wish for all positions to be genotyped by bcftools
 CHR_NOTATION=false   # Does your reference name chromosomes with "chr" prefix?; possible values true/false
 # SAM="/path/to/samtools-home/bin/" #Uncomment if samtools is not already in PATH
 # BCF="/path/to/bcftools-home/bin/" #Uncomment if bcftools is not already in PATH
-XDIR="/opt/ragr/bjarnold/hatchet_shapeit_phasing/hatchet/script/test_run"      #Path for output
+XDIR="/opt/ragr/bjarnold/hatchet_shapeit_phasing/hatchet/script/dipg2/SJHGG010325"      #Path for output
 NORMAL="/opt/ragr/zaccaria/Gundem_15/A12/b627a3ea-5c38-4cc4-8f5b-75b45995dbe6/95bf9ae68444e5e14976fbbe79dc466a.bam"
 BAMS="/opt/ragr/zaccaria/Gundem_15/A12/0e3e44bc-9142-4b02-8d8a-d85504e08ca4/cb5ab4c2dd4074286b87209dfa443944.bam"
 NAMES="Primary" #Use the same order as the related tumor BAM files in BAMS above
@@ -32,7 +32,7 @@ BIN="50kb"   #Bin size for calculating RDR and BAF
 # If using reference-phasing algorithm please make sure the ouput VCF are w.r.t. same reference genome, otherwise please       #
 # use LiftOver to convert it or bcftools --annotate to add or remove `chr` notation                                            #
 ################################################################################################################################
-PHASE="None"  #Path to phased file; specify "None" to run hatchet without phasing
+PHASE=$XDIR"/phase/phased.vcf.gz"  #Path to phased file; specify "None" to run hatchet without phasing
 BLOCK="50kb"  #Haplotype block size  used for combining SNPs
 REF_PANEL="1000GP_Phase3" # Currently, only "1000GP_Phase3" is supported 
 REF_PANEL_DIR="/opt/ragr/bjarnold/hatchet_shapeit_phasing/hatchet/script/refpanel"
@@ -43,7 +43,6 @@ REF_PANEL_DIR="/opt/ragr/bjarnold/hatchet_shapeit_phasing/hatchet/script/refpane
 
 RDR="rdr/"
 SNP="snps/"
-PHASE="phase/"
 BAF="baf/"
 BB="bb/"
 BBC="bbc/"

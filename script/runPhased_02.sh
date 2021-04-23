@@ -2,6 +2,29 @@
 
 source ./config.sh
 
+if [ -z "$LIST" ]
+then
+    if [ "$REF_VERS" =  "hg19" ]
+    then
+        if [ "$CHR_NOTATION" = true ]
+        then
+            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"
+        else
+            LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz"
+        fi
+    else
+        if [ "$REF_VERS" =  "hg38" ]
+        then
+            if [ "$CHR_NOTATION" = true ]
+            then
+                LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/GATK/00-All.vcf.gz"
+            else
+                LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz"
+            fi
+        fi
+    fi
+fi
+
 ##################################################################
 # For default run please execute the following without changes   #
 # Otherwise please follow the related HATCHet's reccommendations #
@@ -16,26 +39,25 @@ export PATH=$PATH:${BCF}
 export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 
+mkdir -p ${XDIR}
 cd ${XDIR}
+mkdir -p ${RDR}
+mkdir -p ${SNP}
+mkdir -p ${BAF}
 mkdir -p ${BB}
 mkdir -p ${BBC}
 mkdir -p ${PLO}
 mkdir -p ${RES}
 mkdir -p ${SUM}
+mkdir -p "phase/"
 
-################################################################################################################################
-# To run HATCHet with phasing please do the following:                                                                         #
-# 1. Use a phasing algorithm with the SNP VCF files generated in ${SNP}*.vcf.gz (snps folder by default)                       #
-# 2. Combine the phased SNPs for all chromosomes in a unique phased file with `CHROM  POS  PHASE` where:                       #
-#      - CHROM is the chromosome of the SNP;                                                                                   #
-#      - POS is the genomic position of the SNP;                                                                               #
-#      - PHASE is any string that contains 0|1 and 1|0 (lines without those will be excluded as well as those starting with #) #
-# 3. Provide the path to the phased file in the variable PHASE here below                                                      #
-# 4. Choose haplotype block size BLOCK, 50kb is used by default
-# Note: a phased VCF file (with phased genotypes 0|1 and 1|0) works and `bcftools concat` can be used to combine chromosomes   #                                         #
-# If using reference-phasing algorithm please make sure the ouput VCF are w.r.t. same reference genome, otherwise please       #
-# use LiftOver to convert it or bcftools --annotate to add or remove `chr` notation                                            #
-################################################################################################################################
+python3 -m hatchet binBAM -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BIN} -g ${REF} -j ${J} -O ${RDR}normal.1bed -o ${RDR}tumor.1bed -t ${RDR}total.tsv |& tee ${RDR}bins.log
+
+python3 -m hatchet SNPCaller -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
+
+python3 -m hatchet deBAF -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP}*.vcf.gz -O ${BAF}normal.1bed -o ${BAF}tumor.1bed |& tee ${BAF}bafs.log
+
+python3 -m hatchet Phase -j ${J} -g ${REF} -D ${REF_PANEL_DIR} -V ${REF_VERS} -N ${CHR_NOTATION} -L ${SNP}*.vcf.gz -o "phase/" 
 
 python3 -m hatchet comBBo -c ${RDR}normal.1bed -C ${RDR}tumor.1bed -B ${BAF}tumor.1bed -t ${RDR}total.tsv -p ${PHASE} -l ${BLOCK} -e ${RANDOM} > ${BB}bulk.bb
 

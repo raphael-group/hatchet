@@ -1,5 +1,7 @@
 ######## STUFF I ADDED BETWEEN POUND SIGNS
 script/config_hg38.sh
+script/dipg2/
+script/dipg/
 script/refpanel/
 script/hg38/
 script/config_lo.sh
