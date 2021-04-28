@@ -107,7 +107,7 @@ def getPoints(data, samples):
     return points, bintoidx
 
 
-def cluster(points, clouds=None, concentration_prior = None, K = 100, restarts=10, seed = 0):
+def cluster(points, clouds=None, user_K = None, max_K = 100, restarts=10, seed = 0):
     """
     Clusters a set of data points lying in an arbitrary number of clusters.
     Arguments:
@@ -128,22 +128,41 @@ def cluster(points, clouds=None, concentration_prior = None, K = 100, restarts=1
         numPoints (list of ints): Number of points assigned to each cluster
         numClusters (int): The number of clusters.
     """
-    from sklearn.mixture import BayesianGaussianMixture
+    from sklearn.mixture import GaussianMixture
     from collections import Counter
             
-    sp.log(msg="## Clustering with K={} and c={}...\n".format(K, concentration_prior), level="INFO")
     total = list(points)
     if clouds is not None:
         total.extend(list(clouds))
     npArray = np.array(total)
     
-    gmm = BayesianGaussianMixture(n_components = K, n_init = restarts, weight_concentration_prior = concentration_prior, max_iter = int(1e6), random_state = seed)
-    targetAssignments = gmm.fit_predict(npArray)
+            
+    if user_K is not None:
+        sp.log(msg="## Clustering with user-specified K={}...\n".format(K), level="INFO")
+        bestK = user_K
+        gmm = GaussianMixture(n_components = user_K, n_inits = restarts, random_state = seed)
+        gmm.fit(npArray)
+        
+    else:
+        bics = {} 
+        gmms = {}
+        sp.log(msg="## Testing K=2 to K={} and evaluating best K in terms of BIC...\n".format(max_K), level="INFO")
+        for k in range(2, max_K + 1):
+            my_gmm =  GaussianMixture(n_components = k, n_init = restarts, random_state = seed)
+            my_gmm.fit(npArray)
+            gmms[k] = my_gmm
+            bics[k] = my_gmm.bic(npArray)
+
+        bestK = min(bics.items(), key = lambda x: x[1])[0]
+        sp.log(msg="## Proceeding with K={} which minimizes BIC.\n".format(bestK), level="INFO")
+        gmm = gmms[bestK]
+    
+    targetAssignments = gmm.predict(npArray)
     targetAssignments = targetAssignments[:len(points)]
     mus = gmm.means_
     sigmas = gmm.covariances_
     cntr = Counter(targetAssignments)
-    numPoints = [cntr[i] if i in cntr else 0 for i in range(K)]
+    numPoints = [cntr[i] if i in cntr else 0 for i in range(bestK)]
     numClusters = len(cntr)
     
     return mus, sigmas, targetAssignments, numPoints, numClusters
