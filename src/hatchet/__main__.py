@@ -1,36 +1,27 @@
 """
 The HATCHet package can be run as a module by invoking it as:
 python -m hatchet <command> <arguments> ..
-
-The commands currently supported are:
-
-binBAM - description here
-SNPCaller -
-deBAF -
-comBBo -
-cluBB -
-solve -
-BBeval -
 """
 
 import sys
 import os.path
 import hatchet
-from hatchet.utils.binBAM import main as binBAM
-from hatchet.utils.SNPCaller import main as SNPCaller
-from hatchet.utils.deBAF import main as deBAF
-from hatchet.utils.comBBo import main as comBBo
-from hatchet.utils.cluBB import main as cluBB
-from hatchet.utils.BBot import main as BBot
-from hatchet.bin.HATCHet import main as solve
-from hatchet.utils.BBeval import main as BBeval
+from hatchet.utils.count_reads import main as count_reads
+from hatchet.utils.genotype_snps import main as genotype_snps
+from hatchet.utils.count_alleles import main as count_alleles
+from hatchet.utils.combine_counts import main as combine_counts
+from hatchet.utils.cluster_bins import main as cluster_bins
+from hatchet.utils.plot_bins import main as plot_bins
+from hatchet.bin.HATCHet import main as compute_cn
+from hatchet.utils.plot_cn import main as plot_cn
 
 solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
 if __name__ == '__main__':
 
-    commands = ('binBAM', 'SNPCaller', 'deBAF', 'comBBo', 'cluBB', 'BBot', 'solve', 'BBeval')
+    commands = ('count-reads', 'genotype-snps', 'count-alleles', 'combine-counts', 'cluster-bins', 'plot-bins',
+                'compute-cn', 'plot-cn')
     if len(sys.argv) < 2:
         print('Usage: python -m hatchet <command> <arguments ..>')
         sys.exit(0)
@@ -41,7 +32,8 @@ if __name__ == '__main__':
         print('The following commands are supported: ' + ' '.join(commands))
         sys.exit(1)
 
-    if command != 'solve':
+    if command != 'compute_cn':
+        command = command.replace('-', '_')
         globals()[command](args)
     else:
-        solve([solve_bin] + args)
+        compute_cn([solve_bin] + args)

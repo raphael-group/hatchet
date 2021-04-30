@@ -8,7 +8,7 @@ from scipy.stats import beta
 
 from . import ProgressBar as pb
 from . import Supporting as sp
-from .ArgParsing import parse_combbo_args
+from .ArgParsing import parse_combine_counts_args
 
 from collections import defaultdict
 from collections import deque
@@ -17,7 +17,7 @@ from collections import deque
 
 def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = parse_combbo_args(args)
+    args = parse_combine_counts_args(args)
     sp.logArgs(args, 80)
     np.random.seed(seed=args["seed"])
     sp.log(msg="# Reading and checking the bin count files for computing read-depth ratios\n", level="STEP")
