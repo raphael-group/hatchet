@@ -44,7 +44,7 @@ def parsing_arguments(args=None):
     Returns:
     """
     description = ""
-    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(prog='hatchet BBeval', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("INPUT", help="A single file or multiple files between apices in CN_BBC format")
     parser.add_argument("-n","--patientnames", required=False, default=config.bbeval.patientnames, type=str, help='Names of patients between apices (default: inferred from filenames)')
     parser.add_argument("-u","--minu", required=False, default=config.bbeval.minu, type=float, help='Minimum proportion of a CNA to be considered subclonal (default: 0.2)"')

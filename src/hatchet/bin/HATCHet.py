@@ -18,7 +18,7 @@ def parsing_arguments(args=None):
     Returns:
     """
     description = ""
-    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(prog='hatchet solve', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("SOLVER", help="Path to the executable solver")
     parser.add_argument("-i","--input", type=str, required=True, help="Prefix path to seg and bbc input files (required)")
     parser.add_argument("-x","--runningdir", type=str, required=False, default=config.solver.runningdir, help="Running directory (default: ./)")
