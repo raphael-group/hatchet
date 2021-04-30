@@ -13,7 +13,7 @@ from .Supporting import *
 
 def main(args=None):
     log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = ap.parse_bin_arguments(args)
+    args = ap.parse_count_reads_arguments(args)
     logArgs(args, 80)
 
     if args["regions"] is None:

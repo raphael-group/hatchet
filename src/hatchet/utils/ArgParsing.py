@@ -8,7 +8,7 @@ from . import Supporting as sp
 from hatchet import config
 
 
-def parse_snp_arguments(args=None):
+def parse_genotype_snps_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -19,15 +19,15 @@ def parse_snp_arguments(args=None):
     parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
     parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
-    parser.add_argument("-R","--snps", required=False, default=config.snp.snps, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
-    parser.add_argument("-j", "--processes", required=False, default=config.snp.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-q", "--readquality", required=False, default=config.snp.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-Q", "--basequality", required=False, default=config.snp.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
-    parser.add_argument("-c", "--mincov", required=False, default=config.snp.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
-    parser.add_argument("-C", "--maxcov", required=False, default=config.snp.maxcov, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
-    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.snp.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
-    parser.add_argument("-o", "--outputsnps", required=False, default=config.snp.outputsnps, type=str, help="Output folder for SNPs separated by chromosome (default: ./)")
-    parser.add_argument("-v", "--verbose", action='store_true', default=config.snp.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-R","--snps", required=False, default=config.genotype_snps.snps, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
+    parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-q", "--readquality", required=False, default=config.genotype_snps.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-Q", "--basequality", required=False, default=config.genotype_snps.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
+    parser.add_argument("-c", "--mincov", required=False, default=config.genotype_snps.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
+    parser.add_argument("-C", "--maxcov", required=False, default=config.genotype_snps.maxcov, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
+    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.genotype_snps.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
+    parser.add_argument("-o", "--outputsnps", required=False, default=config.genotype_snps.outputsnps, type=str, help="Output folder for SNPs separated by chromosome (default: ./)")
+    parser.add_argument("-v", "--verbose", action='store_true', default=config.genotype_snps.verbose, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
@@ -83,7 +83,7 @@ def parse_snp_arguments(args=None):
             "verbose" : args.verbose}
 
 
-def parse_baf_arguments(args=None):
+def parse_count_alleles_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -94,23 +94,23 @@ def parse_baf_arguments(args=None):
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs to consider in the normal sample")
-    parser.add_argument("-S","--samples", required=False, default=config.baf.samples, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
+    parser.add_argument("-S","--samples", required=False, default=config.count_alleles.samples, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
     parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
-    parser.add_argument("-e","--regions", required=False, default=config.baf.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data with coding regions (default: none, consider entire genome)")
-    parser.add_argument("-j", "--processes", required=False, default=config.baf.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-q", "--readquality", required=False, default=config.baf.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-Q", "--basequality", required=False, default=config.baf.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
-    parser.add_argument("-U", "--snpquality", required=False, default=config.baf.snpquality, type=int, help="Minimum SNP-variant quality, QUAL, for a variant to be considered (default: 11)")
-    parser.add_argument("-g", "--gamma", required=False, default=config.baf.gamma, type=float, help="Level of confidence to determine heterozigosity of SNPs (default: 0.05)")
-    parser.add_argument("-b", "--maxshift", required=False, default=config.baf.maxshift, type=float, help="Maximum allowed absolute difference of BAF from 0.5 for selected heterozygous SNPs in the normal sample (default: 0.5)")
-    parser.add_argument("-c", "--mincov", required=False, default=config.baf.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
-    parser.add_argument("-C", "--maxcov", required=False, default=config.baf.maxcov, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
-    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.baf.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
-    parser.add_argument("-O", "--outputnormal", required=False, default=config.baf.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
-    parser.add_argument("-o", "--outputtumors", required=False, default=config.baf.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
-    parser.add_argument("-l", "--outputsnps", required=False, default=config.baf.outputsnps, type=str, help="Output directory for lists of selected SNPs (default: ./)")
-    parser.add_argument("-v", "--verbose", action='store_true', default=config.baf.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-e","--regions", required=False, default=config.count_alleles.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data with coding regions (default: none, consider entire genome)")
+    parser.add_argument("-j", "--processes", required=False, default=config.count_alleles.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-q", "--readquality", required=False, default=config.count_alleles.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-Q", "--basequality", required=False, default=config.count_alleles.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
+    parser.add_argument("-U", "--snpquality", required=False, default=config.count_alleles.snpquality, type=int, help="Minimum SNP-variant quality, QUAL, for a variant to be considered (default: 11)")
+    parser.add_argument("-g", "--gamma", required=False, default=config.count_alleles.gamma, type=float, help="Level of confidence to determine heterozigosity of SNPs (default: 0.05)")
+    parser.add_argument("-b", "--maxshift", required=False, default=config.count_alleles.maxshift, type=float, help="Maximum allowed absolute difference of BAF from 0.5 for selected heterozygous SNPs in the normal sample (default: 0.5)")
+    parser.add_argument("-c", "--mincov", required=False, default=config.count_alleles.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
+    parser.add_argument("-C", "--maxcov", required=False, default=config.count_alleles.maxcov, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
+    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.count_alleles.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
+    parser.add_argument("-O", "--outputnormal", required=False, default=config.count_alleles.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
+    parser.add_argument("-o", "--outputtumors", required=False, default=config.count_alleles.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
+    parser.add_argument("-l", "--outputsnps", required=False, default=config.count_alleles.outputsnps, type=str, help="Output directory for lists of selected SNPs (default: ./)")
+    parser.add_argument("-v", "--verbose", action='store_true', default=config.count_alleles.verbose, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
@@ -199,7 +199,7 @@ def parse_baf_arguments(args=None):
             "verbose" : args.verbose}
 
 
-def parse_bin_arguments(args=None):
+def parse_count_reads_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -209,16 +209,16 @@ def parse_bin_arguments(args=None):
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-b","--size", required=True, type=str, help="Size of the bins, specified as a full number or using the notations either \"kb\" or \"Mb\"")
-    parser.add_argument("-S","--samples", required=False, default=config.bin.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
+    parser.add_argument("-S","--samples", required=False, default=config.count_reads.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
     parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
-    parser.add_argument("-r","--regions", required=False, default=config.bin.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
+    parser.add_argument("-r","--regions", required=False, default=config.count_reads.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
     parser.add_argument("-g","--reference", required=False, default=config.paths.reference, type=str, help="Reference genome, note that reference must be indexed and the dictionary must exist in the same directory with the same name and .dict extension")
-    parser.add_argument("-j", "--processes", required=False, default=config.bin.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-q", "--readquality", required=False, default=config.bin.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-O", "--outputnormal", required=False, default=config.bin.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
-    parser.add_argument("-o", "--outputtumors", required=False, default=config.bin.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
-    parser.add_argument("-t", "--outputtotal", required=False, default=config.bin.outputtotal, type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
-    parser.add_argument("-v", "--verbose", action='store_true', default=config.bin.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-j", "--processes", required=False, default=config.count_reads.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-q", "--readquality", required=False, default=config.count_reads.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-O", "--outputnormal", required=False, default=config.count_reads.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
+    parser.add_argument("-o", "--outputtumors", required=False, default=config.count_reads.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
+    parser.add_argument("-t", "--outputtotal", required=False, default=config.count_reads.outputtotal, type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
+    parser.add_argument("-v", "--verbose", action='store_true', default=config.count_reads.verbose, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
