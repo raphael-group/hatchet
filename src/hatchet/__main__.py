@@ -5,6 +5,7 @@ python -m hatchet <command> <arguments> ..
 
 import sys
 import os.path
+import warnings
 import hatchet
 from hatchet.utils.count_reads import main as count_reads
 from hatchet.utils.genotype_snps import main as genotype_snps
@@ -22,17 +23,36 @@ if __name__ == '__main__':
 
     commands = ('count-reads', 'genotype-snps', 'count-alleles', 'combine-counts', 'cluster-bins', 'plot-bins',
                 'compute-cn', 'plot-cn')
+
+    # support for old command names as they've been used in earlier versions of HATCHet
+    aliases = {
+        'binBAM': 'count-reads',
+        'SNPCaller': 'genotype-snps',
+        'deBAF': 'count-alleles',
+        'comBBo': 'combine-counts',
+        'cluBB': 'cluster-bins',
+        'BBot': 'plot-bins',
+        'solve': 'compute-cn',
+        'BBeval': 'plot-cn'
+    }
+
     if len(sys.argv) < 2:
         print('Usage: python -m hatchet <command> <arguments ..>')
         sys.exit(0)
 
     command = sys.argv[1]
     args = sys.argv[2:]
-    if command not in commands:
+
+    if command in aliases:
+        msg = f'The HATCHet command "{command}" has been replaced by "{aliases[command]}" and will be missing in ' \
+              f'future releases. Please update your scripts accordingly.'
+        warnings.warn(msg, FutureWarning)
+    elif command not in commands:
         print('The following commands are supported: ' + ' '.join(commands))
         sys.exit(1)
 
-    if command != 'compute_cn':
+    command = aliases.get(command, command)
+    if command != 'compute-cn':
         command = command.replace('-', '_')
         globals()[command](args)
     else:
