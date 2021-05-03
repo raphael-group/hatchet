@@ -5,7 +5,7 @@ import subprocess
 import shlex
 
 from . import Supporting as sp
-from hatchet import config
+from hatchet import config, __version__
 
 
 def parse_snp_arguments(args=None):
@@ -28,6 +28,7 @@ def parse_snp_arguments(args=None):
     parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.snp.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
     parser.add_argument("-o", "--outputsnps", required=False, default=config.snp.outputsnps, type=str, help="Output folder for SNPs separated by chromosome (default: ./)")
     parser.add_argument("-v", "--verbose", action='store_true', default=config.snp.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
