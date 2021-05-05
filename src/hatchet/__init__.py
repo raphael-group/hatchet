@@ -1,4 +1,4 @@
-__version__ = '0.2.16'
+__version__ = '0.3.0'
 
 import os.path
 from importlib.resources import path

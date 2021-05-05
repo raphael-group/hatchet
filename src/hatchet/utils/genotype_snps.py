@@ -18,7 +18,7 @@ from . import ProgressBar as pb
 
 def main(args=None):
     log(msg="# Parsing the input arguments, checking the consistency of given files, and extracting required information\n", level="STEP")
-    args = ap.parse_snp_arguments(args)
+    args = ap.parse_genotype_snps_arguments(args)
     logArgs(args, 80)
 
     log(msg="# Inferring SNPs from the normal sample\n", level="STEP")

@@ -1,12 +1,12 @@
-# BBot
+# plot-bins
 
 This step produces informative plots concerning the computed RDRs, BAFs, and clusters.
 The information produced by this step are important to validate the compute clusters of genomic regions and help to tune the parameters for better deal with special datasets.
-cluBB produces different plots which need to be specified by different commands and require different input.
+cluster-bins produces different plots which need to be specified by different commands and require different input.
 
 ## Input
 
-cluBB considers two different inputs which are tab-separated files, one is mandatory and the other is only required for certain command:
+plot-bins considers two different inputs which are tab-separated files, one is mandatory and the other is only required for certain command:
 
 1. A file of clustered genomic bins, specified without any flag and with the following fields.
 
@@ -46,7 +46,7 @@ A command must be specified using the flag `-c`, `--command` and every command i
 
 The command generates a scatter plot describing the RDR of every genomic bin in the different samples. For every genomic bin sorted by chromosome and by genomic positions, a point is plotted with the correspondig value of RDR and colored by a color identifying the corresponding sample.
 
-    python -m hatchet BBot A12.bbc -c RD -m Set1 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
+    python -m hatchet plot-bins A12.bbc -c RD -m Set1 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
 
 ![](example_rd.png "Example of RDR plot from the output of RD command")
 
@@ -56,7 +56,7 @@ The command generates a scatter plot describing the RDR of every genomic bin in 
 
 The command generates a scatter plot describing the BAF of every genomic bin in the different samples. For every genomic bin sorted by chromosome and by genomic positions, a point is plotted with the correspondig value of RDR and colored by a color identifying the corresponding sample.
 
-    python -m hatchet BBot A12.bbc -c BAF -m Set1 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
+    python -m hatchet plot-bins A12.bbc -c BAF -m Set1 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
 
 ![](example_baf.png "Example of RDR plot from the output of RD command")
 
@@ -66,7 +66,7 @@ The command generates a scatter plot describing the BAF of every genomic bin in 
 
 The command generates a series of 2d-scatter plots where x-axis corresponds to the RDR and the y-axis corresponds to 0.5 - BAF. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR and BAF. The points are colored according to their density from blue (low density) to dark red (high density).
 
-    python -m hatchet BBot A12.bbc -c BB --figsize 8,6 --markersize 1 --xmax 3.5 --xmin 0.5
+    python -m hatchet plot-bins A12.bbc -c BB --figsize 8,6 --markersize 1 --xmax 3.5 --xmin 0.5
 
 ![](example_bb.png "Example of density plot from the output of BB command")
 
@@ -76,7 +76,7 @@ The command generates a series of 2d-scatter plots where x-axis corresponds to t
 
 The command generates a series of 2d-scatter plots where x-axis corresponds to the RDR and the y-axis corresponds to 0.5 - BAF. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR and BAF. The points are colored according to the clusters computed by HATCHet. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
 
-    python -m hatchet BBot A12.bbc -c CBB --figsize 4,1.1 -m tab20 --markersize 1 --xmax 3.5 --xmin 0.5 --colwrap 3 -tS 0.005
+    python -m hatchet plot-bins A12.bbc -c CBB --figsize 4,1.1 -m tab20 --markersize 1 --xmax 3.5 --xmin 0.5 --colwrap 3 -tS 0.005
 
 ![](example_cbb.png "Example of cluster plot from the output of CBIN command")
 
@@ -86,7 +86,7 @@ The command generates a series of 2d-scatter plots where x-axis corresponds to t
 
 The command generates a series of 2d-scatter plots where x-axis corresponds to the RDR and to bins sorted by chromosome and positions. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR. The points are colored according to the clusters computed by HATCHet. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
 
-    python -m hatchet BBot A12.bbc -c CRD -m tab20 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
+    python -m hatchet plot-bins A12.bbc -c CRD -m tab20 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
 
 ![](example_crdr.png "Example of cluster plot from the output of CRDR command")
 
@@ -96,7 +96,7 @@ The command generates a series of 2d-scatter plots where x-axis corresponds to t
 
 The command generates a series of 2d-scatter plots where x-axis corresponds to the BAF and to bins sorted by chromosome and positions. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of BAF. The points are colored according to the clusters computed by HATCHet. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
 
-    python -m hatchet BBot A12.bbc -c CBAF -m tab20 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
+    python -m hatchet plot-bins A12.bbc -c CBAF -m tab20 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
 
 ![](example_cbaf.png "Example of cluster plot from the output of CBAF command")
 
@@ -115,7 +115,7 @@ The command generates a series of 2d-scatter plots where x-axis corresponds to t
 | `--figsize` | Figure size in the format "(X, Y)" | The parameter is used to change the figure size. The meaning and scale of X and Y depend on the different plot so one needs to try different values. | Automatic values |
 | `--markersize` | Size of the markers | The value is used to scale the size of the point markers | Automatic value |
 | `-m`, `--colormap` | Name of the colormap to use | The following colormaps are available: {Set1, Set2, Paired, Dark2, tab10, and tab20} | tab20 |
-| `--resolution` | Number of bins to merge | This feature allows BBot to merge multiple bins into segments whose copy numbers will be chosen by majority. This features allows to change the resolution of the plot. | 0, bins are not merged |
+| `--resolution` | Number of bins to merge | This feature allows plot-bins to merge multiple bins into segments whose copy numbers will be chosen by majority. This features allows to change the resolution of the plot. | 0, bins are not merged |
 | `--colwrap` | Number of plots per each column | This value determines the maximum number of plots for multiple samples to print on the same row  | 2 |
 | `--fontscale` | Scale for font size | The value is used to scale the font size | 1 |
 | `-s`, `--segfile` | Path to cluter file | The cluster file, containing estimated values of RDR and BAF for each cluster in every sample is only required by `CLUSTER` command | None |

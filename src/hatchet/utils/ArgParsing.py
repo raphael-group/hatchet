@@ -7,7 +7,7 @@ from . import Supporting as sp
 from hatchet import config
 
 
-def parse_snp_arguments(args=None):
+def parse_genotype_snps_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -18,15 +18,15 @@ def parse_snp_arguments(args=None):
     parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
     parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
-    parser.add_argument("-R","--snps", required=False, default=config.snp.snps, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
-    parser.add_argument("-j", "--processes", required=False, default=config.snp.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-q", "--readquality", required=False, default=config.snp.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-Q", "--basequality", required=False, default=config.snp.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
-    parser.add_argument("-c", "--mincov", required=False, default=config.snp.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
-    parser.add_argument("-C", "--maxcov", required=False, default=config.snp.maxcov, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
-    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.snp.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
-    parser.add_argument("-o", "--outputsnps", required=False, default=config.snp.outputsnps, type=str, help="Output folder for SNPs separated by chromosome (default: ./)")
-    parser.add_argument("-v", "--verbose", action='store_true', default=config.snp.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-R","--snps", required=False, default=config.genotype_snps.snps, type=str, help="List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)")
+    parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-q", "--readquality", required=False, default=config.genotype_snps.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-Q", "--basequality", required=False, default=config.genotype_snps.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
+    parser.add_argument("-c", "--mincov", required=False, default=config.genotype_snps.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
+    parser.add_argument("-C", "--maxcov", required=False, default=config.genotype_snps.maxcov, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
+    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.genotype_snps.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
+    parser.add_argument("-o", "--outputsnps", required=False, default=config.genotype_snps.outputsnps, type=str, help="Output folder for SNPs separated by chromosome (default: ./)")
+    parser.add_argument("-v", "--verbose", action='store_true', default=config.genotype_snps.verbose, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
@@ -82,7 +82,7 @@ def parse_snp_arguments(args=None):
             "verbose" : args.verbose}
 
 
-def parse_baf_arguments(args=None):
+def parse_count_alleles_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -93,23 +93,23 @@ def parse_baf_arguments(args=None):
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs to consider in the normal sample")
-    parser.add_argument("-S","--samples", required=False, default=config.baf.samples, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
+    parser.add_argument("-S","--samples", required=False, default=config.count_alleles.samples, type=str, nargs='+', help="Sample names for each BAM (given in the same order where the normal name is first)")
     parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
-    parser.add_argument("-e","--regions", required=False, default=config.baf.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data with coding regions (default: none, consider entire genome)")
-    parser.add_argument("-j", "--processes", required=False, default=config.baf.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-q", "--readquality", required=False, default=config.baf.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-Q", "--basequality", required=False, default=config.baf.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
-    parser.add_argument("-U", "--snpquality", required=False, default=config.baf.snpquality, type=int, help="Minimum SNP-variant quality, QUAL, for a variant to be considered (default: 11)")
-    parser.add_argument("-g", "--gamma", required=False, default=config.baf.gamma, type=float, help="Level of confidence to determine heterozigosity of SNPs (default: 0.05)")
-    parser.add_argument("-b", "--maxshift", required=False, default=config.baf.maxshift, type=float, help="Maximum allowed absolute difference of BAF from 0.5 for selected heterozygous SNPs in the normal sample (default: 0.5)")
-    parser.add_argument("-c", "--mincov", required=False, default=config.baf.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
-    parser.add_argument("-C", "--maxcov", required=False, default=config.baf.maxcov, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
-    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.baf.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
-    parser.add_argument("-O", "--outputnormal", required=False, default=config.baf.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
-    parser.add_argument("-o", "--outputtumors", required=False, default=config.baf.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
-    parser.add_argument("-l", "--outputsnps", required=False, default=config.baf.outputsnps, type=str, help="Output directory for lists of selected SNPs (default: ./)")
-    parser.add_argument("-v", "--verbose", action='store_true', default=config.baf.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-e","--regions", required=False, default=config.count_alleles.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data with coding regions (default: none, consider entire genome)")
+    parser.add_argument("-j", "--processes", required=False, default=config.count_alleles.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-q", "--readquality", required=False, default=config.count_alleles.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-Q", "--basequality", required=False, default=config.count_alleles.basequality, type=int, help="Minimum base quality for a base to be considered (default: 11)")
+    parser.add_argument("-U", "--snpquality", required=False, default=config.count_alleles.snpquality, type=int, help="Minimum SNP-variant quality, QUAL, for a variant to be considered (default: 11)")
+    parser.add_argument("-g", "--gamma", required=False, default=config.count_alleles.gamma, type=float, help="Level of confidence to determine heterozigosity of SNPs (default: 0.05)")
+    parser.add_argument("-b", "--maxshift", required=False, default=config.count_alleles.maxshift, type=float, help="Maximum allowed absolute difference of BAF from 0.5 for selected heterozygous SNPs in the normal sample (default: 0.5)")
+    parser.add_argument("-c", "--mincov", required=False, default=config.count_alleles.mincov, type=int, help="Minimum coverage for SNPs to be considered (default: 0)")
+    parser.add_argument("-C", "--maxcov", required=False, default=config.count_alleles.maxcov, type=int, help="Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)")
+    parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.count_alleles.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
+    parser.add_argument("-O", "--outputnormal", required=False, default=config.count_alleles.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
+    parser.add_argument("-o", "--outputtumors", required=False, default=config.count_alleles.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
+    parser.add_argument("-l", "--outputsnps", required=False, default=config.count_alleles.outputsnps, type=str, help="Output directory for lists of selected SNPs (default: ./)")
+    parser.add_argument("-v", "--verbose", action='store_true', default=config.count_alleles.verbose, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
@@ -198,7 +198,7 @@ def parse_baf_arguments(args=None):
             "verbose" : args.verbose}
 
 
-def parse_bin_arguments(args=None):
+def parse_count_reads_arguments(args=None):
     """
     Parse command line arguments
     Returns:
@@ -208,16 +208,16 @@ def parse_bin_arguments(args=None):
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-b","--size", required=True, type=str, help="Size of the bins, specified as a full number or using the notations either \"kb\" or \"Mb\"")
-    parser.add_argument("-S","--samples", required=False, default=config.bin.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
+    parser.add_argument("-S","--samples", required=False, default=config.count_reads.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
     parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
-    parser.add_argument("-r","--regions", required=False, default=config.bin.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
+    parser.add_argument("-r","--regions", required=False, default=config.count_reads.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
     parser.add_argument("-g","--reference", required=False, default=config.paths.reference, type=str, help="Reference genome, note that reference must be indexed and the dictionary must exist in the same directory with the same name and .dict extension")
-    parser.add_argument("-j", "--processes", required=False, default=config.bin.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-q", "--readquality", required=False, default=config.bin.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-O", "--outputnormal", required=False, default=config.bin.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
-    parser.add_argument("-o", "--outputtumors", required=False, default=config.bin.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
-    parser.add_argument("-t", "--outputtotal", required=False, default=config.bin.outputtotal, type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
-    parser.add_argument("-v", "--verbose", action='store_true', default=config.bin.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-j", "--processes", required=False, default=config.count_reads.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-q", "--readquality", required=False, default=config.count_reads.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-O", "--outputnormal", required=False, default=config.count_reads.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
+    parser.add_argument("-o", "--outputtumors", required=False, default=config.count_reads.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
+    parser.add_argument("-t", "--outputtotal", required=False, default=config.count_reads.outputtotal, type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
+    parser.add_argument("-v", "--verbose", action='store_true', default=config.count_reads.verbose, required=False, help="Use verbose log messages")
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
@@ -292,7 +292,7 @@ def parse_bin_arguments(args=None):
             "verbose" : args.verbose}
 
 
-def parse_combbo_args(args=None):
+def parse_combine_counts_args(args=None):
     """
     Parse command line arguments
     Returns:
@@ -302,14 +302,14 @@ def parse_combbo_args(args=None):
     parser.add_argument("-c","--normalbins", required=True, type=str, help='Normal bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-C","--tumorbins", required=True, type=str, help='Tumor bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-B","--tumorbafs", required=True, type=str, help='Tumor allele counts in the format "SAMPLE\tCHR\tPOS\tREF-COUNT\tALT-COUNT"')
-    parser.add_argument("-p","--phase", required=False, default=config.combbo.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')
-    parser.add_argument("-l","--blocklength", required=False, default=config.combbo.blocklength, type=str, help="Size of the haplotype blocks, specified as a full number or using the notations either \"kb\" or \"Mb\" (default: 50kb)")
-    parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.combbo.diploidbaf, help="Maximum diploid-BAF shift used to select the bins whose BAF should be normalized by the normal when normalbafs is given (default: 0.1)")
-    parser.add_argument("-t","--totalcounts", required=False, default=config.combbo.totalcounts, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample (default: none)')
-    parser.add_argument("-g","--gamma",type=float,required=False, default=config.combbo.gamma, help='Confidence level used to determine if a bin is copy neutral with BAF of 0.5 in the BINOMIAL_TEST mode (default: 0.05)')
-    parser.add_argument("-e","--seed", type=int, required=False, default=config.combbo.seed, help='Random seed used for the normal distributions used in the clouds (default: 0)')
-    parser.add_argument("-v", "--verbose", action='store_true', default=config.combbo.verbose, required=False, help="Use verbose log messages")
-    parser.add_argument("-r", "--disablebar", action='store_true', default=config.combbo.disablebar, required=False, help="Disable progress bar")
+    parser.add_argument("-p","--phase", required=False, default=config.combine_counts.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')
+    parser.add_argument("-l","--blocklength", required=False, default=config.combine_counts.blocklength, type=str, help="Size of the haplotype blocks, specified as a full number or using the notations either \"kb\" or \"Mb\" (default: 50kb)")
+    parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.combine_counts.diploidbaf, help="Maximum diploid-BAF shift used to select the bins whose BAF should be normalized by the normal when normalbafs is given (default: 0.1)")
+    parser.add_argument("-t","--totalcounts", required=False, default=config.combine_counts.totalcounts, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample (default: none)')
+    parser.add_argument("-g","--gamma",type=float,required=False, default=config.combine_counts.gamma, help='Confidence level used to determine if a bin is copy neutral with BAF of 0.5 in the BINOMIAL_TEST mode (default: 0.05)')
+    parser.add_argument("-e","--seed", type=int, required=False, default=config.combine_counts.seed, help='Random seed used for the normal distributions used in the clouds (default: 0)')
+    parser.add_argument("-v", "--verbose", action='store_true', default=config.combine_counts.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-r", "--disablebar", action='store_true', default=config.combine_counts.disablebar, required=False, help="Disable progress bar")
     args = parser.parse_args(args)
 
     if not os.path.isfile(args.normalbins):
@@ -355,7 +355,7 @@ def parse_combbo_args(args=None):
             "disable" : args.disablebar}
 
 
-def parse_clubb_args(args=None):
+def parse_cluster_bins_args(args=None):
     """
     Parse command line arguments
     Returns:
@@ -363,20 +363,20 @@ def parse_clubb_args(args=None):
     description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
     parser = argparse.ArgumentParser(prog='hatchet cluBB', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("BBFILE", help="A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)")
-    parser.add_argument("-o", "--outsegments", required=False, default=config.clubb.outsegments, type=str, help="Output filename for the segments computed by clustering bins (default: stdout)")
-    parser.add_argument("-O", "--outbins", required=False, default=config.clubb.outbins, type=str, help="Output filename for a BB file adding the clusters (default: stdout)")
-    parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.clubb.diploidbaf, help="Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the cluster inside this threshold accordingly (default: None, scaling is not performed)")
-    parser.add_argument("-tR","--tolerancerdr", type=float, required=False, default=config.clubb.tolerancerdr, help='Refine the clustering merging the clusters with this maximum difference in RDR values (default: None, gurobipy required)')
-    parser.add_argument("-tB","--tolerancebaf", type=float, required=False, default=config.clubb.tolerancebaf, help='Refine the clustering merging the clusters with this maximum difference in BAF values (default: None, gurobipy required)')
-    parser.add_argument("-u","--bootclustering", type=int, required=False, default=config.clubb.bootclustering, help='Number of points to add for bootstraping each bin to improve the clustering. Each point is generated by drawing its values from a normal distribution centered on the values of the bin. This can help the clustering when the input number of bins is low (default: 0)')
-    parser.add_argument("-dR","--ratiodeviation", type=float, required=False, default=config.clubb.ratiodeviation, help='Standard deviation of the read ratios used to generate the points in the clouds (default: 0.02)')
-    parser.add_argument("-dB","--bafdeviation", type=float, required=False, default=config.clubb.bafdeviation, help='Standard deviation of the BAFs used to generate the points in the clouds (default: 0.02)')
-    parser.add_argument("-e","--seed", type=int, required=False, default=config.clubb.seed, help='Random seed used for clustering AND the normal distributions used in the clouds (default: 0)')
-    parser.add_argument("-K","--initclusters", type=int, required=False, default=config.clubb.initclusters, help="The maximum number of clusters to infer (default: 50)")
-    parser.add_argument("-c","--concentration", type=float, required=False, default=config.clubb.concentration, help="Tuning parameter for clustering (concentration parameter for Dirichlet process prior). Higher favors more clusters, lower favors fewer clusters (default 0.02 = 1/K).")
-    parser.add_argument("-R","--restarts", type=int, required=False, default=config.clubb.restarts, help="Number of restarts performed by the clustering to choose the best (default: 10)")
-    parser.add_argument("-v","--verbose", action='store_true', default=config.clubb.verbose, required=False, help="Use verbose log messages")
-    parser.add_argument("--disablebar", action='store_true', default=config.clubb.disablebar, required=False, help="Disable progress bar")
+    parser.add_argument("-o", "--outsegments", required=False, default=config.cluster_bins.outsegments, type=str, help="Output filename for the segments computed by clustering bins (default: stdout)")
+    parser.add_argument("-O", "--outbins", required=False, default=config.cluster_bins.outbins, type=str, help="Output filename for a BB file adding the clusters (default: stdout)")
+    parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.cluster_bins.diploidbaf, help="Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the cluster inside this threshold accordingly (default: None, scaling is not performed)")
+    parser.add_argument("-tR","--tolerancerdr", type=float, required=False, default=config.cluster_bins.tolerancerdr, help='Refine the clustering merging the clusters with this maximum difference in RDR values (default: None, gurobipy required)')
+    parser.add_argument("-tB","--tolerancebaf", type=float, required=False, default=config.cluster_bins.tolerancebaf, help='Refine the clustering merging the clusters with this maximum difference in BAF values (default: None, gurobipy required)')
+    parser.add_argument("-u","--bootclustering", type=int, required=False, default=config.cluster_bins.bootclustering, help='Number of points to add for bootstraping each bin to improve the clustering. Each point is generated by drawing its values from a normal distribution centered on the values of the bin. This can help the clustering when the input number of bins is low (default: 0)')
+    parser.add_argument("-dR","--ratiodeviation", type=float, required=False, default=config.cluster_bins.ratiodeviation, help='Standard deviation of the read ratios used to generate the points in the clouds (default: 0.02)')
+    parser.add_argument("-dB","--bafdeviation", type=float, required=False, default=config.cluster_bins.bafdeviation, help='Standard deviation of the BAFs used to generate the points in the clouds (default: 0.02)')
+    parser.add_argument("-e","--seed", type=int, required=False, default=config.cluster_bins.seed, help='Random seed used for clustering AND the normal distributions used in the clouds (default: 0)')
+    parser.add_argument("-K","--initclusters", type=int, required=False, default=config.cluster_bins.initclusters, help="The maximum number of clusters to infer (default: 50)")
+    parser.add_argument("-c","--concentration", type=float, required=False, default=config.cluster_bins.concentration, help="Tuning parameter for clustering (concentration parameter for Dirichlet process prior). Higher favors more clusters, lower favors fewer clusters (default 0.02 = 1/K).")
+    parser.add_argument("-R","--restarts", type=int, required=False, default=config.cluster_bins.restarts, help="Number of restarts performed by the clustering to choose the best (default: 10)")
+    parser.add_argument("-v","--verbose", action='store_true', default=config.cluster_bins.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("--disablebar", action='store_true', default=config.cluster_bins.disablebar, required=False, help="Disable progress bar")
     args = parser.parse_args(args)
 
     if not os.path.isfile(args.BBFILE):
@@ -419,7 +419,7 @@ def parse_clubb_args(args=None):
             "outbins" : args.outbins}
 
 
-def parse_bbot_args(args=None):
+def parse_plot_bins_args(args=None):
     """
     Parse command line arguments
     Returns:
@@ -427,23 +427,23 @@ def parse_bbot_args(args=None):
     description = "Generate plots for read-depth ratio (RD), B-allele frequency (BAF), and clusters for genomic bins in multiple samples using .bb, .cbb, .seg files."
     parser = argparse.ArgumentParser(prog='hatchet BBot', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("INPUT", help='Input BBC file with RDR and BAF')
-    parser.add_argument("-c", "--command", required=False, type=str, default=config.bbot.command, help="The command determining the plots to generate (default: all)\n\n\t{}RD{}: Plot the read-depth ratio (RD) values of the genomes for each sample.\n\n\t{}CRD{}: Plot the read-depth ratio (CRD) values of the genomes for each sample colored by corresponding cluster.\n\n\t{}BAF{}: Plot the B-allele frequency (BAF) values of the genomes for each sample.\n\n\t{}CBAF{}: Plot BAF values for each sample colored by corresponding cluster.\n\n\t{}BB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples and their density.\n\n\t{}CBB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples by coloring the bins depending on their cluster.\n\n\t{}CLUSTER{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each cluster in all samples where the size of the markers is proportional to the number of bins.".format(sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC))
-    parser.add_argument("-s", "--segfile", required=False, type=str, default=config.bbot.segfile, help="When the corresponding seg file is provided the clusters are also plotted (default: none)")
-    parser.add_argument("-m","--colormap", required=False, type=str, default=config.bbot.colormap, help='Colormap to use for the colors in the plots, the available colormaps are the following {Set1, Set2, Paired, Dark2, tab10, tab20}')
-    parser.add_argument("-tC","--chrthreshold", required=False, type=int, default=config.bbot.chrthreshold, help='Only covering at least this number of chromosomes are considered (default: None)')
-    parser.add_argument("-tS","--sizethreshold", required=False, type=float, default=config.bbot.sizethreshold, help='Only covering at least this genome proportion (default: None)')
-    parser.add_argument("--resolution", required=False, default=config.bbot.resolution, type=int, help='Resolution of bins (default: bins are not merged)')
-    parser.add_argument("--xmin", required=False, default=config.bbot.xmin, type=float, help='Minimum value on x-axis for supported plots (default: inferred from data)')
-    parser.add_argument("--xmax", required=False, default=config.bbot.xmax, type=float, help='Maximum value on x-axis for supported plots (default: inferred from data)')
-    parser.add_argument("--ymin", required=False, default=config.bbot.ymin, type=float, help='Minimum value on y-axis for supported plots (default: inferred from data)')
-    parser.add_argument("--ymax", required=False, default=config.bbot.ymax, type=float, help='Maximum value on y-axis for supported plots (default: inferred from data)')
-    parser.add_argument("--figsize", required=False, default=config.bbot.figsize, type=str, help='Size of the plotted figures in the form "(X-SIZE, Y-SIZE)"')
-    parser.add_argument("--markersize", required=False, default=config.bbot.markersize, type=int, help='Size of the markers (default: values inferred for each plot)')
-    parser.add_argument("--colwrap", required=False, default=config.bbot.colwrap, type=int, help='Wrapping the plots in this number of columnes (default: 2)')
-    parser.add_argument("--fontscale", required=False, default=config.bbot.fontscale, type=float, help='Font scale (default: 1)')
-    parser.add_argument("-x","--rundir", required=False, default=config.bbot.rundir, type=str, help='Running dirrectory where output the results (default: current directory)')
-    parser.add_argument("--pdf", action='store_true', default=config.bbot.pdf, required=False, help="Output the bb_clustered figure in PDF format (default: PNG)")
-    parser.add_argument("--dpi", required=False, default=config.bbot.dpi, type=int, help='DPI of PNG images (default: 900)')
+    parser.add_argument("-c", "--command", required=False, type=str, default=config.plot_bins.command, help="The command determining the plots to generate (default: all)\n\n\t{}RD{}: Plot the read-depth ratio (RD) values of the genomes for each sample.\n\n\t{}CRD{}: Plot the read-depth ratio (CRD) values of the genomes for each sample colored by corresponding cluster.\n\n\t{}BAF{}: Plot the B-allele frequency (BAF) values of the genomes for each sample.\n\n\t{}CBAF{}: Plot BAF values for each sample colored by corresponding cluster.\n\n\t{}BB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples and their density.\n\n\t{}CBB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples by coloring the bins depending on their cluster.\n\n\t{}CLUSTER{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each cluster in all samples where the size of the markers is proportional to the number of bins.".format(sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC))
+    parser.add_argument("-s", "--segfile", required=False, type=str, default=config.plot_bins.segfile, help="When the corresponding seg file is provided the clusters are also plotted (default: none)")
+    parser.add_argument("-m","--colormap", required=False, type=str, default=config.plot_bins.colormap, help='Colormap to use for the colors in the plots, the available colormaps are the following {Set1, Set2, Paired, Dark2, tab10, tab20}')
+    parser.add_argument("-tC","--chrthreshold", required=False, type=int, default=config.plot_bins.chrthreshold, help='Only covering at least this number of chromosomes are considered (default: None)')
+    parser.add_argument("-tS","--sizethreshold", required=False, type=float, default=config.plot_bins.sizethreshold, help='Only covering at least this genome proportion (default: None)')
+    parser.add_argument("--resolution", required=False, default=config.plot_bins.resolution, type=int, help='Resolution of bins (default: bins are not merged)')
+    parser.add_argument("--xmin", required=False, default=config.plot_bins.xmin, type=float, help='Minimum value on x-axis for supported plots (default: inferred from data)')
+    parser.add_argument("--xmax", required=False, default=config.plot_bins.xmax, type=float, help='Maximum value on x-axis for supported plots (default: inferred from data)')
+    parser.add_argument("--ymin", required=False, default=config.plot_bins.ymin, type=float, help='Minimum value on y-axis for supported plots (default: inferred from data)')
+    parser.add_argument("--ymax", required=False, default=config.plot_bins.ymax, type=float, help='Maximum value on y-axis for supported plots (default: inferred from data)')
+    parser.add_argument("--figsize", required=False, default=config.plot_bins.figsize, type=str, help='Size of the plotted figures in the form "(X-SIZE, Y-SIZE)"')
+    parser.add_argument("--markersize", required=False, default=config.plot_bins.markersize, type=int, help='Size of the markers (default: values inferred for each plot)')
+    parser.add_argument("--colwrap", required=False, default=config.plot_bins.colwrap, type=int, help='Wrapping the plots in this number of columnes (default: 2)')
+    parser.add_argument("--fontscale", required=False, default=config.plot_bins.fontscale, type=float, help='Font scale (default: 1)')
+    parser.add_argument("-x","--rundir", required=False, default=config.plot_bins.rundir, type=str, help='Running dirrectory where output the results (default: current directory)')
+    parser.add_argument("--pdf", action='store_true', default=config.plot_bins.pdf, required=False, help="Output the bb_clustered figure in PDF format (default: PNG)")
+    parser.add_argument("--dpi", required=False, default=config.plot_bins.dpi, type=int, help='DPI of PNG images (default: 900)')
     args = parser.parse_args(args)
 
     if not os.path.isfile(args.INPUT):
