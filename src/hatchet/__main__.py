@@ -15,11 +15,12 @@ from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as compute_cn
 from hatchet.utils.plot_cn import main as plot_cn
+from hatchet.utils.run import main as run
 
 solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 commands = ('count-reads', 'genotype-snps', 'count-alleles', 'combine-counts', 'cluster-bins', 'plot-bins',
-            'compute-cn', 'plot-cn')
+            'compute-cn', 'plot-cn', 'run')
 
 
 def print_usage():
@@ -28,8 +29,7 @@ def print_usage():
     print('\nThe following commands are supported:\n ' + '\n '.join(commands))
 
 
-if __name__ == '__main__':
-
+def main():
     # support for old command names as they've been used in earlier versions of HATCHet
     aliases = {
         'binBAM': 'count-reads',
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     args = sys.argv[2:]
 
     if command in aliases:
-        msg = f'The HATCHet command "{command}" has been replaced by "{aliases[command]}" and will be missing in ' \
+        msg = f'The HATCHet command "{command}" has been replaced by "{aliases[command]}" and will be absent in ' \
               f'future releases. Please update your scripts accordingly.'
         warnings.warn(msg, FutureWarning)
     elif command not in commands:
@@ -63,3 +63,7 @@ if __name__ == '__main__':
         globals()[command](args)
     else:
         compute_cn([solve_bin] + args)
+
+
+if __name__ == '__main__':
+    sys.exit(main())

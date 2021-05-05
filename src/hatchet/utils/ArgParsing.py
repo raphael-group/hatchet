@@ -13,7 +13,7 @@ def parse_genotype_snps_arguments(args=None):
     Returns:
     """
     description = "Genotype and call SNPs in a matched-normal sample."
-    parser = argparse.ArgumentParser(prog='hatchet SNPCaller', description=description)
+    parser = argparse.ArgumentParser(prog='hatchet genotype-snps', description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
     parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
@@ -88,7 +88,7 @@ def parse_count_alleles_arguments(args=None):
     Returns:
     """
     description = "Count the A/B alleles from a matched-normal BAM file and multiple tumor BAM files in specified SNP positions or estimated heterozygous SNPs in the normal genome. This tool can be applied both to whole-genome sequencing (WGS) data or whole-exome sequencing (WES) data, but coding regions must be specified as a BED file in the case of WES."
-    parser = argparse.ArgumentParser(prog='hatchet deBAF', description=description)
+    parser = argparse.ArgumentParser(prog='hatchet count-alleles', description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-r","--reference", required=True, type=str, help="Human reference genome of BAMs")
@@ -204,7 +204,7 @@ def parse_count_reads_arguments(args=None):
     Returns:
     """
     description = "Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES."
-    parser = argparse.ArgumentParser(prog='hatchet binBAM', description=description)
+    parser = argparse.ArgumentParser(prog='hatchet count-reads', description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-b","--size", required=True, type=str, help="Size of the bins, specified as a full number or using the notations either \"kb\" or \"Mb\"")
@@ -298,7 +298,7 @@ def parse_combine_counts_args(args=None):
     Returns:
     """
     description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
-    parser = argparse.ArgumentParser(prog='hatchet comBBo', description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(prog='hatchet combine-counts', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("-c","--normalbins", required=True, type=str, help='Normal bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-C","--tumorbins", required=True, type=str, help='Tumor bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-B","--tumorbafs", required=True, type=str, help='Tumor allele counts in the format "SAMPLE\tCHR\tPOS\tREF-COUNT\tALT-COUNT"')
@@ -361,7 +361,7 @@ def parse_cluster_bins_args(args=None):
     Returns:
     """
     description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
-    parser = argparse.ArgumentParser(prog='hatchet cluBB', description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(prog='hatchet cluster-bins', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("BBFILE", help="A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)")
     parser.add_argument("-o", "--outsegments", required=False, default=config.cluster_bins.outsegments, type=str, help="Output filename for the segments computed by clustering bins (default: stdout)")
     parser.add_argument("-O", "--outbins", required=False, default=config.cluster_bins.outbins, type=str, help="Output filename for a BB file adding the clusters (default: stdout)")
@@ -425,7 +425,7 @@ def parse_plot_bins_args(args=None):
     Returns:
     """
     description = "Generate plots for read-depth ratio (RD), B-allele frequency (BAF), and clusters for genomic bins in multiple samples using .bb, .cbb, .seg files."
-    parser = argparse.ArgumentParser(prog='hatchet BBot', description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(prog='hatchet plot-bins', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("INPUT", help='Input BBC file with RDR and BAF')
     parser.add_argument("-c", "--command", required=False, type=str, default=config.plot_bins.command, help="The command determining the plots to generate (default: all)\n\n\t{}RD{}: Plot the read-depth ratio (RD) values of the genomes for each sample.\n\n\t{}CRD{}: Plot the read-depth ratio (CRD) values of the genomes for each sample colored by corresponding cluster.\n\n\t{}BAF{}: Plot the B-allele frequency (BAF) values of the genomes for each sample.\n\n\t{}CBAF{}: Plot BAF values for each sample colored by corresponding cluster.\n\n\t{}BB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples and their density.\n\n\t{}CBB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples by coloring the bins depending on their cluster.\n\n\t{}CLUSTER{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each cluster in all samples where the size of the markers is proportional to the number of bins.".format(sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC, sp.bcolors.BOLD, sp.bcolors.ENDC))
     parser.add_argument("-s", "--segfile", required=False, type=str, default=config.plot_bins.segfile, help="When the corresponding seg file is provided the clusters are also plotted (default: none)")

@@ -1,6 +1,6 @@
 # Tutorial
 
-This tutorial illustrates how to use the complete pipeline which is encoded in the main script [hatchet_unphased](../script/) in the `script` folder, along with the configuration [hatchet_config](../script/) script that stores all the variables the user needs to specify.
+This tutorial illustrates how to use the complete pipeline through the `hatchet run` command, along with the configuration [hatchet.ini](../script/) file that stores all the variables the user needs to specify.
 The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:
 1. [Preliminaries](#preliminaries)
 2. [Setting up running directory](#rundir)
@@ -12,27 +12,22 @@ The tutorial is subdivided into some subsections and each of these describes seq
 8. [compute-cn](#compute-cn)
 9. [plot-cn](#plot-cn)
 
-We suggest to make a copy of the script and configuration file, place them into the designated running directory, and follow the tutorial.
+We suggest you make a copy of the configuration file, place it into the designated running directory, and follow the tutorial.
 
 ## Preliminaries
 <a name="preliminaries"></a>
 
-The following variables, specified in [hatchet_config](../script/hatchet_config), should be changed according to the user's data:
+The following variables, specified in [hatchet.ini](../script/hatchet.ini), should be changed according to the user's data:
 
 ```shell
-REF="/path/to/reference.fa" 
-REF_VERS=""      
-CHR_NOTATION=true      
-SAM="/path/to/samtools-home/bin/" 
-BCF="/path/to/bcftools-home/bin/" 
-XDIR="/path/to/running-dir/" 
-NORMAL="/path/to/matched-normal.bam"
-BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
-NAMES="Primary Met"
-J=$(python -c 'import multiprocessing as mp; print(mp.cpu_count())') 
-MINREADS=8
-MAXREADS=300 
-BIN="50kb" 
+# Path to reference genome - make sure you have also generated the reference dictionary as /path/to/reference.dict
+reference = "/path/to/reference.fa"
+normal = "/path/to/normal.bam"
+# Space-delimited list of tumor BAM locations
+bams = "/path/to/tumor1.bam /path/to/tumor2.bam"
+# Space-delimited list of tumor names
+samples = "Primary Met"
+
 ```
 
 Each of these are explained further below.
@@ -40,53 +35,38 @@ Each of these are explained further below.
 ***
 
 ```shell
-REF="/path/to/reference.fa" 
-REF_VERS=""      
-CHR_NOTATION=true  
+reference = "/path/to/reference.fa"
+reference_version = ""    
+chr_notation = True
 ```
 
-First, you needs to specify the full path to the human reference genome with the variable `${REF}`, along with the specific version of this reference with the `${REF_VERS}` variable, which may be "hg19" or "hg38". This reference version is used to select a list of known germline SNPs to genotype samples. Lastly, the `${CHR_NOTATION}` must be set to true/false depending on whether or not the chromosomes in your reference are prefixed with "chr".
+First, you need to specify the full path to the human reference genome with the variable `reference`, along with the specific version of this reference with the `reference_version` variable, which may be "hg19" or "hg38". This reference version is used to select a list of known germline SNPs to genotype samples. Lastly, the `chr_notation` must be set to true/false depending on whether or not the chromosomes in your reference are prefixed with "chr".
 
 ***
 
 ```shell
-SAM="/path/to/samtools-home/bin/" 
-BCF="/path/to/bcftools-home/bin/" 
+normal = "/path/to/normal.bam"
+bams = "/path/to/tumor1.bam /path/to/tumor2.bam"
+samples = "Primary Met"
 ```
 
-If HATCHet was not installed via conda (which installs dependencies for you), then you need to indicate the home directory of SAMtools with the variable `${SAM}`, and to the home directory of BCFtools with the variable `${BCF}`. 
+Next, you need to specify the full paths to the required input data:
+1. `normal` is the full path to the BAM file of matched-normal samples
+2. `bams` is a white-space separated list of the BAM files for the multiple tumor samples from the considered patient.
+
+The variable `samples` is also a white-space separated list of tumor sample names (specified in the same order as the BAM files in `bams`), and these names are used in the plots produced by HATCHet.
 
 ***
 
 ```shell
-XDIR="/path/to/running-dir/" 
-NORMAL="/path/to/matched-normal.bam"
-BAMS="/path/to/tumor-sample1.bam /path/to/tumor-sample2.bam"
-NAMES="Primary Met"
-J=$(python -c 'import multiprocessing as mp; print(mp.cpu_count())') 
+mincov = 8
+maxcov = 300
+size = 50kb
 ```
 
-Second, the user needs to specify the full paths to the running directory where all the files/directories produced by this run of HATCHet will be made with variable `${XDIR}`. This directory should ideally be empty to avoid potential conflicts, except when re-executing the same run.
+Both `mincov` and `maxcov` specify the minimum and maximum sequencing depth for considering germline snps. For samples that have undergone whole-genome sequencing with depths >30X, values around 8 and 300 should be reasonable for the minimum and maximum, respectively. For samples in which only the exome was sequenced to ~100X, then values around 20 and 1000 should be fine for the minimum and maximum, respectively.
 
-Also, the full paths to the required input data:
-1. `${NORMAL}` is the full path to the BAM file of matched-normal samples
-2. `${BAMS}` is a white-space separated list of the BAM files for the multiple tumor samples from the considered patient.
-
-The variable `${NAMES}` is also a white-space separated list of tumor sample names (specified in the same order as the BAM files in `${BAMS}`), and these names are used in the plots produced by HATCHet.
-
-Last, `${J}` is the maximum number of threads that the execution can use. Typically, we suggest to use at least 22 threads if possible in order to consider each chromosome in parallele in the pre-processing steps.
-
-***
-
-```shell
-MINREADS=8
-MAXREADS=300 
-BIN="50kb" 
-```
-
-Both `${MINREADS}` and `${MAXREADS}` specify the minimum and maximum sequencing depth for considering germline snps. For samples that have undergone whole-genome sequencing with depths >30X, values around 8 and 300 should be reasonable for the minimum and maximum, respectively. For samples in which only the exome was sequenced to ~100X, then values around 20 and 1000 should be fine for the minimum and maximum, respectively.
-
-The `${BIN}` variable indicates the size or genomic length of bins used to calculate the read-depth ratio (RDR) and B-Allele frequencies (BAF).
+The `size` variable indicates the size or genomic length of bins used to calculate the read-depth ratio (RDR) and B-Allele frequencies (BAF).
 
 ***
 
@@ -114,7 +94,7 @@ python3 -m hatchet genotype-snps -N ${NORMAL} -r ${REF} -j ${J} -c ${MINREADS} -
                             -R ${LIST} -o ${SNP} |& tee ${BAF}bafs.log
 ```
 
-genotype-snps genotypes germline SNPs from the matched-normal sample `${NORMAL}`, using positions of known germline variation specified by the file in `${LIST}` (which is automatically fetched based on the user's input in the `hatchet_config` file for `${REF_VERS}` and `${CHR_NOTATION}`). As mentioned above, SNPs are only considered for downstream analysis if they have a minimum and maximum sequencing depth of `${MINREADS}` and `${MAXREADs}`, respectively.
+genotype-snps genotypes germline SNPs from the matched-normal sample `${NORMAL}`, using positions of known germline variation specified by the file in `${LIST}`. If this parameter is omitted, heterozygous SNPs are inferred from the normal sample. As mentioned above, SNPs are only considered for downstream analysis if they have a minimum and maximum sequencing depth of `${MINREADS}` and `${MAXREADs}`, respectively.
 
 GATK best practices suggest that the maximum should be at least twice the expected average coverage to avoid mapping artifacts.
 Observe that WES generally requires higher thresholds (e.g. 100 and 3000).

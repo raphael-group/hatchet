@@ -6,14 +6,14 @@ import argparse
 
 import hatchet
 from hatchet import config
-from hatchet.utils.binBAM import main as binBAM
-from hatchet.utils.SNPCaller import main as SNPCaller
-from hatchet.utils.deBAF import main as deBAF
-from hatchet.utils.comBBo import main as comBBo
-from hatchet.utils.cluBB import main as cluBB
-from hatchet.utils.BBot import main as BBot
-from hatchet.bin.HATCHet import main as solve
-from hatchet.utils.BBeval import main as BBeval
+from hatchet.utils.count_reads import main as count_reads
+from hatchet.utils.genotype_snps import main as genotype_snps
+from hatchet.utils.count_alleles import main as count_alleles
+from hatchet.utils.combine_counts import main as combine_counts
+from hatchet.utils.cluster_bins import main as cluster_bins
+from hatchet.utils.plot_bins import main as plot_bins
+from hatchet.bin.HATCHet import main as hatchet_main
+from hatchet.utils.plot_cn import main as plot_cn
 
 solve_binary = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
@@ -26,22 +26,22 @@ def main(args=None):
 
     config.read(args.inifile)
 
-    output = config.paths.output
-    output.rstrip('/')
+    output = config.run.output
+    output = output.rstrip('/')
     os.makedirs(output, exist_ok=True)
 
     # ----------------------------------------------------
 
-    if config.bin.enabled:
+    if config.run.count_reads:
         os.makedirs(f'{output}/rdr', exist_ok=True)
-        binBAM(
+        count_reads(
             args=[
-                '-N', config.paths.normal,
+                '-N', config.run.normal,
                 '-T'
-            ] + config.paths.bams.split() + [
-                '-b', config.bin.size,
+            ] + config.run.bams.split() + [
+                '-b', config.count_reads.size,
                 '-S'
-            ] + ('Normal ' + config.bin.samples).split() + [
+            ] + ('Normal ' + config.run.samples).split() + [
                 '-O', f'{output}/rdr/normal.1bed',
                 '-o', f'{output}/rdr/tumor.1bed',
                 '-t', f'{output}/rdr/total.tsv'
@@ -50,9 +50,9 @@ def main(args=None):
 
     # ----------------------------------------------------
 
-    if config.snp.enabled:
+    if config.run.genotype_snps:
         snps = ''
-        if config.snp.reference_version and not config.snp.snps:
+        if config.genotype_snps.reference_version and not config.genotype_snps.snps:
             snps_mapping = {
                 ('hg19', True): 'https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz',
                 ('hg19', False): 'https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz',
@@ -60,16 +60,16 @@ def main(args=None):
                 ('hg38', False): 'https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz'
             }
 
-            if (config.snp.reference_version, config.snp.chr_notation) not in snps_mapping:
+            if (config.genotype_snps.reference_version, config.genotype_snps.chr_notation) not in snps_mapping:
                 raise RuntimeError('Please specify valid values of reference_version and chr_notation')
             else:
-                snps = snps_mapping[config.snp.reference_version, config.snp.chr_notation]
+                snps = snps_mapping[config.genotype_snps.reference_version, config.genotype_snps.chr_notation]
 
         os.makedirs(f'{output}/snps', exist_ok=True)
-        SNPCaller(
+        genotype_snps(
             args=[
-                '-N', config.paths.normal,
-                '-r', config.paths.reference,
+                '-N', config.run.normal,
+                '-r', config.run.reference,
                 '-R', snps,
                 '-o', f'{output}/snps/'
             ]
@@ -77,16 +77,16 @@ def main(args=None):
 
     # ----------------------------------------------------
 
-    if config.baf.enabled:
-        os.makedirs('baf', exist_ok=True)
-        deBAF(
+    if config.run.count_alleles:
+        os.makedirs(f'{output}/baf', exist_ok=True)
+        count_alleles(
             args=[
-                '-N', config.paths.normal,
+                '-N', config.run.normal,
                 '-T'
-            ] + config.paths.bams.split() + [
+            ] + config.run.bams.split() + [
                 '-S'
-            ] + ('Normal ' + config.bin.samples).split() + [
-                '-r', config.paths.reference,
+            ] + ('Normal ' + config.run.samples).split() + [
+                '-r', config.run.reference,
                 '-L'
             ] + glob.glob(f'{output}/snps/*.vcf.gz') + [
                 '-O', f'{output}/baf/normal.1bed',
@@ -96,11 +96,11 @@ def main(args=None):
 
     # ----------------------------------------------------
 
-    if config.combbo.enabled:
+    if config.run.combine_counts:
         _stdout = sys.stdout
         sys.stdout = StringIO()
 
-        comBBo(args=[
+        combine_counts(args=[
             '-c', f'{output}/rdr/normal.1bed',
             '-C', f'{output}/rdr/tumor.1bed',
             '-B', f'{output}/baf/tumor.1bed',
@@ -117,9 +117,9 @@ def main(args=None):
 
     # ----------------------------------------------------
 
-    if config.clubb.enabled:
+    if config.run.cluster_bins:
         os.makedirs(f'{output}/bbc', exist_ok=True)
-        cluBB(args=[
+        cluster_bins(args=[
             f'{output}/bb/bulk.bb',
             '-o', f'{output}/bbc/bulk.seg',
             '-O', f'{output}/bbc/bulk.bbc'
@@ -127,18 +127,18 @@ def main(args=None):
 
     # ----------------------------------------------------
 
-    if config.bbot.enabled:
+    if config.run.plot_bins:
         os.makedirs(f'{output}/plots', exist_ok=True)
-        BBot(args=[
+        plot_bins(args=[
             f'{output}/bbc/bulk.bbc',
-            '--rundir', 'plots'
+            '--rundir', f'{output}/plots'
         ])
 
     # ----------------------------------------------------
 
-    if config.solver.enabled:
+    if config.run.compute_cn:
         os.makedirs(f'{output}/results', exist_ok=True)
-        solve(args=[
+        hatchet_main(args=[
             solve_binary,
             '-x', f'{output}/results',
             '-i', f'{output}/bbc/bulk',
@@ -148,11 +148,11 @@ def main(args=None):
 
     # ----------------------------------------------------
 
-    if config.bbeval.enabled:
+    if config.run.plot_cn:
         os.makedirs(f'{output}/summary', exist_ok=True)
-        BBeval(args=[
+        plot_cn(args=[
             f'{output}/results/best.bbc.ucn',
-            '--rundir', 'summary'
+            '--rundir', f'{output}/summary'
         ])
 
 
