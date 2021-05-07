@@ -44,6 +44,8 @@ def main(args=None):
 
     names = list(samples).sort()
     sys.stdout.write("#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n")
+    nonzerobaf = (lambda rk : all(sample[4] + sample[5] > 0 for sample in rk))
+    result = {key : result[key] for key in result if nonzerobaf(result[key])}
     for key in sorted(result, key=(lambda x : (sp.numericOrder(x[0]), int(x[1]), int(x[2])))):
         for sample in result[key]:
             sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key[0], key[1], key[2], sample[0], sample[1], sample[2], sample[3], sample[4], sample[5], sample[6]))
