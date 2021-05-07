@@ -29,7 +29,7 @@ PS4='[\t]'
 
 ## Downloading of data
 
-The demo auomatically downloads the required tumor and matched-normal BAM files in `data` folder.
+The demo automatically downloads the required tumor and matched-normal BAM files in `data` folder.
 
 ```shell
 # Creating data folder
@@ -84,6 +84,10 @@ echo 'compute_cn=True' >> hatchet.ini
 echo 'plot_cn=True' >> hatchet.ini
 echo 'reference=data/hg19.fa' >> hatchet.ini
 echo 'output=output/' >> hatchet.ini
+j=$(grep -c ^processor /proc/cpuinfo)
+processes="processes=${j}"
+echo $processes >> hatchet.ini
+
 :<<'```shell' # Ignore this line
 ```
 
@@ -100,7 +104,7 @@ echo 'samples=TumorSample1 TumorSample2 TumorSample3' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-4. We keep the default number of reads and number of parallel processes
+4. We specify the bin size and min/max coverage for the genotpe_snps step
 ```shell
 echo '[count_reads]' >> hatchet.ini
 echo 'size=50kb' >> hatchet.ini
@@ -114,6 +118,14 @@ echo 'maxcov=300' >> hatchet.ini
 ```shell
 echo 'reference_version=hg19' >> hatchet.ini
 echo 'chr_notation=True' >> hatchet.ini
+:<<'```shell' # Ignore this line
+```
+
+6. We specify mincov/maxcov for the count_alleles step 
+```shell
+echo '[count_alleles]' >> hatchet.ini
+echo 'mincov=8' >> hatchet.ini
+echo 'maxcov=300' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 

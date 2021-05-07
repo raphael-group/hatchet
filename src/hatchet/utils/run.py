@@ -30,6 +30,13 @@ def main(args=None):
     output = output.rstrip('/')
     os.makedirs(output, exist_ok=True)
 
+    extra_args = []
+    try:
+        if config.run.processes is not None:
+            extra_args = ['-j', str(config.run.processes)]
+    except KeyError:
+        pass
+
     # ----------------------------------------------------
 
     if config.run.count_reads:
@@ -45,7 +52,7 @@ def main(args=None):
                 '-O', f'{output}/rdr/normal.1bed',
                 '-o', f'{output}/rdr/tumor.1bed',
                 '-t', f'{output}/rdr/total.tsv'
-            ]
+            ] + extra_args
         )
 
     # ----------------------------------------------------
@@ -72,7 +79,7 @@ def main(args=None):
                 '-r', config.run.reference,
                 '-R', snps,
                 '-o', f'{output}/snps/'
-            ]
+            ] + extra_args
         )
 
     # ----------------------------------------------------
@@ -91,7 +98,7 @@ def main(args=None):
             ] + glob.glob(f'{output}/snps/*.vcf.gz') + [
                 '-O', f'{output}/baf/normal.1bed',
                 '-o', f'{output}/baf/tumor.1bed'
-            ]
+            ] + extra_args
         )
 
     # ----------------------------------------------------
@@ -144,7 +151,7 @@ def main(args=None):
             '-i', f'{output}/bbc/bulk',
             '-g', '0.35',
             '-l', '0.6'
-        ])
+        ] + extra_args)
 
     # ----------------------------------------------------
 
