@@ -90,7 +90,7 @@ def readBB(bbfile):
     diff = len(read.keys()) - len(newread.keys())
     if diff > 0:
         sp.log(msg='{} bins have been discarded because no covered by any SNP\n'.format(diff), level="WARN")
-    return read, samples
+    return newread, samples
 
 
 def getPoints(data, samples):
