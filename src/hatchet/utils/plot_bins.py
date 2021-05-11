@@ -33,7 +33,7 @@ def main(args=None):
     bbc, clusters = readBBC(args['input'])
 
     sys.stderr.write(log("# Bin's clusters are selected accordingly to the provided thresholds\n"))
-    order, pal = select(bbc, clusters, args)
+    clust_order, pal = select(bbc, clusters, args)
 
     if args['fontscale'] != 1:
         sns.set(font_scale = args['fontscale'])
@@ -70,7 +70,7 @@ def main(args=None):
     if args['command'] is None or args['command'] == 'CBB':
         out = os.path.join(args['x'], 'bb_clustered.pdf' if args['pdf'] else 'bb_clustered.png')
         sys.stderr.write(log("# [CBB] Plotting clustered RDR-BB for all samples in {}\n".format(out)))
-        cluster_bins(bbc, clusters, args, out, order, pal)
+        cluster_bins(bbc, clusters, args, out, clust_order, pal)
 
     if args['command'] is None or args['command'] == 'CLUSTER':
         if args['segfile'] is not None:
@@ -236,7 +236,7 @@ def bb(bbc, clusters, args, out):
             plt.close()
 
 
-def cluster_bins(bbc, clusters, args, out, order, pal):
+def cluster_bins(bbc, clusters, args, out, clust_order, pal):
     pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
     ly = 'RDR'
     lx = '0.5 - BAF'
@@ -245,6 +245,17 @@ def cluster_bins(bbc, clusters, args, out, order, pal):
     size = {i : float(sum(clusters[b[0]][b[1]] == i for b in pos)) for i in set(clusters[b[0]][b[1]] for b in pos)}
     data = [{ly : bbc[b[0]][b[1]][p]['RDR'], lx : 0.5 - bbc[b[0]][b[1]][p]['BAF'], g : p, lh : clusters[b[0]][b[1]], 'size' : size[clusters[b[0]][b[1]]]} for b in pos for p in bbc[b[0]][b[1]]]
     df = pd.DataFrame(data)
+
+    # for the top clusters in clust_order (leftmost in list) that have an asigned color (not gray) in palette pal, 
+    # get their index in pal, otherwise assign the rest of the clusters to the last color in the palette (gray)
+    l = []
+    for i in df['Cluster']:
+        l.append(clust_order.index(i)) if clust_order.index(i) <= len(pal)-2 else l.append(len(pal)-1)
+    df['Color'] = l
+    # reverse order so largest clusters with color plotted last and on top
+    order = [i for i in range(len(pal))]
+    order.reverse()
+    pal.reverse()
     figsize = args['figsize'] if args['figsize'] is not None else (10, 1.1)
     s = args['markersize'] if args['markersize'] > 0 else 7
     
@@ -252,9 +263,9 @@ def cluster_bins(bbc, clusters, args, out, order, pal):
     #    for sample, group in df.groupby(g):
     #sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
     if args['colwrap'] > 1:
-        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=pal, fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, col=g, col_wrap=args['colwrap'])
+        g = sns.lmplot(data=df, x=lx, y=ly, hue='Color', hue_order=order, palette=pal, fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, col=g, col_wrap=args['colwrap'])
     else:
-        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, hue_order=order, palette=pal, fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, row=g)
+        g = sns.lmplot(data=df, x=lx, y=ly, hue='Color', hue_order=order, palette=pal, fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, row=g)
     #plt.title("{}".format(sample))
     coordinates(args, g)
     #pdf.savefig(bbox_inches='tight')
@@ -368,7 +379,7 @@ def join(bbc, clusters, resolution):
 
 
 def select(bbc, clusters, args):
-    alls = set(clusters[c][s] for c in clusters for s in clusters[c])
+    alls = set(clusters[c][s] for c in clusters for s in clusters[c]) # all cluster IDs
     count = {idx : {'SIZE' : 0.0, 'CHRS' : set()} for idx in alls}
     totsize = sum(1.0 for c in bbc for s in bbc[c])
     for c in bbc:
@@ -376,6 +387,7 @@ def select(bbc, clusters, args):
             count[clusters[c][s]]['SIZE'] += 1.0
             count[clusters[c][s]]['CHRS'].add(c)
 
+    # sel(ect) clusters based on size
     sel = set(alls)
     if args['st'] is not None:
         sel = set(idx for idx in sel if float(count[idx]['SIZE'] / totsize) >= args['st'])
@@ -384,16 +396,17 @@ def select(bbc, clusters, args):
     s = ['{}:\tSIZE= {},\t# CHRS= {}'.format(idx, count[idx]['SIZE'], count[idx]['CHRS']) for idx in sel]
     sys.stderr.write(info('## Selected clusters: \n{}\n'.format('\n'.join(s))))
 
-    order = sorted(sel, key=(lambda x: count[x]['SIZE']), reverse=True)    
-    [ order.insert(0,i) if not i in sel else next for i in alls]    
+    clust_order = sorted(sel, key=(lambda x: count[x]['SIZE']), reverse=True) # order selected clusters large -> small 
+    # add on the rest of the unselected clusters, but we'll know which ones to color based on the number of
+    # colors in the palette pal
+    [ clust_order.append(i) if not i in sel else next for i in alls ]
     if len(sel) <= len(sns.color_palette(args['cmap'])): # are there more colors than selected clusters?    
-        pal = sns.color_palette(args['cmap'])[0:len(sel)-1]    
-        [ pal.insert(0,'0.75') for i in range( len(alls) - len(sel) ) ]    
+        pal = sns.color_palette(args['cmap'])[0:len(sel)] # only select colors for the selected clusters at begining of clust_order
     else:    
         pal = sns.color_palette(args['cmap'])    
-        [ pal.insert(0,'0.75') for i in range( len(alls) - len(sns.color_palette(args['cmap'])) ) ]    
+    pal.append('0.75') # all non selected clusters (or additional ones beyond palette colors) get colors gray
 
-    return order, pal
+    return clust_order, pal
 
 def addchr(pos):
     ymin, ymax = plt.ylim()
