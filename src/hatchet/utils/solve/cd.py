@@ -58,15 +58,19 @@ class CoordinateDescent:
             seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
 
         result = {}  # obj. value => (cA, cB, u) mapping
-        to_do = []
-        with ProcessPoolExecutor(max_workers=min(j, n_seed)) as executor:
-            for u in seeds:
-                future = executor.submit(_work, self, u, solver_type, max_iters, max_convergence_iters)
-                to_do.append(future)
+        # to_do = []
+        # with ProcessPoolExecutor(max_workers=min(j, n_seed)) as executor:
+        #     for u in seeds:
+        #         future = executor.submit(_work, self, u, solver_type, max_iters, max_convergence_iters)
+        #         to_do.append(future)
+        #
+        #     for future in as_completed(to_do):
+        #         obj, cA, cB, u = future.result()
+        #         result[obj] = cA, cB, u
 
-            for future in as_completed(to_do):
-                obj, cA, cB, u = future.result()
-                result[obj] = cA, cB, u
+        for u in seeds:
+            obj, cA, cB, u = _work(self, u, solver_type, max_iters, max_convergence_iters)
+            result[obj] = cA, cB, u
 
         best = min(result)
         return (best,) + result[best]

@@ -44,6 +44,7 @@ class ILPSubset:
         self._fixed_cB = pd.DataFrame(index=self.cluster_ids, columns=range(n))
         self._fixed_u = pd.DataFrame(index=range(n), columns=self.sample_ids)
 
+        self.warmstart = False  # set on hot_start()
         self.model = None  # initialized on create_model()
 
     def __copy__(self):
@@ -471,8 +472,9 @@ class ILPSubset:
 
         for _m in range(self.m):
             for _n in range(0, self.n):
-                self.cA.iloc[_m][rank_indices[_n]].start = f_a.iloc[(_m, _n)]
-                self.cB.iloc[_m][rank_indices[_n]].start = f_b.iloc[(_m, _n)]
+                self.cA.iloc[_m][rank_indices[_n]] = f_a.iloc[(_m, _n)]
+                self.cB.iloc[_m][rank_indices[_n]] = f_b.iloc[(_m, _n)]
+        self.warmstart = True
 
     def fix_u(self, u):
         self._fixed_u[:] = u
@@ -534,7 +536,7 @@ class ILPSubset:
         else:
             solver = pe.SolverFactory(solver_type)
 
-        solver.solve(self.model)
+        solver.solve(self.model, warmstart=self.warmstart)
         if write_path is not None:
             self.model.write(write_path)
 
