@@ -85,7 +85,12 @@ def readBB(bbfile):
                     read[chromosome, start, end].append((sample, rd, snps, cov, alpha, beta, baf))
                 except KeyError:
                     read[chromosome, start, end] = [(sample, rd, snps, cov, alpha, beta, baf)]
-    return read, samples
+    nonzeroab = (lambda rb : all(rec[4] + rec[5] > 0 for rec in rb))
+    newread = {b : read[b] for b in read if nonzeroab(read[b])}
+    diff = len(read.keys()) - len(newread.keys())
+    if diff > 0:
+        sp.log(msg='{} bins have been discarded because no covered by any SNP\n'.format(diff), level="WARN")
+    return newread, samples
 
 
 def getPoints(data, samples):
@@ -139,6 +144,7 @@ def cluster(points, clouds=None, concentration_prior = None, K = 100, restarts=1
     
     gmm = BayesianGaussianMixture(n_components = K, n_init = restarts, weight_concentration_prior = concentration_prior, max_iter = int(1e6), random_state = seed)
     targetAssignments = gmm.fit_predict(npArray)
+    targetAssignments = targetAssignments[:len(points)]
     mus = gmm.means_
     sigmas = gmm.covariances_
     cntr = Counter(targetAssignments)

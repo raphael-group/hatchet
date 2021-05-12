@@ -54,10 +54,11 @@ Information provided by BBot can be crucial to decide whether one needs to chang
 
 2. cluBB has some main parameters to control the clustering; the default values for most of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.
 BBot provides informative plots that can be used to assess the quality of the clustering and evaluate the need of changing some parameters for special datasets.
+If your clusters do not appear to be cohesive, try lowering the maximum number of clusters (`-K`) which will force cluBB to infer fewer clusters.
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-K`, `--initclusters` | Initialization for the number of clusters | The parameter is used specify the maximum number of clusters to infer | 50 |
+| `-K`, `--initclusters` | Maximum number of clusters | The parameter specifies the maximum number of clusters to infer, i.e., the maximum number of GMM components | 50 |
 | `-c`, `--concentration` | Concentration parameter for clustering | This parameter determines how much confidence the GMM has in different types of clusterings. Higher values (e.g., 10 or 100)  favor fewer clusters, and smaller values (e.g., 0.01 or 0.001) favor more clusters. For experts, this is the alpha parameter for the Dirichlet process prior. | 1/K |
 
 3. cluBB offers a bootstraping approach that allows a succesfull clustering even when there is a limited number genomic bins that are considred. The bootstraping approach generates sinthetic (i.e. used only for clustering) bins based on the data of the given bins. The bootstraping is controlled by the following parameters.

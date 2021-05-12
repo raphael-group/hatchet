@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ./config.sh
+source hatchet_config
 
 # Select list of known SNPs based on reference genome
 if [ -z "$LIST" ]
@@ -39,8 +39,9 @@ PS4='\''[\t]'\'
 ALLNAMES="Normal ${NAMES}"
 export PATH=$PATH:${SAM}
 export PATH=$PATH:${BCF}
-export OPENBLAS_NUM_THREADS=1
-export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=${J}
+export OPENBLAS_NUM_THREADS=${J}
+export NUMEXPR_NUM_THREADS=${J}
 
 cd ${XDIR}
 mkdir -p ${RDR}

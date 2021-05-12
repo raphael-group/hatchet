@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ./config.sh
+source hatchet_config
 
 set -e
 set -o xtrace
