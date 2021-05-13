@@ -76,7 +76,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.2.11',
+    version='0.3.0',
     packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini']},
@@ -85,6 +85,12 @@ setup(
     zip_safe=False,
 
     python_requires='>=3.7',
+
+    entry_points={
+        'console_scripts': [
+            'hatchet = hatchet.__main__:main',
+        ],
+    },
 
     install_requires=[
         'biopython',

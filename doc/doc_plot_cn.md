@@ -1,12 +1,12 @@
-# BBeval
+# plot-cn
 
 This step analyzes the inferred copy-number states and clone proportions and produces informative plots jointly considering all samples from the same patient. In addition, this step can also combine results obtained for different patients and perform integrative analysis.
-BBeval produces several informative plots concerning the copy-number states and proportions for the inferred clones from multiple tumor samples of a patient.
-In additionl, BBeval can also produce some informative plots to compare the solutions obtained on different patients.
+plot-cn produces several informative plots concerning the copy-number states and proportions for the inferred clones from multiple tumor samples of a patient.
+In additionl, plot-cn can also produce some informative plots to compare the solutions obtained on different patients.
 
 ## Input
 
-BBeval considers in input one or more tab-separated files. Each of these files contains the inferred copy-number states and clone proportions for clustered genomic bins and has the following format:
+plot-cn considers in input one or more tab-separated files. Each of these files contains the inferred copy-number states and clone proportions for clustered genomic bins and has the following format:
 
 | Field | Description |
 |-------|-------------|
@@ -26,8 +26,8 @@ BBeval considers in input one or more tab-separated files. Each of these files c
 | `cn_clone${n}` | The copy number state of the `${n}` tumor clone in the format <code>A&#124;B</code> where `A` and `B` are the two allele-specific copy numbers of the corresponding genomic bin |
 | `u_clone${n}` | The clone proportion of the `${n}` tumor clone in the corresponding sample |
 
-When a single file is speicified, the input is given directly and BBeval runs in single-patient mode.
-When multiple files are speicified, the files are given in a white-space separated list of filenames between "..." and BBeval runs in multi-patient mode.
+When a single file is speicified, the input is given directly and plot-cn runs in single-patient mode.
+When multiple files are speicified, the files are given in a white-space separated list of filenames between "..." and plot-cn runs in multi-patient mode.
 
 ## Parameters
 
@@ -53,7 +53,7 @@ When multiple files are speicified, the files are given in a white-space separat
 
 In the following, we report an example of all the plots produced in single-patient mode obtained by running the following command:
 
-    python BBeval.py A12.bbc.ucn -sG "(16,4)"
+    python plot_cn.py A12.bbc.ucn -sG "(16,4)"
 
 ***
 

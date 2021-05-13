@@ -18,7 +18,7 @@ from hatchet import config
 
 
 def parse_args():
-    description = "This command automatically runs the HATCHet's preprocessing pipeline, which is composed of three steps: (1) binBAM, (2) deBAF, and (3) comBBo."
+    description = "This command automatically runs the HATCHet's preprocessing pipeline, which is composed of three steps: (1) count-reads, (2) count-alleles, and (3) combine-counts."
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("-t","--tumor", required=True, type=str, help="White-space separated list of input tumor BAM files, corresponding to multiple samples from the same patient (list must be within quotes)")
     parser.add_argument("-n","--normal", required=True, type=str, help="Matched-normal BAM file")
@@ -112,7 +112,7 @@ def main():
     cmd = 'python3 {} -N {} -T {} -S {} -b {} -g {} -j {} -q {} -O {} -o {}'
     nbin = os.path.join(drdr, 'normal.1bed')
     tbin = os.path.join(drdr, 'bulk.1bed')
-    cmd = cmd.format(get_comp('binBAM.py'), args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), args['size'], args['ref'], args['J'], args['phred'], nbin, tbin)
+    cmd = cmd.format(get_comp('count_reads.py'), args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), args['size'], args['ref'], args['J'], args['phred'], nbin, tbin)
     if args['samtools'] is not None:
         cmd += " --samtools {}".format(args['samtools'])
     runcmd(cmd, drdr, log="bins.log", rundir=args['rundir'])
@@ -121,7 +121,7 @@ def main():
     cmd = 'python3 {} -N {} -T {} -S {} -r {} -j {} -q {} -Q {} -U {} -c {} -C {} -O {} -o {}'
     nbaf = os.path.join(dbaf, 'normal.1bed')
     tbaf = os.path.join(dbaf, 'bulk.1bed')
-    cmd = cmd.format(get_comp('deBAF.py'), args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), args['ref'], args['J'], args['phred'], args['phred'], args['phred'], args['minreads'], args['maxreads'], nbaf, tbaf)
+    cmd = cmd.format(get_comp('count_alleles.py'), args['normal'], ' '.join(args['tumor']), 'normal ' + ' '.join(args['names']), args['ref'], args['J'], args['phred'], args['phred'], args['phred'], args['minreads'], args['maxreads'], nbaf, tbaf)
     if args['samtools'] is not None:
         cmd += " --samtools {}".format(args['samtools'])
     if args['bcftools'] is not None:
@@ -131,7 +131,7 @@ def main():
     log('Combining RDRs and BAFs\n', level='PROGRESS')
     ctot = os.path.join(args['rundir'], 'total_read.counts')
     cmd = 'python3 {} -c {} -C {} -B {} -m MIRROR -t {}'
-    cmd = cmd.format(get_comp('comBBo.py'), nbin, tbin, tbaf, ctot)
+    cmd = cmd.format(get_comp('combine_counts.py'), nbin, tbin, tbaf, ctot)
     if args['seed'] is not None:
         cmd += " -e {}".format(args['seed'])
     runcmd(cmd, dbb, out='bulk.bb', log="combo.log", rundir=args['rundir'])

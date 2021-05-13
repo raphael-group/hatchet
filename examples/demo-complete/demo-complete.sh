@@ -29,7 +29,7 @@ PS4='[\t]'
 
 ## Downloading of data
 
-The demo auomatically downloads the required tumor and matched-normal BAM files in `data` folder.
+The demo automatically downloads the required tumor and matched-normal BAM files in `data` folder.
 
 ```shell
 # Creating data folder
@@ -70,63 +70,69 @@ samtools dict data/hg19.fa > data/hg19.dict
 ## Configuring the HATCHet's execution
 
 We follow the template of the HATCHet's [script](../../doc/doc_fullpipeline.md#fullpipelineandtutorial).
-
-1. We copy over the default hatchet_config and make custom changes to it at the end
-```shell
-cp ../../script/hatchet_config hatchet_config
-:<<'```shell' # Ignore this line
-```
  
-2. We specify the correct path to the reference genome
+1. We specify the correct path to the reference genome and the output folder, and other required flags
 ```shell
-echo 'REF="data/hg19.fa"' >> hatchet_config
+echo '[run]' > hatchet.ini
+echo 'count_reads=True' >> hatchet.ini
+echo 'genotype_snps=True' >> hatchet.ini
+echo 'count_alleles=True' >> hatchet.ini
+echo 'combine_counts=True' >> hatchet.ini
+echo 'cluster_bins=True' >> hatchet.ini
+echo 'plot_bins=True' >> hatchet.ini
+echo 'compute_cn=True' >> hatchet.ini
+echo 'plot_cn=True' >> hatchet.ini
+echo 'reference=data/hg19.fa' >> hatchet.ini
+echo 'output=output/' >> hatchet.ini
+j=$(grep -c ^processor /proc/cpuinfo)
+processes="processes=${j}"
+echo $processes >> hatchet.ini
+
 :<<'```shell' # Ignore this line
 ```
 
-3. We specify the current folder as the running one
+2. We specify the path to the matched-normal BAM files
 ```shell
-echo 'XDIR="./"' >> hatchet_config
+echo 'normal=data/normal.bam' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-4. We specify the path to the matched-normal BAM files
+3. We specify the list of paths to the tumor BAM files and corresponding names
 ```shell
-echo 'NORMAL="data/normal.bam"' >> hatchet_config
+echo 'bams=data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam' >> hatchet.ini
+echo 'samples=TumorSample1 TumorSample2 TumorSample3' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-5. We specify the list of paths to the tumor BAM files and corresponding names
+4. We specify the bin size and min/max coverage for the genotpe_snps step
 ```shell
-echo 'BAMS="data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam"' >> hatchet_config
-echo 'NAMES="TumorSample1 TumorSample2 TumorSample3"' >> hatchet_config
+echo '[count_reads]' >> hatchet.ini
+echo 'size=50kb' >> hatchet.ini
+echo '[genotype_snps]' >> hatchet.ini
+echo 'mincov=8' >> hatchet.ini
+echo 'maxcov=300' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-6. We keep the default number of reads and number of parallel processes
+5. We specify the reference genome and chr notation
 ```shell
-echo 'J=$(python -c "import multiprocessing as mp; print(mp.cpu_count())")' >> hatchet_config
-echo "MINREADS=8" >> hatchet_config
-echo "MAXREADS=300" >> hatchet_config
+echo 'reference_version=hg19' >> hatchet.ini
+echo 'chr_notation=True' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-7. We specify the reference genome and chr notation
+6. We specify mincov/maxcov for the count_alleles step 
 ```shell
-echo 'REF_VERS="hg19"' >> hatchet_config
-echo 'CHR_NOTATION=true' >> hatchet_config
-:<<'```shell' # Ignore this line
-```
-
-8. We add the unphased version of HATCHet's script
-```shell
-cp ../../script/hatchet_unphased hatchet_unphased
+echo '[count_alleles]' >> hatchet.ini
+echo 'mincov=8' >> hatchet.ini
+echo 'maxcov=300' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
 ## Running HATCHet
 
 ```shell
-bash hatchet_unphased |& tee hatchet.log
+python -m hatchet run hatchet.ini
 exit $?
 ```
 

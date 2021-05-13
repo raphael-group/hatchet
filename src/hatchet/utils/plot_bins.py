@@ -18,7 +18,7 @@ from matplotlib.pyplot import cm
 from itertools import cycle
 from collections import Counter
 
-from .ArgParsing import parse_bbot_args
+from .ArgParsing import parse_plot_bins_args
 
 plt.style.use('ggplot')
 sns.set_style("whitegrid")
@@ -26,7 +26,7 @@ sns.set_style("whitegrid")
 
 def main(args=None):
     sys.stderr.write(log("# Parsing and checking input arguments\n"))
-    args = parse_bbot_args(args)
+    args = parse_plot_bins_args(args)
     sys.stdout.write(info("\n".join(["## {}:\t{}".format(key, args[key]) for key in args]) + '\n'))
 
     sys.stderr.write(log("# Reading input BBC file\n"))
@@ -70,7 +70,7 @@ def main(args=None):
     if args['command'] is None or args['command'] == 'CBB':
         out = os.path.join(args['x'], 'bb_clustered.pdf' if args['pdf'] else 'bb_clustered.png')
         sys.stderr.write(log("# [CBB] Plotting clustered RDR-BB for all samples in {}\n".format(out)))
-        clubb(bbc, clusters, args, out, clust_order, pal)
+        cluster_bins(bbc, clusters, args, out, clust_order, pal)
 
     if args['command'] is None or args['command'] == 'CLUSTER':
         if args['segfile'] is not None:
@@ -236,7 +236,7 @@ def bb(bbc, clusters, args, out):
             plt.close()
 
 
-def clubb(bbc, clusters, args, out, clust_order, pal):
+def cluster_bins(bbc, clusters, args, out, clust_order, pal):
     pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
     ly = 'RDR'
     lx = '0.5 - BAF'

@@ -6,13 +6,13 @@ import math
 import copy
 import numpy as np
 
-from .ArgParsing import parse_clubb_args
+from .ArgParsing import parse_cluster_bins_args
 from . import Supporting as sp
 
 
 def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = parse_clubb_args(args)
+    args = parse_cluster_bins_args(args)
 
     sp.log(msg="# Reading the combined BB file\n", level="STEP")
     combo, samples = readBB(args["bbfile"])

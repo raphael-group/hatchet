@@ -1,7 +1,7 @@
 # Demo for WGS data from a cancer patient
 : ex: set ft=markdown ;:<<'```shell' #
 
-The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 samples (A12-A, A12-C, and A12-D) of metastatic patient A12, previously published in (Gundem et al., Nature, 2015)). For simplicity, the demo starts from a BB file `demo-wgs-cancer.bb` (included in this demo at `examples/demo-WGS-cancer/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. `binBAM`, `deBAF`, and `comBBo`) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of binBAM, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
+The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 samples (A12-A, A12-C, and A12-D) of metastatic patient A12, previously published in (Gundem et al., Nature, 2015)). For simplicity, the demo starts from a BB file `demo-wgs-cancer.bb` (included in this demo at `examples/demo-WGS-cancer/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. `count-reads`, `count-alleles`, and `combine-counts`) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of count-reads, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
 
 ## Requirements and set up
 
@@ -15,10 +15,10 @@ PY="python3" # This id the full path to the version of PYTHON3 which contains th
 The following paths are consequently obtained to point to the required components of HATCHet
 
 ```shell
-CLUBB="${PY} -m hatchet cluBB"
-BBOT="${PY} -m hatchet BBot"
-INFER="${PY} -m hatchet solve"
-BBEVAL="${PY} -m hatchet BBeval"
+CLUSTERBINS="${PY} -m hatchet cluster-bins"
+PLOTBINS="${PY} -m hatchet plot-bins"
+INFER="${PY} -m hatchet compute-cn"
+PLOTCN="${PY} -m hatchet plot-cn"
 :<<'```shell' # Ignore this line
 ```
 
@@ -32,21 +32,21 @@ PS4='[\t]'
 
 ## Global clustering
 
-The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluBB`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
+The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluster-bins`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
-${CLUBB} demo-wgs-cancer.bb -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
+${CLUSTERBINS} demo-wgs-cancer.bb -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
-For different type of data it is essential to assess the quality of the clustering because this is performed by a Dirichlet process and it is affected by varying degrees of noise. To do this, we use `BBot`, i.e. the HATCHet's component designed for the analysis of the data, and produce the cluster plot using the `CBB` command. To help we use the following options:
+For different type of data it is essential to assess the quality of the clustering because this is performed by a Dirichlet process and it is affected by varying degrees of noise. To do this, we use `plot-bins`, i.e. the HATCHet's component designed for the analysis of the data, and produce the cluster plot using the `CBB` command. To help we use the following options:
 - `--xmin 0.5` and `--xmax 4` allow to zoom in and to focus the figure on the same RDR (x-axis) range for every sample.
 - `--colwrap 3` allows to have the 3 plots of the 3 samples on the same figure row
 - `-tS 0.005` asks to plot only the clusters which cover at least the `0.5%` of the genome. This is useful to clean the figure and focus on the main components.
 To trace all steps, we also move the figure to `tR015-cbb.pdf`.
 
 ```shell
-${BBOT} -c CBB demo-wgs-cancer.bbc --ymin 0.5 --ymax 4 --colwrap 3 -tS 0.005
+${PLOTBINS} -c CBB demo-wgs-cancer.bbc --ymin 0.5 --ymax 4 --colwrap 3 -tS 0.005
 mv bb_clustered.png tR015-cbb.png
 :<<'```shell' # Ignore this line
 ```
@@ -57,17 +57,17 @@ We thus obtain the following clustering:
 
 We can easily notice that the clustering is not ideal and is clearly overfitting the data by choosing too many distinct clusters; in fact we notice the presence of many different clusters that are extremely close and have identical BAF in every sample, e.g. light blue/dark blue/light orange/dark grey clusters or orange/purple clusters or pink/light gray clusters are always adjacent clusters which appear to be part of wider cluster. A good condition to assess the quality of the clustering is to assess that every pair of clusters is clearly distinct in one of the two dimensions (RDR and BAF) in **at least one** sample. 
 
-Since Dirichlet clustering is not ad-hoc for this application, it can often result in overclustering. For this reason, cluBB additionally provides a procedure to merge clusters which are very likely to be part of a single cluster. However this procedure requires two maximum thresholds for doing this, one is the maximum shift for RDR (`-tR 0.15`) and one is the maximum shift for BAF (`-tB 0.03`). The default values allow to work with most of the datasets, however datasets of high variance require to tune these parameters. In our example, while the BAF of the clusters appears to be consistent with the default threshold, RDR appears to have much higher variance; in fact, the clusters that are always adjacent span much more than 0.15 of RDR in the x-axis. Therefore, by looking at the plot, we can see that a value of `-tR 0.5` fit much better the noise of RDR in our data and we repeat the clustering with this value.
+Since Dirichlet clustering is not ad-hoc for this application, it can often result in overclustering. For this reason, cluster-bins additionally provides a procedure to merge clusters which are very likely to be part of a single cluster. However this procedure requires two maximum thresholds for doing this, one is the maximum shift for RDR (`-tR 0.15`) and one is the maximum shift for BAF (`-tB 0.03`). The default values allow to work with most of the datasets, however datasets of high variance require to tune these parameters. In our example, while the BAF of the clusters appears to be consistent with the default threshold, RDR appears to have much higher variance; in fact, the clusters that are always adjacent span much more than 0.15 of RDR in the x-axis. Therefore, by looking at the plot, we can see that a value of `-tR 0.5` fit much better the noise of RDR in our data and we repeat the clustering with this value.
 
 ```shell
-${CLUBB} demo-wgs-cancer.bb -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.5 -d 0.08
+${CLUSTERBINS} demo-wgs-cancer.bb -o demo-wgs-cancer.seg -O demo-wgs-cancer.bbc -e 12 -tB 0.03 -tR 0.5 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
-We assess again the clustering using `BBot` as before.
+We assess again the clustering using `plot-bins` as before.
 
 ```shell
-${BBOT} -c CBB demo-wgs-cancer.bbc --ymin 0.5 --ymax 4 --colwrap 3 -tS 0.008
+${PLOTBINS} -c CBB demo-wgs-cancer.bbc --ymin 0.5 --ymax 4 --colwrap 3 -tS 0.008
 mv bb_clustered.png cbb.png
 :<<'```shell' # Ignore this line
 ```
@@ -142,20 +142,20 @@ HATCHet indeed finds an additional tumor clone which is unique to sample A12-D a
 
 ## Analyzing inferred results
 
-Finally, we obtain useful plots to summarize and analyze the inferred results by using `BBeval`, which is the last component of HATCHet. We run `BBeval` as follows
+Finally, we obtain useful plots to summarize and analyze the inferred results by using `plot-cn`, which is the last component of HATCHet. We run `plot-cn` as follows
 
 ```shell
-${BBEVAL} best.bbc.ucn
+${PLOTCN} best.bbc.ucn
 exit $?
 ```
 
-First, `BBeval` summarizes the values of tumor purity and tumor ploidy for every sample of the patient as follows:
+First, `plot-cn` summarizes the values of tumor purity and tumor ploidy for every sample of the patient as follows:
 
     ### SAMPLE: A12-D -- PURITY: 0.820847 -- PLOIDY: 2.13676481963 -- CLASSIFICATION: DIPLOID
     ### SAMPLE: A12-C -- PURITY: 0.771882 -- PLOIDY: 2.07266027371 -- CLASSIFICATION: DIPLOID
     ### SAMPLE: A12-A -- PURITY: 0.779084 -- PLOIDY: 2.09771617784 -- CLASSIFICATION: DIPLOID
 
-Next, `BBeval` produces some informative plots to evaluate the inferred results. Among all the plots, 3 of those are particularly important.
+Next, `plot-cn` produces some informative plots to evaluate the inferred results. Among all the plots, 3 of those are particularly important.
 
 The first `intratumor-clones-totalcn.pdf` represents the total-copy numbers for all tumor clones in fixed-size regions (obtained by merging neighboring genomic bins).
 ![intratumor-clones-totalcn.pdf](totalcn.png)

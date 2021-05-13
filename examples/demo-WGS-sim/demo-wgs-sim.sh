@@ -1,7 +1,7 @@
 # Demo for standard WGS data 
 : ex: set ft=markdown ;:<<'```shell' #
 
-The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 simulated samples obtained from the same tumor. This represents an exemplary case of executing HATCHet on a typical dataset with standard noise. For simplicity, the demo starts from a BB file `demo-WGS-sim.bb` (included in this demo at `examples/demo-WGS-sim/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. binBAM, deBAF, and comBBo) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of binBAM, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
+The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 simulated samples obtained from the same tumor. This represents an exemplary case of executing HATCHet on a typical dataset with standard noise. For simplicity, the demo starts from a BB file `demo-WGS-sim.bb` (included in this demo at `examples/demo-WGS-sim/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. count-reads, count-alleles, and combine-counts) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of count-reads, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
 
 Specifically, the tumor is composed of 2 tumor clones (clone0 and clone1) and a normal diploid clone (normal). The clonal composition of every sample is described in the following table:
 
@@ -23,10 +23,10 @@ PY="python3" # This id the full path to the version of PYTHON3 which contains th
 The following paths are consequently obtained to point to the required components of HATCHet
 
 ```shell
-CLUBB="${PY} -m hatchet cluBB"
-BBOT="${PY} -m hatchet BBot"
-INFER="${PY} -m hatchet solve"
-BBEVAL="${PY} -m hatchet BBeval"
+CLUSTERBINS="${PY} -m hatchet cluster-bins"
+PLOTBINS="${PY} -m hatchet plot-bins"
+INFER="${PY} -m hatchet compute-cn"
+PLOTCN="${PY} -m hatchet plot-cn"
 :<<'```shell' # Ignore this line
 ```
 
@@ -40,19 +40,19 @@ PS4='[\t]'
 
 ## Global clustering
 
-The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluBB`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
+The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluster-bins`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
-${CLUBB} demo-wgs-sim.bb -o demo-wgs-sim.seg -O demo-wgs-sim.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
+${CLUSTERBINS} demo-wgs-sim.bb -o demo-wgs-sim.seg -O demo-wgs-sim.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
-To assess the quality of the clustering we generate the cluster plot using the `CBB` command of `BBot`, i.e. the HATCHet's component designed for the analysis of the data. For simplicity, we also use the following options
+To assess the quality of the clustering we generate the cluster plot using the `CBB` command of `plot-bins`, i.e. the HATCHet's component designed for the analysis of the data. For simplicity, we also use the following options
 - `--colwrap 3` allows to have the 3 plots of the 3 samples on the same figure row
 - `-tS 0.01` asks to plot only the clusters which cover at least the `1%` of the genome. This is useful to clean the figure and focus on the main components.
 
 ```shell
-${BBOT} -c CBB demo-wgs-sim.bbc --colwrap 3 -tS 0.01
+${PLOTBINS} -c CBB demo-wgs-sim.bbc --colwrap 3 -tS 0.01
 :<<'```shell' # Ignore this line
 ```
 
@@ -100,20 +100,20 @@ HATCHet predicts the presence of 3 clones in the 3 tumor samples and, especially
 
 ## Analyzing inferred results
 
-Finally, we obtain useful plots to summarize and analyze the inferred results by using `BBeval`, which is the last component of HATCHet. We run `BBeval` as follows
+Finally, we obtain useful plots to summarize and analyze the inferred results by using `plot-cn`, which is the last component of HATCHet. We run `plot-cn` as follows
 
 ```shell
-${BBEVAL} best.bbc.ucn
+${PLOTCN} best.bbc.ucn
 exit $?
 ```
 
-First, `BBeval` summarizes the values of tumor purity and tumor ploidy for every sample of the patient as follows:
+First, `plot-cn` summarizes the values of tumor purity and tumor ploidy for every sample of the patient as follows:
 
     ### SAMPLE: bulk_08clone1_Noneclone0_02normal -- PURITY: 0.799477 -- PLOIDY: 3.07107541299 -- CLASSIFICATION: TETRAPLOID
     ### SAMPLE: bulk_035clone1_06clone0_005normal -- PURITY: 0.95065 -- PLOIDY: 3.37447061915 -- CLASSIFICATION: TETRAPLOID
     ### SAMPLE: bulk_055clone1_04clone0_005normal -- PURITY: 0.95048 -- PLOIDY: 3.27575289096 -- CLASSIFICATION: TETRAPLOID
 
-Next, `BBeval` produces some informative plots to evaluate the inferred results. Among all the plots, 3 of those are particularly interesting.
+Next, `plot-cn` produces some informative plots to evaluate the inferred results. Among all the plots, 3 of those are particularly interesting.
 
 The first `intratumor-clones-totalcn.pdf` represents the total-copy numbers for all tumor clones in fixed-size regions (obtained by merging neighboring genomic bins).
 ![intratumor-clones-totalcn.pdf](totalcn.png)

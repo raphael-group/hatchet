@@ -162,7 +162,7 @@ As such, we also provide here an overview of the entire pipeline and we describe
 
 HATCHet is in active development, please report any issue or question as this could help the devolment and imporvement of HATCHet. Current known issues with current version are reported here below:
 
-- The allele-swapping feature of comBBo has been temporarily disabled due to conflicts with recent SAMtools versions.
+- The allele-swapping feature of combine-counts has been temporarily disabled due to conflicts with recent SAMtools versions.
 - HATCHet has not been tested on Windows yet.
 
 A list of the major recent updates:
