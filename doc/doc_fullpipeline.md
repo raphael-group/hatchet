@@ -48,6 +48,10 @@ includes a specific demo which represent a guided and executable example on exam
 The full pipeline of HATCHet is composed of 7 sequential steps, starting from the required input data.
 The description of each step also includes the details of the corresponding input/output that are especially useful when
 one wants to replace or change some of the steps in the pipeline while guaranteeing the correct functioning of HATCHet.
+Each step `<step>` of HATCHet can be run with the following command within a HATCHet conda environment:
+```shell
+hatchet <step>
+```
 
 *Older versions of HATCHet used different names for these steps. The `Old Name` column lists those names.*
 
