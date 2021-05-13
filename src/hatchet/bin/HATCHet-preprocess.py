@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
-
-
-
-import sys, os
+import os
 import argparse
 import subprocess as sp
 import multiprocessing as mp
 import shlex
 import re
 
-utils = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, 'utils')
-if not os.path.isdir(utils):
-    raise ValueError("utils directory not found in HATCHet's home directory i.e. {}, is anything been moved?".format(utils))
-sys.path.append(utils)
-from Supporting import *
-from hatchet import config
+from hatchet.utils.Supporting import *
+from hatchet import config, __version__
 
 
 def parse_args():
@@ -33,6 +26,7 @@ def parse_args():
     parser.add_argument("--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("--seed", required=False, type=int, default=config.preprocess.seed, help="Random seed for replication (default: None)")
     parser.add_argument("-j","--jobs", required=False, type=int, default=config.preprocess.jobs, help="Number of parallele jobs to use (default: equal to number of available processors)")
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args()
 
     tumor = set(t for t in args.tumor.split())

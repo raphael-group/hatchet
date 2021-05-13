@@ -4,7 +4,7 @@ import argparse
 import subprocess
 
 from . import Supporting as sp
-from hatchet import config
+from hatchet import config, __version__
 
 
 def parse_genotype_snps_arguments(args=None):
@@ -27,6 +27,7 @@ def parse_genotype_snps_arguments(args=None):
     parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.genotype_snps.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
     parser.add_argument("-o", "--outputsnps", required=False, default=config.genotype_snps.outputsnps, type=str, help="Output folder for SNPs separated by chromosome (default: ./)")
     parser.add_argument("-v", "--verbose", action='store_true', default=config.genotype_snps.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
@@ -110,6 +111,7 @@ def parse_count_alleles_arguments(args=None):
     parser.add_argument("-o", "--outputtumors", required=False, default=config.count_alleles.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
     parser.add_argument("-l", "--outputsnps", required=False, default=config.count_alleles.outputsnps, type=str, help="Output directory for lists of selected SNPs (default: ./)")
     parser.add_argument("-v", "--verbose", action='store_true', default=config.count_alleles.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
@@ -218,6 +220,7 @@ def parse_count_reads_arguments(args=None):
     parser.add_argument("-o", "--outputtumors", required=False, default=config.count_reads.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
     parser.add_argument("-t", "--outputtotal", required=False, default=config.count_reads.outputtotal, type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
     parser.add_argument("-v", "--verbose", action='store_true', default=config.count_reads.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
@@ -310,6 +313,7 @@ def parse_combine_counts_args(args=None):
     parser.add_argument("-e","--seed", type=int, required=False, default=config.combine_counts.seed, help='Random seed used for the normal distributions used in the clouds (default: 0)')
     parser.add_argument("-v", "--verbose", action='store_true', default=config.combine_counts.verbose, required=False, help="Use verbose log messages")
     parser.add_argument("-r", "--disablebar", action='store_true', default=config.combine_counts.disablebar, required=False, help="Disable progress bar")
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     if not os.path.isfile(args.normalbins):
@@ -377,6 +381,7 @@ def parse_cluster_bins_args(args=None):
     parser.add_argument("-R","--restarts", type=int, required=False, default=config.cluster_bins.restarts, help="Number of restarts performed by the clustering to choose the best (default: 10)")
     parser.add_argument("-v","--verbose", action='store_true', default=config.cluster_bins.verbose, required=False, help="Use verbose log messages")
     parser.add_argument("--disablebar", action='store_true', default=config.cluster_bins.disablebar, required=False, help="Disable progress bar")
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     if not os.path.isfile(args.BBFILE):
@@ -444,6 +449,7 @@ def parse_plot_bins_args(args=None):
     parser.add_argument("-x","--rundir", required=False, default=config.plot_bins.rundir, type=str, help='Running dirrectory where output the results (default: current directory)')
     parser.add_argument("--pdf", action='store_true', default=config.plot_bins.pdf, required=False, help="Output the bb_clustered figure in PDF format (default: PNG)")
     parser.add_argument("--dpi", required=False, default=config.plot_bins.dpi, type=int, help='DPI of PNG images (default: 900)')
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     if not os.path.isfile(args.INPUT):
