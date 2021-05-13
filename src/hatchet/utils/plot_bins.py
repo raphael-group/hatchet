@@ -96,7 +96,7 @@ def rdr(bbc, args, out):
 
     with PdfPages(out) as pdf:
         sys.stderr.write(info("## Plotting for all samples..\n"))
-        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, palette=args['cmap'], fit_reg=False, size=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
+        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, palette=args['cmap'], fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
         addchr(pos)
         coordinates(args, g)
         plt.xlim(xmin=0, xmax=(len(pos)+1))
@@ -106,7 +106,7 @@ def rdr(bbc, args, out):
 
         for sample, group in df.groupby(lh):
             sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
-            g = sns.lmplot(data=group, x=lx, y=ly, fit_reg=False, size=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
+            g = sns.lmplot(data=group, x=lx, y=ly, fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
             addchr(pos)
             coordinates(args, g)
             plt.title("Read-depth ratio in {}".format(sample))
@@ -132,7 +132,7 @@ def clurdr(bbc, clusters, args, out):
     with PdfPages(out) as pdf:
         for sample, group in df.groupby(g):
             sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
-            sns.lmplot(data=group, x=lx, y=ly, hue=lh, fit_reg=False, size=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s}, legend=False)
+            sns.lmplot(data=group, x=lx, y=ly, hue=lh, fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s}, legend=False)
             addchr(pos)
             coordinates(args)
             plt.title("Read-depth ratio in {}".format(sample))
@@ -155,7 +155,7 @@ def baf(bbc, args, out):
 
     with PdfPages(out) as pdf:
         sys.stderr.write(info("## Plotting for all samples..\n"))
-        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, palette=args['cmap'], fit_reg=False, size=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
+        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, palette=args['cmap'], fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
         plt.ylim(ymax=0.5)
         addchr(pos)
         coordinates(args)
@@ -165,7 +165,7 @@ def baf(bbc, args, out):
 
         for sample, group in df.groupby(lh):
             sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
-            sns.lmplot(data=group, x=lx, y=ly, fit_reg=False, size=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
+            sns.lmplot(data=group, x=lx, y=ly, fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
             plt.ylim(ymax=0.5)
             addchr(pos)
             coordinates(args)
@@ -191,7 +191,7 @@ def clubaf(bbc, clusters, args, out):
     with PdfPages(out) as pdf:
         for sample, group in df.groupby(g):
             sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
-            sns.lmplot(data=group, x=lx, y=ly, hue=lh, fit_reg=False, size=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s}, legend=False)
+            sns.lmplot(data=group, x=lx, y=ly, hue=lh, fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s}, legend=False)
             plt.ylim(ymax=0.5)
             addchr(pos)
             coordinates(args)
@@ -263,9 +263,9 @@ def cluster_bins(bbc, clusters, args, out, clust_order, pal):
     #    for sample, group in df.groupby(g):
     #sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
     if args['colwrap'] > 1:
-        g = sns.lmplot(data=df, x=lx, y=ly, hue='Color', hue_order=order, palette=pal, fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, col=g, col_wrap=args['colwrap'])
+        g = sns.lmplot(data=df, x=lx, y=ly, hue='Color', hue_order=order, palette=pal, fit_reg=False, height=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, col=g, col_wrap=args['colwrap'])
     else:
-        g = sns.lmplot(data=df, x=lx, y=ly, hue='Color', hue_order=order, palette=pal, fit_reg=False, size=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, row=g)
+        g = sns.lmplot(data=df, x=lx, y=ly, hue='Color', hue_order=order, palette=pal, fit_reg=False, height=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, row=g)
     #plt.title("{}".format(sample))
     coordinates(args, g)
     #pdf.savefig(bbox_inches='tight')
