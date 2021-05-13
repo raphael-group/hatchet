@@ -40,24 +40,26 @@ includes a specific demo which represent a guided and executable example on exam
 
 | Name | Description | Script | Demo | Variations |
 |------|-------------|--------|------|------------|
-| [GATK4-CNV](../custom/GATK4-CNV) | Custom pipeline for segmented files from GATK4 CNV pipeline | [custom-gatk4-cnv.sh](../custom/GATK4-CNV/custom-gatk4-cnv.sh) | [demo-gatk4-cnv.sh](../custom/GATK4-CNV/demo-gatk4-cnv.sh) | This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet (`binBAM`, `deBAF`, and `comBBo`) are not needed; for this reason, the following depdencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case. |
+| [GATK4-CNV](../custom/GATK4-CNV) | Custom pipeline for segmented files from GATK4 CNV pipeline | [custom-gatk4-cnv.sh](../custom/GATK4-CNV/custom-gatk4-cnv.sh) | [demo-gatk4-cnv.sh](../custom/GATK4-CNV/demo-gatk4-cnv.sh) | This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet (`count-reads`, `count-alleles`, and `combine-counts`) are not needed; for this reason, the following depdencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case. |
 
 ## Detailed steps
 <a name="detailedsteps"></a>
 
 The full pipeline of HATCHet is composed of 7 sequential steps, starting from the required input data.
-The descrition of each step also includes the details of the corresponding input/output that are especially useful when
+The description of each step also includes the details of the corresponding input/output that are especially useful when
 one wants to replace or change some of the steps in the pipeline while guaranteeing the correct functioning of HATCHet.
 
-| Order | Step | Description |
-|-------|------|-------------|
-| (1)   | [*binBAM*](doc_binbam.md)   | This step splits the human reference genome into bins, i.e. fixed-size small genomic regions, and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample. |
-| (2)   | [*deBAF*](doc_debaf.md)     | This step calls heterozygous germline SNPs from the matched-normal sample and counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample. |
-| (3)   | [*comBBo*](doc_combbo.md)   | This step combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin. |
-| (4)   | [*cluBB*](doc_clubb.md)     | This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample. |
-| (5)   | [*BBot*](doc_bbot.md)       | This step produces informative plots concerning the computed RDRs, BAFs, and clusters. The information produced by this step are important to validate the compute clusters of genomic regions. |
-| (6)   | [*hatchet*](doc_hatchet.md) | This step computes allele-specific fractional copy numbers, solves a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions, and deploys a model-selection criterion select the number of clone by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication. |
-| (7)   | [*BBeval*](doc_bbeval.md)   | This step analyzes the inferred copy-number states and clone proportions and produces informative plots jointly considering all samples from the same patient. In addition, this step can also combine results obtained for different patients and perform integrative analysis. |
+*Older versions of HATCHet used different names for these steps. The `Old Name` column lists those names.*
+
+| Order | Step | Old Name | Description |
+|-------|------|----------|-------------|
+| (1)   | [*count-reads*](doc_count_reads.md)       | binBAM   | This step splits the human reference genome into bins, i.e. fixed-size small genomic regions, and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample. |
+| (2)   | [*count-alleles*](doc_count_alleles.md)   | deBAF    | This step calls heterozygous germline SNPs from the matched-normal sample and counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample. |
+| (3)   | [*combine-counts*](doc_combine_counts.md) | comBBo   | This step combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin. |
+| (4)   | [*cluster-bins*](doc_cluster_bins.md)     | cluBB    | This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample. |
+| (5)   | [*plot-bins*](doc_plot_bins.md)           | BBot     | This step produces informative plots concerning the computed RDRs, BAFs, and clusters. The information produced by this step are important to validate the compute clusters of genomic regions. |
+| (6)   | [*compute-cn*](doc_compute_cn.md)         | hatchet  | This step computes allele-specific fractional copy numbers, solves a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions, and deploys a model-selection criterion select the number of clone by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication. |
+| (7)   | [*plot-cn*](doc_plot_cn.md)               | BBeval   | This step analyzes the inferred copy-number states and clone proportions and produces informative plots jointly considering all samples from the same patient. In addition, this step can also combine results obtained for different patients and perform integrative analysis. |
 
 ## Recommendations and quality control
 <a name="recommendations"></a>

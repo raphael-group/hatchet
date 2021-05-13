@@ -1,10 +1,10 @@
-# deBAF
+# count-alleles
 
 This step of HATCHet calls heterozygous germline SNPs from the matched-normal sample and counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample.
 
 ## Input
 
-deBAF takes in input sorted and indexed BAM files for multiple tumor samples from the same patient, a sorted and index BAM file from a matched-normal sample, and a indexed human reference genome.
+count-alleles takes in input sorted and indexed BAM files for multiple tumor samples from the same patient, a sorted and index BAM file from a matched-normal sample, and a indexed human reference genome.
 
 | Name | Description | Usage |
 |------|-------------|-------|
@@ -14,7 +14,7 @@ deBAF takes in input sorted and indexed BAM files for multiple tumor samples fro
 
 ## Output
 
-deBAF produces three tab-separated files: the first contains the read counts for every genomic bin in every tumor sample, the second contains the read counts for every genomic bin the matched-normal sample, and the third contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.
+count-alleles produces three tab-separated files: the first contains the read counts for every genomic bin in every tumor sample, the second contains the read counts for every genomic bin the matched-normal sample, and the third contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.
 
 | Name | Description | Format |
 |------|-------------|--------|
@@ -34,7 +34,7 @@ The format fields are described in the following.
 
 ## Main parameters
 
-deBAF has some main parameters; the main values of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.
+count-alleles has some main parameters; the main values of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
@@ -48,11 +48,11 @@ deBAF has some main parameters; the main values of these parameters allow to dea
 
 ## Optional parameters
 
-deBAF has some optional parameters; changes in the default values of these parameters are not expected to have a significant impact but they can be tuned to better fit the given data.
+count-alleles has some optional parameters; changes in the default values of these parameters are not expected to have a significant impact but they can be tuned to better fit the given data.
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-v`, `--verbose`  | Verbose logging flag | When enabled, deBAF outputs a verbose log of the executiong | Not used |
+| `-v`, `--verbose`  | Verbose logging flag | When enabled, count-alleles outputs a verbose log of the executiong | Not used |
 | `-g`, `--gamma` | Level of confidence for selecting germline heterozygous SNPs | This value is the level of confidence used for the binomial model used to assess whether a called SNPs is in fact germline heterozygous | 0.05 |
 | `-q`, `--readquality` | Threshold for phred-score quality of sequencing reads | The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of sequencing reads | 20 |
 | `-Q`, `--basequality` | Threshold for phred-score quality of sequenced nucleotide bases | The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of sequenced nucleotide bases | 20 |

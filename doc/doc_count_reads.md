@@ -1,10 +1,10 @@
-# binBAM
+# count-reads
 
 This step of HATCHet splits the human reference genome into bins, i.e. fixed-size small genomic regions, and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample.
 
 ## Input
 
-binBAM takes in input sorted and indexed BAM files for multiple tumor samples from the same patient, a sorted and index BAM file from a matched-normal sample, and a indexed human reference genome.
+count-reads takes in input sorted and indexed BAM files for multiple tumor samples from the same patient, a sorted and index BAM file from a matched-normal sample, and a indexed human reference genome.
 
 | Name | Description | Usage |
 |------|-------------|-------|
@@ -14,7 +14,7 @@ binBAM takes in input sorted and indexed BAM files for multiple tumor samples fr
 
 ## Output
 
-binBAM produces three tab-separated files: the first contains the read counts for every genomic bin in every tumor sample (raw counts not normalized), the second contains the read counts for every genomic bin the matched-normal sample (raw counts not normalized), and the third contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.
+count-reads produces three tab-separated files: the first contains the read counts for every genomic bin in every tumor sample (raw counts not normalized), the second contains the read counts for every genomic bin the matched-normal sample (raw counts not normalized), and the third contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.
 
 | Name | Description |
 |------|-------------|
@@ -23,6 +23,6 @@ binBAM produces three tab-separated files: the first contains the read counts fo
 
 ## Main parameters
 
-binBAM
+count-reads
 
 ## Optional parameters

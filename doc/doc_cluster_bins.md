@@ -1,11 +1,11 @@
-# cluBB
+# cluster-bins
 
 This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample.
-cluBB uses BNPY for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see Main parameters below).
+cluster-bins uses BNPY for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see Main parameters below).
 
 ## Input
 
-cluBB takes in input a tab-separated file with the following fields.
+cluster-bins takes in input a tab-separated file with the following fields.
 
 | Field | Description |
 |-------|-------------|
@@ -24,7 +24,7 @@ The fields `#SNPS`, `COV`, `ALPHA`, and `BETA` are currently deprecated and thei
 
 ## Output
 
-cluBB produces two tab-separated files:
+cluster-bins produces two tab-separated files:
 
 1. A file of clustered genomic bins, specified by the flag `-O`, `--outbins`. The tab separated file has the same fields as the input plus a last field `CLUSTER` which specifies the name of the corresponding cluster.
 
@@ -45,32 +45,32 @@ cluBB produces two tab-separated files:
 
 ## Main parameters
 
-cluBB has 4 main features with some main parameters that allow  to improve the clustering.
+cluster-bins has 4 main features with some main parameters that allow  to improve the clustering.
 
-1. cluBB has a parameter `-d`, `--diploidbaf` that specifies the maximum expected shift from 0.5 for BAF for a diploid or tetraploid cluster (i.e. with copy-number states (1, 1) or (2, 2)). This threshold is used for two goals: (1) To identify the diploid or tetraploid cluster which is used to correct the estimated BAF of potentially biased clusters. (2) To identify potentially biased clusters.
+1. cluster-bins has a parameter `-d`, `--diploidbaf` that specifies the maximum expected shift from 0.5 for BAF for a diploid or tetraploid cluster (i.e. with copy-number states (1, 1) or (2, 2)). This threshold is used for two goals: (1) To identify the diploid or tetraploid cluster which is used to correct the estimated BAF of potentially biased clusters. (2) To identify potentially biased clusters.
 The default value of this parameter (0.08) is typically sufficient for most of the datasets, but its value can be changed or tuned to accommodate the features of special datasets.
 In particular, the value of this threshold depends on the variance in the data (related to noise and coverage); generally, higher variance requires a higher shift.
-Information provided by BBot can be crucial to decide whether one needs to change this value in special datasets.
+Information provided by plot-bins can be crucial to decide whether one needs to change this value in special datasets.
 
-2. cluBB has some main parameters to control the clustering; the default values for most of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.
-BBot provides informative plots that can be used to assess the quality of the clustering and evaluate the need of changing some parameters for special datasets.
-If your clusters do not appear to be cohesive, try lowering the maximum number of clusters (`-K`) which will force cluBB to infer fewer clusters.
+2. cluster-bins has some main parameters to control the clustering; the default values for most of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.
+plot-bins provides informative plots that can be used to assess the quality of the clustering and evaluate the need of changing some parameters for special datasets.
+If your clusters do not appear to be cohesive, try lowering the maximum number of clusters (`-K`) which will force cluster-bins to infer fewer clusters.
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
 | `-K`, `--initclusters` | Maximum number of clusters | The parameter specifies the maximum number of clusters to infer, i.e., the maximum number of GMM components | 50 |
 | `-c`, `--concentration` | Concentration parameter for clustering | This parameter determines how much confidence the GMM has in different types of clusterings. Higher values (e.g., 10 or 100)  favor fewer clusters, and smaller values (e.g., 0.01 or 0.001) favor more clusters. For experts, this is the alpha parameter for the Dirichlet process prior. | 1/K |
 
-3. cluBB offers a bootstraping approach that allows a succesfull clustering even when there is a limited number genomic bins that are considred. The bootstraping approach generates sinthetic (i.e. used only for clustering) bins based on the data of the given bins. The bootstraping is controlled by the following parameters.
+3. cluster-bins offers a bootstraping approach that allows a succesfull clustering even when there is a limited number genomic bins that are considred. The bootstraping approach generates sinthetic (i.e. used only for clustering) bins based on the data of the given bins. The bootstraping is controlled by the following parameters.
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
 | `-u`, `--bootclustering` | Number of sinthetic bins to generate | Sinthetic bins can be generated based on the RDR and BAF of given bins and are added only to the clustering to improve it when the total number of bins is low (e.g. when considering data from WES) | 0, not used |
-| `-dR`,`--ratiodeviation` | Standard deviation for generate RDR of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and BBot generates informative plots to do this | 0.02 |
-| `-dB`,`--bafdeviation` | Standard deviation for generate BAF of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and BBot generates informative plots to do this | 0.02 |
+| `-dR`,`--ratiodeviation` | Standard deviation for generate RDR of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
+| `-dB`,`--bafdeviation` | Standard deviation for generate BAF of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
 | `-s`, `--seed` | Random seed | The value is used to seed the random generation of RDR and BAF of synthetic bins | 0 |
 
-4. cluBB offers a basic iterative process to merge clusters according to given tolerances. This feature can be used to refine the results of BNPY clustering and merge distinct clusters that are not sufficiently distinguished. This process can be controlled by the following parameters.
+4. cluster-bins offers a basic iterative process to merge clusters according to given tolerances. This feature can be used to refine the results of BNPY clustering and merge distinct clusters that are not sufficiently distinguished. This process can be controlled by the following parameters.
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
@@ -81,5 +81,5 @@ If your clusters do not appear to be cohesive, try lowering the maximum number o
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-v`, `--verbose`  | Verbose logging flag | When enabled, comBBo outputs a verbose log of the executiong | Not used |
+| `-v`, `--verbose`  | Verbose logging flag | When enabled, combine-counts outputs a verbose log of the executiong | Not used |
 | `-r`, `--disablebar` | Disabling progress-bar flag | When enabled, the output progress bar is disabled | Not used |
