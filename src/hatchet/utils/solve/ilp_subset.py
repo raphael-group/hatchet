@@ -2,6 +2,7 @@ import math
 import numpy as np
 import pandas as pd
 from pyomo import environ as pe
+from pyomo.opt import SolverStatus, TerminationCondition
 
 from .utils import Random
 
@@ -472,8 +473,8 @@ class ILPSubset:
 
         for _m in range(self.m):
             for _n in range(0, self.n):
-                self.cA.iloc[_m][rank_indices[_n]] = f_a.iloc[(_m, _n)]
-                self.cB.iloc[_m][rank_indices[_n]] = f_b.iloc[(_m, _n)]
+                self.cA.iloc[_m][rank_indices[_n]].value = f_a.iloc[(_m, _n)]
+                self.cB.iloc[_m][rank_indices[_n]].value = f_b.iloc[(_m, _n)]
         self.warmstart = True
 
     def fix_u(self, u):
@@ -530,13 +531,24 @@ class ILPSubset:
                 U[:, _k] = v
         return U
 
-    def run(self, solver_type='gurobipy', write_path=None):
+    def run(self, solver_type='gurobipy', timelimit=100, write_path=None):
         if solver_type == 'gurobipy':
             solver = pe.SolverFactory('gurobi', solver_io='python')
         else:
             solver = pe.SolverFactory(solver_type)
 
-        solver.solve(self.model, warmstart=self.warmstart)
+        kwargs = {'timelimit': timelimit}
+        if solver.warm_start_capable():
+            kwargs['warmstart'] = self.warmstart
+
+        results = solver.solve(self.model, **kwargs)
+        if (results.solver.status == SolverStatus.ok) and (
+                results.solver.termination_condition in (TerminationCondition.optimal,
+                                                         TerminationCondition.feasible)):
+            pass
+        else:
+            return None
+
         if write_path is not None:
             self.model.write(write_path)
 

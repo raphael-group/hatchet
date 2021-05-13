@@ -12,23 +12,30 @@ class Worker:
 
     def run(self, cA, cB, u, max_iters, max_convergence_iters, tol=0.001):
         _iters = _convergence_iters = 0
-        _obj_u = _u = None
+        _u = u
         _cA, _cB = cA, cB  # first hot-start values
 
         while (_iters < max_iters) and (_convergence_iters < max_convergence_iters):
 
             carch = copy(self.ilp)
-            carch.fix_u(u)
+            carch.fix_u(_u)
             carch.create_model()
             carch.hot_start(_cA, _cB)
-            _obj_c, _cA, _cB, _ = carch.run(self.solver_type)
+            carch_results = carch.run(self.solver_type)
+            if carch_results is None:
+                return None
+            _obj_c, _cA, _cB, _ = carch_results
 
             uarch = copy(self.ilp)
             uarch.fix_c(_cA, _cB)
             uarch.create_model()
-            _obj_u, _, _, _u = uarch.run(self.solver_type)
+            uarch_results = uarch.run(self.solver_type)
+            if uarch_results is None:
+                return None
+            _obj_u, _, _, _u = uarch_results
 
-            if abs(_obj_c - _obj_u) < tol:
+            delta = abs(_obj_c - _obj_u)
+            if delta < tol:
                 _convergence_iters += 1
             else:
                 _convergence_iters = 0
@@ -58,19 +65,26 @@ class CoordinateDescent:
             seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
 
         result = {}  # obj. value => (cA, cB, u) mapping
-        # to_do = []
-        # with ProcessPoolExecutor(max_workers=min(j, n_seed)) as executor:
-        #     for u in seeds:
-        #         future = executor.submit(_work, self, u, solver_type, max_iters, max_convergence_iters)
-        #         to_do.append(future)
-        #
-        #     for future in as_completed(to_do):
-        #         obj, cA, cB, u = future.result()
+        to_do = []
+        with ProcessPoolExecutor(max_workers=min(j, n_seed)) as executor:
+            for u in seeds:
+                future = executor.submit(_work, self, u, solver_type, max_iters, max_convergence_iters)
+                to_do.append(future)
+
+            for future in as_completed(to_do):
+                results = future.result()
+                if results is not None:
+                    obj, cA, cB, u = results
+                    result[obj] = cA, cB, u
+
+        # for u in seeds:
+        #     results = _work(self, u, solver_type, max_iters, max_convergence_iters)
+        #     if results is not None:
+        #         obj, cA, cB, u = results
         #         result[obj] = cA, cB, u
 
-        for u in seeds:
-            obj, cA, cB, u = _work(self, u, solver_type, max_iters, max_convergence_iters)
-            result[obj] = cA, cB, u
+        if not result:
+            raise RuntimeError('Not a single feasible solution found!')
 
         best = min(result)
         return (best,) + result[best]

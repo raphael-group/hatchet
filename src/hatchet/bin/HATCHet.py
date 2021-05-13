@@ -638,11 +638,8 @@ def execute_python(solver, args, n, outprefix):
 
     segmentation(cA, cB, u, bbc_file=args['bbc'], bbc_out_file=bbc_out_file, seg_out_file=seg_out_file)
 
-    if obj >= 0:
-        if args['v'] >= 1:
-            sys.stderr.write(info('# Best objective found with {} clones: {}\n'.format(n, obj)))
-    else:
-        raise RuntimeError(error('Failed to parse the output of the solve step command because the final objective was not found: \n\t\t{}\n'))
+    if args['v'] >= 1:
+        sys.stderr.write(info('# Best objective found with {} clones: {}\n'.format(n, obj)))
 
     return obj
 
@@ -943,7 +940,6 @@ class ProgressBar:
         if self.counter == self.total:
             write("\n")
             flush()
-
 
 
 if __name__ == '__main__':
