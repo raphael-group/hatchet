@@ -29,13 +29,6 @@ from hatchet import config
 
 plt.style.use('ggplot')
 sns.set_style("whitegrid")
-plt.rcParams["font.family"] = "Times New Roman"
-
-#mpl.rcParams.update({'figure.autolayout': True})
-#mpl.rcParams['text.usetex'] = True
-#mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}', r'\usepackage{amssymb}']
-#mpl.rcParams['font.family'] = 'serif'
-#mpl.rcParams['font.serif'] = 'Computer Modern'
 
 
 def parsing_arguments(args=None):
