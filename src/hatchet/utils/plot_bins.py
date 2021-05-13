@@ -396,10 +396,14 @@ def select(bbc, clusters, args):
     s = ['{}:\tSIZE= {},\t# CHRS= {}'.format(idx, count[idx]['SIZE'], count[idx]['CHRS']) for idx in sel]
     sys.stderr.write(info('## Selected clusters: \n{}\n'.format('\n'.join(s))))
 
-    clust_order = sorted(sel, key=(lambda x: count[x]['SIZE']), reverse=True) # order selected clusters large -> small 
+    # if too many clusters are selected, still select the largest ones based on the number of colors in palette
+    sel = sorted(sel, key=(lambda x: count[x]['SIZE']), reverse=True) # order selected clusters large -> small
+    sel = sel[0:len(sns.color_palette(args['cmap']))]            # select the top ones if more selected clusters than colors
+    clust_order = [i for i in reversed(sel)]                    # reverse order for later plotting, smaller selected clusters in front
     # add on the rest of the unselected clusters, but we'll know which ones to color based on the number of
     # colors in the palette pal
     [ clust_order.append(i) if not i in sel else next for i in alls ]
+    # configure palette; subselecting colors if there are fewer selected clusters than colors
     if len(sel) <= len(sns.color_palette(args['cmap'])): # are there more colors than selected clusters?    
         pal = sns.color_palette(args['cmap'])[0:len(sel)] # only select colors for the selected clusters at begining of clust_order
     else:    
