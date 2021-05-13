@@ -6,6 +6,7 @@ import math
 import numpy as np
 
 from collections import deque
+from hatchet import __version__
 
 
 def parse_args():
@@ -17,6 +18,7 @@ def parse_args():
     parser.add_argument("-r", "--devRDR", type=float, required=False, default=0.05, help='Standard deviation for the RDR of bins obtained from RDR of the corresponding segment (default: 0,05).')
     parser.add_argument("-a", "--devBAF", type=float, required=False, default=0.02, help='Standard deviation for the RDR of bins obtained from RDR of the corresponding segment (default: 0.02).')
     parser.add_argument("-s", "--seed", type=int, required=False, default=None, help='Starting seed for random number generator (default: not specified).')
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args()
 
     samples = args.INPUT.strip().split()

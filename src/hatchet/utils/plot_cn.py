@@ -25,7 +25,7 @@ from collections import deque
 import itertools
 from itertools import cycle
 
-from hatchet import config
+from hatchet import config, __version__
 
 plt.style.use('ggplot')
 sns.set_style("whitegrid")
@@ -54,6 +54,7 @@ def parsing_arguments(args=None):
     parser.add_argument("--ymin", required=False, default=config.plot_cn.ymin, type=int, help='Minimum values in y-axis (default: automatically inferred)"')
     parser.add_argument("--clonepalette", required=False, default=config.plot_cn.clonepalette, type=str, help='Palette for coloring the clones among Set1, Set2, Set3, Paired (default: Set1)"')
     parser.add_argument("--linkage", required=False, default=config.plot_cn.linkage, type=str, help='Linkage method used for clustering (default: single, available \{single, complete, average, weighted, centroid, median, ward\} from SciPy)"')
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     if len(args.INPUT.split()) == 0:

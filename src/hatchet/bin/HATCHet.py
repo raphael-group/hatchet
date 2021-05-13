@@ -9,7 +9,7 @@ import multiprocessing as mp
 import shlex
 from collections import Counter
 
-from hatchet import config
+from hatchet import config, __version__
 
 
 def parsing_arguments(args=None):
@@ -49,6 +49,7 @@ def parsing_arguments(args=None):
     parser.add_argument("--diploid", action='store_true', default=config.compute_cn.diploid, required=False, help="Force the tumor clones to be diploid without WGD (default: false)")
     parser.add_argument("--tetraploid", action='store_true', default=config.compute_cn.tetraploid, required=False, help="Force the tumor clones to be tetraploid with an occured WGD (default: false)")
     parser.add_argument("-v","--verbosity", type=int, required=False, default=config.compute_cn.verbosity, help="Level of verbosity among: none (0), essential (1), verbose (2), and debug (3) (default: 1)")
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     if not os.path.isfile(args.SOLVER):
