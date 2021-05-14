@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
-
-
-
-import sys, os
+import os
 import argparse
 import subprocess as sp
 import multiprocessing as mp
 import shlex
 import re
 
-utils = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, 'utils')
-if not os.path.isdir(utils):
-    raise ValueError("utils directory not found in HATCHet's home directory i.e. {}, is anything been moved?".format(utils))
-sys.path.append(utils)
-from Supporting import *
+
+from hatchet.utils.Supporting import *
 from hatchet import config, __version__
 
 

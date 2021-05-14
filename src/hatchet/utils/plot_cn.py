@@ -29,13 +29,6 @@ from hatchet import config, __version__
 
 plt.style.use('ggplot')
 sns.set_style("whitegrid")
-plt.rcParams["font.family"] = "Times New Roman"
-
-#mpl.rcParams.update({'figure.autolayout': True})
-#mpl.rcParams['text.usetex'] = True
-#mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}', r'\usepackage{amssymb}']
-#mpl.rcParams['font.family'] = 'serif'
-#mpl.rcParams['font.serif'] = 'Computer Modern'
 
 
 def parsing_arguments(args=None):
@@ -894,7 +887,7 @@ def segmenting(tumor, clones, props):
     discarded = {c : set(b for b in counts[c] if counts[c][b] < numpat) for c in counts}
     tottaken = sum(1.0 for c in counts for b in counts[c] if counts[c][b] == numpat)
     tot = sum(1.0 for c in counts for b in counts[c])
-    sys.stderr.write(info("## Proportion of common bins kept: {}%\n".format(tottaken / tot * 100)))
+    sys.stderr.write(info("## Proportion of common bins kept: {}%\n".format( (tottaken / tot * 100) if tot > 0 else 1 )))
 
     return {pat : {c : {b : tumor[pat][c][maps[pat][c][b]] for b in taken[c]} for c in taken} for pat in tumor}
 
@@ -931,12 +924,16 @@ def cndistance(u, v):
 
 
 def similarity(u, v):
-    return float(sum(u[i] == v[i] and u[i] != 0.0 and v[i] != 0 for i in range(len(u)))) / float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
+    a = float(sum(u[i] == v[i] and u[i] != 0.0 and v[i] != 0 for i in range(len(u))))
+    b = float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
+    return (a / b) if b > 0 else 0
 
 def similaritysample(u, v):
     bothamp = (lambda x, y : x > 0.0 and y > 0.0)
     bothdel = (lambda x, y : x < 0.0 and y < 0.0)
-    return float(sum((bothamp(u[i], v[i]) or bothdel(u[i], v[i])) and u[i] != 0 and v[i] != 0 for i in range(len(u)))) / float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
+    a = float(sum((bothamp(u[i], v[i]) or bothdel(u[i], v[i])) and u[i] != 0 and v[i] != 0 for i in range(len(u))))
+    b = float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
+    return (a / b) if b > 0 else 0
 
 def readUCN(inputs, patnames):
     tumors = {}
