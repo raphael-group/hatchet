@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ master, develop, py3, ci ]
+    branches: [ master, develop ]
   pull_request:
-    branches: [ master, develop, py3, ci ]
+    branches: [ master, develop ]
 
 jobs:
-  build:
+  run_tests:
 
     runs-on: ubuntu-latest
     strategy:
@@ -107,3 +107,34 @@ jobs:
         uses: codecov/codecov-action@v1
         with:
           fail_ci_if_error: false
+
+  build_docs:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: [3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          lfs: true 
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install package
+        run: |
+          CXXFLAGS=-pthread pip install .[dev]
+
+      - name: Build docs
+        run: |
+          cd docs && sphinx-apidoc -f -o ./source/src ../src/hatchet -H Modules && make html && touch build/html/.nojekyll
+
+      - name: Update gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: "docs/buildDocs.sh"
+        shell: bash
