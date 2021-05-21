@@ -120,6 +120,19 @@ jobs:
         with:
           lfs: true 
 
+      - name: Upgrade setuptools
+        run: |
+          pip3 install wheel --upgrade
+          pip3 install setuptools --upgrade
+
+      - name: Install Gurobi
+        run: |
+          wget https://packages.gurobi.com/9.0/gurobi9.0.2_linux64.tar.gz -O gurobi9.0.2_linux64.tar.gz
+          tar xvzf gurobi9.0.2_linux64.tar.gz
+          (cd gurobi902/linux64/src/build && make)
+          (cd gurobi902/linux64/lib && ln -f -s ../src/build/libgurobi_c++.a libgurobi_c++.a)
+          echo "GUROBI_HOME=$(realpath gurobi902)" >> $GITHUB_ENV
+
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
