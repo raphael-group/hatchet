@@ -42,7 +42,7 @@ This repository includes a quick overview of the HATCHet's algorithm and softwar
 ### Algorithm
 <a name="algorithm"></a>
 
-![](doc/hatchet-cartoon.png "HATCHet algorithm")
+![](hatchet-cartoon.png "HATCHet algorithm")
 
 **Overview of HATCHet algorithm.**
 1. HATCHet analyzes the read-depth ratio (RDR) and the B-allele frequency (BAF) in bins of the reference genome (black squares) jointly from multiple tumor samples. Here, we show two tumor samples *p* and *q*.
