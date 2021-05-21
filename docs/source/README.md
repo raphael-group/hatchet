@@ -103,7 +103,7 @@ source activate hatchet
 #### Manual Installation
 
 If you wish to install `HATCHet` directly from this repository, the steps are a bit more involved. Please refer to the
-[Manual Installation](doc/doc_manual_install.md) document for more details.
+[Manual Installation](doc_manual_install.html) document for more details.
 
 ### Using Gurobi
 <a name="usinggurobi"></a>
@@ -148,14 +148,14 @@ HATCHet requires 3 input data files:
 The repository includes all the components that are required to cover every step of the entire HATCHet's pipeline, starting from the processing of raw data reported in a BAM file through the analysis of the final results.
 We provide:
 
-- <a name="fullpipelineandtutorial"></a> A script representing the [full pipeline](doc/doc_fullpipeline.md#fullpipelineandtutorial) of HATCHet, and we describe in details the whole script through a tutorial with instructions for usage.
-- <a name="demos"></a> [Demos](doc/doc_fullpipeline.md#demos) that correspond to guided executions of HATCHet on some examples, and explain in detail the usage of HATCHet when considering standard datasets, real datasets with high noise, and different kind of data.
-- <a name="custompipelines"></a> [Custom pipelines](doc/doc_fullpipeline.md#custompipelines) which adapt the full HATCHet's pipeline to special conditions or integrates pre-processed data belonging to different pipelines.
+- <a name="fullpipelineandtutorial"></a> A script representing the [full pipeline](doc_fullpipeline.html#fullpipelineandtutorial) of HATCHet, and we describe in details the whole script through a tutorial with instructions for usage.
+- <a name="demos"></a> [Demos](doc_fullpipeline.html#demos) that correspond to guided executions of HATCHet on some examples, and explain in detail the usage of HATCHet when considering standard datasets, real datasets with high noise, and different kind of data.
+- <a name="custompipelines"></a> [Custom pipelines](doc_fullpipeline.html#custompipelines) which adapt the full HATCHet's pipeline to special conditions or integrates pre-processed data belonging to different pipelines.
 
   The implementation of HATCHet is highly modular and one can replace any HATCHet's module with any other method to obtain the required results (especially for the pre-processing modules).
-As such, we also provide here an overview of the entire pipeline and we describe the <a name="detailedsteps"></a> [details of each step](doc/doc_fullpipeline.md#detailedsteps) in a dedicated section of the manual.
+As such, we also provide here an overview of the entire pipeline and we describe the <a name="detailedsteps"></a> [details of each step](doc_fullpipeline.html#detailedsteps) in a dedicated section of the manual.
 
-- <a name="recommendations"></a> [Recommendations](doc/doc_fullpipeline.md#recommendations), especially for noisy datasets or with different features, to guide the user in the interpretation of HATCHet's inference. We explain how to perform quality control to guarantee the best-quality results, and describe how the user can control and tune some of the parameters to obtain the best-fitting results.
+- <a name="recommendations"></a> [Recommendations](doc_fullpipeline.html#recommendations), especially for noisy datasets or with different features, to guide the user in the interpretation of HATCHet's inference. We explain how to perform quality control to guarantee the best-quality results, and describe how the user can control and tune some of the parameters to obtain the best-fitting results.
 
 ## Current issues
 <a name="currentissues"></a>

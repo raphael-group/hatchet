@@ -165,7 +165,7 @@ python3 -m hatchet plot-bins -c BB ../${BBC}bulk.bbc
 python3 -m hatchet plot-bins -c CBB ../${BBC}bulk.bbc -tS 0.01
 ```
 
-plot-bins produces informative plots which are described [here](doc_plot_bins.md).
+plot-bins produces informative plots which are described [here](doc_plot_bins.html).
 Many of these plots can be very useful to assess the performance of the various steps of HATCHet, especially in the case of noisy datasets.
 
 ## compute-cn
@@ -203,4 +203,4 @@ python3 -m hatchet plot-cn ../${RES}/best.bbc.ucn
 ```
 
 plot-cn produces informative and summary plots for the inferred results.
-Examples and details of these plots are reported [here](doc_plot_cn.md).
+Examples and details of these plots are reported [here](doc_plot_cn.html).

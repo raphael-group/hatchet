@@ -66,7 +66,7 @@ want to create either a new Conda environment for Python 3 and activate it:
     $ CXXFLAGS=-pthread pip install .
     ```
 
-    When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed intructions](doc/doc_compilation.md).
+    When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed intructions](doc_compilation.html).
 
 7. **Install required utilities**
 
