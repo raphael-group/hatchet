@@ -2,7 +2,7 @@
 [![codecov](https://codecov.io/gh/raphael-group/hatchet/branch/master/graph/badge.svg)](https://codecov.io/gh/raphael-group/hatchet)
 
 
-# HATCHet <br/> <sub><u>H</u>olistic <u>A</u>llele-specific <u>T</u>umor <u>C</u>opy-number <u>Het</u>erogeneity</sub> #
+# HATCHet
 
 HATCHet is an algorithm to infer allele and clone-specific copy-number aberrations (CNAs), clone proportions, and whole-genome duplications (WGD) for several tumor clones jointly from multiple bulk-tumor samples of the same patient or from a single bulk-tumor sample. HATCHet has been designed and developped by Simone Zaccaria in the group of prof. Ben Raphael at Princeton University. The full description of the algorithm, the comparison with previous state-of-the-art methods, and its application on published cancer datasets are described in
 

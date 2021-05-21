@@ -27,11 +27,9 @@ git checkout -b gh-pages
 
 # Add README
 cat > README.md <<EOF
-# GitHub Pages Cache
+# HATCHet
 
-Nothing to see here.
-
-The actual documentation is available at: #coming-soon
+HATCHet documentation is available at [https://vineetbansal.github.io/hatchet](https://vineetbansal.github.io/hatchet)
 
 EOF
 
