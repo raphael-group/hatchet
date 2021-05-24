@@ -29,7 +29,7 @@ git checkout -b gh-pages
 cat > README.md <<EOF
 # HATCHet
 
-HATCHet documentation is available at [https://vineetbansal.github.io/hatchet](https://vineetbansal.github.io/hatchet)
+HATCHet documentation is available at [http://compbio.cs.brown.edu/hatchet/](http://compbio.cs.brown.edu/hatchet/)
 
 EOF
 
