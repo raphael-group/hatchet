@@ -44,6 +44,7 @@ def main(args=None):
         count_reads(
             args=[
                 '-N', config.run.normal,
+                '-g', config.run.reference,
                 '-T'
             ] + config.run.bams.split() + [
                 '-b', config.count_reads.size,
