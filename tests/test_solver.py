@@ -62,8 +62,8 @@ def test_solve_command_default(output_folder):
 
 @pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
 def test_solve_command_cpp(output_folder):
-    old_value = config.solver.solver
-    config.solver.solver = 'cpp'
+    old_value = config.compute_cn.solver
+    config.compute_cn.solver = 'cpp'
 
     main(args=[
         SOLVE,
@@ -86,13 +86,13 @@ def test_solve_command_cpp(output_folder):
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
-    config.solver.solver = old_value
+    config.compute_cn.solver = old_value
 
 
 @pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
 def test_solve_command_gurobipy(output_folder):
-    old_value = config.solver.solver
-    config.solver.solver = 'gurobipy'
+    old_value = config.compute_cn.solver
+    config.compute_cn.solver = 'gurobipy'
 
     main(args=[
         SOLVE,
@@ -115,14 +115,14 @@ def test_solve_command_gurobipy(output_folder):
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
-    config.solver.solver = old_value
+    config.compute_cn.solver = old_value
 
 
 @pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
 @pytest.mark.skipif(not SolverFactory('gurobi').available(), reason='gurobi solver not available for pyomo')
 def test_solve_command_gurobi(output_folder):
-    old_value = config.solver.solver
-    config.solver.solver = 'gurobi'
+    old_value = config.compute_cn.solver
+    config.compute_cn.solver = 'gurobi'
 
     main(args=[
         SOLVE,
@@ -145,13 +145,13 @@ def test_solve_command_gurobi(output_folder):
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
-    config.solver.solver = old_value
+    config.compute_cn.solver = old_value
 
 
 @pytest.mark.skipif(not SolverFactory('cbc').available(), reason='cbc solver not available for pyomo')
 def test_solve_command_cbc(output_folder):
-    old_value = config.solver.solver
-    config.solver.solver = 'cbc'
+    old_value = config.compute_cn.solver
+    config.compute_cn.solver = 'cbc'
 
     main(args=[
         SOLVE,
@@ -174,4 +174,4 @@ def test_solve_command_cbc(output_folder):
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
-    config.solver.solver = old_value
+    config.compute_cn.solver = old_value

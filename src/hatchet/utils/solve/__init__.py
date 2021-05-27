@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from pyomo.opt import check_available_solvers
 
 from .ilp_subset import ILPSubset
 from .cd import CoordinateDescent
@@ -10,6 +11,9 @@ def solve(clonal, seg_file, n, solver='gurobipy', solve_mode='cd', d=-1, cn_max=
           ampdel=True, n_seed=400, n_worker=8, random_seed=None, max_iters=None):
 
     assert solve_mode in ('ilp', 'cd', 'both'), 'Unrecognized solve_mode'
+    assert solver == 'gurobipy' or bool(check_available_solvers(solver)),\
+        f'Solver {solver} not available or not licensed'
+
     if max_iters is None:
         max_iters = 10
 

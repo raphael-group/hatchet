@@ -646,8 +646,8 @@ def execute_python(solver, args, n, outprefix):
 
 
 def execute(args, basecmd, n, outprefix):
-    if config.solver.solver != 'cpp':
-        return execute_python(config.solver.solver, args, n, outprefix)
+    if config.compute_cn.solver != 'cpp':
+        return execute_python(config.compute_cn.solver, args, n, outprefix)
     progressbar = ProgressBar(total=args['p'], length=min(50, args['p']), verbose=False)
     cmd = basecmd + ' -n {} -o {}'.format(n, outprefix)
     if args['v'] >= 3:
