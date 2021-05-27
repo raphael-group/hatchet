@@ -8,7 +8,7 @@ from scipy.stats import beta
 
 from . import ProgressBar as pb
 from . import Supporting as sp
-from .ArgParsing import parse_combbo_args
+from .ArgParsing import parse_combine_counts_args
 
 from collections import defaultdict
 from collections import deque
@@ -17,7 +17,7 @@ from collections import deque
 
 def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = parse_combbo_args(args)
+    args = parse_combine_counts_args(args)
     sp.logArgs(args, 80)
     np.random.seed(seed=args["seed"])
     sp.log(msg="# Reading and checking the bin count files for computing read-depth ratios\n", level="STEP")
@@ -44,6 +44,8 @@ def main(args=None):
 
     names = list(samples).sort()
     sys.stdout.write("#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n")
+    nonzerobaf = (lambda rk : all(sample[4] + sample[5] > 0 for sample in rk))
+    result = {key : result[key] for key in result if nonzerobaf(result[key])}
     for key in sorted(result, key=(lambda x : (sp.numericOrder(x[0]), int(x[1]), int(x[2])))):
         for sample in result[key]:
             sys.stdout.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key[0], key[1], key[2], sample[0], sample[1], sample[2], sample[3], sample[4], sample[5], sample[6]))

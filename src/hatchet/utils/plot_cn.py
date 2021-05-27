@@ -25,17 +25,10 @@ from collections import deque
 import itertools
 from itertools import cycle
 
-from hatchet import config
+from hatchet import config, __version__
 
 plt.style.use('ggplot')
 sns.set_style("whitegrid")
-plt.rcParams["font.family"] = "Times New Roman"
-
-#mpl.rcParams.update({'figure.autolayout': True})
-#mpl.rcParams['text.usetex'] = True
-#mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}', r'\usepackage{amssymb}']
-#mpl.rcParams['font.family'] = 'serif'
-#mpl.rcParams['font.serif'] = 'Computer Modern'
 
 
 def parsing_arguments(args=None):
@@ -44,23 +37,24 @@ def parsing_arguments(args=None):
     Returns:
     """
     description = ""
-    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(prog='hatchet plot-cn', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("INPUT", help="A single file or multiple files between apices in CN_BBC format")
-    parser.add_argument("-n","--patientnames", required=False, default=config.bbeval.patientnames, type=str, help='Names of patients between apices (default: inferred from filenames)')
-    parser.add_argument("-u","--minu", required=False, default=config.bbeval.minu, type=float, help='Minimum proportion of a CNA to be considered subclonal (default: 0.2)"')
-    parser.add_argument("-x","--rundir", required=False, default=config.bbeval.rundir, type=str, help='Running directory (default: current directory)')
-    parser.add_argument("-b","--baseCN", required=False, default=config.bbeval.basecn, type=str, help='Base copy number (default: inferred from tumor ploidy)')
-    parser.add_argument("-sC","--figsizeclones", required=False, default=config.bbeval.figsizeclones, type=str, help='Size of clone plots in the form "(X-SIZE, Y-SIZE)"')
-    parser.add_argument("-sP","--figsizecn", required=False, default=config.bbeval.figsizecn, type=str, help='Size of CN plots in the form "(X-SIZE, Y-SIZE)"')
-    parser.add_argument("-sG","--figsizegrid", required=False, default=config.bbeval.figsizegrid, type=str, help='Size of grid plots in the form "(X-SIZE, Y-SIZE)"')
-    parser.add_argument("-rC","--resolutionclones", required=False, default=config.bbeval.resolutionclones, type=int, help='Number of bins to merge together for plotting clone profiles (default: 100)"')
-    parser.add_argument("-rP","--resolutioncn", required=False, default=config.bbeval.resolutioncn, type=int, help='Number of bins to merge together for plotting proportions (default: 500)"')
-    parser.add_argument("-rG","--resolutiongrid", required=False, default=config.bbeval.resolutiongrid, type=int, help='Number of bins to merge together in grids (default: 100)"')
-    parser.add_argument("-e","--threshold", required=False, default=config.bbeval.threshold, type=float, help='Threshold used to classify a tumor into either diploid or tetraploid (default: 3.0)"')
-    parser.add_argument("--ymax", required=False, default=config.bbeval.ymax, type=int, help='Maximum values in y-axis (default: automatically inferred)"')
-    parser.add_argument("--ymin", required=False, default=config.bbeval.ymin, type=int, help='Minimum values in y-axis (default: automatically inferred)"')
-    parser.add_argument("--clonepalette", required=False, default=config.bbeval.clonepalette, type=str, help='Palette for coloring the clones among Set1, Set2, Set3, Paired (default: Set1)"')
-    parser.add_argument("--linkage", required=False, default=config.bbeval.linkage, type=str, help='Linkage method used for clustering (default: single, available \{single, complete, average, weighted, centroid, median, ward\} from SciPy)"')
+    parser.add_argument("-n","--patientnames", required=False, default=config.plot_cn.patientnames, type=str, help='Names of patients between apices (default: inferred from filenames)')
+    parser.add_argument("-u","--minu", required=False, default=config.plot_cn.minu, type=float, help='Minimum proportion of a CNA to be considered subclonal (default: 0.2)"')
+    parser.add_argument("-x","--rundir", required=False, default=config.plot_cn.rundir, type=str, help='Running directory (default: current directory)')
+    parser.add_argument("-b","--baseCN", required=False, default=config.plot_cn.basecn, type=str, help='Base copy number (default: inferred from tumor ploidy)')
+    parser.add_argument("-sC","--figsizeclones", required=False, default=config.plot_cn.figsizeclones, type=str, help='Size of clone plots in the form "(X-SIZE, Y-SIZE)"')
+    parser.add_argument("-sP","--figsizecn", required=False, default=config.plot_cn.figsizecn, type=str, help='Size of CN plots in the form "(X-SIZE, Y-SIZE)"')
+    parser.add_argument("-sG","--figsizegrid", required=False, default=config.plot_cn.figsizegrid, type=str, help='Size of grid plots in the form "(X-SIZE, Y-SIZE)"')
+    parser.add_argument("-rC","--resolutionclones", required=False, default=config.plot_cn.resolutionclones, type=int, help='Number of bins to merge together for plotting clone profiles (default: 100)"')
+    parser.add_argument("-rP","--resolutioncn", required=False, default=config.plot_cn.resolutioncn, type=int, help='Number of bins to merge together for plotting proportions (default: 500)"')
+    parser.add_argument("-rG","--resolutiongrid", required=False, default=config.plot_cn.resolutiongrid, type=int, help='Number of bins to merge together in grids (default: 100)"')
+    parser.add_argument("-e","--threshold", required=False, default=config.plot_cn.threshold, type=float, help='Threshold used to classify a tumor into either diploid or tetraploid (default: 3.0)"')
+    parser.add_argument("--ymax", required=False, default=config.plot_cn.ymax, type=int, help='Maximum values in y-axis (default: automatically inferred)"')
+    parser.add_argument("--ymin", required=False, default=config.plot_cn.ymin, type=int, help='Minimum values in y-axis (default: automatically inferred)"')
+    parser.add_argument("--clonepalette", required=False, default=config.plot_cn.clonepalette, type=str, help='Palette for coloring the clones among Set1, Set2, Set3, Paired (default: Set1)"')
+    parser.add_argument("--linkage", required=False, default=config.plot_cn.linkage, type=str, help='Linkage method used for clustering (default: single, available \{single, complete, average, weighted, centroid, median, ward\} from SciPy)"')
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     if len(args.INPUT.split()) == 0:
@@ -893,7 +887,7 @@ def segmenting(tumor, clones, props):
     discarded = {c : set(b for b in counts[c] if counts[c][b] < numpat) for c in counts}
     tottaken = sum(1.0 for c in counts for b in counts[c] if counts[c][b] == numpat)
     tot = sum(1.0 for c in counts for b in counts[c])
-    sys.stderr.write(info("## Proportion of common bins kept: {}%\n".format(tottaken / tot * 100)))
+    sys.stderr.write(info("## Proportion of common bins kept: {}%\n".format( (tottaken / tot * 100) if tot > 0 else 1 )))
 
     return {pat : {c : {b : tumor[pat][c][maps[pat][c][b]] for b in taken[c]} for c in taken} for pat in tumor}
 
@@ -930,12 +924,16 @@ def cndistance(u, v):
 
 
 def similarity(u, v):
-    return float(sum(u[i] == v[i] and u[i] != 0.0 and v[i] != 0 for i in range(len(u)))) / float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
+    a = float(sum(u[i] == v[i] and u[i] != 0.0 and v[i] != 0 for i in range(len(u))))
+    b = float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
+    return (a / b) if b > 0 else 0
 
 def similaritysample(u, v):
     bothamp = (lambda x, y : x > 0.0 and y > 0.0)
     bothdel = (lambda x, y : x < 0.0 and y < 0.0)
-    return float(sum((bothamp(u[i], v[i]) or bothdel(u[i], v[i])) and u[i] != 0 and v[i] != 0 for i in range(len(u)))) / float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
+    a = float(sum((bothamp(u[i], v[i]) or bothdel(u[i], v[i])) and u[i] != 0 and v[i] != 0 for i in range(len(u))))
+    b = float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
+    return (a / b) if b > 0 else 0
 
 def readUCN(inputs, patnames):
     tumors = {}

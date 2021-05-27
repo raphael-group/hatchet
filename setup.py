@@ -76,8 +76,8 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.3.9',
-    packages=['hatchet', 'hatchet.utils', 'hatchet.utils.solve', 'hatchet.bin'],
+    version='0.3.2',
+    packages=['hatchet', 'hatchet.utils', 'hatchet.solve', 'hatchet.bin'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini']},
     ext_modules=[CMakeExtension('hatchet.solve')],
@@ -85,6 +85,12 @@ setup(
     zip_safe=False,
 
     python_requires='>=3.7',
+
+    entry_points={
+        'console_scripts': [
+            'hatchet = hatchet.__main__:main',
+        ],
+    },
 
     install_requires=[
         'biopython',
@@ -101,7 +107,7 @@ setup(
     ],
 
     extras_require={
-        'dev': ['pytest', 'mock']
+        'dev': ['pytest', 'mock', 'numpydoc', 'sphinx', 'sphinxcontrib-bibtex<2.0.0', 'sphinx-rtd-theme', 'myst-parser']
     }
 
 )

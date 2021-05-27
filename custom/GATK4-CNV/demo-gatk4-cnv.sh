@@ -37,10 +37,10 @@ PY="python3" # This id the full path to the version of PYTHON3 which contains th
 The following paths are consequently obtained to point to the required components of HATCHet
 
 ```shell
-CLUBB="${PY} -m hatchet cluBB"
-BBOT="${PY} -m hatchet BBot"
+CLUSTERBINS="${PY} -m hatchet cluster-bins"
+PLOTBINS="${PY} -m hatchet plot-bins"
 INFER="${PY} -m hatchet solve"
-BBEVAL="${PY} -m hatchet BBeval"
+PLOTCN="${PY} -m hatchet plot-cn"
 GATK4CNSTOBB="${PY} gatk4cnsToBB.py"
 :<<'```shell' # Ignore this line
 ```
@@ -66,17 +66,17 @@ In addition, one could consider different size of the resulting bins by using th
 
 ## Global custering
 
-Having the input BB file, we can continue by executing the standard HATCHet pipeline and skipping the pre-processing steps (`binBAM`, `deBAF`, and `comBBo`). As such, the next main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluBB`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
+Having the input BB file, we can continue by executing the standard HATCHet pipeline and skipping the pre-processing steps (`count-reads`, `count-alleles`, and `combine-counts`). As such, the next main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluster-bins`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
-${CLUBB} samples.GATK4.CNV.bb -o samples.GATK4.CNV.seg -O samples.GATK4.CNV.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
+${CLUSTERBINS} samples.GATK4.CNV.bb -o samples.GATK4.CNV.seg -O samples.GATK4.CNV.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
-To assess the quality of the clustering we generate the cluster plot using the `CBB` command of `BBot`, i.e. the HATCHet's component designed for the analysis of the data. For simplicity, we also use the following option `-tS 0.001` which asks to plot only the clusters which cover at least the `0.1%` of the genome. This is useful to clean the figure and focus on the main components.
+To assess the quality of the clustering we generate the cluster plot using the `CBB` command of `plot-bins`, i.e. the HATCHet's component designed for the analysis of the data. For simplicity, we also use the following option `-tS 0.001` which asks to plot only the clusters which cover at least the `0.1%` of the genome. This is useful to clean the figure and focus on the main components.
 
 ```shell
-${BBOT} -c CBB samples.GATK4.CNV.bbc -tS 0.001
+${PLOTBINS} -c CBB samples.GATK4.CNV.bbc -tS 0.001
 :<<'```shell' # Ignore this line
 ```
 
@@ -121,19 +121,19 @@ HATCHet predicts the presence of 3 clones in the 2 tumor samples and, especially
 
 ## Analyzing inferred results
 
-Finally, we obtain useful plots to summarize and analyze the inferred results by using `BBeval`, which is the last component of HATCHet. We run `BBeval` as follows
+Finally, we obtain useful plots to summarize and analyze the inferred results by using `plot-cn`, which is the last component of HATCHet. We run `plot-cn` as follows
 
 ```shell
-${BBEVAL} best.bbc.ucn
+${PLOTCN} best.bbc.ucn
 exit $?
 ```
 
-First, `BBeval` summarizes the values of tumor purity and tumor ploidy for every sample of the patient as follows:
+First, `plot-cn` summarizes the values of tumor purity and tumor ploidy for every sample of the patient as follows:
 
 	### SAMPLE: Sample1 -- PURITY: 0.799622 -- PLOIDY: 2.00463946866 -- CLASSIFICATION: DIPLOID
 	### SAMPLE: Sample2 -- PURITY: 0.948195 -- PLOIDY: 2.01049490767 -- CLASSIFICATION: DIPLOID
 
-Next, `BBeval` produces some informative plots to evaluate the inferred results. Among all the plots, 3 of those are particularly interesting.
+Next, `plot-cn` produces some informative plots to evaluate the inferred results. Among all the plots, 3 of those are particularly interesting.
 
 The first `intratumor-clones-totalcn.pdf` represents the total-copy numbers for all tumor clones in fixed-size regions (obtained by merging neighboring genomic bins).
 ![intratumor-clones-totalcn.pdf](totalcn.png)

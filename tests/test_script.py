@@ -10,14 +10,14 @@ from pandas.testing import assert_frame_equal
 
 import hatchet
 from hatchet import config
-from hatchet.utils.binBAM import main as binBAM
-from hatchet.utils.SNPCaller import main as SNPCaller
-from hatchet.utils.deBAF import main as deBAF
-from hatchet.utils.comBBo import main as comBBo
-from hatchet.utils.cluBB import main as cluBB
-from hatchet.utils.BBot import main as BBot
+from hatchet.utils.count_reads import main as count_reads
+from hatchet.utils.genotype_snps import main as genotype_snps
+from hatchet.utils.count_alleles import main as count_alleles
+from hatchet.utils.combine_counts import main as combine_counts
+from hatchet.utils.cluster_bins import main as cluster_bins
+from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as main
-from hatchet.utils.BBeval import main as BBeval
+from hatchet.utils.plot_cn import main as plot_cn
 
 this_dir = os.path.dirname(__file__)
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
@@ -41,18 +41,16 @@ def output_folder():
     out = os.path.join(this_dir, 'out')
     shutil.rmtree(out, ignore_errors=True)
     for sub_folder in ('bin', 'snps', 'baf', 'bb', 'bbc', 'plots', 'results', 'evaluation', 'analysis'):
-       os.makedirs(os.path.join(out, sub_folder))
+        os.makedirs(os.path.join(out, sub_folder))
     return out
 
 
 @pytest.mark.skipif(not config.paths.reference, reason='paths.reference not set')
-@pytest.mark.skipif(not config.paths.samtools, reason='paths.samtools not set')
-@pytest.mark.skipif(not config.paths.bcftools, reason='paths.bcftools not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
 def test_script(_, bams, output_folder):
     normal_bam, tumor_bams = bams
 
-    binBAM(
+    count_reads(
         args=[
             '-N', normal_bam,
             '-T'
@@ -69,7 +67,7 @@ def test_script(_, bams, output_folder):
         ]
     )
 
-    SNPCaller(
+    genotype_snps(
         args=[
             '-N', normal_bam,
             '-r', config.paths.reference,
@@ -83,7 +81,7 @@ def test_script(_, bams, output_folder):
         ]
     )
 
-    deBAF(
+    count_alleles(
         args=[
             '-bt', config.paths.bcftools,
             '-st', config.paths.samtools,
@@ -108,7 +106,7 @@ def test_script(_, bams, output_folder):
     _stdout = sys.stdout
     sys.stdout = StringIO()
 
-    comBBo(args=[
+    combine_counts(args=[
         '-c', os.path.join(output_folder, 'bin/normal.1bed'),
         '-C', os.path.join(output_folder, 'bin/bulk.1bed'),
         '-B', os.path.join(output_folder, 'baf/bulk.1bed'),
@@ -122,7 +120,7 @@ def test_script(_, bams, output_folder):
     with open(os.path.join(output_folder, 'bb/bulk.bb'), 'w') as f:
         f.write(out)
 
-    cluBB(args=[
+    cluster_bins(args=[
         os.path.join(output_folder, 'bb/bulk.bb'),
         '-o', os.path.join(output_folder, 'bbc/bulk.seg'),
         '-O', os.path.join(output_folder, 'bbc/bulk.bbc'),
@@ -136,7 +134,7 @@ def test_script(_, bams, output_folder):
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'bulk.seg'), sep='\t')
     assert_frame_equal(df1, df2)
 
-    BBot(args=[
+    plot_bins(args=[
         os.path.join(output_folder, 'bbc/bulk.bbc'),
         '--rundir', os.path.join(output_folder, 'plots')
     ])
@@ -161,7 +159,7 @@ def test_script(_, bams, output_folder):
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
-    BBeval(args=[
+    plot_cn(args=[
         os.path.join(output_folder, 'results/best.bbc.ucn'),
         '--rundir', os.path.join(output_folder, 'evaluation')
     ])
