@@ -1,17 +1,18 @@
 #!/usr/bin/python3
 
+import os, shutil
 import sys
 import math
+import copy
 import numpy as np
-from collections import Counter
 
 from .ArgParsing import parse_cluster_bins_args
 from . import Supporting as sp
 
+
 def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
     args = parse_cluster_bins_args(args)
-    sp.logArgs(args, 80)
 
     sp.log(msg="# Reading the combined BB file\n", level="STEP")
     combo, samples = readBB(args["bbfile"])
@@ -33,7 +34,6 @@ def main(args=None):
         clusterAssignments, numClusters = refineClustering(combo=combo, assign=clusterAssignments, assignidx=bintoidx, samples=samples, rdtol=args['rdtol'], baftol=args['baftol'])
         sp.log(msg='The number of clusters have been reduced from {} to {} with given tolerances\n'.format(before, numClusters), level='INFO')
 
-    clusterAssignments = reindex(clusterAssignments)
     names = list(samples).sort()
 
     sp.log(msg="# Writing BBC output with resulting clusters\n", level="STEP")
@@ -292,20 +292,6 @@ def roundAlphasBetas(baf, alpha, beta):
     estimations = [float(a) / float(a+b) if a+b>0 else 1.0 for (a, b) in roundings]
     diff = [abs(est - BAF) for est in estimations]
     return roundings[np.argmin(diff)]
-
-def reindex(labels):
-    """
-    Given a list of labels, reindex them as integers from 1 to n_labels
-    Also orders them in nonincreasing order of prevalence
-    """
-    old2new = {}
-    j = 1
-    for i, _ in Counter(labels).most_common():
-        old2new[i] = j
-        j += 1
-    old2newf = lambda x: old2new[x]
-
-    return [old2newf(a) for a in labels]
 
 
 if __name__ == '__main__':
