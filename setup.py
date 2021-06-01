@@ -105,7 +105,7 @@ setup(
     ],
 
     extras_require={
-        'dev': ['pytest', 'mock', 'numpydoc', 'sphinx', 'sphinxcontrib-bibtex<2.0.0', 'sphinx-rtd-theme', 'myst-parser']
+        'dev': ['pytest', 'mock', 'numpydoc', 'sphinx', 'sphinxcontrib-bibtex<2.0.0', 'sphinx-rtd-theme', 'recommonmark', 'sphinx-markdown-tables']
     }
 
 )
