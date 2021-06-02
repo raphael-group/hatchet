@@ -23,7 +23,7 @@ Ths GATK4 CNV pipeline takes in input segmented files for one or more tumor samp
 | `MINOR_ALLELE_FRACTION_POSTERIOR_50` | Estimated BAF | USED |
 | `MINOR_ALLELE_FRACTION_POSTERIOR_90` | BAF posterior 90 | IGNORED|
 
-Two example segmented files in this format for two tumor samples from the same patient are included with this demo as [sample1.GATK4.CNV.seg](sample1.GATK4.CNV.seg) and [sample2.GATK4.CNV.seg](sample2.GATK4.CNV.seg).
+Two example segmented files in this format for two tumor samples from the same patient are included with this demo as [sample1.GATK4.CNV.seg](../../sample1.GATK4.CNV.seg) and [sample2.GATK4.CNV.seg](../../sample2.GATK4.CNV.seg).
 
 ## Requirements and set up
 

@@ -1,6 +1,6 @@
 # Tutorial
 
-This tutorial illustrates how to use the complete pipeline through the `hatchet run` command, along with the configuration [hatchet.ini](../script/) file that stores all the variables the user needs to specify.
+This tutorial illustrates how to use the complete pipeline through the `hatchet run` command, along with the configuration [hatchet.ini](hatchet.ini) file that stores all the variables the user needs to specify.
 The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:
 1. [Preliminaries](#preliminaries)
 2. [Setting up running directory](#rundir)
@@ -17,7 +17,7 @@ We suggest you make a copy of the configuration file, place it into the designat
 ## Preliminaries
 <a name="preliminaries"></a>
 
-The following variables, specified in [hatchet.ini](../script/hatchet.ini), should be changed according to the user's data:
+The following variables, specified in [hatchet.ini](hatchet.ini), should be changed according to the user's data:
 
 ```shell
 # Path to reference genome - make sure you have also generated the reference dictionary as /path/to/reference.dict
@@ -123,7 +123,7 @@ python3 -m hatchet combine-counts -c ${RDR}normal.1bed -C ${RDR}tumor.1bed -B ${
                           -t ${RDR}total.tsv -p ${PHASE} -l ${BLOCK} -e ${RANDOM} > ${BB}bulk.bb
 ```
 
-combine-counts estimates the read-depth ratio (RDR) and B-Allele frequencies (BAF) from the read counts of all genomic bins from matched-normal sample in `${RDR}normal.1bed`, from the read counts of all genomic bins from all tumor samples in `${RDR}tumor.1bed`, and germline SNPs allele counts in `${BAF}tumor.1bed`. The variables `${PHASE}` and `${BLOCK}` are not described in detail in this tutorial (but see the [script](../script/) directory for a brief explanation of how to run HATCHet with phasing. Briefly, when `${PHASE}` specifies the location of a phased VCF file, HATCHet uses this VCF to combined phased SNPS within a haplotype block size of `${BLOCK}`.
+combine-counts estimates the read-depth ratio (RDR) and B-Allele frequencies (BAF) from the read counts of all genomic bins from matched-normal sample in `${RDR}normal.1bed`, from the read counts of all genomic bins from all tumor samples in `${RDR}tumor.1bed`, and germline SNPs allele counts in `${BAF}tumor.1bed`. The variables `${PHASE}` and `${BLOCK}` are not described in detail in this tutorial (but see the [script](script/README.md) directory for a brief explanation of how to run HATCHet with phasing. Briefly, when `${PHASE}` specifies the location of a phased VCF file, HATCHet uses this VCF to combined phased SNPS within a haplotype block size of `${BLOCK}`.
 The output from standard output is correspondingly written in a BB file `${BB}bulk.bb`.
 
 ## cluster-bins
@@ -165,7 +165,7 @@ python3 -m hatchet plot-bins -c BB ../${BBC}bulk.bbc
 python3 -m hatchet plot-bins -c CBB ../${BBC}bulk.bbc -tS 0.01
 ```
 
-plot-bins produces informative plots which are described [here](doc_plot_bins.html).
+plot-bins produces informative plots which are described [here](doc_plot_bins.md).
 Many of these plots can be very useful to assess the performance of the various steps of HATCHet, especially in the case of noisy datasets.
 
 ## compute-cn
@@ -203,4 +203,4 @@ python3 -m hatchet plot-cn ../${RES}/best.bbc.ucn
 ```
 
 plot-cn produces informative and summary plots for the inferred results.
-Examples and details of these plots are reported [here](doc_plot_cn.html).
+Examples and details of these plots are reported [here](doc_plot_cn.md).
