@@ -126,10 +126,9 @@ def main(args=None):
             f.write('\n'.join(missing))
             f.write('\n')
 
-    if args['zip']:
-        log('Collecting and compressing output files\n', level='PROGRESS')
-        cmd = f"tar -czvf {args['output'] + '.tar.gz'} {dbaf} {drdr} {dbb} {dsnps} {ctot} {dabin}"
-        sp.run(cmd.split())
+    log('Collecting and compressing output files\n', level='PROGRESS')
+    cmd = f"tar -czvf {args['output'] + '.tar.gz'} {dbaf} {drdr} {dbb} {dsnps} {ctot} {dabin}"
+    sp.run(cmd.split())
         
     log('Done\n', level='PROGRESS')
 

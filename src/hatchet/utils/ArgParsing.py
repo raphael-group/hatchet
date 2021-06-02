@@ -823,7 +823,6 @@ def parse_preprocess_args(args=None):
     parser.add_argument("--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("--seed", required=False, type=int, default=config.preprocess.seed, help="Random seed for replication (default: None)")
     parser.add_argument("-j","--jobs", required=False, type=int, default=config.preprocess.jobs, help="Number of parallel jobs to use (default: equal to number of available processors)")
-    parser.add_argument("-z", "--zip", required = False, action = "store_true", help = "Zip and compress output (default: False)")
     args = parser.parse_args(args)
 
     # In default mode, check the existence and compatibility of samtools and bcftools
@@ -893,7 +892,6 @@ def parse_preprocess_args(args=None):
         "rundir" : os.path.abspath(args.rundir),
         "seed" : args.seed,
         "output" : args.output,
-        "zip" : args.zip
     }
 
 
