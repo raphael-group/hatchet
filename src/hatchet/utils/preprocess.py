@@ -79,17 +79,18 @@ def main(args=None):
     else:
         log('Found all comBBo output, skipping step.\n', level='PROGRESS')
     
-    if len(missing_counts(dcounts, chrs, all_names)) > 0:
-        log('Counting reads at each position\n', level='PROGRESS')
-        cmd = 'python3 -m hatchet countPos -B {} -O {} -j {} -S {}'
-        cmd = cmd.format(' '.join([args['normal']] + args['tumor']), dcounts, args['J'], ' '.join(all_names))
-        if args['samtools'] is not None and len(args['samtools']) > 0:
-            cmd += " --samtools {}".format(args['samtools'])
-        runcmd(cmd, dcounts, log="counts.log", rundir=args['rundir'])
-    else:
-        log('Found all countPos output, skipping step.\n', level='PROGRESS')
 
     if len(missing_arrays(dabin, chrs)) > 0:
+        if len(missing_counts(dcounts, chrs, all_names)) > 0:
+            log('Counting reads at each position\n', level='PROGRESS')
+            cmd = 'python3 -m hatchet countPos -B {} -O {} -j {} -S {}'
+            cmd = cmd.format(' '.join([args['normal']] + args['tumor']), dcounts, args['J'], ' '.join(all_names))
+            if args['samtools'] is not None and len(args['samtools']) > 0:
+                cmd += " --samtools {}".format(args['samtools'])
+            runcmd(cmd, dcounts, log="counts.log", rundir=args['rundir'])
+        else:
+            log('Found all countPos output, skipping step.\n', level='PROGRESS')
+        
         log('Forming intermediate arrays from count files\n', level='PROGRESS')
         log('USING CENTROMERES FOR VERSION hg38 REFERENCE GENOME\n', level='WARN')
 
@@ -107,7 +108,7 @@ def main(args=None):
             shutil.rmtree(dcounts)
 
     else:
-        log('Found all formArray output, skipping step.\n', level='PROGRESS')
+        log('Found all formArray output, skipping step (and countPos step as well).\n', level='PROGRESS')
 
     log('Checking for output files\n', level='PROGRESS')
     missing = []
