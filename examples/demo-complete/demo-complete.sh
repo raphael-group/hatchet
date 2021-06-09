@@ -1,4 +1,5 @@
 # Demo complete for the entire HATCHet pipeline
+
 : ex: set ft=markdown ;:<<'```shell' #
 
 The following HATCHet demo represents a guided example of the complete HATCHet pipeline starting from an exemplary dataset of tumour and matched normal 
@@ -29,7 +30,7 @@ PS4='[\t]'
 
 ## Downloading of data
 
-The demo auomatically downloads the required tumor and matched-normal BAM files in `data` folder.
+The demo automatically downloads the required tumor and matched-normal BAM files in `data` folder.
 
 ```shell
 # Creating data folder
@@ -70,56 +71,69 @@ samtools dict data/hg19.fa > data/hg19.dict
 ## Configuring the HATCHet's execution
 
 We follow the template of the HATCHet's [script](../../doc/doc_fullpipeline.md#fullpipelineandtutorial).
-
-1. We specify the correct path to the reference genome
+ 
+1. We specify the correct path to the reference genome and the output folder, and other required flags
 ```shell
-echo 'REF="data/hg19.fa"' > runHATCHet.sh
+echo '[run]' > hatchet.ini
+echo 'count_reads=True' >> hatchet.ini
+echo 'genotype_snps=True' >> hatchet.ini
+echo 'count_alleles=True' >> hatchet.ini
+echo 'combine_counts=True' >> hatchet.ini
+echo 'cluster_bins=True' >> hatchet.ini
+echo 'plot_bins=True' >> hatchet.ini
+echo 'compute_cn=True' >> hatchet.ini
+echo 'plot_cn=True' >> hatchet.ini
+echo 'reference=data/hg19.fa' >> hatchet.ini
+echo 'output=output/' >> hatchet.ini
+j=$(grep -c ^processor /proc/cpuinfo)
+processes="processes=${j}"
+echo $processes >> hatchet.ini
+
 :<<'```shell' # Ignore this line
 ```
 
-2. We specify the current folder as the running one
+2. We specify the path to the matched-normal BAM files
 ```shell
-echo 'XDIR="./"' >> runHATCHet.sh
+echo 'normal=data/normal.bam' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-3. We specify the path to the matched-normal BAM files
+3. We specify the list of paths to the tumor BAM files and corresponding names
 ```shell
-echo 'NORMAL="data/normal.bam"' >> runHATCHet.sh
+echo 'bams=data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam' >> hatchet.ini
+echo 'samples=TumorSample1 TumorSample2 TumorSample3' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-4. We specify the list of paths to the tumor BAM files and corresponding names
+4. We specify the bin size and min/max coverage for the genotpe_snps step
 ```shell
-echo 'BAMS="data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam"' >> runHATCHet.sh
-echo 'NAMES="TumorSample1 TumorSample2 TumorSample3"' >> runHATCHet.sh
+echo '[count_reads]' >> hatchet.ini
+echo 'size=50kb' >> hatchet.ini
+echo '[genotype_snps]' >> hatchet.ini
+echo 'mincov=8' >> hatchet.ini
+echo 'maxcov=300' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-5. We keep the default number of reads and number of parallel processes
+5. We specify the reference genome and chr notation
 ```shell
-echo 'J=$(python -c "import multiprocessing as mp; print mp.cpu_count()")' >> runHATCHet.sh
-echo "MINREADS=8" >> runHATCHet.sh
-echo "MAXREADS=300" >> runHATCHet.sh
+echo 'reference_version=hg19' >> hatchet.ini
+echo 'chr_notation=True' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-6. We specify the appropriate list of known SNPs (the first in the provided list)
+6. We specify mincov/maxcov for the count_alleles step 
 ```shell
-echo 'LIST="https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz"' >> runHATCHet.sh
-:<<'```shell' # Ignore this line
-```
-
-7. We add all the remaining part of the template of HATCHet's script
-```shell
-tail -n 80 ../../script/runHATCHet.sh >> runHATCHet.sh
+echo '[count_alleles]' >> hatchet.ini
+echo 'mincov=8' >> hatchet.ini
+echo 'maxcov=300' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
 ## Running HATCHet
 
 ```shell
-bash runHATCHet.sh |& tee hatchet.log
+python -m hatchet run hatchet.ini
 exit $?
 ```
 

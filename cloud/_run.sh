@@ -61,23 +61,23 @@ EVA=${OUTPUT_FOLDER}/evaluation/
 
 mkdir -p ${BIN} ${BAF} ${BB} ${BBC} ${ANA} ${RES} ${EVA}
 
-python -m hatchet binBAM -N ${NORMALBAM} -T ${TUMOR_BAMS} -S ${ALLNAMES} -b 50kb -O ${BIN}normal.1bed -o ${BIN}bulk.1bed &> ${BIN}bins.log
-python -m hatchet deBAF -N ${NORMALBAM} -T ${TUMOR_BAMS} -S ${ALLNAMES} -O ${BAF}normal.1bed -o ${BAF}bulk.1bed &> ${BAF}bafs.log
-python -m hatchet comBBo -c ${BIN}normal.1bed -C ${BIN}bulk.1bed -B ${BAF}bulk.1bed > ${BB}bulk.bb
-python -m hatchet cluBB ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc
+python -m hatchet count-reads -N ${NORMALBAM} -T ${TUMOR_BAMS} -S ${ALLNAMES} -b 50kb -O ${BIN}normal.1bed -o ${BIN}bulk.1bed &> ${BIN}bins.log
+python -m hatchet count-alleles -N ${NORMALBAM} -T ${TUMOR_BAMS} -S ${ALLNAMES} -O ${BAF}normal.1bed -o ${BAF}bulk.1bed &> ${BAF}bafs.log
+python -m hatchet combine-counts -c ${BIN}normal.1bed -C ${BIN}bulk.1bed -B ${BAF}bulk.1bed > ${BB}bulk.bb
+python -m hatchet cluster-bins ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc
 
 cd ${ANA}
-python -m hatchet BBot -c RD ${BBC}bulk.bbc
-python -m hatchet BBot -c CRD ${BBC}bulk.bbc
-python -m hatchet BBot -c BAF ${BBC}bulk.bbc
-python -m hatchet BBot -c BB ${BBC}bulk.bbc
-python -m hatchet BBot -c CBB ${BBC}bulk.bbc
+python -m hatchet plot-bins -c RD ${BBC}bulk.bbc
+python -m hatchet plot-bins -c CRD ${BBC}bulk.bbc
+python -m hatchet plot-bins -c BAF ${BBC}bulk.bbc
+python -m hatchet plot-bins -c BB ${BBC}bulk.bbc
+python -m hatchet plot-bins -c CBB ${BBC}bulk.bbc
 
 # ------------------------------------------------------
 # Commented out till the solver works inside a container
 # ------------------------------------------------------
 # cd ${RES}
-# python -m hatchet solve -i ${BBC}bulk &> >(tee >(grep -v Progress > hatchet.log))
+# python -m hatchet compute-cn -i ${BBC}bulk &> >(tee >(grep -v Progress > hatchet.log))
 
 # cd ${EVA}
-# python -m hatchet BBeval ${RES}/best.bbc.ucn
+# python -m hatchet plot-cn ${RES}/best.bbc.ucn

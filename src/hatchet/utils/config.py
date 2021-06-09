@@ -63,6 +63,10 @@ class Config(object):
         self.config.read(filenames)
         self._read_sections()
 
+    def read(self, filename):
+        self.config.read(filename)
+        self._read_sections()
+
     def _read_sections(self):
         for section in self.config.sections():
             setattr(self, section, ConfigSection(self, self.config[section]))

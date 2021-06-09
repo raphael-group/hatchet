@@ -1,4 +1,4 @@
-__version__ = '0.2.9'
+__version__ = '0.3.2'
 
 import os.path
 from importlib.resources import path
@@ -10,7 +10,7 @@ with path(hatchet, 'hatchet.ini') as ini_file:
     filenames = [ini_file]
     # If a hatchet.ini file exists where we were imported from, use it after the pre-packaged .ini file
     # This allows overriding of values without having to alter the pre-packaged .ini file, which may
-    # be buried deep inside the site-packages folder.s
+    # be buried deep inside the site-packages folder.
     if os.path.exists('hatchet.ini'):
         filenames.append('hatchet.ini')
     config = Config('hatchet', filenames)
