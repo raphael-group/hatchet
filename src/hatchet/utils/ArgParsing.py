@@ -4,6 +4,7 @@ import argparse
 import subprocess
 import shlex
 import pandas as pd
+from glob import glob
 
 from . import Supporting as sp
 from hatchet import config
@@ -170,25 +171,56 @@ def parse_abin_arguments(args=None):
     if len(stem) > 0 and not os.path.exists(stem):
         raise ValueError(sp.error("The specified stem directory does not exist!"))
 
-    if not os.path.exists(os.path.join(stem, 'counts')):
-        raise ValueError(sp.error("There is no 'counts' subdirectory in the provided stem directory -- try running countPos first."))
-    
     # totalcounts file
     if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
         raise ValueError(sp.error("The specified file for total read counts does not exist!"))
     
+    
+    if args.array is None:
+        if not os.path.exists(os.path.join(stem, 'counts')):
+            raise ValueError(sp.error("There is no 'counts' subdirectory in the provided stem directory -- try running countPos first."))
+                
+        names = set()
+        chromosomes = set()
+        compressed = True
+        for f in os.listdir(os.path.join(stem, 'counts')):
+            if "starts" in f:
+                tkns = f.split('.')
+                names.add(tkns[0])
+                chromosomes.add(tkns[1])
+                if not f.endswith('gz'):
+                    compressed = False
+                    
+        tail = '.gz' if compressed else ''
+        for name in names:
+            for ch in chromosomes:
+                f = os.path.join(stem, 'counts', '.'.join([name, ch, 'starts']) + tail)
+                if not os.path.exists(f):
+                    raise ValueError(sp.error(f"Missing expected counts file: {f}"))
 
-    names = set()
-    chromosomes = set()
-    compressed = True
-    for f in os.listdir(os.path.join(stem, 'counts')):
-        if "starts" in f:
+    else:
+        namesfile = args.array + '.samples'
+        if not os.path.exists(namesfile):
+            raise ValueError(sp.error(f"Missing file containing sample names (1 per line): {namesfile}"))
+        names = open(namesfile).read().split()
+        compressed = False
+
+        chromosomes = set()
+
+        for f in glob(args.array + '*'):            
             tkns = f.split('.')
-            names.add(tkns[0])
-            chromosomes.add(tkns[1])
-            if not f.endswith('gz'):
-                compressed = False
+            # skip tokens that are part of the stem
+            if tkns[-1] == 'thresholds' or tkns[-1] == 'total':
+                chromosomes.add(tkns[-2])
 
+        for ch in chromosomes:
+            totals_arr = args.array + f'.{ch}.total'
+            thresholds_arr = args.array + f'.{ch}.thresholds'
+            if not os.path.exists(totals_arr):
+                raise ValueError(sp.error("Missing array file: {}".format(totals_arr)))
+            if not os.path.exists(thresholds_arr):
+                raise ValueError(sp.error("Missing array file: {}".format(thresholds_arr)))
+        
     names = sorted(names)
     sp.log(msg = f"Identified {len(names)} samples: {list(names)}\n", level = "INFO")
     if not args.normal in names:
@@ -199,12 +231,6 @@ def parse_abin_arguments(args=None):
     sp.log(msg = f"Identified {len(chromosomes)} chromosomes.\n", level = "INFO")
     sp.log(msg = f"Identified {'gzip-compressed' if compressed else 'uncompressed'} starts files.\n", level = "INFO")
     
-    tail = '.gz' if compressed else ''
-    for name in names:
-        for ch in chromosomes:
-            f = os.path.join(stem, 'counts', '.'.join([name, ch, 'starts']) + tail)
-            if not os.path.exists(f):
-                raise ValueError(sp.error(f"Missing expected counts file: {f}"))
 
     if not os.path.exists(args.centromeres):
         raise ValueError(sp.error("Centromeres file does not exist."))
@@ -225,15 +251,7 @@ def parse_abin_arguments(args=None):
     if args.mtr <= 0:
         raise ValueError("The minimum number of total reads must be positive.")
     
-    if not args.array is None:
-        for ch in chromosomes:
-            totals_arr = args.array + f'.{ch}.total'
-            thresholds_arr = args.array + f'.{ch}.thresholds'
-            if not os.path.exists(totals_arr):
-                raise ValueError(sp.error("Missing array file: {}".format(totals_arr)))
-            if not os.path.exists(thresholds_arr):
-                raise ValueError(sp.error("Missing array file: {}".format(thresholds_arr)))
-        
+
     
     return {
         "stem":args.stem,
@@ -805,7 +823,6 @@ def parse_preprocess_args(args=None):
     parser.add_argument("--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
     parser.add_argument("--seed", required=False, type=int, default=config.preprocess.seed, help="Random seed for replication (default: None)")
     parser.add_argument("-j","--jobs", required=False, type=int, default=config.preprocess.jobs, help="Number of parallel jobs to use (default: equal to number of available processors)")
-    parser.add_argument("-z", "--zip", required = False, action = "store_true", help = "Zip and compress output (default: False)")
     args = parser.parse_args(args)
 
     # In default mode, check the existence and compatibility of samtools and bcftools
@@ -875,7 +892,6 @@ def parse_preprocess_args(args=None):
         "rundir" : os.path.abspath(args.rundir),
         "seed" : args.seed,
         "output" : args.output,
-        "zip" : args.zip
     }
 
 

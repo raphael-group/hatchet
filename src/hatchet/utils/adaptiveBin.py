@@ -78,7 +78,7 @@ def main(args=None):
     sp.log(msg="# Merging per-chromosome bb files and correcting read counts\n", level="STEP")
     # merge all BB files together to get the one remaining BB file
     outfiles = [a[3] for a in params]
-    bbs = [pd.read_table(bb) for bb in outfiles]
+    bbs = [pd.read_table(bb, dtype = {'#CHR':str}) for bb in outfiles]
     big_bb = pd.concat(bbs)
     big_bb = big_bb.sort_values(by = ['#CHR', 'START', 'SAMPLE'])
     

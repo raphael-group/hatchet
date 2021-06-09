@@ -7,6 +7,7 @@ import multiprocessing as mp
 import shlex
 import re
 import pathlib
+import shutil
 
 from .Supporting import *
 from hatchet import config
@@ -18,7 +19,7 @@ def main(args=None):
     log('\n'.join(['Arguments:'] + ['\t{} : {}'.format(a, args[a]) for a in args]) + '\n', level='INFO')
 
     log('Setting directories\n', level='PROGRESS')
-    dbaf, drdr, dbb, dsnps, dcounts = generate_subdirectories(args)
+    dbaf, drdr, dbb, dsnps, dcounts, dabin = generate_subdirectories(args)
     
     samtools = os.path.join(args["samtools"], "samtools")
     all_names = ['normal'] + args['names']
@@ -78,15 +79,36 @@ def main(args=None):
     else:
         log('Found all comBBo output, skipping step.\n', level='PROGRESS')
     
-    if len(missing_counts(dcounts, chrs, all_names)) > 0:
-        log('Counting reads at each position\n', level='PROGRESS')
-        cmd = 'python3 -m hatchet countPos -B {} -O {} -j {} -S {}'
-        cmd = cmd.format(' '.join([args['normal']] + args['tumor']), dcounts, args['J'], ' '.join(all_names))
-        if args['samtools'] is not None and len(args['samtools']) > 0:
-            cmd += " --samtools {}".format(args['samtools'])
-        runcmd(cmd, dcounts, log="counts.log", rundir=args['rundir'])
+
+    if len(missing_arrays(dabin, chrs)) > 0:
+        if len(missing_counts(dcounts, chrs, all_names)) > 0:
+            log('Counting reads at each position\n', level='PROGRESS')
+            cmd = 'python3 -m hatchet countPos -B {} -O {} -j {} -S {}'
+            cmd = cmd.format(' '.join([args['normal']] + args['tumor']), dcounts, args['J'], ' '.join(all_names))
+            if args['samtools'] is not None and len(args['samtools']) > 0:
+                cmd += " --samtools {}".format(args['samtools'])
+            runcmd(cmd, dcounts, log="counts.log", rundir=args['rundir'])
+        else:
+            log('Found all countPos output, skipping step.\n', level='PROGRESS')
+        
+        log('Forming intermediate arrays from count files\n', level='PROGRESS')
+        log('USING CENTROMERES FOR VERSION hg38 REFERENCE GENOME\n', level='WARN')
+
+        # NOTE: replace with a different centromeres file if reference genome is not HG38
+        centromeres_file = os.path.join(pathlib.Path(__file__).parent.parent.absolute(), 'resources', 'hg38.centromeres.txt')
+        if not os.path.exists(centromeres_file):
+            raise ValueError(error(f"Could not find centromeres files {centromeres_file}!"))
+        cmd = f"python3 -m hatchet array -s {args['rundir']} -o {os.path.join(dabin, 'intermediate')} -j {args['J']} -C {centromeres_file}"
+        runcmd(cmd, dabin, log="formArray.log", rundir=args['rundir'])
+        
+        if len(missing_arrays(dabin, chrs)) > 0:
+            log('formArray step failed, time to debug :(\n', level='PROGRESS')
+        else:
+            log('formArray step succeeded, removing counts files\n', level='PROGRESS')
+            shutil.rmtree(dcounts)
+
     else:
-        log('Found all countPos output, skipping step.\n', level='PROGRESS')
+        log('Found all formArray output, skipping step (and countPos step as well).\n', level='PROGRESS')
 
     log('Checking for output files\n', level='PROGRESS')
     missing = []
@@ -94,7 +116,7 @@ def main(args=None):
     missing.extend(missing_baf(dbaf))
     missing.extend(missing_rdr(drdr, ctot))
     missing.extend(missing_bb(dbb))
-    missing.extend(missing_counts(dcounts, chrs, all_names))
+    missing.extend(missing_arrays(dabin, chrs))
     
     with open(os.path.join(args['rundir'], 'missing_files.log'), 'w') as f:
         if len(missing) == 0:
@@ -105,11 +127,9 @@ def main(args=None):
             f.write('\n'.join(missing))
             f.write('\n')
 
-    if args['zip']:
-        log('Collecting and compressing output files\n', level='PROGRESS')
-        cmd = 'tar -czvf {} {} {} {} {} {} {} {}'
-        cmd = cmd.format(args['output'] + '.tar.gz', dbaf, drdr, dbb, dsnps, dcounts, ctot)
-        sp.run(cmd.split())
+    log('Collecting and compressing output files\n', level='PROGRESS')
+    cmd = f"tar -czvf {args['output'] + '.tar.gz'} {dbaf} {drdr} {dbb} {dsnps} {ctot} {dabin}"
+    sp.run(cmd.split())
         
     log('Done\n', level='PROGRESS')
 
@@ -180,6 +200,24 @@ def missing_counts(dcounts, chrs, all_names):
                 missing.append("COUNTS: Missing mosdepth output file {}".format(fname))   
     return missing
 
+def missing_arrays(dabin, chrs):
+    missing = []
+    # formArray (abin/intermediate.* files))
+
+    fname = os.path.join(dabin, f'intermediate.samples')
+    if not os.path.exists(fname):
+        missing.append(fname)     
+    
+    for ch in chrs:
+        fname = os.path.join(dabin, f'intermediate.{ch}.total')
+        if not os.path.exists(fname):
+            missing.append(fname)
+        fname = os.path.join(dabin, f'intermediate.{ch}.thresholds')
+        if not os.path.exists(fname):
+            missing.append(fname)
+    
+    return missing
+
 def pileup_wrapper(params):
     cmd, name = params
     log("Counting sample \"{}\"\n".format(name), level="INFO")
@@ -208,7 +246,11 @@ def generate_subdirectories(args):
     if not os.path.isdir(dcounts):
         os.mkdir(dcounts)
 
-    return dbaf, drdr, dbb, dsnps, dcounts
+    dabin = os.path.join(args['rundir'], 'abin')
+    if not os.path.isdir(dabin):
+        os.mkdir(dabin)
+
+    return dbaf, drdr, dbb, dsnps, dcounts, dabin
 
 def runcmd(cmd, xdir, out=None, log="log", rundir=None):
     j = os.path.join
