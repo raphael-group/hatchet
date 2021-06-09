@@ -50,15 +50,15 @@ def main(args=None):
     sp.log(msg="# Removing outlier bins\n", level="STEP")
     cap = 2 * np.percentile(bb.RD, 99.9)
     outliers = np.where(bb.RD > cap)[0]
-    bb = bb.drop(index = outliers)
+    bb_kde = bb.drop(index = outliers)
     #bb = bb.reset_index(drop = True)
-    sp.log(msg=f"Removed {len(outliers)} outlier bins\n", level = 'INFO')
+    sp.log(msg=f"Removed {len(outliers)} outlier bins for KDE centroids\n", level = 'INFO')
 
     sp.log(msg="# Identifying centroids using KDE\n", level="STEP")
-    if "UNCORRECTED" in bb:
-        arr = np.array([np.abs(0.5 - bb.UNCORRECTED), bb.RD]).T    
+    if "UNCORRECTED" in bb_kde:
+        arr = np.array([np.abs(0.5 - bb_kde.UNCORRECTED), bb_kde.RD]).T    
     else:
-        arr = np.array([np.abs(0.5 - bb.BAF), bb.RD]).T
+        arr = np.array([np.abs(0.5 - bb_kde.BAF), bb_kde.RD]).T
     _, centers, _, _, _ = kde_centers_gridfit(arr, min_center_density = args['centroiddensity'], 
                                               bandwidth = args['bandwidth'], grid_dim = args['mesh'], 
                                               yvar = args['variance'], min_grid_density = args['griddensity'],
