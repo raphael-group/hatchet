@@ -60,14 +60,13 @@ def main(args=None):
     else:
         arraystems = {ch:None for ch in chromosomes}
 
-    hasX = np.any([a.endswith('X') for a in chromosomes])
-    hasY = np.any([a.endswith('Y') for a in chromosomes])
+    isX = {ch:ch.endswith('X') for ch in chromosomes}
+    isY = {ch:ch.endswith('Y') for ch in chromosomes}
 
     # form parameters for each worker
     params = [(stem, all_names, ch, outfile + f'.{ch}', threads_per_worker, 
-               chr2centro[ch][0], chr2centro[ch][1], msr, mtr, compressed, arraystems[ch], hasX and hasY)
+               chr2centro[ch][0], chr2centro[ch][1], msr, mtr, compressed, arraystems[ch], isX[ch] or isY[ch])
               for ch in chromosomes]
-    
     # dispatch workers
     """
     for p in params:
@@ -419,23 +418,49 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
         totals = bins[2][i]
         rdrs = bins[3][i]
         
-        assert dfs[i].POS.min() >= start and dfs[i].POS.max() <= end, (start, end, i, 
-                                                                       dfs[i].POS.min(), dfs[i].POS.max())
-        
-        snpcounts_from_df = dfs[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0)
+        if dfs is not None:
+            assert dfs[i].POS.min() >= start and dfs[i].POS.max() <= end, (start, end, i, 
+                                                                        dfs[i].POS.min(), dfs[i].POS.max())
+            snpcounts_from_df = dfs[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0)
 
         for j in range(len(sample_names)):
             sample = sample_names[j]
             total = totals[j + 1]
             normal_reads = totals[0]
             rdr = rdrs[j]
-            nsnps, cov, baf, alpha, beta = bafs[i][sample]
-            
-            assert snpcounts_from_df[sample] == alpha + beta, (i, sample)
-            
+
+            if dfs is not None:
+                assert snpcounts_from_df[sample] == alpha + beta, (i, sample)
+                nsnps, cov, baf, alpha, beta = bafs[i][sample]
+            else:
+                nsnps, cov, baf, alpha, beta = 0, 0, 0, 0, 0
+        
             rows.append([chromosome, start, end, sample, rdr,  nsnps, cov, alpha, beta, baf, total, normal_reads])
                     
     return pd.DataFrame(rows, columns = ['#CHR', 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF', 'TOTAL_READS', 'NORMAL_READS'])
+
+def get_chr_end(stem, all_names, chromosome, compressed):
+    starts_files = []
+    for name in all_names:
+        if compressed:
+            starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts.gz'))    
+        else:
+            starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts'))    
+
+    last_start = 0
+    for sfname in starts_files:
+        if not compressed:
+            my_last = int(subprocess.run(['tail', '-1', sfname], capture_output=True).stdout.decode('utf-8').strip())
+        else:
+            zcat = subprocess.Popen(('zcat', sfname), stdout= subprocess.PIPE)
+            tail = subprocess.Popen(('tail', '-1'), stdin=zcat.stdout, stdout = subprocess.PIPE)
+            tail.wait()
+            my_last = int(tail.stdout.read().decode('utf-8').strip())      
+                    
+        if my_last > last_start:
+            last_start = my_last
+    
+    return last_start 
 
 def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_start, centromere_end, 
          min_snp_reads, min_total_reads, compressed, arraystem, xy):
@@ -448,14 +473,22 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
             sp.log(msg=f"Output file already exists, skipping chromosome {chromosome}\n", level = "INFO")
             return
         
-        if xy and chromosome.endswith('X') or chromosome.endswith('Y'):
-            sp.log(msg='Ignoring min SNP reads for heterogeneous sex chromosomes\n', level = "INFO")
+        # TODO: identify whether XX or XY, and only avoid SNPs/BAFs for XY
+        if xy:
+            sp.log(msg='Running on sex chromosome -- ignoring SNPs \n', level = "INFO")
             min_snp_reads = 0
-        
-        #sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
-        # Load SNP positions and counts for this chromosome
-        positions, snp_counts, snpsv = read_snps(os.path.join(stem, 'baf', 'bulk.1bed'), chromosome, all_names)
-        
+            
+            # TODO: do this procedure only for XY individuals
+            last_start = get_chr_end(stem, all_names, chromosome, compressed)
+            positions = np.arange(5000, last_start, 5000)
+            snp_counts = np.zeros((len(positions), len(all_names) - 1), dtype = np.int8)
+            snpsv = None
+
+        else:
+            #sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
+            # Load SNP positions and counts for this chromosome
+            positions, snp_counts, snpsv = read_snps(os.path.join(stem, 'baf', 'bulk.1bed'), chromosome, all_names)
+            
         thresholds = np.trunc(np.vstack([positions[:-1], positions[1:]]).mean(axis = 0)).astype(np.uint32)
         last_idx_p = np.argwhere(thresholds > centromere_start)[0][0]
         first_idx_q = np.argwhere(thresholds > centromere_end)[0][0]
@@ -511,13 +544,18 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
             starts_p = bins_p[0]
             ends_p = bins_p[1]
             # Partition SNPs for BAF inference
-            dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])] for i in range(len(starts_p))]
-            
-            for i in range(len(dfs_p)):
-                assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
-                    
+               
             # Infer BAF
-            bafs_p = [compute_baf_task(d) for d in dfs_p] 
+            if xy:
+                # TODO: compute BAFs for XX
+                dfs_p = None
+                bafs_p = None
+            else:
+                dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])] for i in range(len(starts_p))]         
+                for i in range(len(dfs_p)):
+                    assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
+                bafs_p = [compute_baf_task(d) for d in dfs_p] 
+                
             bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
         else:
             sp.log(msg=f"No SNPs found in p arm for {chromosome}\n", level = "INFO")
@@ -550,14 +588,19 @@ def run_chromosome(stem, all_names, chromosome, outfile, nthreads, centromere_st
             starts_q = bins_q[0]
             ends_q = bins_q[1]
                 
-            # Partition SNPs for BAF inference
-            dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])] for i in range(len(starts_q))]
+            if xy:
+                dfs_q = None
+                bafs_q = None
+            else:
+                # Partition SNPs for BAF inference
+                dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])] for i in range(len(starts_q))]
+                
+                for i in range(len(dfs_q)):
+                    assert np.all(dfs_q[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
+                        
+                # Infer BAF
+                bafs_q = [compute_baf_task(d) for d in dfs_q]
             
-            for i in range(len(dfs_q)):
-                assert np.all(dfs_q[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
-                    
-            # Infer BAF
-            bafs_q = [compute_baf_task(d) for d in dfs_q]
             bb_q = merge_data(bins_q, dfs_q, bafs_q, all_names, chromosome)
         else:
             sp.log(msg=f"No SNPs found in q arm for {chromosome}\n", level = "INFO")

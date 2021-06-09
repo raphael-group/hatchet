@@ -199,6 +199,28 @@ def form_counts_array(starts_files, perpos_files, thresholds, chromosome, chunks
 
     return arr, thresholds
 
+def get_chr_end(stem, all_names, chromosome, compressed):
+    starts_files = []
+    for name in all_names:
+        if compressed:
+            starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts.gz'))    
+        else:
+            starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts'))    
+
+    last_start = 0
+    for sfname in starts_files:
+        if not compressed:
+            my_last = int(subprocess.run(['tail', '-1', sfname], capture_output=True).stdout.decode('utf-8').strip())
+        else:
+            zcat = subprocess.Popen(('zcat', sfname), stdout= subprocess.PIPE)
+            tail = subprocess.Popen(('tail', '-1'), stdin=zcat.stdout, stdout = subprocess.PIPE)
+            my_last = int(tail.stdout.read().decode('utf-8').strip())      
+                    
+        if my_last > last_start:
+            last_start = my_last
+    
+    return last_start 
+
 def run_chromosome(stem, all_names, chromosome, outstem, centromere_start, centromere_end, compressed):
     """
     Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
@@ -226,7 +248,16 @@ def run_chromosome(stem, all_names, chromosome, outstem, centromere_start, centr
 
         sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
         # Load SNP positions and counts for this chromosome
-        positions, _, _ = read_snps(os.path.join(stem, 'baf', 'bulk.1bed'), chromosome, all_names)
+        
+        if chromosome.endswith('X') or chromosome.endswith('Y'):
+            sp.log(msg='Running on sex chromosome -- ignoring SNPs and min SNP reads\n', level = "INFO")
+            
+            # TODO: do this procedure only for XY
+            last_start = get_chr_end(stem, all_names, chromosome, compressed)
+            positions = np.arange(5000, last_start, 5000)
+
+        else:
+            positions, _, _ = read_snps(os.path.join(stem, 'baf', 'bulk.1bed'), chromosome, all_names)
         
         thresholds = np.trunc(np.vstack([positions[:-1], positions[1:]]).mean(axis = 0)).astype(np.uint32)
         last_idx_p = np.argwhere(thresholds > centromere_start)[0][0]
