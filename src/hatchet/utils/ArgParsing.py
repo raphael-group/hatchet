@@ -165,17 +165,28 @@ def parse_abin_arguments(args=None):
                         default = '/n/fs/ragr-data/datasets/ref-genomes/centromeres/hg19.centromeres.txt')   
     parser.add_argument('-A', '--array', type = str, help = f'Filename stem corresponding to array files (default None)', default = config.abin.array)   
     parser.add_argument("-t","--totalcounts", required=True, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample')
+    parser.add_argument("-p","--phase", required=False, default=config.abin.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')    
+    parser.add_argument("-b","--max_blocksize", required=False, default=config.abin.blocksize, type=int, help=f'Maximum size of phasing block (default {config.abin.blocksize})')    
+    parser.add_argument("-m","--max_spb", required=False, default=config.abin.max_spb, type=int, help=f'Maximum number of SNPs per phasing block (default {config.abin.max_spb})')    
+    parser.add_argument("-a","--alpha", required=False, default=config.abin.alpha, type=float, help=f'Significance level for phase blocking adjacent SNPs. Higher means less trust in phasing. (default {config.abin.alpha})')    
+    parser.add_argument("--use_em", action='store_true', default=False, required=False, help="Use EM inference for BAF instead of MM")
     args = parser.parse_args(args)
     
     stem = args.stem
     if len(stem) > 0 and not os.path.exists(stem):
         raise ValueError(sp.error("The specified stem directory does not exist!"))
-
-    # totalcounts file
     if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
         raise ValueError(sp.error("The specified file for total read counts does not exist!"))
-    
-    
+    if args.phase is not None and not os.path.isfile(args.phase):
+        raise ValueError(sp.error("The specified phasing file does not exist!"))
+        
+    if args.max_blocksize <= 0:
+        raise ValueError(sp.error("The max_blocksize argument must be positive."))
+    if args.max_blocksize <= 0:
+        raise ValueError(sp.error("The max_snps_per_bin argument must be positive."))
+    if args.alpha < 0 or args.alpha > 1:
+        raise ValueError(sp.error("The alpha argument must be between 0 and 1, inclusive."))
+            
     if args.array is None:
         if not os.path.exists(os.path.join(stem, 'counts')):
             raise ValueError(sp.error("There is no 'counts' subdirectory in the provided stem directory -- try running countPos first."))
@@ -265,7 +276,12 @@ def parse_abin_arguments(args=None):
         "chromosomes":chromosomes,
         "compressed":compressed,
         "array":args.array,
-        "totalcounts":args.totalcounts
+        "totalcounts":args.totalcounts,
+        "phase":args.phase,
+        "blocksize":args.max_blocksize,
+        "max_snps_per_block":args.max_spb,
+        "test_alpha":args.alpha,
+        "use_em":args.use_em
     }
 
 def parse_count_arguments(args=None):
@@ -294,7 +310,6 @@ def parse_count_arguments(args=None):
         raise ValueError(sp.error("A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample"))
     if names is None:
         names = []
-        names.append(os.path.splitext(os.path.basename(normal))[0])
         for bamfile in bams:
             names.append(os.path.splitext(os.path.basename(bamfile))[0])
     
