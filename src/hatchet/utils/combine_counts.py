@@ -3,6 +3,7 @@
 import sys
 import math
 import copy
+import gzip
 import numpy as np
 from scipy.stats import beta
 
@@ -249,7 +250,9 @@ def readBAFs(tumor):
 
 def readPhase(f):
     phased = defaultdict(lambda : dict())
-    with open(f, 'r') as i:
+    if not f.endswith(".gz"):
+       raise ValueError('Please make sure your phased VCF file is compressed with gzip with a .gz suffix') 
+    with gzip.open(f, 'rt') as i:
         for l in i:
             p = l.strip().split()
             if len(l) > 1 and p[0][0] != '#':

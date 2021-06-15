@@ -22,11 +22,13 @@ from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as compute_cn
 from hatchet.utils.plot_cn import main as plot_cn
 from hatchet.utils.run import main as run
+from hatchet.utils.PhasePrep import main as PhasePrep
+from hatchet.utils.Phase import main as Phase
 
 solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 commands = ('count-reads', 'genotype-snps', 'count-alleles', 'combine-counts', 'cluster-bins', 'plot-bins',
-            'compute-cn', 'plot-cn', 'run', 'preprocess', 'countPos', 'kdeBB', 'abin', 'array')
+            'compute-cn', 'plot-cn', 'run', 'preprocess', 'countPos', 'kdeBB', 'abin', 'array', 'PhasePrep', 'Phase')
 
 def print_usage():
     print('HATCHet v' + hatchet.__version__)
