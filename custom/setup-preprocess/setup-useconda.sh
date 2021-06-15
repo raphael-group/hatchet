@@ -57,7 +57,7 @@ conda config --add channels defaults
 conda config --add channels bioconda
 conda config --add channels conda-forge
 conda install mosdepth
-echo "source ${SETUP_HOME}/miniconda/bin/activate hatchet" >> ${SETUP_HOME}/setup_hatchet.sh
+echo "conda activate hatchet" >> ${SETUP_HOME}/setup_hatchet.sh
 :<<'```shell' # Ignore this line
 ```
 
