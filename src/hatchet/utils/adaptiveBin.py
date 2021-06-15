@@ -343,7 +343,7 @@ def apply_MM(totals_in, alts_in):
     baf, phaess = max_likelihood_hardphasing(alts = alts_in, totals = totals_in)
     
     refs = totals_in - alts_in 
-    alpha = np.sum(np.choose(phaess, [refs, alts_in])), 
+    alpha = np.sum(np.choose(phaess, [refs, alts_in]))
     beta = np.sum(np.choose(phaess, [alts_in, refs]))   
     if alpha < beta:
         return baf, alpha, beta
