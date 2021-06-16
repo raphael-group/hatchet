@@ -81,7 +81,7 @@ setup(
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini'],
                   'hatchet.resources' : ['*.pos', '*.txt']},
-    ext_modules=[CMakeExtension('hatchet.solve')],
+    ext_modules=[],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 
