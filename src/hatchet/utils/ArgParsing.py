@@ -446,7 +446,7 @@ def parse_phase_arguments(args=None):
     #parser.add_argument("-o", "--outputphase", required=False, default=config.snp.outputsnps, type=str, help="Output folder for phased VCFs and 1000G reference panel (default: ./)")
     parser.add_argument("-o", "--outdir", required=False, type=str, help="Output folder for phased VCFs and 1000G reference panel")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
-    parser.add_argument("-j", "--processes", required=False, default=config.snp.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")
     args = parser.parse_args(args)
 
     # add safety checks for custom ref panel
