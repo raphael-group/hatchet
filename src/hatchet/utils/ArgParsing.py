@@ -13,7 +13,7 @@ from hatchet import config, __version__
 def parse_array_arguments(args=None):    
     parser = argparse.ArgumentParser(description = "Aggregate count information to form input to adaptive binning.")
     parser.add_argument('-s', '--stem', type = str, help = 'Path to HATCHet working directory with /baf and /counts subdirectories (default: current directory', default = config.abin.stem)
-    parser.add_argument('-o', '--outstem', type = str, help = 'Filename stem for output')   
+    parser.add_argument('-o', '--outdir', type = str, help = 'Filename stem for output')   
     parser.add_argument('-n', '--normal', type = str, help = f'Filename stem corresponding to normal sample (default "{config.abin.normal}")', default = config.abin.normal)   
     parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.abin.processes})', default = config.abin.processes)   
     parser.add_argument('-C', '--centromeres', type = str, help = 'Centromere locations file', 
@@ -71,7 +71,7 @@ def parse_array_arguments(args=None):
 
     return {
         "stem":args.stem,
-        "outstem":args.outstem,
+        "outdir":args.outdir,
         "sample_names": names,
         "use_chr":use_chr,
         "processes":args.processes,
@@ -163,7 +163,7 @@ def parse_abin_arguments(args=None):
     parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.abin.processes})', default = config.abin.processes)   
     parser.add_argument('-C', '--centromeres', type = str, help = 'Centromere locations file', 
                         default = '/n/fs/ragr-data/datasets/ref-genomes/centromeres/hg19.centromeres.txt')   
-    parser.add_argument('-A', '--array', type = str, help = f'Filename stem corresponding to array files (default None)', default = config.abin.array)   
+    parser.add_argument('-A', '--array', type = str, required = True, help = f'Directory containing array files (output from "array" command)')   
     parser.add_argument("-t","--totalcounts", required=True, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample')
     parser.add_argument("-p","--phase", required=False, default=config.abin.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')    
     parser.add_argument("-b","--max_blocksize", required=False, default=config.abin.blocksize, type=int, help=f'Maximum size of phasing block (default {config.abin.blocksize})')    
@@ -187,50 +187,27 @@ def parse_abin_arguments(args=None):
     if args.alpha < 0 or args.alpha > 1:
         raise ValueError(sp.error("The alpha argument must be between 0 and 1, inclusive."))
             
-    if args.array is None:
-        if not os.path.exists(os.path.join(stem, 'counts')):
-            raise ValueError(sp.error("There is no 'counts' subdirectory in the provided stem directory -- try running countPos first."))
-                
-        names = set()
-        chromosomes = set()
-        compressed = True
-        for f in os.listdir(os.path.join(stem, 'counts')):
-            if "starts" in f:
-                tkns = f.split('.')
-                names.add(tkns[0])
-                chromosomes.add(tkns[1])
-                if not f.endswith('gz'):
-                    compressed = False
-                    
-        tail = '.gz' if compressed else ''
-        for name in names:
-            for ch in chromosomes:
-                f = os.path.join(stem, 'counts', '.'.join([name, ch, 'starts']) + tail)
-                if not os.path.exists(f):
-                    raise ValueError(sp.error(f"Missing expected counts file: {f}"))
+    if not os.path.exists(args.array):
+        raise ValueError(sp.error(f"The provided 'array' directory does not exist: {args.array}"))
+    namesfile = os.path.join(args.array, 'samples.txt')
+    if not os.path.exists(namesfile):
+        raise ValueError(sp.error(f"Missing file containing sample names (1 per line): {namesfile}"))
+    names = open(namesfile).read().split()
+    compressed = False
 
-    else:
-        namesfile = args.array + '.samples'
-        if not os.path.exists(namesfile):
-            raise ValueError(sp.error(f"Missing file containing sample names (1 per line): {namesfile}"))
-        names = open(namesfile).read().split()
-        compressed = False
+    chromosomes = set()
+    for f in os.listdir(args.array):            
+        tkns = f.split('.')
+        if tkns[-1] == 'thresholds' or tkns[-1] == 'total':
+            chromosomes.add(tkns[-2])
 
-        chromosomes = set()
-
-        for f in glob(args.array + '*'):            
-            tkns = f.split('.')
-            # skip tokens that are part of the stem
-            if tkns[-1] == 'thresholds' or tkns[-1] == 'total':
-                chromosomes.add(tkns[-2])
-
-        for ch in chromosomes:
-            totals_arr = args.array + f'.{ch}.total'
-            thresholds_arr = args.array + f'.{ch}.thresholds'
-            if not os.path.exists(totals_arr):
-                raise ValueError(sp.error("Missing array file: {}".format(totals_arr)))
-            if not os.path.exists(thresholds_arr):
-                raise ValueError(sp.error("Missing array file: {}".format(thresholds_arr)))
+    for ch in chromosomes:
+        totals_arr = os.path.join(args.array, f'{ch}.total')
+        thresholds_arr = os.path.join(args.array, f'{ch}.thresholds')
+        if not os.path.exists(totals_arr):
+            raise ValueError(sp.error("Missing array file: {}".format(totals_arr)))
+        if not os.path.exists(thresholds_arr):
+            raise ValueError(sp.error("Missing array file: {}".format(thresholds_arr)))
         
     names = sorted(names)
     sp.log(msg = f"Identified {len(names)} samples: {list(names)}\n", level = "INFO")

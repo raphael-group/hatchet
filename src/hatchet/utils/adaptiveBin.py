@@ -59,10 +59,8 @@ def main(args=None):
         if ch not in chr2centro:
             raise ValueError(sp.error(f"Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument."))
 
-    if args['array'] is not None:
-        arraystems = {ch:args['array'] + '.' + ch for ch in chromosomes}
-    else:
-        arraystems = {ch:None for ch in chromosomes}
+    arraystems = {ch:os.path.join(args['array'], ch) for ch in chromosomes}
+
 
     isX = {ch:ch.endswith('X') for ch in chromosomes}
     isY = {ch:ch.endswith('Y') for ch in chromosomes}
@@ -595,7 +593,8 @@ def get_chr_end(stem, all_names, chromosome, compressed):
     return last_start 
 
 def run_chromosome(stem, all_names, chromosome, outfile, centromere_start, centromere_end, 
-         min_snp_reads, min_total_reads, compressed, arraystem, xy, use_em, phasefile, blocksize, max_snps_per_block, test_alpha):
+         min_snp_reads, min_total_reads, compressed, arraystem, xy, use_em, phasefile, blocksize, 
+         max_snps_per_block, test_alpha):
     """
     Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
     """

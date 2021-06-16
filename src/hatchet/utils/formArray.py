@@ -19,7 +19,7 @@ def main(args=None):
     stem = args['stem']
     threads = args['processes']
     chromosomes = args['chromosomes']
-    outstem = args['outstem']
+    outdir = args['outdir']
 
     all_names = args['sample_names']
     use_chr = args['use_chr']
@@ -52,8 +52,12 @@ def main(args=None):
         if ch not in chr2centro:
             raise ValueError(sp.error(f"Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument."))
 
+    # create output directory if it doesn't yet exist
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
     # form parameters for each worker
-    params = [(stem, all_names, ch, outstem + f'.{ch}', 
+    params = [(stem, all_names, ch, os.path.join(outdir, f'{ch}'), 
                chr2centro[ch][0], chr2centro[ch][1], compressed)
               for ch in chromosomes]
     
@@ -61,7 +65,7 @@ def main(args=None):
     with Pool(n_workers) as p:
         p.map(run_chromosome_wrapper, params)
         
-    np.savetxt(outstem + '.samples', all_names, fmt = '%s')
+    np.savetxt(os.path.join(outdir, 'samples.txt'), all_names, fmt = '%s')
 
 
 def read_snps(baf_file, ch, all_names):
