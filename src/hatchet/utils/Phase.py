@@ -40,6 +40,9 @@ def main(args=None):
         rename_files = [ os.path.join(rpd, f"rename_chrs{i}.txt") for i in range(1,3) ] 
 
     # liftover VCFs, phase, liftover again to original coordinates 
+    if not os.path.exists(args["outdir"]):
+        os.makedirs(args["outdir"])
+    
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=args["chromosomes"], 
                 hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
                 num_workers=args["j"], verbose=False) 
