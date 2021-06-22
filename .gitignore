@@ -1,20 +1,6 @@
 ######## STUFF I ADDED BETWEEN POUND SIGNS
-script/config_hg38.sh
-script/dipg2/
-script/dipg/
-script/refpanel/
-script/hg38/
-script/config_lo.sh
-script/lo/
-script/rm.sh
-*.swp
-GRCh37p13_00-All.vcf.gz.tbi
-GRCh37p13_00-All.vcf.gz
-script/config.sh
-script/test_run/
 src/hatchet.egg-info/
 src/hatchet/solve
-TODO_BEFORE_MERGING.txt
 ########
 
 # Temp

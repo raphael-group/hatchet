@@ -25,16 +25,20 @@ def main(args=None):
         if not os.path.isfile( os.path.join(args["refpaneldir"], "1000GP_Phase3", "1000GP_Phase3.sample") ):
             dwnld_1kgp(path = args["refpaneldir"])
         panel = os.path.join( args["refpaneldir"], "1000GP_Phase3" )
-        # download necessary liftover files; 1000GP in hg19 coordinates
-        if args["refvers"] == "hg38":
-            #dwnld reference panel genome and chain files
-            hg19_path = dwnld_refpanel_genome(path=args["refpaneldir"])
-            chains = dwnld_chains(path=args["refpaneldir"], refpanel_chr="false", sample_chr=args["chrnot"] )
-        elif args["refvers"] == "hg19" and args["chrnot"] == "true":
-            rename_files = mk_rename_file(path = args["refpaneldir"]) 
     else:
         raise ValueError(sp.error("Currently, only the 1000 genome panel aligned to GRCh37 without \"chr\" prefix is supported\n")) 
         #panel = args["refpanel"]       # for future: include custom panel
+
+    # download necessary liftover files; 1000GP in hg19 coordinates
+    # if users aligned reads to the hg38 build, we need to liftover coordinates to the reference panel (hg38 -> hg19)
+    # since the 1000GP panel is in hg19 coordinates, we need to download (1) hg19  genome and (2) chain files
+    # for liftover via picard
+    hg19_path = dwnld_refpanel_genome(path=args["refpaneldir"])
+    chains = dwnld_chains(path=args["refpaneldir"], refpanel_chr="false", sample_chr=args["chrnot"] )
+    # if users aligned reads to the same reference genome as used in the reference panel, liftover isn't required, but
+    # there could be different naming conventions of chromosomes, with or without the 'chr' prefix. The 1000GP reference 
+    # panel does not use 'chr' prefix, so input into shapeit also should not have this
+    rename_files = mk_rename_file(path = args["refpaneldir"]) 
 
 def dwnld_chains(path, refpanel_chr, sample_chr):
     # order of urls important! [0] chain for sample -> ref panel, [1] chain for ref panel -> sample
@@ -43,13 +47,21 @@ def dwnld_chains(path, refpanel_chr, sample_chr):
     for i, url in enumerate(urls):
         r = requests.get(url, allow_redirects=True)
         open(paths[i], 'wb').write(r.content)
-    c1 = mod_chain(paths[0], refpanel_chr, sample_chr, refpanel_index=7, sample_index=2) # modify chr notation of hg38ToHg19, ref panel chr in 7th field, sample chr in 2nd field
-    c2 = mod_chain(paths[1], refpanel_chr, sample_chr, refpanel_index=2, sample_index=7) # modify chr notation of hg19ToHg38, ref panel chr in 2th field, sample chr in 7nd field
+    # make all necessary chain files to convert from hg38 (w/ or w/out chr notation) to hg19 (no chr notation),
+    # and also to lift back over from hg19 (no chr notation) to hg38 (w/ or w/out chr notation).
+    c1_1 = mod_chain(paths[0], refpanel_chr, sample_chr="true", refpanel_index=7, sample_index=2) # modify chr notation of hg38ToHg19, ref panel chr in 7th field, sample chr in 2nd field
+    c1_2 = mod_chain(paths[0], refpanel_chr, sample_chr="false", refpanel_index=7, sample_index=2) 
+    c2_1 = mod_chain(paths[1], refpanel_chr, sample_chr="true", refpanel_index=2, sample_index=7) # modify chr notation of hg19ToHg38, ref panel chr in 2th field, sample chr in 7nd field
+    c2_2 = mod_chain(paths[1], refpanel_chr, sample_chr="false", refpanel_index=2, sample_index=7) 
     [ os.remove(p) for p in paths ] # remove original chain files
-    return {"hg38_hg19" : c1, "hg19_hg38" : c2}
+    return 
 
 def mod_chain(infile, refpanel_chr, sample_chr, refpanel_index, sample_index):
-    name = infile.strip(".gz").replace("over", "renamed")
+    if sample_chr == "true":
+        name = infile.strip(".gz").replace("over", "chr")
+    elif sample_chr == "false":
+        name = infile.strip(".gz").replace("over", "no_chr")
+
     with open(name, 'w') as new:
         with gzip.open(infile, 'rt') as f:
             for l in f:
@@ -65,7 +77,7 @@ def mod_chain(infile, refpanel_chr, sample_chr, refpanel_index, sample_index):
 def dwnld_refpanel_genome(path):
     url = "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz"
     out = os.path.join(path, "hg19.fa.gz")
-    newref = os.path.join(path, "hg19_renamed.fa")
+    newref = os.path.join(path, "hg19_no_chr.fa")
     if not os.path.isfile(newref):
         # download hg19
         with requests.get(url, stream=True) as r:
