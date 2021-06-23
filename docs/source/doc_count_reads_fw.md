@@ -6,7 +6,7 @@ This step of HATCHet splits the human reference genome into fixed-width bins (i.
 
 ## Input
 
-count-reads takes in input sorted and indexed BAM files for multiple tumor samples from the same patient, a sorted and index BAM file from a matched-normal sample, and a indexed human reference genome.
+count-reads-fw takes in input sorted and indexed BAM files for multiple tumor samples from the same patient, a sorted and index BAM file from a matched-normal sample, and a indexed human reference genome.
 
 | Name | Description | Usage |
 |------|-------------|-------|
@@ -16,7 +16,7 @@ count-reads takes in input sorted and indexed BAM files for multiple tumor sampl
 
 ## Output
 
-count-reads produces three tab-separated files: the first contains the read counts for every genomic bin in every tumor sample (raw counts not normalized), the second contains the read counts for every genomic bin the matched-normal sample (raw counts not normalized), and the third contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.
+count-reads-fw produces three tab-separated files: the first contains the read counts for every genomic bin in every tumor sample (raw counts not normalized), the second contains the read counts for every genomic bin the matched-normal sample (raw counts not normalized), and the third contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.
 
 | Name | Description |
 |------|-------------|
