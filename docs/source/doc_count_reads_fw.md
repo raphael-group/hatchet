@@ -1,6 +1,6 @@
 # count-reads-fw
 
-NOTE: This is the legacy fixed-width binning described in the HATCHet paper. We recommend using count-reads which applied an adaptive binning scheme to ensure that each genomic bin has comparable SNP signal.
+NOTE: This is the legacy fixed-width binning described in the HATCHet paper. We recommend using `count-reads` which applies an adaptive binning scheme to ensure that each genomic bin has comparable SNP signal.
 
 This step of HATCHet splits the human reference genome into fixed-width bins (i.e., small genomic regions), and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample.
 
