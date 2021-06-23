@@ -6,7 +6,7 @@ This step combines the read counts and the allele counts for the identified germ
 
 ## Input
 
-combine-counts takes in input three tab-separate files:
+combine-counts-fw takes in input three tab-separate files:
 
 1. A file of read counts for genomic bins obtained from the matched-normal sample, specified by the flag `-c`, `--normalbins`. The tab separated file has the following fields.
 
@@ -40,7 +40,7 @@ combine-counts takes in input three tab-separate files:
 
 ## Output
 
-combine-counts produces a tab-separated file with the following fields.
+combine-counts-fw produces a tab-separated file with the following fields.
 
 | Field | Description |
 |-------|-------------|
