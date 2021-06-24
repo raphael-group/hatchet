@@ -114,10 +114,10 @@ def main(args=None):
     big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index = False, sep = '\t')
     big_bb.to_csv(outfile + '.withXY', index = False, sep = '\t')
 
+    # Remove intermediate BB files
+    [os.remove(f) for f in outfiles]
+    
     sp.log(msg="# Done\n", level="STEP")
-
-    # Uncommend to remove all intermediate bb files (once I know the previous steps work)
-    # [os.remove(f) for f in outfiles]
 
 def read_snps(baf_file, ch, all_names, phasefile = None):
     """
