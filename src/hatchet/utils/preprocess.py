@@ -98,7 +98,7 @@ def main(args=None):
         centromeres_file = os.path.join(pathlib.Path(__file__).parent.parent.absolute(), 'resources', 'hg38.centromeres.txt')
         if not os.path.exists(centromeres_file):
             raise ValueError(error(f"Could not find centromeres files {centromeres_file}!"))
-        cmd = f"python3 -m hatchet array -s {args['rundir']} -o {os.path.join(dabin, 'intermediate')} -j {args['J']} -C {centromeres_file}"
+        cmd = f"python3 -m hatchet array -s {args['rundir']} -o {dabin} -j {args['J']} -C {centromeres_file}"
         runcmd(cmd, dabin, log="formArray.log", rundir=args['rundir'])
         
         if len(missing_arrays(dabin, chrs)) > 0:
@@ -202,17 +202,17 @@ def missing_counts(dcounts, chrs, all_names):
 
 def missing_arrays(dabin, chrs):
     missing = []
-    # formArray (abin/intermediate.* files))
+    # formArray (abin/<chr>.<total/thresholds> files))
 
-    fname = os.path.join(dabin, f'intermediate.samples')
+    fname = os.path.join(dabin, f'samples.txt')
     if not os.path.exists(fname):
         missing.append(fname)     
     
     for ch in chrs:
-        fname = os.path.join(dabin, f'intermediate.{ch}.total')
+        fname = os.path.join(dabin, f'{ch}.total')
         if not os.path.exists(fname):
             missing.append(fname)
-        fname = os.path.join(dabin, f'intermediate.{ch}.thresholds')
+        fname = os.path.join(dabin, f'{ch}.thresholds')
         if not os.path.exists(fname):
             missing.append(fname)
     
