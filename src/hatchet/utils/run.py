@@ -60,7 +60,9 @@ def main(args=None):
 
     if config.run.genotype_snps:
         snps = ''
-        if config.genotype_snps.reference_version and not config.genotype_snps.snps:
+        if config.genotype_snps.snps:
+           snps = config.genotype_snps.snps
+        elif config.genotype_snps.reference_version:
             snps_mapping = {
                 ('hg19', True): 'https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz',
                 ('hg19', False): 'https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz',
