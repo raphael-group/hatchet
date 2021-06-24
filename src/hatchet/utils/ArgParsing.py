@@ -3,13 +3,88 @@ import os.path
 import argparse
 import subprocess
 import shlex
+from numpy import busday_offset
 import pandas as pd
 from glob import glob
 
 from . import Supporting as sp
 from hatchet import config, __version__
 
+def parse_count_reads_arguments(args=None):
 
+    description = "Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES."
+    parser = argparse.ArgumentParser(prog='hatchet count-reads', description=description)
+    parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
+    parser.add_argument("-T","--tumor", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
+    parser.add_argument("-S","--samples", required=False, default=config.count_reads.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
+    parser.add_argument("-b","--baffile", required=True, type=str, help="1bed file containing SNP information from tumor samples (9i.e., baf/bulk.1bed)")
+    parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
+    parser.add_argument("-st", "--samtools", required = False, type = str, default = config.paths.samtools, help = 'Path to samtools executable')   
+    parser.add_argument("-j", "--processes", required=False, default=config.count_reads.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
+    
+    # TODO: support these arguments
+    #parser.add_argument("-r","--regions", required=False, default=config.count_reads.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
+    #parser.add_argument("-q", "--readquality", required=False, default=config.count_reads.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    args = parser.parse_args(args)
+
+    # Parse BAM files, check their existence, and infer or parse the corresponding sample names
+    bams = [args.normal] + args.tumor
+    names = args.samples
+    for bamfile in bams:
+        if(not os.path.isfile(bamfile)): raise ValueError(sp.error("The specified tumor BAM file does not exist"))
+    names = args.samples
+    if names != None and len(bams) != len(names):
+        raise ValueError(sp.error("A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample"))
+    if names is None:
+        names = ['normal']
+        for bamfile in bams[1:]:
+            names.append(os.path.splitext(os.path.basename(bamfile))[0])
+    
+    print(bams)
+    print(names)
+    
+    # In default mode, check the existence and compatibility of samtools and bcftools
+    samtools = os.path.join(args.samtools, "samtools")
+    if sp.which(samtools) is None:
+        raise ValueError(sp.error("samtools has not been found or is not executable."))
+
+    # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
+    chromosomes = extractChromosomes(samtools,  [bams[0], "normal"], [(x, "") for x in bams[1:]])
+
+    # Check that chr notation is consistent across chromosomes
+    using_chr = [a.startswith('chr') for a in chromosomes]
+    if any(using_chr):
+        if not all(using_chr):
+            raise ValueError(sp.error("Some chromosomes use 'chr' notation while others do not."))
+        use_chr = True
+    else:
+        use_chr = False
+
+    ver = args.refversion
+    if ver != 'hg19' and ver != 'hg38':
+        raise ValueError(sp.error("Invalid reference genome version. Supported versions are 'hg38' and 'hg19'."))
+
+    if not os.path.exists(args.baffile):
+        raise ValueError(sp.error(f"BAF file not found: {args.baffile}"))
+
+    if not args.processes > 0: raise ValueError(sp.error("The number of parallel processes must be greater than 0"))
+    #if not args.readquality >= 0: raise ValueError(sp.error("The read mapping quality must be positive"))
+   
+    if not os.path.exists(args.outdir):
+        os.mkdirs(args.outdir)
+
+    return {"bams" : bams,
+            "names" : names,
+            "chromosomes" : chromosomes,
+            "samtools" : samtools,
+            "j" : args.processes,
+            "outdir" : args.outdir,
+            "use_chr" : use_chr,
+            "refversion":ver,
+            "baf_file" : args.baffile}
+    
+    
 def parse_array_arguments(args=None):    
     parser = argparse.ArgumentParser(description = "Aggregate count information to form input to adaptive binning.")
     parser.add_argument('-s', '--stem', type = str, help = 'Path to HATCHet working directory with /baf and /counts subdirectories (default: current directory', default = config.abin.stem)
@@ -571,7 +646,7 @@ def parse_count_alleles_arguments(args=None):
             "verbose" : args.verbose}
 
 
-def parse_count_reads_arguments(args=None):
+def parse_count_reads_fw_arguments(args=None):
     """
     Parse command line arguments
     Returns:
