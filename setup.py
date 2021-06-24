@@ -80,7 +80,7 @@ setup(
     packages=['hatchet', 'hatchet.utils', 'hatchet.bin', 'hatchet.resources'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini'],
-                  'hatchet.resources' : ['*.pos', '*.txt']},
+                  'hatchet.resources' : ['hg19.centromeres.txt', 'hg38.centromeres.txt']},
     ext_modules=[CMakeExtension('hatchet.solve')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
