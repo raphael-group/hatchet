@@ -13,10 +13,15 @@ from .Supporting import *
 from . import Supporting as sp
 from . import ProgressBar as pb
 
+#import resource
+#import tracemalloc
+
 def main(args=None):
     log(msg="# log notes\n", level="STEP")
     args = ap.parse_phase_arguments(args)
     logArgs(args, 80)
+
+    #tracemalloc.start()
 
     if args["refvers"] not in ["hg19", "hg38"]:
         raise ValueError(sp.error("The reference genome version of your samples is not \"hg19\" or \"hg38\", please specify one of these two options!\n"))
@@ -43,17 +48,32 @@ def main(args=None):
     if not os.path.exists(args["outdir"]):
         os.makedirs(args["outdir"])
     
-    vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=args["chromosomes"], 
+    chromosomes = []
+    for chro in args["chromosomes"]:
+        if chro.endswith('X') or chro.endswith('Y'):
+            sp.log(msg=f'Skipping chromosome {chro} (because it ends with X or Y)\n', level = 'WARN')
+        else:
+            chromosomes.append(chro)
+    
+    vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=chromosomes, 
                 hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
                 num_workers=args["j"], verbose=False) 
-    concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=args["chromosomes"])
+    concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=chromosomes)
+
 
     # read shapeit output, print fraction of phased snps per chromosome
-    print_log(path=args["outdir"], chromosomes=args["chromosomes"])
+    print_log(path=args["outdir"], chromosomes=chromosomes)
     cleanup(args["outdir"])
             
+    """
+    current, peak = tracemalloc.get_traced_memory()
+    print(f"Current memory usage is {current / 10**6}MB; Peak was {peak / 10**6}MB")
     print(concat_vcf)
-
+    print(resource.getrusage(resource.RUSAGE_SELF))
+    print()
+    print(resource.getrusage(resource.RUSAGE_CHILDREN))
+    """
+    
 def cleanup(outdir):
     f = []
     # shapeit logs
