@@ -16,6 +16,7 @@ import hatchet.resources
 
 from .ArgParsing import parse_count_reads_arguments
 from .Supporting import log, logArgs, error
+from . import TotalCounting as tc
 
 def main(args=None):
     log(msg="# Parsing and checking input arguments\n", level="STEP")
@@ -73,53 +74,73 @@ def main(args=None):
 
     ### Aggregate count files into count arrays for adaptive binning ###
     # (formerly formArray)
-    use_chr = args['use_chr']
     
-    with path(hatchet.resources, f'{args["refversion"]}.centromeres.txt') as centromeres:
-        centromeres = pd.read_table(centromeres, header = None, names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
-
-    n_workers = min(len(chromosomes), jobs)
-
-    # Read in centromere locations table
-    with path(hatchet.resources, f'{args["refversion"]}.centromeres.txt') as centromeres:
-        centromeres = pd.read_table(centromeres, header = None, names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
-    
-    chr2centro = {}
-    for ch in centromeres.CHR.unique():
-        my_df = centromeres[centromeres.CHR == ch]
-        assert (my_df.gieStain == 'acen').all()
-        # Each centromere should consist of 2 adjacent segments
-        assert len(my_df == 2)
-        assert my_df.START.max() == my_df.END.min()
-        if use_chr:
-            if ch.startswith('chr'):
-                chr2centro[ch] = my_df.START.min(), my_df.END.max()
-            else:
-                chr2centro['chr' + ch] = my_df.START.min(), my_df.END.max()
-        else:
-            if ch.startswith('chr'):
-                chr2centro[ch[3:]] = my_df.START.min(), my_df.END.max()
-            else:
-                chr2centro[ch] = my_df.START.min(), my_df.END.max()
+    if len(missing_arrays(outdir, chromosomes)) == 0:
+        log(msg="# Found all array files, skipping to total read counting. \n", level="STEP")
+    else:
+        use_chr = args['use_chr']
         
-    for ch in chromosomes:
-        if ch not in chr2centro:
-            raise ValueError(error(f"Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument."))
+        with path(hatchet.resources, f'{args["refversion"]}.centromeres.txt') as centromeres:
+            centromeres = pd.read_table(centromeres, header = None, names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
 
-    # create output directory if it doesn't yet exist
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
+        n_workers = min(len(chromosomes), jobs)
 
-    # form parameters for each worker
-    params = [(outdir, names, ch,
-               chr2centro[ch][0], chr2centro[ch][1], args['baf_file'])
-              for ch in chromosomes]
-    
-    # dispatch workers
-    with mp.Pool(n_workers) as p:
-        p.map(run_chromosome_wrapper, params)
+        # Read in centromere locations table
+        with path(hatchet.resources, f'{args["refversion"]}.centromeres.txt') as centromeres:
+            centromeres = pd.read_table(centromeres, header = None, names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
         
-    np.savetxt(os.path.join(outdir, 'samples.txt'), names, fmt = '%s')
+        chr2centro = {}
+        for ch in centromeres.CHR.unique():
+            my_df = centromeres[centromeres.CHR == ch]
+            assert (my_df.gieStain == 'acen').all()
+            # Each centromere should consist of 2 adjacent segments
+            assert len(my_df == 2)
+            assert my_df.START.max() == my_df.END.min()
+            if use_chr:
+                if ch.startswith('chr'):
+                    chr2centro[ch] = my_df.START.min(), my_df.END.max()
+                else:
+                    chr2centro['chr' + ch] = my_df.START.min(), my_df.END.max()
+            else:
+                if ch.startswith('chr'):
+                    chr2centro[ch[3:]] = my_df.START.min(), my_df.END.max()
+                else:
+                    chr2centro[ch] = my_df.START.min(), my_df.END.max()
+            
+        for ch in chromosomes:
+            if ch not in chr2centro:
+                raise ValueError(error(f"Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument."))
+
+        # create output directory if it doesn't yet exist
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+
+        # form parameters for each worker
+        params = [(outdir, names, ch,
+                chr2centro[ch][0], chr2centro[ch][1], args['baf_file'])
+                for ch in chromosomes]
+        
+        # dispatch workers
+        with mp.Pool(n_workers) as p:
+            p.map(run_chromosome_wrapper, params)
+            
+        np.savetxt(os.path.join(outdir, 'samples.txt'), names, fmt = '%s')
+            
+    # TODO: take -q option and pass in here
+    log(msg="# Counting total number of reads for normal and tumor samples\n", level="STEP")
+    total_counts = tc.tcount(samtools= samtools, samples=[(bams[i], names[i]) for i in range(len(names))], chromosomes= chromosomes,
+                             num_workers= jobs, q= 0)
+
+    try:
+        total = {name : sum(total_counts[name, chromosome] for chromosome in chromosomes) for name in names}
+    except:
+        raise KeyError(error("Either a chromosome or a sample has not been considered in the total counting!"))
+
+    log(msg="# Writing the total read counts for all samples in {}\n".format(os.path.join(outdir, 'total.tsv')), level="STEP")
+    with open(os.path.join(outdir, 'total.tsv'), 'w') as f:
+        for name in names:
+            f.write("{}\t{}\n".format(name, total[name]))
+
         
 def mosdepth_wrapper(params):
     run_mosdepth(*params)
@@ -412,6 +433,23 @@ def check_counts_files(dcounts, chrs, all_names):
     return [a for a in expected_counts_files(dcounts, chrs, all_names) 
             if not os.path.exists(a)]
 
+def missing_arrays(dabin, chrs):
+    missing = []
+    # formArray (abin/<chr>.<total/thresholds> files))
+
+    fname = os.path.join(dabin, f'samples.txt')
+    if not os.path.exists(fname):
+        missing.append(fname)     
+    
+    for ch in chrs:
+        fname = os.path.join(dabin, f'{ch}.total')
+        if not os.path.exists(fname):
+            missing.append(fname)
+        fname = os.path.join(dabin, f'{ch}.thresholds')
+        if not os.path.exists(fname):
+            missing.append(fname)
+    
+    return missing
 
 if __name__ == '__main__':
     main()
