@@ -21,6 +21,12 @@ def main(args=None):
     args = ap.parse_genotype_snps_arguments(args)
     logArgs(args, 80)
 
+    """
+    # Create subdirectory for sex chromosomes to separate them from autosomes
+    if not os.path.exists(os.path.join(args['outputsnps'], 'sexchroms')):
+        os.mkdir(os.path.join(args['outputsnps'], 'sexchroms'))
+    """
+    
     log(msg="# Inferring SNPs from the normal sample\n", level="STEP")
     snps = call(bcftools=args["bcftools"], reference=args["reference"], samples=[args["normal"]], chromosomes=args["chromosomes"], 
                 num_workers=args["j"], q=args["q"], Q=args["Q"], mincov=args["mincov"], dp=args["maxcov"], 
@@ -126,6 +132,15 @@ class Caller(Process):
 
     def callSNPs(self, bamfile, samplename, chromosome):
         errname = os.path.join(self.outdir, "{}_{}_bcftools.log".format(samplename, chromosome))
+        
+        outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
+        """
+        if chromosome.endswith('X') or chromosome.endswith('Y'):
+            outfile = os.path.join(self.outdir, 'sexchroms', '{}.vcf.gz'.format(chromosome))
+        else:
+            outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
+        """
+            
         if self.snplist is not None:
             cmd_tgt = "{} query -f '%CHROM\t%POS\n' -r {} {}".format(self.bcftools, chromosome, self.snplist)
             cmd_gzip = "gzip -9 -"
@@ -140,7 +155,7 @@ class Caller(Process):
                 os.remove(errname)
 
         cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}".format(self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp)
-        cmd_call = "{} call -mv -Oz -o {}".format(self.bcftools, os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome)))
+        cmd_call = "{} call -mv -Oz -o {}".format(self.bcftools, outfile)
         if self.snplist is not None:
             assert os.path.isfile(tgtfile)
             cmd_mpileup += " -T {}".format(tgtfile)
@@ -158,7 +173,7 @@ class Caller(Process):
             os.remove(errname)
             if self.snplist is not None:
                 os.remove(tgtfile)
-        return os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
+        return outfile
 
 
 if __name__ == '__main__':
