@@ -38,9 +38,16 @@ def main(args=None):
     rename_files = ""   # file for renaming chrs with bcftools, rename_files[0] for removing "chr, rename_files[1] for adding "chr" 
     if args["refvers"] == "hg38":
         #dwnld reference panel genome and chain files
-        hg19_path = os.path.join(rpd, "hg19_renamed.fa")
-        chains = {"hg38_hg19" : os.path.join(rpd, "hg38ToHg19.renamed.chain"), 
-                "hg19_hg38" : os.path.join(rpd, "hg19ToHg38.renamed.chain")}
+        hg19_path = os.path.join(rpd, "hg19_no_chr.fa")
+        if args["chrnot"] == "true":
+            chains = {"hg38_hg19" : os.path.join(rpd, "hg38ToHg19.chr.chain"), 
+                    "hg19_hg38" : os.path.join(rpd, "hg19ToHg38.chr.chain")}
+        elif args["chrnot"] == "false":
+            chains = {"hg38_hg19" : os.path.join(rpd, "hg38ToHg19.no_chr.chain"), 
+                    "hg19_hg38" : os.path.join(rpd, "hg19ToHg38.no_chr.chain")}
+        if not os.path.isfile(chains["hg38_hg19"]) or not os.path.isfile(chains["hg19_hg38"]):
+            raise ValueError(sp.error("The appropriate liftover chain files could not be located! Please run the PhasePrep.py command that downloads these\n"))
+
     elif args["refvers"] == "hg19" and args["chrnot"] == "true":
         rename_files = [ os.path.join(rpd, f"rename_chrs{i}.txt") for i in range(1,3) ] 
 
@@ -80,6 +87,7 @@ def cleanup(outdir):
     [ f.extend( glob.glob(f"shapeit*{ext}"))  for ext in [".log", ".mm", ".hh"]]
     # intermediate files
     exts = ["_phased.vcf.gz", "_phased.vcf.gz.csi", "_filtered.vcf.gz", 
+            "_rejected.vcf.gz", "_lifted.vcf.gz", "_lifted.vcf.gz.tbi",
             "_toFilter.vcf.gz", "_toConcat.vcf.gz", "_toConcat.vcf.gz.csi", 
             ".haps", ".sample", "_alignments.snp.strand", "_alignments.snp.strand.exclude"]
     [ f.append( os.path.join(outdir, f"{c}{e}") ) for c in range(1,23) for e in exts ]
