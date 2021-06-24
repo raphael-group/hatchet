@@ -268,7 +268,7 @@ def parse_count_arguments(args=None):
     parser = argparse.ArgumentParser(description = 'Count the reads that start at and cover each position.')
     parser.add_argument("-B","--bams", required=True, type=str, nargs='+', help="BAM files corresponding to samples (normal or tumor)")
     parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
-    parser.add_argument("-S","--samples", required=False, default=config.baf.samples, type=str, nargs='+', help="Sample names for each BAM (given as e.g. \"normal tumor1 tumor2 ... \")")
+    parser.add_argument("-S","--samples", required=False, type=str, nargs='+', help="Sample names for each BAM (given as e.g. \"normal tumor1 tumor2 ... \")")
     parser.add_argument("-st", "--samtools", required = False, type = str, default = config.paths.samtools, help = 'Path to samtools executable')   
     parser.add_argument("-j", "--processes", type = int, help = 'Number of concurrent jobs', default = 24)   
     parser.add_argument("-c", "--compression", type = int, help = 'Level of gzip compression from 1 to 9 (default 6)', default = 6)   
