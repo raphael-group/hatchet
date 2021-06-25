@@ -620,7 +620,7 @@ def execute_python(solver, args, n, outprefix):
 
     _mode = ('both', 'ilp', 'cd')[args['M']]
 
-    obj, cA, cB, u = solve(
+    obj, cA, cB, u, cluster_ids, sample_ids = solve(
         solver=solver,
         clonal=args['c'],
         seg_file=args['seg'],
@@ -637,7 +637,8 @@ def execute_python(solver, args, n, outprefix):
         max_iters=args['f']
     )
 
-    segmentation(cA, cB, u, bbc_file=args['bbc'], bbc_out_file=bbc_out_file, seg_out_file=seg_out_file)
+    segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file=args['bbc'], bbc_out_file=bbc_out_file,
+                 seg_out_file=seg_out_file)
 
     if args['v'] >= 1:
         sys.stderr.write(info('# Best objective found with {} clones: {}\n'.format(n, obj)))

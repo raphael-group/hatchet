@@ -1,5 +1,6 @@
 from copy import copy
 from concurrent.futures import ProcessPoolExecutor, as_completed
+
 from .ilp_subset import ILPSubset
 from .utils import Random
 
@@ -24,7 +25,7 @@ class Worker:
             carch_results = carch.run(self.solver_type)
             if carch_results is None:
                 return None
-            _obj_c, _cA, _cB, _ = carch_results
+            _obj_c, _cA, _cB, _, _, _ = carch_results
 
             uarch = copy(self.ilp)
             uarch.fix_c(_cA, _cB)
@@ -32,7 +33,7 @@ class Worker:
             uarch_results = uarch.run(self.solver_type)
             if uarch_results is None:
                 return None
-            _obj_u, _, _, _u = uarch_results
+            _obj_u, _, _, _u, _, _ = uarch_results
 
             delta = abs(_obj_c - _obj_u)
             if delta < tol:
@@ -77,14 +78,8 @@ class CoordinateDescent:
                     obj, cA, cB, u = results
                     result[obj] = cA, cB, u
 
-        # for u in seeds:
-        #     results = _work(self, u, solver_type, max_iters, max_convergence_iters)
-        #     if results is not None:
-        #         obj, cA, cB, u = results
-        #         result[obj] = cA, cB, u
-
         if not result:
             raise RuntimeError('Not a single feasible solution found!')
 
         best = min(result)
-        return (best,) + result[best]
+        return (best,) + result[best] + (self.ilp.cluster_ids, self.ilp.sample_ids)

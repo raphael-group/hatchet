@@ -74,14 +74,19 @@ def scale_rdr(rdr, copy_numbers, purity_tol=0.05):
     return rdr
 
 
-def segmentation(cA, cB, u, bbc_file, bbc_out_file=None, seg_out_file=None):
+def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None, seg_out_file=None):
     df = pd.read_csv(bbc_file, sep='\t')
     # Chromosomes may or may not have chr notation - force a string dtype anyway
     df['#CHR'] = df['#CHR'].astype(str)
     # TODO: The legacy C++ implementation interprets the 'coverage' column as an int
     df['COV'] = df['COV'].astype(int)
 
-    n_cluster, n_clone = cA.shape
+    n_cluster, n_clone = len(cluster_ids), len(cA[0])
+    cA = pd.DataFrame(cA, index=cluster_ids, columns=range(n_clone))
+    cB = pd.DataFrame(cB, index=cluster_ids, columns=range(n_clone))
+    u = pd.DataFrame(u, index=range(n_clone), columns=sample_ids)
+    # Make (n_sample, n_clone) in shape; easier to merge later
+    u = u.T
 
     # copy-numbers represented as <CN_A>|<CN_B> strings
     cN = cA.astype(str) + '|' + cB.astype(str)
@@ -89,7 +94,6 @@ def segmentation(cA, cB, u, bbc_file, bbc_out_file=None, seg_out_file=None):
 
     # Merge in copy-number + proportion information to our original Dataframe
     df = df.merge(cN, left_on='CLUSTER', right_index=True)
-    u = u.T  # Make (n_sample, n_clone) in shape; easier to merge later
     u.columns = ['u_normal'] + [f'u_clone{i}' for i in range(1, n_clone)]
     df = df.merge(u, left_on='SAMPLE', right_index=True)
 
