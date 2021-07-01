@@ -44,6 +44,8 @@ def main(args=None):
     for key in sorted(combo, key=(lambda x : (sp.numericOrder(x[0]), int(x[1]), int(x[2])))):
         for sample in sorted(combo[key]):
             outbins.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key[0], key[1], key[2], sample[0], sample[1], sample[2], sample[3], sample[4], sample[5], sample[6], clusterAssignments[bintoidx[key]]))
+    if outbins is not sys.stdout:
+        outbins.close()
 
     sp.log(msg="# Segmenting bins\n", level="STEP")
     clusters = {cluster : set(key for key in combo if clusterAssignments[bintoidx[key]] == cluster) for cluster in set(clusterAssignments)}
@@ -61,6 +63,8 @@ def main(args=None):
         for sample in sorted(segments[key]):
             record = segments[key][sample]
             outsegments.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(key, sample, record[0], record[1], record[2], record[3], record[4], record[5], record[6]))
+    if outsegments is not sys.stdout:
+        outsegments.close()
 
 
 def readBB(bbfile):
