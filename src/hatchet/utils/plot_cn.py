@@ -42,7 +42,7 @@ def parsing_arguments(args=None):
     parser.add_argument("-n","--patientnames", required=False, default=config.plot_cn.patientnames, type=str, help='Names of patients between apices (default: inferred from filenames)')
     parser.add_argument("-u","--minu", required=False, default=config.plot_cn.minu, type=float, help='Minimum proportion of a CNA to be considered subclonal (default: 0.2)"')
     parser.add_argument("-x","--rundir", required=False, default=config.plot_cn.rundir, type=str, help='Running directory (default: current directory)')
-    parser.add_argument("-b","--baseCN", required=False, default=config.plot_cn.basecn, type=str, help='Base copy number (default: inferred from tumor ploidy)')
+    parser.add_argument("-b","--baseCN", required=False, default=config.plot_cn.basecn, type=int, help='Base copy number (default: inferred from tumor ploidy)')
     parser.add_argument("-sC","--figsizeclones", required=False, default=config.plot_cn.figsizeclones, type=str, help='Size of clone plots in the form "(X-SIZE, Y-SIZE)"')
     parser.add_argument("-sP","--figsizecn", required=False, default=config.plot_cn.figsizecn, type=str, help='Size of CN plots in the form "(X-SIZE, Y-SIZE)"')
     parser.add_argument("-sG","--figsizegrid", required=False, default=config.plot_cn.figsizegrid, type=str, help='Size of grid plots in the form "(X-SIZE, Y-SIZE)"')

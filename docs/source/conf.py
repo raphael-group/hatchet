@@ -32,7 +32,7 @@ import hatchet
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['myst_parser', 'sphinx.ext.autodoc', 'sphinx.ext.mathjax', 'sphinxcontrib.bibtex', 'numpydoc']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.mathjax', 'sphinxcontrib.bibtex', 'numpydoc', 'recommonmark', 'sphinx_markdown_tables']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -41,7 +41,10 @@ templates_path = ['_templates']
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+# source_suffix = '.rst'
+
+# Extra file to copy over to the build directory
+html_extra_path = ['../../script/hatchet.ini', '../../custom/GATK4-CNV/sample1.GATK4.CNV.seg', '../../custom/GATK4-CNV/sample2.GATK4.CNV.seg', '../../custom/GATK4-CNV/custom-gatk4-cnv.sh']
 
 # The master toctree document.
 master_doc = 'index'

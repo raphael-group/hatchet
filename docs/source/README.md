@@ -12,7 +12,7 @@ The novel simulationg framework, MASCoTE, is available at
 
 [MASCoTE](https://github.com/raphael-group/mascote)
 
-The simulated data, the results of all the methods considered in the comparison, the results of HATCHet on the published whole-genome multi-sample tumor sequencing datasets ([(Gundem et al., *Nature*, 2015)](...) and [(Makohon-Moore et al., *Nature genetics*, 2017)](...)) and all the related analyses are available at
+The simulated data, the results of all the methods considered in the comparison, the results of HATCHet on the published whole-genome multi-sample tumor sequencing datasets ([(Gundem et al., *Nature*, 2015)](https://www.nature.com/articles/nature14347) and [(Makohon-Moore et al., *Nature genetics*, 2017)](https://www.nature.com/articles/ng.3764)) and all the related analyses are available at
 
 [manuscript's data](https://github.com/raphael-group/hatchet-paper)
 
@@ -103,7 +103,7 @@ source activate hatchet
 #### Manual Installation
 
 If you wish to install `HATCHet` directly from this repository, the steps are a bit more involved. Please refer to the
-[Manual Installation](doc_manual_install.html) document for more details.
+[Manual Installation](doc_manual_install.md) document for more details.
 
 ### Using Gurobi
 <a name="usinggurobi"></a>
