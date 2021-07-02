@@ -61,7 +61,7 @@ class CoordinateDescent:
 
         self.seeds = None
 
-    def run(self, solver_type='gurobipy', max_iters=10, max_convergence_iters=2, n_seed=400, j=8, random_seed=None):
+    def run(self, solver_type='gurobi', max_iters=10, max_convergence_iters=2, n_seed=400, j=8, random_seed=None):
         with Random(random_seed):
             seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
 

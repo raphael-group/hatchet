@@ -531,7 +531,7 @@ class ILPSubset:
                 U[:, _k] = v
         return U
 
-    def run(self, solver_type='gurobipy', timelimit=100, write_path=None):
+    def run(self, solver_type='gurobi', timelimit=100, write_path=None):
         if solver_type == 'gurobipy':
             solver = pe.SolverFactory('gurobi', solver_io='python')
         else:

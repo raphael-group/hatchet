@@ -7,7 +7,7 @@ from .cd import CoordinateDescent
 from .utils import parse_clonal, scale_rdr
 
 
-def solve(clonal, seg_file, n, solver='gurobipy', solve_mode='cd', d=-1, cn_max=-1, mu=0.01, diploid_threshold=0.1,
+def solve(clonal, seg_file, n, solver='gurobi', solve_mode='cd', d=-1, cn_max=-1, mu=0.01, diploid_threshold=0.1,
           ampdel=True, n_seed=400, n_worker=8, random_seed=None, max_iters=None):
 
     assert solve_mode in ('ilp', 'cd', 'both'), 'Unrecognized solve_mode'

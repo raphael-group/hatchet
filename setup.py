@@ -76,7 +76,7 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.3.3',
+    version='0.4.0',
     packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini']},
@@ -94,7 +94,6 @@ setup(
 
     install_requires=[
         'biopython',
-        'gurobipy',
         'matplotlib',
         'pandas',
         'psutil',
