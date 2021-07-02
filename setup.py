@@ -77,10 +77,10 @@ class CMakeBuild(build_ext):
 setup(
     name='hatchet',
     version='0.4.0',
-    packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
+    packages=['hatchet', 'hatchet.utils', 'hatchet.utils.solve', 'hatchet.bin'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini']},
-    ext_modules=[CMakeExtension('hatchet.solve')],
+    ext_modules=[] if 'HATCHET_BUILD_NOEXT' in os.environ else [CMakeExtension('hatchet.solve')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 
