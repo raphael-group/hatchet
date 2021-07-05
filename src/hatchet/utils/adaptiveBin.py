@@ -7,6 +7,8 @@ from scipy.stats import binom, norm
 import gzip
 import subprocess
 import traceback
+from importlib.resources import path
+import hatchet.resources
 
 from .ArgParsing import parse_abin_arguments
 from . import Supporting as sp
@@ -17,7 +19,7 @@ def main(args=None):
     args = parse_abin_arguments(args)
     sp.logArgs(args, 80)
     
-    stem = args['stem']
+    baffile = args['baffile']
     threads = args['processes']
     chromosomes = args['chromosomes']
     outfile = args['outfile']
@@ -25,8 +27,6 @@ def main(args=None):
     msr = args['min_snp_reads']
     mtr = args['min_total_reads']
     use_chr = args['use_chr']
-    centromeres = args['centromeres']
-    compressed = args['compressed']
     phase = args['phase']
     blocksize = args['blocksize']
     max_snps_per_block = args['max_snps_per_block']
@@ -36,7 +36,8 @@ def main(args=None):
     n_workers = min(len(chromosomes), threads)
 
     # Read in centromere locations table
-    centromeres = pd.read_table(centromeres, header = None, names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
+    with path(hatchet.resources, f'{args["ref_version"]}.centromeres.txt') as centromeres:
+        centromeres = pd.read_table(centromeres, header = None, names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
     chr2centro = {}
     for ch in centromeres.CHR.unique():
         my_df = centromeres[centromeres.CHR == ch]
@@ -59,15 +60,13 @@ def main(args=None):
         if ch not in chr2centro:
             raise ValueError(sp.error(f"Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument."))
 
-    arraystems = {ch:os.path.join(args['array'], ch) for ch in chromosomes}
-
 
     isX = {ch:ch.endswith('X') for ch in chromosomes}
     isY = {ch:ch.endswith('Y') for ch in chromosomes}
 
     # form parameters for each worker
-    params = [(stem, all_names, ch, outfile + f'.{ch}', 
-               chr2centro[ch][0], chr2centro[ch][1], msr, mtr, compressed, arraystems[ch],
+    params = [(baffile, all_names, ch, outfile + f'.{ch}', 
+               chr2centro[ch][0], chr2centro[ch][1], msr, mtr, args['array'],
                isX[ch] or isY[ch], use_em, phase, blocksize, max_snps_per_block, test_alpha)
               for ch in chromosomes]
     # dispatch workers
@@ -569,31 +568,16 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
                     
     return pd.DataFrame(rows, columns = ['#CHR', 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF', 'TOTAL_READS', 'NORMAL_READS'])
 
-def get_chr_end(stem, all_names, chromosome, compressed):
-    starts_files = []
-    for name in all_names:
-        if compressed:
-            starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts.gz'))    
-        else:
-            starts_files.append(os.path.join(stem, 'counts', name + '.' + chromosome + '.starts'))    
-
-    last_start = 0
-    for sfname in starts_files:
-        if not compressed:
-            my_last = int(subprocess.run(['tail', '-1', sfname], capture_output=True).stdout.decode('utf-8').strip())
-        else:
-            zcat = subprocess.Popen(('zcat', sfname), stdout= subprocess.PIPE)
-            tail = subprocess.Popen(('tail', '-1'), stdin=zcat.stdout, stdout = subprocess.PIPE)
-            tail.wait()
-            my_last = int(tail.stdout.read().decode('utf-8').strip())      
-                    
-        if my_last > last_start:
-            last_start = my_last
+def get_chr_end(stem, chromosome):
+    fname = os.path.join(stem, chromosome + '.thresholds.gz')
+    zcat = subprocess.Popen(('zcat', fname), stdout= subprocess.PIPE)
+    tail = subprocess.Popen(('tail', '-1'), stdin=zcat.stdout, stdout = subprocess.PIPE)
+    last_start = int(tail.stdout.read().decode('utf-8').strip())      
     
     return last_start 
 
-def run_chromosome(stem, all_names, chromosome, outfile, centromere_start, centromere_end, 
-         min_snp_reads, min_total_reads, compressed, arraystem, xy, use_em, phasefile, blocksize, 
+def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, centromere_end, 
+         min_snp_reads, min_total_reads, arraystem, xy, use_em, phasefile, blocksize, 
          max_snps_per_block, test_alpha):
     """
     Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
@@ -604,27 +588,32 @@ def run_chromosome(stem, all_names, chromosome, outfile, centromere_start, centr
             sp.log(msg=f"Output file already exists, skipping chromosome {chromosome}\n", level = "INFO")
             return
         
+        sp.log(msg=f"Loading intermediate files for chromosome {chromosome}\n", level = "INFO")
+        total_counts = np.loadtxt(os.path.join(arraystem, f'{chromosome}.total'), dtype = np.uint32)
+        complete_thresholds = np.loadtxt(os.path.join(arraystem, f'{chromosome}.thresholds'), dtype = np.uint32)
+        
         # TODO: identify whether XX or XY, and only avoid SNPs/BAFs for XY
         if xy:
             sp.log(msg='Running on sex chromosome -- ignoring SNPs \n', level = "INFO")
             min_snp_reads = 0
             
             # TODO: do this procedure only for XY individuals
-            last_start = get_chr_end(stem, all_names, chromosome, compressed)
-            positions = np.arange(5000, last_start, 5000)
-            snp_counts = np.zeros((len(positions), len(all_names) - 1), dtype = np.int8)
+            ### construct dummy SNP positions and all-0 snpcounts array for binning
+            before_centromere = complete_thresholds[complete_thresholds <= centromere_start]
+            after_centromere = complete_thresholds[complete_thresholds >= centromere_end]
+            positions_p = np.mean(np.vstack([before_centromere[:-1], before_centromere[1:]]), axis = 0).astype(np.uint64)
+            positions_q = np.mean(np.vstack([after_centromere[:-1], after_centromere[1:]]), axis = 0).astype(np.uint64)
+            positions = np.concatenate([positions_p, positions_q])
+            snp_counts = np.zeros((len(positions), 2), dtype = np.int8)
             snpsv = None
 
         else:
             #sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
             # Load SNP positions and counts for this chromosome
-            positions, snp_counts, snpsv = read_snps(os.path.join(stem, 'baf', 'bulk.1bed'), chromosome, all_names, phasefile = phasefile)
+            positions, snp_counts, snpsv = read_snps(baffile, chromosome, all_names, phasefile = phasefile)
             
             
-        sp.log(msg=f"Loading intermediate files for chromosome {chromosome}\n", level = "INFO")
-        total_counts = np.loadtxt(arraystem + '.total', dtype = np.uint32)
-        complete_thresholds = np.loadtxt(arraystem + '.thresholds', dtype = np.uint32)
-        
+
 
         sp.log(msg=f"Binning p arm of chromosome {chromosome}\n", level = "INFO")
         if len(np.where(positions <= centromere_start)[0]) > 0:

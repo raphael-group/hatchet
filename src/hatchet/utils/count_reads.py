@@ -30,54 +30,57 @@ def main(args=None):
     jobs = args["j"]
     outdir = args["outdir"]
     
-    if len(check_counts_files(outdir, chromosomes, names)) == 0:
-        log(msg="# Found all intermediate count files, skipping to intermediate arrays\n", level="STEP")
     
-    else:
-        if which("mosdepth") is None:
-            raise ValueError(error("The 'mosdepth' executable was not found on PATH. \
-                Please install mosdepth (e.g., conda install -c bioconda mosdepth) and/or add it to your path"))
-
-        params = zip(np.repeat(chromosomes,  len(bams)), 
-            [outdir] * len(bams) * len(chromosomes), 
-            [samtools] * len(bams) * len(chromosomes), 
-            bams * len(chromosomes),
-            names * len(chromosomes))
-
-        n_workers_samtools = min(int(np.round(jobs / 2)), len(bams) * len(chromosomes))
-        with mp.Pool(n_workers_samtools) as p: # divide by 2 because each worker starts 2 processes
-            p.map(count_chromosome_wrapper, params)
-        
-        n_workers_mosdepth = min(jobs, len(bams))
-
-        # compute number of decompression threads to use for each call to mosdepth
-        if jobs > len(bams):
-            base = min(int(jobs / n_workers_mosdepth), 4)
-            threads_per_worker = [base] * n_workers_mosdepth
-
-            if base < 4:
-                remainder = jobs % n_workers_mosdepth
-                i = 0
-                while remainder > 0:
-                    threads_per_worker[i] += 1
-                    i += 1
-                    remainder -= 1
-        else:
-            threads_per_worker = [1] * n_workers_mosdepth
-
-        mosdepth_params = [(outdir, names[i], bams[i], threads_per_worker[i]) for i in range(len(bams))]
-        with mp.Pool(n_workers_mosdepth) as p:
-            p.map(mosdepth_wrapper, mosdepth_params)
-            
-        if len(check_counts_files(outdir, chromosomes, names)) > 0:
-            raise ValueError(error("Missing some output counts files!"))
-
-    ### Aggregate count files into count arrays for adaptive binning ###
-    # (formerly formArray)
-    
-    if len(missing_arrays(outdir, chromosomes)) == 0:
+    if len(check_array_files(outdir, chromosomes)) == 0:
         log(msg="# Found all array files, skipping to total read counting. \n", level="STEP")
     else:
+        
+        if len(check_counts_files(outdir, chromosomes, names)) == 0:
+            log(msg="# Found all count files, skipping to forming arrays\n", level="STEP")
+        
+        else:
+            if which("mosdepth") is None:
+                raise ValueError(error("The 'mosdepth' executable was not found on PATH. \
+                    Please install mosdepth (e.g., conda install -c bioconda mosdepth) and/or add it to your path"))
+
+            params = zip(np.repeat(chromosomes,  len(bams)), 
+                [outdir] * len(bams) * len(chromosomes), 
+                [samtools] * len(bams) * len(chromosomes), 
+                bams * len(chromosomes),
+                names * len(chromosomes))
+
+            n_workers_samtools = min(int(np.round(jobs / 2)), len(bams) * len(chromosomes))
+            with mp.Pool(n_workers_samtools) as p: # divide by 2 because each worker starts 2 processes
+                p.map(count_chromosome_wrapper, params)
+            
+            n_workers_mosdepth = min(jobs, len(bams))
+
+            # compute number of decompression threads to use for each call to mosdepth
+            if jobs > len(bams):
+                base = min(int(jobs / n_workers_mosdepth), 4)
+                threads_per_worker = [base] * n_workers_mosdepth
+
+                if base < 4:
+                    remainder = jobs % n_workers_mosdepth
+                    i = 0
+                    while remainder > 0:
+                        threads_per_worker[i] += 1
+                        i += 1
+                        remainder -= 1
+            else:
+                threads_per_worker = [1] * n_workers_mosdepth
+
+            mosdepth_params = [(outdir, names[i], bams[i], threads_per_worker[i]) for i in range(len(bams))]
+            with mp.Pool(n_workers_mosdepth) as p:
+                p.map(mosdepth_wrapper, mosdepth_params)
+                
+            if len(check_counts_files(outdir, chromosomes, names)) > 0:
+                raise ValueError(error("Missing some counts files!"))
+
+        ### Aggregate count files into count arrays for adaptive binning ###
+        # (formerly formArray)
+        
+
         use_chr = args['use_chr']
         
         with path(hatchet.resources, f'{args["refversion"]}.centromeres.txt') as centromeres:
@@ -111,10 +114,6 @@ def main(args=None):
             if ch not in chr2centro:
                 raise ValueError(error(f"Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument."))
 
-        # create output directory if it doesn't yet exist
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
-
         # form parameters for each worker
         params = [(outdir, names, ch,
                 chr2centro[ch][0], chr2centro[ch][1], args['baf_file'])
@@ -126,20 +125,32 @@ def main(args=None):
             
         np.savetxt(os.path.join(outdir, 'samples.txt'), names, fmt = '%s')
             
-    # TODO: take -q option and pass in here
-    log(msg="# Counting total number of reads for normal and tumor samples\n", level="STEP")
-    total_counts = tc.tcount(samtools= samtools, samples=[(bams[i], names[i]) for i in range(len(names))], chromosomes= chromosomes,
-                             num_workers= jobs, q= 0)
+        if len(check_array_files(outdir, chromosomes)) > 0:
+            raise ValueError(error("Missing some output arrays!"))
+        else:
+            log(msg="# Array forming completed successfully, removing intermediate count files. \n", level="STEP")
+            [os.remove(f) for f in expected_counts_files(outdir, chromosomes, names)]
 
-    try:
-        total = {name : sum(total_counts[name, chromosome] for chromosome in chromosomes) for name in names}
-    except:
-        raise KeyError(error("Either a chromosome or a sample has not been considered in the total counting!"))
+            
+    totals_file = os.path.join(outdir, 'total.tsv')
+    if os.path.exists(totals_file):
+        log(msg="# Found total reads file, exiting. \n", level="STEP")
+        return
+    else: 
+        # TODO: take -q option and pass in here
+        log(msg="# Counting total number of reads for normal and tumor samples\n", level="STEP")
+        total_counts = tc.tcount(samtools= samtools, samples=[(bams[i], names[i]) for i in range(len(names))], chromosomes= chromosomes,
+                                num_workers= jobs, q= 0)
 
-    log(msg="# Writing the total read counts for all samples in {}\n".format(os.path.join(outdir, 'total.tsv')), level="STEP")
-    with open(os.path.join(outdir, 'total.tsv'), 'w') as f:
-        for name in names:
-            f.write("{}\t{}\n".format(name, total[name]))
+        try:
+            total = {name : sum(total_counts[name, chromosome] for chromosome in chromosomes) for name in names}
+        except:
+            raise KeyError(error("Either a chromosome or a sample has not been considered in the total counting!"))
+
+        log(msg="# Writing the total read counts for all samples in {}\n".format(totals_file), level="STEP")
+        with open(totals_file, 'w') as f:
+            for name in names:
+                f.write("{}\t{}\n".format(name, total[name]))
 
         
 def mosdepth_wrapper(params):
@@ -352,8 +363,8 @@ def run_chromosome(outdir, all_names, chromosome, centromere_start, centromere_e
     """
 
     try:
-        totals_out = outdir + '.total'
-        thresholds_out = outdir + '.thresholds'
+        totals_out = os.path.join(outdir, f'{chromosome}.total.gz')
+        thresholds_out = os.path.join(outdir, f'{chromosome}.thresholds.gz')
 
         if os.path.exists(totals_out) and os.path.exists(thresholds_out):
             log(msg=f"Output files already exist, skipping chromosome {chromosome}\n", level = "INFO")
@@ -433,23 +444,26 @@ def check_counts_files(dcounts, chrs, all_names):
     return [a for a in expected_counts_files(dcounts, chrs, all_names) 
             if not os.path.exists(a)]
 
-def missing_arrays(dabin, chrs):
-    missing = []
+def expected_arrays(darray, chrs):
+    expected = []
     # formArray (abin/<chr>.<total/thresholds> files))
 
-    fname = os.path.join(dabin, f'samples.txt')
-    if not os.path.exists(fname):
-        missing.append(fname)     
-    
+    fname = os.path.join(darray, f'samples.txt')
+    expected.append(fname)
+
     for ch in chrs:
-        fname = os.path.join(dabin, f'{ch}.total')
-        if not os.path.exists(fname):
-            missing.append(fname)
-        fname = os.path.join(dabin, f'{ch}.thresholds')
-        if not os.path.exists(fname):
-            missing.append(fname)
-    
-    return missing
+        fname = os.path.join(darray, f'{ch}.total.gz')
+        expected.append(fname)
+
+        fname = os.path.join(darray, f'{ch}.thresholds.gz')
+        expected.append(fname)
+
+    return expected
+
+def check_array_files(darray, chrs):
+    return [a for a in expected_arrays(darray, chrs) 
+            if not os.path.exists(a)]
+
 
 if __name__ == '__main__':
     main()

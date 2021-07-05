@@ -17,7 +17,7 @@ def parse_count_reads_arguments(args=None):
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumor", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-S","--samples", required=False, default=config.count_reads.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
-    parser.add_argument("-b","--baffile", required=True, type=str, help="1bed file containing SNP information from tumor samples (9i.e., baf/bulk.1bed)")
+    parser.add_argument("-b","--baffile", required=True, type=str, help="1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)")
     parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
     parser.add_argument("-st", "--samtools", required = False, type = str, default = config.paths.samtools, help = 'Path to samtools executable')   
     parser.add_argument("-j", "--processes", required=False, default=config.count_reads.processes, type=int, help="Number of available parallel processes (default: 2)")
@@ -40,9 +40,6 @@ def parse_count_reads_arguments(args=None):
         names = ['normal']
         for bamfile in bams[1:]:
             names.append(os.path.splitext(os.path.basename(bamfile))[0])
-    
-    print(bams)
-    print(names)
     
     # In default mode, check the existence and compatibility of samtools and bcftools
     samtools = os.path.join(args.samtools, "samtools")
@@ -230,26 +227,26 @@ def parse_clubb_kde_args(args=None):
 
 def parse_abin_arguments(args=None):    
     parser = argparse.ArgumentParser(description = "Perform adaptive binning, compute RDR and BAF for each bin, and produce a BB file.")
-    parser.add_argument('-s', '--stem', type = str, help = 'Path to HATCHet working directory with /baf and /counts subdirectories (default: current directory', default = config.abin.stem)
+    parser.add_argument("-b","--baffile", required=True, type=str, help="1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)")
     parser.add_argument('-o', '--outfile', required = True, type = str, help = 'Filename for output')   
     parser.add_argument('-n', '--normal', type = str, help = f'Filename stem corresponding to normal sample (default "{config.abin.normal}")', default = config.abin.normal)   
     parser.add_argument('--msr', type = int, help = f'Minimum SNP reads per bin (default {config.abin.msr})', default = config.abin.msr)
     parser.add_argument('--mtr', type = int, help = f'Minimum total reads per bin (default {config.abin.mtr})', default = config.abin.mtr)
     parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.abin.processes})', default = config.abin.processes)   
-    parser.add_argument('-C', '--centromeres', type = str, help = 'Centromere locations file', 
-                        default = '/n/fs/ragr-data/datasets/ref-genomes/centromeres/hg19.centromeres.txt')   
     parser.add_argument('-A', '--array', type = str, required = True, help = f'Directory containing array files (output from "array" command)')   
     parser.add_argument("-t","--totalcounts", required=True, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample')
     parser.add_argument("-p","--phase", required=False, default=config.abin.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')    
-    parser.add_argument("-b","--max_blocksize", required=False, default=config.abin.blocksize, type=int, help=f'Maximum size of phasing block (default {config.abin.blocksize})')    
+    parser.add_argument("-s","--max_blocksize", required=False, default=config.abin.blocksize, type=int, help=f'Maximum size of phasing block (default {config.abin.blocksize})')    
     parser.add_argument("-m","--max_spb", required=False, default=config.abin.max_spb, type=int, help=f'Maximum number of SNPs per phasing block (default {config.abin.max_spb})')    
     parser.add_argument("-a","--alpha", required=False, default=config.abin.alpha, type=float, help=f'Significance level for phase blocking adjacent SNPs. Higher means less trust in phasing. (default {config.abin.alpha})')    
-    parser.add_argument("--use_em", action='store_true', default=False, required=False, help="Use EM inference for BAF instead of MM")
+    parser.add_argument("--use_em", action='store_true', default=False, required=False, help="Use EM inference for BAF instead of exhaustive/MM")
+    parser.add_argument("-z", '--not_compressed', action='store_true', default=False, required=False, help="Non-compressed intermediate files")
+
+    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     args = parser.parse_args(args)
     
-    stem = args.stem
-    if len(stem) > 0 and not os.path.exists(stem):
-        raise ValueError(sp.error("The specified stem directory does not exist!"))
+    if not os.path.exists(args.baffile):
+        raise ValueError(sp.error(f"BAF file not found: {args.baffile}"))
     if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
         raise ValueError(sp.error("The specified file for total read counts does not exist!"))
     if args.phase is not None and not os.path.isfile(args.phase):
@@ -268,17 +265,16 @@ def parse_abin_arguments(args=None):
     if not os.path.exists(namesfile):
         raise ValueError(sp.error(f"Missing file containing sample names (1 per line): {namesfile}"))
     names = open(namesfile).read().split()
-    compressed = False
-
+    
     chromosomes = set()
     for f in os.listdir(args.array):            
         tkns = f.split('.')
-        if tkns[-1] == 'thresholds' or tkns[-1] == 'total':
-            chromosomes.add(tkns[-2])
+        if len(tkns) > 1 and (tkns[1] == 'thresholds' or tkns[1] == 'total'):
+            chromosomes.add(tkns[0])
 
     for ch in chromosomes:
-        totals_arr = os.path.join(args.array, f'{ch}.total')
-        thresholds_arr = os.path.join(args.array, f'{ch}.thresholds')
+        totals_arr = os.path.join(args.array, f'{ch}.total.gz')
+        thresholds_arr = os.path.join(args.array, f'{ch}.thresholds.gz')
         if not os.path.exists(totals_arr):
             raise ValueError(sp.error("Missing array file: {}".format(totals_arr)))
         if not os.path.exists(thresholds_arr):
@@ -292,11 +288,6 @@ def parse_abin_arguments(args=None):
     names = [args.normal] + names
         
     sp.log(msg = f"Identified {len(chromosomes)} chromosomes.\n", level = "INFO")
-    sp.log(msg = f"Identified {'gzip-compressed' if compressed else 'uncompressed'} starts files.\n", level = "INFO")
-    
-
-    if not os.path.exists(args.centromeres):
-        raise ValueError(sp.error("Centromeres file does not exist."))
     
     using_chr = [a.startswith('chr') for a in chromosomes]
     if any(using_chr):
@@ -306,7 +297,6 @@ def parse_abin_arguments(args=None):
     else:
         use_chr = False
         
-
     if args.processes <= 0:
         raise ValueError("The number of jobs must be positive.")
     if args.msr <= 0:
@@ -314,26 +304,28 @@ def parse_abin_arguments(args=None):
     if args.mtr <= 0:
         raise ValueError("The minimum number of total reads must be positive.")
     
+    ver = args.refversion
+    if ver != 'hg19' and ver != 'hg38':
+        raise ValueError(sp.error("Invalid reference genome version. Supported versions are 'hg38' and 'hg19'."))
 
     
     return {
-        "stem":args.stem,
+        "baffile":args.baffile,
         "outfile":args.outfile,
         "sample_names": names,
         "min_snp_reads" : args.msr,
         "min_total_reads" : args.mtr,
         "use_chr":use_chr,
         "processes":args.processes,
-        "centromeres":args.centromeres,
         "chromosomes":chromosomes,
-        "compressed":compressed,
         "array":args.array,
         "totalcounts":args.totalcounts,
         "phase":args.phase,
         "blocksize":args.max_blocksize,
         "max_snps_per_block":args.max_spb,
         "test_alpha":args.alpha,
-        "use_em":args.use_em
+        "use_em":args.use_em,
+        "ref_version": ver
     }
 
 def parse_count_arguments(args=None):
