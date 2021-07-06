@@ -1,8 +1,8 @@
 from copy import copy
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from .ilp_subset import ILPSubset
-from .utils import Random
+from hatchet.utils.solve.ilp_subset import ILPSubset
+from hatchet.utils.solve.utils import Random
 
 
 class Worker:

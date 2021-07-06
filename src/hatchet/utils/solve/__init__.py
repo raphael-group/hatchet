@@ -1,15 +1,20 @@
+import os
 import numpy as np
 import pandas as pd
 from pyomo import environ as pe
 
-from .ilp_subset import ILPSubset
-from .cd import CoordinateDescent
-from .utils import parse_clonal, scale_rdr
+from hatchet.utils.solve.ilp_subset import ILPSubset
+from hatchet.utils.solve.cd import CoordinateDescent
+from hatchet.utils.solve.utils import parse_clonal, scale_rdr
+from hatchet import config
 
 
-def solver_available(solver):
-    if solver == 'gurobipy':
-        return pe.SolverFactory('gurobi', solver_io='python').available()
+def solver_available(solver=None):
+    solver = solver or config.compute_cn.solver
+    if solver == 'cpp':
+        return os.getenv('GRB_LICENSE_FILE') is not None
+    elif solver == 'gurobipy':
+        return pe.SolverFactory('gurobi', solver_io='python').available(exception_flag=False)
     return pe.SolverFactory(solver).available(exception_flag=False)
 
 

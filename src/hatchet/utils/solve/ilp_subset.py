@@ -4,7 +4,7 @@ import pandas as pd
 from pyomo import environ as pe
 from pyomo.opt import SolverStatus, TerminationCondition
 
-from .utils import Random
+from hatchet.utils.solve.utils import Random
 
 
 class ILPSubset:
