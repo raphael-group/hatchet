@@ -1,18 +1,23 @@
 import numpy as np
 import pandas as pd
-from pyomo.opt import check_available_solvers
+from pyomo import environ as pe
 
 from .ilp_subset import ILPSubset
 from .cd import CoordinateDescent
 from .utils import parse_clonal, scale_rdr
 
 
+def solver_available(solver):
+    if solver == 'gurobipy':
+        return pe.SolverFactory('gurobi', solver_io='python').available()
+    return pe.SolverFactory(solver).available(exception_flag=False)
+
+
 def solve(clonal, seg_file, n, solver='gurobi', solve_mode='cd', d=-1, cn_max=-1, mu=0.01, diploid_threshold=0.1,
           ampdel=True, n_seed=400, n_worker=8, random_seed=None, max_iters=None):
 
     assert solve_mode in ('ilp', 'cd', 'both'), 'Unrecognized solve_mode'
-    assert solver == 'gurobipy' or bool(check_available_solvers(solver)),\
-        f'Solver {solver} not available or not licensed'
+    assert solver_available(solver), f'Solver {solver} not available or not licensed'
 
     if max_iters is None:
         max_iters = 10
