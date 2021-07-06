@@ -25,7 +25,7 @@ This repository includes a quick overview of the HATCHet's algorithm and softwar
     - [Software](#software)
 2. [Setup](#setup)
     - [Installation](#installation)
-    - [Using Gurobi](#usinggurobi)
+    - [Using a Solver](#usingasolver)
     - [Required data](#requireddata)
 3. [Usage](#usage)
     - [Full pipeline and tutorial](#fullpipelineandtutorial)
@@ -67,7 +67,7 @@ The current implementation of HATCHet is composed of two sets of modules:
 
 The setup process is composed of 3 steps:
 1. [Installation](#installation): the compilation and installation of Hatchet and its dependencies; this is a one-time process.
-2. [Using Gurobi](#usinggurobi): the requirements to run Gurobi; these need to be satisfied before every run.
+2. [Using a Solver](#usingasolver): the requirements to run a Solver; these need to be satisfied for computing allele-specific fractional copy numbers.
 3. [Required data](#requireddata): the requirements for considered data; these need to be satisfied whenever using new data.
 
 ### Installation
@@ -105,10 +105,15 @@ source activate hatchet
 If you wish to install `HATCHet` directly from this repository, the steps are a bit more involved. Please refer to the
 [Manual Installation](doc_manual_install.md) document for more details.
 
-### Using Gurobi
-<a name="usinggurobi"></a>
+### Using a Solver
+<a name="usingasolver"></a>
 
-Every run of HATCHet (especially, the `hatchet` step) needs to use Gurobi which requires a valid license pointed by the environmental variable `GRB_LICENSE_FILE`. This can be easily obtained depending on the type of free academic license available:
+Every run of HATCHet (specifically, the `compute-cn` step) needs to use a [Pyomo](https://pyomo.readthedocs.io/en/stable/solving_pyomo_models.html#supported-solvers) supported solver. By default, the HATCHet is compiled against [Gurobi](https://www.gurobi.com/), so the easiest (and fastest) option is to use a valid Gurobi license.
+
+#### Using Gurobi
+<a name="usingasolver_gurobi"></a>
+
+If using Gurobi (the default option), make sure that the environmental variable `GRB_LICENSE_FILE` points to a valid license file (typically with a `.lic` extension). This can be easily obtained depending on the type of free academic license available:
 
 1. **Individual license**. This license can be obtained [easily](http://www.gurobi.com/academia/academia-center) by any academic user with an institutional email. This license is user and machine-specific, meaning that the user needs to require a different license for every used machine. Assuming the license is stored at `/path/to/gurobi.lic`, set the environment variable `GRB_LICENSE_FILE` to point to it:
 
@@ -119,6 +124,18 @@ Every run of HATCHet (especially, the `hatchet` step) needs to use Gurobi which 
     ```shell
     module load gurobi
     ```
+
+#### Using a different Pyomo-supported solver
+<a name="usingasolver_other"></a>
+
+If you do not have or wish to use Gurobi (though using Gurobi will be at least twice as fast as any other solver),
+you can use any Pyomo-supported solver by setting the environment variable `HATCHET_COMPUTE_CN_SOLVER` to `cbc`,
+`glpk`, or any other Pyomo-supported solver. For example, `export HATCHET_COMPUTE_CN_SOLVER=cbc`. 
+
+Alternatively, you can set the key `solver` key in the `compute_cn`
+section of your `hatchet.ini` (if using the [hatchet run](doc_runhatchet.html) command) to a specific Pyomo-supported
+solver. Make sure the relevant solver binaries are in your `$PATH`, otherwise Pyomo will not be able to find them
+correctly.
 
 ### Required data
 <a name="requireddata"></a>
