@@ -5,11 +5,11 @@
 ####################################################################################
 
 #REF="/n/fs/ragr-data/datasets/ref-genomes/GRCh37_NCBI/GRCh37.p13.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
-REF="/n/fs/ragr-data/datasets/ref-genomes/hg38_USCS/hg38.fa " #Please make sure to have produced the reference dictionary /path/to/reference.dict
+REF="/n/fs/ragr-data/datasets/ref-genomes/GRCh37_NCBI/GRCh37.p13.fa" #Please make sure to have produced the reference dictionary /path/to/reference.dict
 LIST=""             # If HATCHet has internet, it selects a list of known germline SNPs based on REF_VERS and CHR_NOTATION below. If not, please provide full path to a locally stored list (.vcf.gz) here.
-REF_VERS="hg38"         # Reference version used to select list of known germline SNPs; possible values are "hg19" or "hg38", or leave blank "" if you wish for all positions to be genotyped by bcftools
-CHR_NOTATION=true   # Does your reference name chromosomes with "chr" prefix?; possible values true/false
-XDIR="/n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/run2"      #Path for output
+REF_VERS="hg19"         # Reference version used to select list of known germline SNPs; possible values are "hg19" or "hg38", or leave blank "" if you wish for all positions to be genotyped by bcftools
+CHR_NOTATION=false   # Does your reference name chromosomes with "chr" prefix?; possible values true/false
+XDIR="/n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/run"      #Path for output
 NORMAL="/n/fs/ragr-data/datasets/DIPG/010325/bam/SJHGG010325_G2.bam"
 BAMS="/n/fs/ragr-data/datasets/DIPG/010325/bam/SJHGG010325_A2.bam"
 NAMES="Primary" #Use the same order as the related tumor BAM files in BAMS above

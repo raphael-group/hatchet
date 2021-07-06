@@ -14,6 +14,8 @@ from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as hatchet_main
 from hatchet.utils.plot_cn import main as plot_cn
+from hatchet.utils.download_panel import main as download_panel
+from hatchet.utils.phase_snps import main as phase_snps
 
 solve_binary = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
@@ -36,6 +38,19 @@ def main(args=None):
             extra_args = ['-j', str(config.run.processes)]
     except KeyError:
         pass
+
+    # ----------------------------------------------------
+
+    if config.run.download_panel:
+        os.makedirs(config.download_panel.ref_panel_dir, exist_ok=True)
+        download_panel(
+            args=[
+                '-D', config.download_panel.ref_panel_dir,
+                '-R', config.download_panel.ref_panel,
+                '-V', config.genotype_snps.reference_version,
+                '-N', config.genotype_snps.chr_notation
+            ]
+        )
 
     # ----------------------------------------------------
 
@@ -87,6 +102,20 @@ def main(args=None):
 
     # ----------------------------------------------------
 
+    if config.run.phase_snps:
+        os.makedirs(f'{output}/phase', exist_ok=True)
+        phase_snps(
+            args=[
+                '-D', config.download_panel.ref_panel_dir,
+                '-g', config.run.reference,
+                '-V', config.genotype_snps.reference_version,
+                '-N', config.genotype_snps.chr_notation,
+                '-o', f'{output}/phase/',
+                '-L'
+                ] + glob.glob(f'{output}/snps/*.vcf.gz') + extra_args
+        )
+
+    # ----------------------------------------------------
     if config.run.count_alleles:
         os.makedirs(f'{output}/baf', exist_ok=True)
         count_alleles(

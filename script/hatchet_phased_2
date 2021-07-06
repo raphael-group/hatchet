@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source hatchet_config
+source ./hatchet_config
 
 if [ -z "$LIST" ]
 then

@@ -1,0 +1,31 @@
+Mode    : Summarizer
+Options : --input-vcf /n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/run_ini_test/phase/21_filtered.vcf.gz --input-map /n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/refpanel/1000GP_Phase3/genetic_map_chr21_combined_b37.txt --input-ref /n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/refpanel/1000GP_Phase3/1000GP_Phase3_chr21.hap.gz /n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/refpanel/1000GP_Phase3/1000GP_Phase3_chr21.legend.gz /n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/refpanel/1000GP_Phase3/1000GP_Phase3.sample --output-log /n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/run_ini_test/phase/21_alignments
+Version : v2.r904
+Date    : 02/07/2021 18:00:44
+
+MODE -summarise : GENERATING SUMMARY STATISTICS OF THE INPUT DATA
+  * Autosome (chr1 ... chr22)
+  * Reference panel of haplotypes used
+
+
+Parameters :
+  * Seed : 1625263244
+  * Parallelisation: 1 threads
+  * Ref allele is NOT aligned on the reference genome
+
+Reading unphased data in [/n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/run_ini_test/phase/21_filtered.vcf.gz]
+  * 1 samples included
+  * 1 unrelateds / 0 duos / 0 trios in 1 different families
+  * 17891 SNPs included
+
+Reading sample list [/n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/refpanel/1000GP_Phase3/1000GP_Phase3.sample]
+  * 5008 reference haplotypes included
+
+Reading SNPs in [/n/fs/ragr-research/users/bjarnold/programs/hatchet_phasing/hatchet/script/refpanel/1000GP_Phase3/1000GP_Phase3_chr21.legend.gz]
+  * 12773 reference panel sites included
+  * 1099442 reference panel sites excluded
+
+ERROR: Reference and Main panels are not well aligned:
+  * #Missing sites in reference panel = 4953
+  * #Misaligned sites between panels = 165
+  * #Multiple alignments between panels = 0
