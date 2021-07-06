@@ -76,11 +76,11 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.3.3',
-    packages=['hatchet', 'hatchet.utils', 'hatchet.bin'],
+    version='0.4.0',
+    packages=['hatchet', 'hatchet.utils', 'hatchet.utils.solve', 'hatchet.bin'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini']},
-    ext_modules=[CMakeExtension('hatchet.solve')],
+    ext_modules=[] if os.environ.get('HATCHET_BUILD_NOEXT', '0') == '1' else [CMakeExtension('hatchet.solve')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 
@@ -97,6 +97,7 @@ setup(
         'matplotlib',
         'pandas',
         'psutil',
+        'pyomo',
         'pysam',
         'requests',
         'seaborn',
