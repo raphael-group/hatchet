@@ -10,7 +10,7 @@ from glob import glob
 from . import Supporting as sp
 from hatchet import config, __version__
 
-def parse_count_reads_arguments(args=None):
+def parse_count_reads_args(args=None):
 
     description = "Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES."
     parser = argparse.ArgumentParser(prog='hatchet count-reads', description=description)
@@ -69,7 +69,7 @@ def parse_count_reads_arguments(args=None):
     #if not args.readquality >= 0: raise ValueError(sp.error("The read mapping quality must be positive"))
    
     if not os.path.exists(args.outdir):
-        os.mkdirs(args.outdir)
+        raise ValueError(sp.error(f"Output directory {args.outdir} not found!"))
 
     return {"bams" : bams,
             "names" : names,
@@ -80,79 +80,8 @@ def parse_count_reads_arguments(args=None):
             "use_chr" : use_chr,
             "refversion":ver,
             "baf_file" : args.baffile}
-    
-    
-def parse_array_arguments(args=None):    
-    parser = argparse.ArgumentParser(description = "Aggregate count information to form input to adaptive binning.")
-    parser.add_argument('-s', '--stem', type = str, help = 'Path to HATCHet working directory with /baf and /counts subdirectories (default: current directory', default = config.abin.stem)
-    parser.add_argument('-o', '--outdir', type = str, help = 'Filename stem for output')   
-    parser.add_argument('-n', '--normal', type = str, help = f'Filename stem corresponding to normal sample (default "{config.abin.normal}")', default = config.abin.normal)   
-    parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.abin.processes})', default = config.abin.processes)   
-    parser.add_argument('-C', '--centromeres', type = str, help = 'Centromere locations file', 
-                        default = '/n/fs/ragr-data/datasets/ref-genomes/centromeres/hg19.centromeres.txt')   
-    args = parser.parse_args(args)
-    
-    stem = args.stem
-    if len(stem) > 0 and not os.path.exists(stem):
-        raise ValueError(sp.error("The specified stem directory does not exist!"))
 
-    if not os.path.exists(os.path.join(stem, 'counts')):
-        raise ValueError(sp.error("There is no 'counts' subdirectory in the provided stem directory -- try running countPos first."))
-
-    names = set()
-    chromosomes = set()
-    compressed = True
-    for f in os.listdir(os.path.join(stem, 'counts')):
-        if "starts" in f:
-            tkns = f.split('.')
-            names.add(tkns[0])
-            chromosomes.add(tkns[1])
-            if not f.endswith('gz'):
-                compressed = False
-
-    names = sorted(names)
-    sp.log(msg = f"Identified {len(names)} samples: {list(names)}\n", level = "INFO")
-    if not args.normal in names:
-        raise ValueError(sp.error("Designated normal sample not found in 'counts' subdirectory."))
-    names.remove(args.normal)
-    names = [args.normal] + names
-        
-    sp.log(msg = f"Identified {len(chromosomes)} chromosomes.\n", level = "INFO")
-    sp.log(msg = f"Identified {'gzip-compressed' if compressed else 'uncompressed'} starts files.\n", level = "INFO")
-    
-    tail = '.gz' if compressed else ''
-    for name in names:
-        for ch in chromosomes:
-            f = os.path.join(stem, 'counts', '.'.join([name, ch, 'starts']) + tail)
-            if not os.path.exists(f):
-                raise ValueError(sp.error(f"Missing expected counts file: {f}"))
-
-    if not os.path.exists(args.centromeres):
-        raise ValueError(sp.error("Centromeres file does not exist."))
-    
-    using_chr = [a.startswith('chr') for a in chromosomes]
-    if any(using_chr):
-        if not all(using_chr):
-            raise ValueError(sp.error("Some starts files use 'chr' notation while others do not."))
-        use_chr = True
-    else:
-        use_chr = False
-        
-    if args.processes <= 0:
-        raise ValueError("The number of jobs must be positive.")
-
-    return {
-        "stem":args.stem,
-        "outdir":args.outdir,
-        "sample_names": names,
-        "use_chr":use_chr,
-        "processes":args.processes,
-        "centromeres":args.centromeres,
-        "chromosomes":chromosomes,
-        "compressed":compressed   
-    }
-
-def parse_clubb_kde_args(args=None):
+def parse_cluster_kde_args(args=None):
     """
     Parse command line arguments
     Returns:
@@ -225,7 +154,7 @@ def parse_clubb_kde_args(args=None):
             "minsize" : args.minsize
             }
 
-def parse_abin_arguments(args=None):    
+def parse_combine_counts_args(args=None):    
     parser = argparse.ArgumentParser(description = "Perform adaptive binning, compute RDR and BAF for each bin, and produce a BB file.")
     parser.add_argument("-b","--baffile", required=True, type=str, help="1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)")
     parser.add_argument('-o', '--outfile', required = True, type = str, help = 'Filename for output')   
@@ -307,6 +236,10 @@ def parse_abin_arguments(args=None):
     ver = args.refversion
     if ver != 'hg19' and ver != 'hg38':
         raise ValueError(sp.error("Invalid reference genome version. Supported versions are 'hg38' and 'hg19'."))
+    
+    outdir = os.sep.join(args.outfile.split(os.sep)[:-1])
+    if not os.path.exists(outdir):
+        raise ValueError(sp.error(f"Directory for output file does not exist: {outdir}"))
 
     
     return {
@@ -326,54 +259,6 @@ def parse_abin_arguments(args=None):
         "test_alpha":args.alpha,
         "use_em":args.use_em,
         "ref_version": ver
-    }
-
-def parse_count_arguments(args=None):
-    """
-    Parses command line arguments for countPos
-    """
-    parser = argparse.ArgumentParser(description = 'Count the reads that start at and cover each position.')
-    parser.add_argument("-B","--bams", required=True, type=str, nargs='+', help="BAM files corresponding to samples (normal or tumor)")
-    parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
-    parser.add_argument("-S","--samples", required=False, type=str, nargs='+', help="Sample names for each BAM (given as e.g. \"normal tumor1 tumor2 ... \")")
-    parser.add_argument("-st", "--samtools", required = False, type = str, default = config.paths.samtools, help = 'Path to samtools executable')   
-    parser.add_argument("-j", "--processes", type = int, help = 'Number of concurrent jobs', default = 24)   
-    parser.add_argument("-c", "--compression", type = int, help = 'Level of gzip compression from 1 to 9 (default 6)', default = 6)   
-
-    args = parser.parse_args(args)
-
-    if not os.path.exists(args.outdir):
-        raise ValueError(sp.error("The specified output directory does not exist!"))
-
-    # Parse BAM files, check their existence, and infer or parse the corresponding sample names
-    bams = args.bams
-    for bamfile in bams:
-        if(not os.path.isfile(bamfile)): raise ValueError(sp.error("The specified tumor BAM file does not exist"))
-    names = args.samples
-    if names != None and len(bams) != len(names):
-        raise ValueError(sp.error("A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample"))
-    if names is None:
-        names = []
-        for bamfile in bams:
-            names.append(os.path.splitext(os.path.basename(bamfile))[0])
-    
-    # In default mode, check the existence and compatibility of samtools
-    samtools = os.path.join(args.samtools, "samtools")
-    if sp.which(samtools) is None:
-        raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
-    
-    if args.compression < 1 or args.compression > 9:
-        raise ValueError(sp.error("Compression argument must be an integer between 1 and 9, inclusive (see gzip documentation for details)."))
-    
-    chromosomes = extractChromosomes(samtools, [bams[0], names[0]], [(bams[i], names[i]) for i in range(1, len(bams))])
-
-    return {"bams" : bams,
-            "names" : names,
-            "outdir" : args.outdir,
-            "chromosomes" : chromosomes,
-            "samtools" : samtools,
-            "j" : args.processes,
-            "compression" : args.compression   
     }
 
 def parse_genotype_snps_arguments(args=None):
@@ -733,7 +618,7 @@ def parse_count_reads_fw_arguments(args=None):
             "verbose" : args.verbose}
 
 
-def parse_combine_counts_args(args=None):
+def parse_combine_counts_fw_args(args=None):
     """
     Parse command line arguments
     Returns:

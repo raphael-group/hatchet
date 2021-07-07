@@ -14,13 +14,13 @@ import traceback
 from importlib.resources import path
 import hatchet.resources
 
-from .ArgParsing import parse_count_reads_arguments
+from .ArgParsing import parse_count_reads_args
 from .Supporting import log, logArgs, error
 from . import TotalCounting as tc
 
 def main(args=None):
     log(msg="# Parsing and checking input arguments\n", level="STEP")
-    args = parse_count_reads_arguments(args)
+    args = parse_count_reads_args(args)
     logArgs(args, 80)
     
     bams = args["bams"]

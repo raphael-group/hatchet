@@ -12,14 +12,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from collections import defaultdict, Counter
 
-from .ArgParsing import parse_clubb_kde_args
+from .ArgParsing import parse_cluster_kde_args
 from . import Supporting as sp
 
 
 def main(args=None):
     sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
     # TODO: implement in ArgParsing
-    args = parse_clubb_kde_args(args)
+    args = parse_cluster_kde_args(args)
     
     sp.log(msg="# Reading the combined BB file\n", level="STEP")
     
