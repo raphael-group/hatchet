@@ -80,7 +80,7 @@ jobs:
       - name: Set Envvars
         run: |
           echo "HATCHET_TESTS_BAM_DIRECTORY=$(realpath testdata)" >> $GITHUB_ENV
-          echo "HATCHET_SOLVER_SOLVER=cbc" >> $GITHUB_ENV
+          echo "HATCHET_COMPUTE_CN_SOLVER=cbc" >> $GITHUB_ENV
 
       - name: Setup Python
         uses: actions/setup-python@v2
