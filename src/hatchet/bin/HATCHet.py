@@ -10,6 +10,8 @@ import shlex
 from collections import Counter
 
 from hatchet import config, __version__
+from hatchet.utils.solve import solve
+from hatchet.utils.solve.utils import segmentation
 
 
 def parsing_arguments(args=None):
@@ -372,7 +374,9 @@ def findNeutralCluster(seg, size, td, samples, v):
 
 def runningDiploid(neutral, args):
     results = []
-    basecmd = makeBaseCMD(args, args['eD']) + " -c {}".format('{}:1:1'.format(neutral))
+    args['c'] = '{}:1:1'.format(neutral)
+    args['e'] = args['eD']
+    basecmd = makeBaseCMD(args, args['eD']) + " -c " + args['c']
 
     for n in range(args['ln'], args['un'] + 1):
         if args['v'] >= 2:
@@ -595,6 +599,9 @@ def runningTetraploid(clonal, scale, size, args):
     cn += ',{}:{}:{}'.format(scale[1], clonal[scale[1]][0], clonal[scale[1]][1])
     if len(clonal) > 2:
         cn = cn + ',' + ','.join(['{}:{}:{}'.format(s, clonal[s][0], clonal[s][1]) for s in clonal if s not in scale])
+
+    args['c'] = cn
+    args['e'] = args['eT']
     basecmd = makeBaseCMD(args, args['eT']) + " -c {}".format(cn)
 
     for n in range(args['ln'], args['un'] + 1):
@@ -606,7 +613,42 @@ def runningTetraploid(clonal, scale, size, args):
     return results
 
 
+def execute_python(solver, args, n, outprefix):
+
+    bbc_out_file = outprefix + '.bbc.ucn.tsv'
+    seg_out_file = outprefix + '.seg.ucn.tsv'
+
+    _mode = ('both', 'ilp', 'cd')[args['M']]
+
+    obj, cA, cB, u, cluster_ids, sample_ids = solve(
+        solver=solver,
+        clonal=args['c'],
+        seg_file=args['seg'],
+        n=n,
+        solve_mode=_mode,
+        d=-1 if args['d'] is None else args['d'],
+        cn_max=args['e'],
+        mu=args['u'],
+        diploid_threshold=0.1,
+        ampdel=args['ampdel'],
+        n_seed=args['p'],
+        n_worker=args['j'],
+        random_seed=args['r'],
+        max_iters=args['f']
+    )
+
+    segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file=args['bbc'], bbc_out_file=bbc_out_file,
+                 seg_out_file=seg_out_file)
+
+    if args['v'] >= 1:
+        sys.stderr.write(info('# Best objective found with {} clones: {}\n'.format(n, obj)))
+
+    return obj
+
+
 def execute(args, basecmd, n, outprefix):
+    if config.compute_cn.solver != 'cpp':
+        return execute_python(config.compute_cn.solver, args, n, outprefix)
     progressbar = ProgressBar(total=args['p'], length=min(50, args['p']), verbose=False)
     cmd = basecmd + ' -n {} -o {}'.format(n, outprefix)
     if args['v'] >= 3:
@@ -900,7 +942,6 @@ class ProgressBar:
         if self.counter == self.total:
             write("\n")
             flush()
-
 
 
 if __name__ == '__main__':

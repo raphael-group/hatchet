@@ -18,6 +18,7 @@ from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as main
 from hatchet.utils.plot_cn import main as plot_cn
+from hatchet.utils.solve import solver_available
 
 this_dir = os.path.dirname(__file__)
 SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
@@ -41,13 +42,11 @@ def output_folder():
     out = os.path.join(this_dir, 'out')
     shutil.rmtree(out, ignore_errors=True)
     for sub_folder in ('bin', 'snps', 'baf', 'bb', 'bbc', 'plots', 'results', 'evaluation', 'analysis'):
-       os.makedirs(os.path.join(out, sub_folder))
+        os.makedirs(os.path.join(out, sub_folder))
     return out
 
 
 @pytest.mark.skipif(not config.paths.reference, reason='paths.reference not set')
-@pytest.mark.skipif(not config.paths.samtools, reason='paths.samtools not set')
-@pytest.mark.skipif(not config.paths.bcftools, reason='paths.bcftools not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
 def test_script(_, bams, output_folder):
     normal_bam, tumor_bams = bams
@@ -141,7 +140,7 @@ def test_script(_, bams, output_folder):
         '--rundir', os.path.join(output_folder, 'plots')
     ])
 
-    if os.getenv('GRB_LICENSE_FILE') is not None:
+    if solver_available():
         main(args=[
             SOLVE,
             '-x', os.path.join(output_folder, 'results'),
