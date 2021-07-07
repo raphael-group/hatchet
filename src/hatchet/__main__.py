@@ -21,14 +21,14 @@ from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as compute_cn
 from hatchet.utils.plot_cn import main as plot_cn
 from hatchet.utils.run import main as run
-from hatchet.utils.PhasePrep import main as PhasePrep
-from hatchet.utils.Phase import main as Phase
+from hatchet.utils.download_panel import main as download_panel
+from hatchet.utils.phase_snps import main as phase_snps
 
 solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 commands = ('count-reads', 'count-reads-fw', 'genotype-snps', 'count-alleles', 'combine-counts',
             'combine-counts-fw', 'cluster-bins', 'plot-bins','compute-cn', 'plot-cn', 'run',
-            'PhasePrep', 'Phase', 'cluster-bins-kde')
+            'download-panel', 'phase-snps', 'cluster-bins-kde')
 
 def print_usage():
     print('HATCHet v' + hatchet.__version__)
@@ -46,7 +46,9 @@ def main():
         'cluBB': 'cluster-bins',
         'BBot': 'plot-bins',
         'solve': 'compute-cn',
-        'BBeval': 'plot-cn'
+        'BBeval': 'plot-cn',
+        'PhasePrep': 'download-panel',
+        'Phase': 'phase-snps'
     }
 
     if len(sys.argv) < 2:
