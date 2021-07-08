@@ -69,7 +69,7 @@ def parse_count_reads_args(args=None):
     #if not args.readquality >= 0: raise ValueError(sp.error("The read mapping quality must be positive"))
    
     if not os.path.exists(args.outdir):
-        raise ValueError(sp.error(f"Output directory {args.outdir} not found!"))
+        raise ValueError(sp.error(f"Output directory <{args.outdir}> not found!"))
 
     return {"bams" : bams,
             "names" : names,
@@ -175,7 +175,7 @@ def parse_combine_counts_args(args=None):
     args = parser.parse_args(args)
     
     if not os.path.exists(args.baffile):
-        raise ValueError(sp.error(f"BAF file not found: {args.baffile}"))
+        raise ValueError(sp.error(f"BAF file not found: <{args.baffile}>"))
     if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
         raise ValueError(sp.error("The specified file for total read counts does not exist!"))
     if args.phase is not None and not os.path.isfile(args.phase):
@@ -239,7 +239,7 @@ def parse_combine_counts_args(args=None):
     
     outdir = os.sep.join(args.outfile.split(os.sep)[:-1])
     if not os.path.exists(outdir):
-        raise ValueError(sp.error(f"Directory for output file does not exist: {outdir}"))
+        raise ValueError(sp.error(f"Directory for output file does not exist: <{outdir}>"))
 
     
     return {
