@@ -34,3 +34,9 @@ This step of HATCHet uses the locations of heterozygous SNPs (called by `count-a
 |------|-------------|-------|
 | `st`, `--samtools` | Location of `samtools` executable (default "" -- assumes `samtools` is on the PATH) |  |
 | `-j`, `--processes` | Number of parallel processes to use (default 1) |  |
+
+## Example usage
+
+Given samtools is on the PATH and the referenced files are in the current directory (as well as the output directory `array`):
+
+`hatchet count-reads -T first_sample.bam second_sample.bam -N normal_sample.bam -S normal tumor1 tumor2 -V hg19 -j 24 -O array -b baf/bulk.1bed`
