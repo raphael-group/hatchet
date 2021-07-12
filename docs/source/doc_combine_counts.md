@@ -25,7 +25,7 @@ In summary, **the following arguments are required to specify input**:
 | `-A`, `--array`  | Directory containing intermediate files | Typically populated by `count-reads`. For each chromosome `ch`, this directory should contain files `ch.total.gz` and `ch.thresholds.gz` (as well as `samples.txt` indicating sample names) |  |
 | `-b, --baffile`  | Tab-separated file with allele counts | Typically produced by `count-alleles`. See description above. |  |
 | `-t, --totalcounts`  | Tab-separated file with total aligned reads for each sample | Typically produced by `count-alleles`. | |
-| `-V, --refversion` | Reference genome version (hg19 or hg38 supported) | |
+| `-V, --refversion` | Reference genome version | Either "hg19" or "hg38". This argument is used to select which centromere locations to use. |
 
 
 ## Output
