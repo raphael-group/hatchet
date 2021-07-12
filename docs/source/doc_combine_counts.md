@@ -18,13 +18,14 @@ It also requires (specified by the flag `-b`, `--baffile`) a tab-separated file 
 
 Finally, `combine-counts` requires a TSV file (`-t, --totalcounts`) specifying the total number of reads aligned in each sample (also typically produced by `count-reads`).
 
-In summary, **the following arguments are required**:
+In summary, **the following arguments are required to specify input**:
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
 | `-A`, `--array`  | Directory containing intermediate files | Typically populated by `count-reads`. For each chromosome `ch`, this directory should contain files `ch.total.gz` and `ch.thresholds.gz` (as well as `samples.txt` indicating sample names) |  |
 | `-b, --baffile`  | Tab-separated file with allele counts | Typically produced by `count-alleles`. See description above. |  |
 | `-t, --totalcounts`  | Tab-separated file with total aligned reads for each sample | Typically produced by `count-alleles`. | |
+| `-V, --refversion` | Reference genome version (hg19 or hg38 supported) | |
 
 
 ## Output
