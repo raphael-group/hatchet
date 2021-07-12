@@ -16,12 +16,12 @@ def parse_count_reads_args(args=None):
     parser = argparse.ArgumentParser(prog='hatchet count-reads', description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumor", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
-    parser.add_argument("-S","--samples", required=False, default=config.count_reads.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
     parser.add_argument("-b","--baffile", required=True, type=str, help="1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)")
+    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
+    parser.add_argument("-S","--samples", required=False, default=config.count_reads.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
     parser.add_argument("-st", "--samtools", required = False, type = str, default = config.paths.samtools, help = 'Path to samtools executable')   
     parser.add_argument("-j", "--processes", required=False, default=config.count_reads.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     
     # TODO: support these arguments
     #parser.add_argument("-r","--regions", required=False, default=config.count_reads.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
@@ -156,21 +156,19 @@ def parse_cluster_kde_args(args=None):
 
 def parse_combine_counts_args(args=None):    
     parser = argparse.ArgumentParser(description = "Perform adaptive binning, compute RDR and BAF for each bin, and produce a BB file.")
-    parser.add_argument("-b","--baffile", required=True, type=str, help="1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)")
-    parser.add_argument('-o', '--outfile', required = True, type = str, help = 'Filename for output')   
-    parser.add_argument('-n', '--normal', type = str, help = f'Filename stem corresponding to normal sample (default "{config.abin.normal}")', default = config.abin.normal)   
-    parser.add_argument('--msr', type = int, help = f'Minimum SNP reads per bin (default {config.abin.msr})', default = config.abin.msr)
-    parser.add_argument('--mtr', type = int, help = f'Minimum total reads per bin (default {config.abin.mtr})', default = config.abin.mtr)
-    parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.abin.processes})', default = config.abin.processes)   
     parser.add_argument('-A', '--array', type = str, required = True, help = f'Directory containing array files (output from "array" command)')   
     parser.add_argument("-t","--totalcounts", required=True, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample')
-    parser.add_argument("-p","--phase", required=False, default=config.abin.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')    
-    parser.add_argument("-s","--max_blocksize", required=False, default=config.abin.blocksize, type=int, help=f'Maximum size of phasing block (default {config.abin.blocksize})')    
-    parser.add_argument("-m","--max_spb", required=False, default=config.abin.max_spb, type=int, help=f'Maximum number of SNPs per phasing block (default {config.abin.max_spb})')    
-    parser.add_argument("-a","--alpha", required=False, default=config.abin.alpha, type=float, help=f'Significance level for phase blocking adjacent SNPs. Higher means less trust in phasing. (default {config.abin.alpha})')    
+    parser.add_argument("-b","--baffile", required=True, type=str, help="1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)")
+    parser.add_argument('-o', '--outfile', required = True, type = str, help = 'Filename for output')   
+    parser.add_argument('--msr', type = int, help = f'Minimum SNP reads per bin (default {config.combine_counts.msr})', default = config.combine_counts.msr)
+    parser.add_argument('--mtr', type = int, help = f'Minimum total reads per bin (default {config.combine_counts.mtr})', default = config.combine_counts.mtr)
+    parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.combine_counts.processes})', default = config.combine_counts.processes)   
+    parser.add_argument("-p","--phase", required=False, default=config.combine_counts.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')    
+    parser.add_argument("-s","--max_blocksize", required=False, default=config.combine_counts.blocksize, type=int, help=f'Maximum size of phasing block (default {config.combine_counts.blocksize})')    
+    parser.add_argument("-m","--max_spb", required=False, default=config.combine_counts.max_spb, type=int, help=f'Maximum number of SNPs per phasing block (default {config.combine_counts.max_spb})')    
+    parser.add_argument("-a","--alpha", required=False, default=config.combine_counts.alpha, type=float, help=f'Significance level for phase blocking adjacent SNPs. Higher means less trust in phasing. (default {config.combine_counts.alpha})')    
     parser.add_argument("--use_em", action='store_true', default=False, required=False, help="Use EM inference for BAF instead of exhaustive/MM")
     parser.add_argument("-z", '--not_compressed', action='store_true', default=False, required=False, help="Non-compressed intermediate files")
-
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     args = parser.parse_args(args)
     
@@ -210,11 +208,6 @@ def parse_combine_counts_args(args=None):
             raise ValueError(sp.error("Missing array file: {}".format(thresholds_arr)))
         
     names = sorted(names)
-    sp.log(msg = f"Identified {len(names)} samples: {list(names)}\n", level = "INFO")
-    if not args.normal in names:
-        raise ValueError(sp.error("Designated normal sample not found in 'counts' subdirectory."))
-    names.remove(args.normal)
-    names = [args.normal] + names
         
     sp.log(msg = f"Identified {len(chromosomes)} chromosomes.\n", level = "INFO")
     
