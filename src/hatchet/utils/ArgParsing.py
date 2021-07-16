@@ -207,8 +207,6 @@ def parse_combine_counts_args(args=None):
         if not os.path.exists(thresholds_arr):
             raise ValueError(sp.error("Missing array file: {}".format(thresholds_arr)))
         
-    names = sorted(names)
-        
     sp.log(msg = f"Identified {len(chromosomes)} chromosomes.\n", level = "INFO")
     
     using_chr = [a.startswith('chr') for a in chromosomes]
