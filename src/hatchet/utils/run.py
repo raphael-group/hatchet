@@ -144,6 +144,7 @@ def main(args=None):
             '-t', f'{output}/rdr/total.tsv', 
             '-V', config.genotype_snps.reference_version,
             '-p', f'{output}/phase/phased.vcf.gz',
+            '--use_em',
             '-o', f'{output}/abin/bulk.bb'
             ] + extra_args
         )
@@ -171,7 +172,11 @@ def main(args=None):
         os.makedirs(f'{output}/plots', exist_ok=True)
         plot_bins(args=[
             f'{output}/bbc/bulk.bbc',
-            '--rundir', f'{output}/plots'
+            '--rundir', 
+            f'{output}/plots',
+            '--ymin', '0',
+            '--ymax', '3',
+            #'--pdf'
         ])
 
     # ----------------------------------------------------
