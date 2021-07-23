@@ -14,7 +14,7 @@ solve_binary = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
 def main(args=None):
-    log(msg=f'The solver you are currently using is {config.compute_cn.solver}\n', level='INFO')
+    log(msg=f'# The solver you are currently using is {config.compute_cn.solver}\n')
 
     with tempfile.TemporaryDirectory() as tempdirname:
         with path(hatchet.data, 'sample.bbc') as bbc_path:
@@ -36,7 +36,7 @@ def main(args=None):
                 '-l', '0.6'
             ])
 
-    log(msg=f'Your current solver {config.compute_cn.solver} seems to be working correctly\n', level='INFO')
+    log(msg=f'# Your current solver {config.compute_cn.solver} seems to be working correctly\n')
 
 
 if __name__ == '__main__':
