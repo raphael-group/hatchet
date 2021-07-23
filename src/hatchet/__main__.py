@@ -15,12 +15,14 @@ from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as compute_cn
 from hatchet.utils.plot_cn import main as plot_cn
+
+from hatchet.utils.check_solver import main as check_solver
 from hatchet.utils.run import main as run
 
 solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 commands = ('count-reads', 'genotype-snps', 'count-alleles', 'combine-counts', 'cluster-bins', 'plot-bins',
-            'compute-cn', 'plot-cn', 'run')
+            'compute-cn', 'plot-cn', 'check-solver', 'run')
 
 
 def print_usage():
