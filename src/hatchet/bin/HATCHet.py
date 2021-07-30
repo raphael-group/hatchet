@@ -683,7 +683,11 @@ def execute(args, basecmd, n, outprefix):
         else:
             raise RuntimeError(error('Failed to parse the output of the following command because the final objective was not found: \n\t\t{}\n'.format(cmd)))
     else:
-        raise RuntimeError(error("The following command failed: \n\t\t{}\nwith {}\n".format(cmd, buffer)))
+        if any('GRBException' in line for line in buffer):
+            msg = '\nYou likely have a licensing issue with Gurobi. Please run `hatchet check-solver` to ensure that the solver is working correctly.'
+        else:
+            msg = '\nUnexpected error during solve. Please run `hatchet check-solver` to ensure that the solver is working correctly.'
+        raise RuntimeError(error("The following command failed: \n\t\t{}\nwith {}\n{}".format(cmd, buffer, msg)))
 
     return obj
 
