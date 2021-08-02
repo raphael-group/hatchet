@@ -61,12 +61,11 @@ def main(args=None):
         arr = np.array([np.abs(0.5 - bb_kde.UNCORRECTED), bb_kde.RD]).T    
     else:
         arr = np.array([np.abs(0.5 - bb_kde.BAF), bb_kde.RD]).T
-    _, centers, _, _, _ = kde_centers_gridfit(arr, min_center_density = args['centroiddensity'], 
+    centers = run_kde_scaled(arr, min_center_density = args['centroiddensity'], 
                                               bandwidth = args['bandwidth'], grid_dim = args['mesh'], 
                                               yvar = args['variance'], min_grid_density = args['griddensity'],
                                               max_copies = args['maxcopies'], fname = args['outfigure'], verbose = True)
 
-    
 
 
     sp.log(msg="# Assigning bins to centroids\n", level="STEP")
@@ -383,6 +382,146 @@ def kde_centers_gridfit(arr, min_center_density, bandwidth, grid_dim, yvar,
         sp.log(msg="Done finding centroids\n", level = "INFO")
 
     return z, np.array([centers_x, centers_y]).T, lm_orig, lm, probs_grid
+
+from sklearn.preprocessing import StandardScaler
+
+def run_kde_scaled(arr, min_center_density = 0.01, bandwidth = 0.1, grid_dim = 100, yvar = 0.1, min_grid_density = 10, max_copies = 12, fname = None, verbose = True):
+    xmin0, ymin0 = np.min(arr, axis = 0)
+    xmax0, ymax0 = np.max(arr, axis = 0)
+    xvar = yvar / ( (ymax0 - ymin0) /  (xmax0 - xmin0) )
+
+
+    scaler = StandardScaler()
+    scaled = scaler.fit_transform(arr)
+
+
+    x = scaled[:, 0]
+    y = scaled[:, 1]
+
+    xmin, ymin = np.min(scaled, axis = 0)
+    xmax, ymax = np.max(scaled, axis = 0)
+
+    # Compute KDE
+    if verbose:
+        sp.log(msg="Computing KDE\n", level = "INFO")
+    xy = np.vstack([x,y])
+    if bandwidth:
+        kde = gaussian_kde(xy, bw_method = bandwidth)
+    else:
+        kde = gaussian_kde(xy)
+    z = kde(xy)
+
+    # Construct grid
+    xvals = np.linspace(xmin, xmax, num = grid_dim)
+    yvals = np.linspace(ymin, ymax, num = grid_dim)
+    points = np.array(np.meshgrid(xvals, yvals)).T.reshape(-1, 2)
+
+    # Evaluate KDE at each grid vertex
+    if verbose:
+        sp.log(msg="Evaluating grid\n", level = "INFO")
+    probs = kde(points.T)
+    probs_grid = probs.reshape(grid_dim, grid_dim)
+
+
+    ## Identify local maxima ##
+    lm = peak_local_max(probs_grid, footprint = np.ones((3,3)))
+    lm_orig = lm.copy()
+
+    if min_center_density == 'mean':
+        min_center_density = np.mean(probs_grid[lm])
+
+    ############### Grid analysis ########################
+    _, purity, scaling, _ = find_grid(arr, variance = yvar)
+    means = compute_means(purity, scaling, max_copies = max_copies)
+
+    vertices = vertex_gaussians(means, xvar, yvar)
+
+    # Get coordinates of local optima
+    candidates = scaler.inverse_transform(np.array([xvals[lm[:, 0]], yvals[lm[:, 1]]]).T)
+
+    # For each vertex, find the index of the best optimum
+    resp = np.array([vertices[i].pdf(candidates) for i in range(len(vertices))]).T
+    best_idx = np.argmax(resp, axis = 0)
+    best_probs = resp[best_idx, np.arange(resp.shape[1])]
+
+    # Keep those best matches that have sufficient density (i.e., fit the grid sufficiently well)
+    grid_idx = best_idx[np.where(best_probs > min_grid_density)[0]]
+
+    # Map selected optima back to grid indices (to match lm)
+    lm_grid = np.array([lm[grid_idx, 0], lm[grid_idx, 1]]).T
+
+    # Remove local maxima below a certain density
+    lm = lm[np.where(probs_grid[lm[:, 0], lm[:, 1]] > min_center_density)]
+
+    # Take the union of the two sets as the final solution
+    result = np.concatenate([lm, lm_grid])
+    result = np.unique(result, axis = 0)
+
+    if verbose:
+        sp.log(msg=f"Found optima. Original: {len(lm_orig)}, grid: {len(lm_grid)}, threshold: {len(lm)}, union: {len(result)}\n", level = "INFO")
+
+
+    ### Mark local maxima on grids for visualization
+    # Original local maxima (no thresholding)
+    probs_show_orig = probs_grid.copy()
+    probs_show_orig[lm_orig[:, 0], lm_orig[:, 1]] = np.max(probs_grid)
+
+    # Local maxima that are also above density threshold
+    probs_show_threshold = probs_grid.copy()
+    probs_show_threshold[lm[:, 0], lm[:, 1]] = np.max(probs_grid)
+
+    # Local maxima that are also close to grid vertices
+    probs_show_grid = probs_grid.copy()
+    probs_show_grid[lm_grid[:, 0], lm_grid[:, 1]] = np.max(probs_grid)
+
+    # Local maxima present in the union
+    probs_show_union = probs_grid.copy()
+    probs_show_union[lm[:, 0], lm[:, 1]] = np.max(probs_grid)
+    probs_show_union[lm_grid[:, 0], lm_grid[:, 1]] = np.max(probs_grid)
+
+    if fname is not None:
+        ### Mark local maxima on grids for visualization
+        # Original local maxima (no thresholding)
+        probs_show_orig = probs_grid.copy()
+        probs_show_orig[lm_orig[:, 0], lm_orig[:, 1]] = np.max(probs_grid)
+
+        # Local maxima that are also above density threshold
+        probs_show_threshold = probs_grid.copy()
+        probs_show_threshold[lm[:, 0], lm[:, 1]] = np.max(probs_grid)
+
+        # Local maxima that are also close to grid vertices
+        probs_show_grid = probs_grid.copy()
+        probs_show_grid[lm_grid[:, 0], lm_grid[:, 1]] = np.max(probs_grid)
+
+        # Local maxima present in the union
+        probs_show_union = probs_grid.copy()
+        probs_show_union[lm[:, 0], lm[:, 1]] = np.max(probs_grid)
+        probs_show_union[lm_grid[:, 0], lm_grid[:, 1]] = np.max(probs_grid)
+
+        plt.figure(dpi = 300)
+        plt.subplot(221)
+        plt.imshow(probs_show_orig.T[::-1])
+        plt.title("Original local maxima")
+        plt.subplot(222)
+        plt.title("After density threshold")
+        plt.imshow(probs_show_threshold.T[::-1])
+        plt.subplot(223)
+        plt.title("After grid threshold")
+        plt.imshow(probs_show_grid.T[::-1])
+        plt.subplot(224)
+        plt.title("Union")
+        plt.imshow(probs_show_union.T[::-1])
+        plt.tight_layout()
+        plt.savefig(fname)
+        
+    centers_x = xvals[result[:, 0]]
+    centers_y = yvals[result[:, 1]]
+
+    # Return the original coordinates as centers
+    if verbose:
+        sp.log(msg="Done finding centroids\n", level = "INFO")
+
+    return scaler.inverse_transform(np.vstack([centers_x, centers_y]).T)
 
 def find_grid(arr, variance):     
     if np.median(arr[:,0]) > 0.25:

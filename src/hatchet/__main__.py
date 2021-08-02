@@ -23,12 +23,13 @@ from hatchet.utils.plot_cn import main as plot_cn
 from hatchet.utils.run import main as run
 from hatchet.utils.download_panel import main as download_panel
 from hatchet.utils.phase_snps import main as phase_snps
+from hatchet.utils.cluster_bins_kde2 import main as cluster_bins_kde2
 
 solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 commands = ('count-reads', 'count-reads-fw', 'genotype-snps', 'count-alleles', 'combine-counts',
             'combine-counts-fw', 'cluster-bins', 'plot-bins','compute-cn', 'plot-cn', 'run',
-            'download-panel', 'phase-snps', 'cluster-bins-kde')
+            'download-panel', 'phase-snps', 'cluster-bins-kde', 'cluster-bins-kde2')
 
 def print_usage():
     print('HATCHet v' + hatchet.__version__)

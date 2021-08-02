@@ -604,7 +604,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
             positions_p = np.mean(np.vstack([before_centromere[:-1], before_centromere[1:]]), axis = 0).astype(np.uint64)
             positions_q = np.mean(np.vstack([after_centromere[:-1], after_centromere[1:]]), axis = 0).astype(np.uint64)
             positions = np.concatenate([positions_p, positions_q])
-            snp_counts = np.zeros((len(positions), 2), dtype = np.int8)
+            snp_counts = np.zeros((len(positions), len(all_names) - 1), dtype = np.int8)
             snpsv = None
 
         else:
