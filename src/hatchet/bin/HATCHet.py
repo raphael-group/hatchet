@@ -813,7 +813,7 @@ def selectTetraploid(tetraploid, v, rundir, g, limit):
             tscores[tet[0]] = tet[1]
         if v >= 2:
             sys.stderr.write(info('## Objective value is used as scores for tetraploid results\n'))
-            sys.stderr.write(info('\n'.format(['## Tetraploid with {} clones - OBJ: {} - score: {}'.format(t[0], t[1], tscores[d[0]]) for t in tetraploid]) + '\n'))
+            sys.stderr.write(info('\n'.format(['## Tetraploid with {} clones - OBJ: {} - score: {}'.format(t[0], t[1], tscores[t[0]]) for t in tetraploid]) + '\n'))
     else:
         for i, tet in enumerate(tetraploid):
             if i == 0:
