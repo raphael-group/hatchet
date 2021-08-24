@@ -183,13 +183,13 @@ def main(args=None):
 
     if config.run.compute_cn:
         os.makedirs(f'{output}/results', exist_ok=True)
-        hatchet_main(args=[
-            solve_binary,
-            '-x', f'{output}/results',
-            '-i', f'{output}/bbc/bulk',
-            '-g', '0.35',
-            '-l', '0.6'
-        ] + extra_args)
+        hatchet_main(
+            args=[
+                solve_binary,
+                '-x', f'{output}/results',
+                '-i', f'{output}/bbc/bulk'
+            ] + extra_args
+        )
 
     # ----------------------------------------------------
 
