@@ -569,8 +569,10 @@ def parseClonalClusters(clonal, fseg, neutral, size, samples, v):
 
     tmp = given[0].split(':')
     neutral = tmp[0]
+    """
     if int(tmp[1]) != 2 or int(tmp[1]) != 2:
         raise RuntimeError(error('The first clonal cluster must be the neutral with copy numbers 2:2!'))
+    """
     tmp = given[1].split(':')
     second = tmp[0]
     cn = int(tmp[1]) + int(tmp[2])
