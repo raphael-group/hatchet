@@ -639,6 +639,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                                     min_snp_reads = min_snp_reads, min_total_reads = min_total_reads)
         
             starts_p = bins_p[0]
+            starts_p = np.concatenate([[starts_p[0]], np.array(starts_p[1:]) - 1])
             ends_p = bins_p[1]
             # Partition SNPs for BAF inference
                
@@ -648,7 +649,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                 dfs_p = None
                 bafs_p = None
             else:
-                dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])] for i in range(len(starts_p))]         
+                dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS < ends_p[i])] for i in range(len(starts_p))]         
                 for i in range(len(dfs_p)):
                     assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
                 bafs_p = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_em) for d in dfs_p] 
@@ -683,6 +684,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                                     min_snp_reads = min_snp_reads, min_total_reads = min_total_reads)
 
             starts_q = bins_q[0]
+            starts_q = np.concatenate([[starts_q[0]], np.array(starts_q[1:]) - 1])
             ends_q = bins_q[1]
                 
             if xy:
@@ -690,7 +692,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                 bafs_q = None
             else:
                 # Partition SNPs for BAF inference
-                dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])] for i in range(len(starts_q))]
+                dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS < ends_q[i])] for i in range(len(starts_q))]
                 
                 for i in range(len(dfs_q)):
                     assert np.all(dfs_q[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
