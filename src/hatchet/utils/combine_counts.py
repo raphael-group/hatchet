@@ -155,6 +155,7 @@ def read_snps(baf_file, ch, all_names, phasefile = None):
     if phasefile is not None:
         # Read in phasing output
         phases = pd.read_table(phasefile, compression  = 'gzip', comment = '#', names = 'CHR\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tPHASE'.split(), usecols = ['CHR', 'POS', 'PHASE'], quoting = 3, low_memory = False)
+        phases = phases.astype({'CHR':object, 'POS':np.uint32})
         phases['FLIP'] = phases.PHASE.str.contains('1\|0').astype(np.int8)
         phases['NOFLIP'] = phases.PHASE.str.contains('0\|1').astype(np.int8)
 

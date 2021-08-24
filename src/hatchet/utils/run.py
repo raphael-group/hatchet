@@ -54,25 +54,6 @@ def main(args=None):
 
     # ----------------------------------------------------
 
-    if config.run.count_reads:
-        os.makedirs(f'{output}/rdr', exist_ok=True)
-        count_reads(
-            args=[
-                '-N', config.run.normal,
-                '-g', config.run.reference,
-                '-T'
-            ] + config.run.bams.split() + [
-                '-b', config.count_reads.size,
-                '-S'
-            ] + ('Normal ' + config.run.samples).split() + [
-                '-O', f'{output}/rdr/normal.1bed',
-                '-o', f'{output}/rdr/tumor.1bed',
-                '-t', f'{output}/rdr/total.tsv'
-            ] + extra_args
-        )
-
-    # ----------------------------------------------------
-
     if config.run.genotype_snps:
         snps = ''
         if config.genotype_snps.snps:
@@ -124,7 +105,7 @@ def main(args=None):
                 '-T'
             ] + config.run.bams.split() + [
                 '-S'
-            ] + ('Normal ' + config.run.samples).split() + [
+            ] + ('normal ' + config.run.samples).split() + [
                 '-r', config.run.reference,
                 '-L'
             ] + glob.glob(f'{output}/snps/*.vcf.gz') + [
@@ -135,31 +116,52 @@ def main(args=None):
 
     # ----------------------------------------------------
 
+    if config.run.count_reads:
+        os.makedirs(f'{output}/rdr', exist_ok=True)
+        count_reads(
+            args=[
+                '-N', config.run.normal,
+                '-T'
+            ] + config.run.bams.split() + [
+                '-S'
+            ] + ('normal ' + config.run.samples).split() + [
+                '-V', config.genotype_snps.reference_version,
+                '-b', f'{output}/baf/tumor.1bed',
+                '-O', f'{output}/rdr'
+            ] + extra_args
+        )
+
+    # ----------------------------------------------------
+
     if config.run.combine_counts:
         _stdout = sys.stdout
         sys.stdout = StringIO()
+        os.makedirs(f'{output}/abin', exist_ok=True)
 
         combine_counts(args=[
-            '-c', f'{output}/rdr/normal.1bed',
-            '-C', f'{output}/rdr/tumor.1bed',
-            '-B', f'{output}/baf/tumor.1bed',
-            '-t', f'{output}/rdr/total.tsv'
-        ])
+            '-A', f'{output}/rdr',
+            '-b', f'{output}/baf/tumor.1bed',
+            '-t', f'{output}/rdr/total.tsv', 
+            '-V', config.genotype_snps.reference_version,
+            '-p', f'{output}/phase/phased.vcf.gz',
+            '--use_em',
+            '-o', f'{output}/abin/bulk.bb'
+            ] + extra_args
+        )
 
-        out = sys.stdout.getvalue()
-        sys.stdout.close()
-        sys.stdout = _stdout
+        #out = sys.stdout.getvalue()
+        #sys.stdout.close()
+        #sys.stdout = _stdout
 
-        os.makedirs(f'{output}/bb', exist_ok=True)
-        with open(f'{output}/bb/bulk.bb', 'w') as f:
-            f.write(out)
+        #with open(f'{output}/bb/bulk.bb', 'w') as f:
+        #    f.write(out)
 
     # ----------------------------------------------------
 
     if config.run.cluster_bins:
         os.makedirs(f'{output}/bbc', exist_ok=True)
         cluster_bins(args=[
-            f'{output}/bb/bulk.bb',
+            f'{output}/abin/bulk.bb',
             '-o', f'{output}/bbc/bulk.seg',
             '-O', f'{output}/bbc/bulk.bbc'
         ])
@@ -170,7 +172,11 @@ def main(args=None):
         os.makedirs(f'{output}/plots', exist_ok=True)
         plot_bins(args=[
             f'{output}/bbc/bulk.bbc',
-            '--rundir', f'{output}/plots'
+            '--rundir', 
+            f'{output}/plots',
+            '--ymin', '0',
+            '--ymax', '3',
+            #'--pdf'
         ])
 
     # ----------------------------------------------------

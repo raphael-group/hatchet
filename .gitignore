@@ -1,5 +1,5 @@
 ######## STUFF I ADDED BETWEEN POUND SIGNS
-script/hatchet_test.ini
+script/*
 src/hatchet.egg-info/
 src/hatchet/solve
 ########
