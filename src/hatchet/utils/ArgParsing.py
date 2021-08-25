@@ -198,10 +198,15 @@ def parse_combine_counts_args(args=None):
         tkns = f.split('.')
         if len(tkns) > 1 and (tkns[1] == 'thresholds' or tkns[1] == 'total'):
             chromosomes.add(tkns[0])
+    chromosomes = sorted(chromosomes)
 
     for ch in chromosomes:
-        totals_arr = os.path.join(args.array, f'{ch}.total.gz')
-        thresholds_arr = os.path.join(args.array, f'{ch}.thresholds.gz')
+        if args.not_compressed:
+            totals_arr = os.path.join(args.array, f'{ch}.total')
+            thresholds_arr = os.path.join(args.array, f'{ch}.thresholds')           
+        else:
+            totals_arr = os.path.join(args.array, f'{ch}.total.gz')
+            thresholds_arr = os.path.join(args.array, f'{ch}.thresholds.gz')
         if not os.path.exists(totals_arr):
             raise ValueError(sp.error("Missing array file: {}".format(totals_arr)))
         if not os.path.exists(thresholds_arr):
