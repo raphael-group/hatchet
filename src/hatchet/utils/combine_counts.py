@@ -111,6 +111,9 @@ def main(args=None):
 
     autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
     big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index = False, sep = '\t')
+    
+    # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
+    big_bb.END = big_bb.END + 1 
     big_bb.to_csv(outfile + '.withXY', index = False, sep = '\t')
 
     # Remove intermediate BB files
@@ -154,8 +157,7 @@ def read_snps(baf_file, ch, all_names, phasefile = None):
     
     if phasefile is not None:
         # Read in phasing output
-        phases = pd.read_table(phasefile, compression  = 'gzip', comment = '#', names = 'CHR\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tPHASE'.split(), usecols = ['CHR', 'POS', 'PHASE'], quoting = 3, low_memory = False)
-        phases = phases.astype({'CHR':object, 'POS':np.uint32})
+        phases = pd.read_table(phasefile, compression  = 'gzip', comment = '#', names = 'CHR\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tPHASE'.split(), usecols = ['CHR', 'POS', 'PHASE'], quoting = 3, low_memory = False, dtype = {'CHR':object, 'POS':np.uint32})
         phases['FLIP'] = phases.PHASE.str.contains('1\|0').astype(np.int8)
         phases['NOFLIP'] = phases.PHASE.str.contains('0\|1').astype(np.int8)
 
@@ -360,10 +362,12 @@ def compute_baf_task(bin_snps, blocksize, max_snps_per_block, test_alpha, use_em
     
     phasing = "PHASE" in bin_snps.columns
     if phasing:
-        phase_data = phase_blocks_sequential(bin_snps[bin_snps.SAMPLE == samples[0]], 
-                                             blocksize = blocksize, 
+        # TODO: select the highest coverage sample to use for constructing phase blocks?
+        # or maybe use all samples for BAF test?
+        all_phase_data = [phase_blocks_sequential(d, blocksize = blocksize, 
                                              max_snps_per_block = max_snps_per_block,
-                                             alpha = test_alpha)
+                                             alpha = test_alpha) for _, d in bin_snps.groupby('SAMPLE')]
+        phase_data = merge_phasing(bin_snps, all_phase_data)
         
     for sample in samples:
         # Compute BAF
@@ -385,6 +389,40 @@ def compute_baf_task(bin_snps, blocksize, max_snps_per_block, test_alpha, use_em
         result[sample] = n_snps, cov, baf, alpha, beta
     return result
 
+def merge_phasing(df, all_phase_data):
+    N = len(df)
+    
+    if len(all_phase_data) == 1:
+        return all_phase_data[0]
+    
+    singletons = set()
+    orphans = set()
+    breaks = set()
+    for i in range(len(all_phase_data)):
+        # Merge singletons and orphans
+        singletons = singletons.union(all_phase_data[i][1])
+        orphans = orphans.union(all_phase_data[i][2])
+    
+        # Identify breaks
+        blocking = all_phase_data[i][0]
+        j = 0
+        for j in range(len(blocking) - 1):
+            if blocking[j][-1] == blocking[j + 1][0] - 1:
+                breaks.add(blocking[j][-1])
+    
+    # Split blocking in sample 1 to match other breaks
+    blocks = []
+    for b in all_phase_data[0][0]:
+        br = np.argwhere([a in breaks or a in orphans for a in b[:-1]])
+        blocks.extend([list(a) for a in np.split(b, br.flatten() + 1)])
+    #print(blocks)
+        
+    #print([a[0] for a in blocks if len(a) == 1])
+    orphans = orphans.union([a[0] for a in blocks if len(a) == 1])
+    blocks = [b for b in blocks if len(b) > 1]
+        
+    return blocks, singletons, orphans, all_phase_data[0][-2]
+
 def binom_prop_test(alt1, ref1, flip1, alt2, ref2, flip2, alpha = 0.1):
     """
     Returns True if there is sufficient evidence that SNPs 1 and 2 should not be merged, False otherwise.
@@ -394,8 +432,8 @@ def binom_prop_test(alt1, ref1, flip1, alt2, ref2, flip2, alpha = 0.1):
     
     x1 = ref1 if flip1 > 0 else alt1
     x2 = ref2 if flip2 > 0 else alt2
-    n1 = alt1 + ref1
-    n2 = alt2 + ref2
+    n1 = max(1, alt1 + ref1)
+    n2 = max(1, alt2 + ref2)
     
     p1 = x1 / n1
     p2 = x2 / n2
@@ -501,9 +539,12 @@ def phase_blocks_sequential(df, blocksize = 50e3, max_snps_per_block = 10, alpha
     
     return blocks, singletons, orphans, ch, sample
 
-def collapse_blocks(df, blocks, singletons, orphans, ch, sample):
+def collapse_blocks(df, blocks, singletons, orphans, ch):
     ### Construct blocked 1-bed table
     # First, merge blocks for those SNPs that are in the same block
+    assert len(df.SAMPLE.unique()) == 1
+    sample = list(df.SAMPLE.unique())[0]
+    
     rows = []
     i = 0
     j = 0
@@ -640,7 +681,6 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                                     min_snp_reads = min_snp_reads, min_total_reads = min_total_reads)
         
             starts_p = bins_p[0]
-            starts_p = np.concatenate([[starts_p[0]], np.array(starts_p[1:]) - 1])
             ends_p = bins_p[1]
             # Partition SNPs for BAF inference
                
@@ -650,10 +690,18 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                 dfs_p = None
                 bafs_p = None
             else:
-                dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS < ends_p[i])] for i in range(len(starts_p))]         
+                dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])] for i in range(len(starts_p))]         
                 for i in range(len(dfs_p)):
+                    
                     assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
                 bafs_p = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_em) for d in dfs_p] 
+                
+                """
+                except ZeroDivisionError:    
+                    import pickle
+                    with open(f"dfs_p_chr{chromosome}.pickle", 'wb') as f:
+                        pickle.dump((dfs_p, blocksize, max_snps_per_block, test_alpha, use_em), f)
+                    """
                 
             bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
         else:
@@ -685,7 +733,6 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                                     min_snp_reads = min_snp_reads, min_total_reads = min_total_reads)
 
             starts_q = bins_q[0]
-            starts_q = np.concatenate([[starts_q[0]], np.array(starts_q[1:]) - 1])
             ends_q = bins_q[1]
                 
             if xy:
@@ -693,7 +740,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                 bafs_q = None
             else:
                 # Partition SNPs for BAF inference
-                dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS < ends_q[i])] for i in range(len(starts_q))]
+                dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])] for i in range(len(starts_q))]
                 
                 for i in range(len(dfs_q)):
                     assert np.all(dfs_q[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
