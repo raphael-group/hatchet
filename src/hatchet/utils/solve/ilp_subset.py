@@ -4,6 +4,7 @@ import pandas as pd
 from pyomo import environ as pe
 from pyomo.opt import SolverStatus, TerminationCondition
 
+from hatchet import config
 from hatchet.utils.solve.utils import Random
 
 
@@ -531,12 +532,13 @@ class ILPSubset:
                 U[:, _k] = v
         return U
 
-    def run(self, solver_type='gurobi', timelimit=100, write_path=None):
+    def run(self, solver_type='gurobi', timelimit=None, write_path=None):
         if solver_type == 'gurobipy':
             solver = pe.SolverFactory('gurobi', solver_io='python')
         else:
             solver = pe.SolverFactory(solver_type)
 
+        timelimit = int(timelimit or config.compute_cn.timelimit or 100)
         kwargs = {'timelimit': timelimit, 'report_timing': False}
         if solver.warm_start_capable():
             kwargs['warmstart'] = self.warmstart
