@@ -38,9 +38,9 @@ results.
 First run `hatchet run hatchet.ini`, but **enable only the first 3 steps** of the HATCHet pipeline in `hatchet.ini`:
 
 ```
-count_reads = True
 genotype_snps = True
 count_alleles = True
+count_reads = True
 combine_counts = False
 cluster_bins = False
 plot_bins = False
@@ -70,9 +70,9 @@ Then, run the HATCHet workflow again using `hatchet run hatchet.ini`, after enab
 the HATCHet pipeline. This should have a shorter runtime than when you ran the first 3 steps:
 
 ```
-count_reads = False
 genotype_snps = False
 count_alleles = False
+count_reads = False
 combine_counts = True
 cluster_bins = True
 plot_bins = True
