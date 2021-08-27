@@ -64,7 +64,7 @@ combine-counts has some main parameters; the main values of these parameters all
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
 | `-j`, `--processes` | Number of parallel processes to use (default 1) |  | 1 |
-| `--use_em`  | Use EM BAF inference | If this flag is set, EM inference is used to infer BAF and phasing for each bin (instead of exhaustive approach). |  |
+| `--use_mm`  | Use MM BAF inference | If this flag is set, an exhaustive "maximize-maximize" approach inference is used to infer BAF and phasing for each bin (instead of EM). MM results are higher-likelihood and may be closer to the inference from earlier versions of HATCHet, but often produces poorer clusters. |  |
 | `-z, --not_compressed`  | Indicates that intermediate files are not compressed | For compatibility with legacy versions of previous step -- set this flag if your `.total` and `.thresholds` files are plaintext rather than gzipped. |  |
 | `-p`, `--phase`  | vcf.gz with phasing for all het. SNPs | File containing phasing data for germline SNPs, typically `phased.vcf.gz` if using the HATCHet pipeline. |  |
 | `-s`, `--blocksize`  | Maximum phasing block size | Maximum distance (in bp) between a pair of SNPs included in the same phasing block (ignored if `-p, --phase` is not used) | 25000 |
