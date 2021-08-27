@@ -117,8 +117,8 @@ Other simple parameters are also specified including number of parallel threads,
 
 ```shell
 python3 -m hatchet combine-counts -A ${RDR} -t ${RDR}total.tsv -b {BAF}tumor.1bed -o #{BB}bulk.bb \
-                          --msr ${msr} --mtr ${mtr} -j ${J}
-                          -p ${PHASE} -s ${max_blocksize} -m {max_spb} -a {alpha}
+                          --msr ${msr} --mtr ${mtr} -j ${J} \
+                          -p ${PHASE} -s ${max_blocksize} -m {max_spb} -a {alpha} # optional phasing args
 ```
 
 combine-counts constructs genomic bins such that in all samples, each bin has at least `${msr}` SNP-covering reads and at least `${mtr}` total reads. Bins will not have the same width, but using this rule each bin will have comparable RDR and BAF signals for the following clustering steps. The BAF for each bin and the relative phase of all SNPs in the bin are inferred via EM, and the RDR for each bin is computed fom the read count files in the `${RDR}` folder. After this computation, RDR values are normalized using the total reads in each sample (from `${RDR}total.tsv`). As with other HATCHet commands, `-j ${J}` controls the number of parallel processes.
