@@ -1,16 +1,16 @@
 # Tutorial
 
 This tutorial illustrates how to use the complete pipeline through the `hatchet run` command, along with the configuration [hatchet.ini](hatchet.ini) file that stores all the variables the user needs to specify.
+
 The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:
 1. [Preliminaries](#preliminaries)
-2. [Setting up running directory](#rundir)
-3. [count-reads](#count-reads)
-4. [count-alleles](#count-alleles)
-5. [combine-counts](#combine-counts)
-6. [cluster-bins](#cluster-bins)
-7. [plot-bins](#plot-bins)
-8. [compute-cn](#compute-cn)
-9. [plot-cn](#plot-cn)
+2. [count-reads](#count-reads)
+3. [count-alleles](#count-alleles)
+4. [combine-counts](#combine-counts)
+5. [cluster-bins](#cluster-bins)
+6. [plot-bins](#plot-bins)
+7. [compute-cn](#compute-cn)
+8. [plot-cn](#plot-cn)
 
 We suggest you make a copy of the configuration file, place it into the designated running directory, and follow the tutorial.
 
@@ -112,7 +112,7 @@ python3 -m hatchet count-reads -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BAF}t
 Other simple parameters are also specified including number of parallel threads, output filenames, and the log filename of this step.
 
 
-## [combine-counts[(doc_combine_counts.html)
+## [combine-counts](doc_combine_counts.html)
 <a name="combine-counts"></a>
 
 ```shell
