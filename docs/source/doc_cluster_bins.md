@@ -48,7 +48,7 @@ cluster-bins produces two tab-separated files:
 cluster-bins has 4 main features with some main parameters that allow  to improve the clustering.
 
 1. cluster-bins has a parameter `-d`, `--diploidbaf` that specifies the maximum expected shift from 0.5 for BAF for a diploid or tetraploid cluster (i.e. with copy-number states (1, 1) or (2, 2)). This threshold is used for two goals: (1) To identify the diploid or tetraploid cluster which is used to correct the estimated BAF of potentially biased clusters. (2) To identify potentially biased clusters.
-The default value of this parameter (0.08) is typically sufficient for most of the datasets, but its value can be changed or tuned to accommodate the features of special datasets.
+The default value of this parameter (0.1) is typically sufficient for most of the datasets, but its value can be changed or tuned to accommodate the features of special datasets.
 In particular, the value of this threshold depends on the variance in the data (related to noise and coverage); generally, higher variance requires a higher shift.
 Information provided by plot-bins can be crucial to decide whether one needs to change this value in special datasets.
 
