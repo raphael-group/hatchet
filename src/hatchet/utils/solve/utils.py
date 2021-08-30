@@ -33,16 +33,19 @@ def parse_clonal(clonal):
     copy_numbers = OrderedDict()  # dict from cluster_id => (cn_a, cn_b) 2-tuple
     clonal_parts = clonal.split(',')
     n_clonal_parts = len(clonal_parts)
-    cn_totals = set()
 
-    for c in clonal_parts:
+    for i, c in enumerate(clonal_parts):
         cluster_id, cn_a, cn_b = [int(_c) for _c in c.split(':')]
+
+        # The first two clonal clusters (used for scaling) MUST have different total copy numbers
+        if i==1:
+            _first_cn_a, _first_cn_b = list(copy_numbers.values())[0]
+            if _first_cn_a + _first_cn_b == cn_a + cn_b:
+                raise ValueError('When >= 2 clonal copy numbers are given, the first two must be different in the two segmental clusters')
+
         cn_total = cn_a + cn_b
         if (cn_total == 2) and (n_clonal_parts > 1):
             warnings.warn('Please specify a single cluster when CN_A+CN_B=2')
-        if cn_total in cn_totals:
-            raise ValueError('Cannot specify two clusters with same CN_A+CN_B')
-        cn_totals.add(cn_total)
         if cluster_id in copy_numbers:
             raise ValueError('Already encountered cluster_id =', str(cluster_id))
         copy_numbers[cluster_id] = cn_a, cn_b
