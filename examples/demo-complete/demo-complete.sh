@@ -75,9 +75,9 @@ We follow the template of the HATCHet's [script](../../doc/doc_fullpipeline.md#f
 1. We specify the correct path to the reference genome and the output folder, and other required flags
 ```shell
 echo '[run]' > hatchet.ini
-echo 'count_reads=True' >> hatchet.ini
 echo 'genotype_snps=True' >> hatchet.ini
 echo 'count_alleles=True' >> hatchet.ini
+echo 'count_reads=True' >> hatchet.ini
 echo 'combine_counts=True' >> hatchet.ini
 echo 'cluster_bins=True' >> hatchet.ini
 echo 'plot_bins=True' >> hatchet.ini
@@ -105,10 +105,8 @@ echo 'samples=TumorSample1 TumorSample2 TumorSample3' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-4. We specify the bin size and min/max coverage for the genotpe_snps step
+4. We specify the min/max coverage for the genotpe_snps step
 ```shell
-echo '[count_reads]' >> hatchet.ini
-echo 'size=50kb' >> hatchet.ini
 echo '[genotype_snps]' >> hatchet.ini
 echo 'mincov=8' >> hatchet.ini
 echo 'maxcov=300' >> hatchet.ini
@@ -127,6 +125,14 @@ echo 'chr_notation=True' >> hatchet.ini
 echo '[count_alleles]' >> hatchet.ini
 echo 'mincov=8' >> hatchet.ini
 echo 'maxcov=300' >> hatchet.ini
+:<<'```shell' # Ignore this line
+```
+
+7. We specify the minimum number of total and SNP-covering reads in each bin for the combine_counts step
+```shell
+echo '[combine_counts]' >> hatchet.ini
+echo 'msr=3000' >> hatchet.ini
+echo 'mtr=5000' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
