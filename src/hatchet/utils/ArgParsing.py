@@ -228,7 +228,7 @@ def parse_count_reads_arguments(args=None):
     if not os.path.isfile(normalbaf): raise ValueError(sp.error("The specified normal BAM file does not exist"))
     tumors = args.tumors
     for tumor in tumors:
-        if(not os.path.isfile(tumor)): raise ValueError(sp.error("The specified normal BAM file does not exist"))
+        if(not os.path.isfile(tumor)): raise ValueError(sp.error(f"The specified tumor BAM file {tumor} does not exist"))
     names = args.samples
     if names != None and (len(tumors)+1) != len(names):
         raise ValueError(sp.error("A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample"))
