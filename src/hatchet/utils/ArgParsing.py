@@ -156,7 +156,7 @@ def parse_cluster_kde_args(args=None):
 
 def parse_combine_counts_args(args=None):    
     parser = argparse.ArgumentParser(description = "Perform adaptive binning, compute RDR and BAF for each bin, and produce a BB file.")
-    parser.add_argument('-A', '--array', type = str, required = True, help = f'Directory containing array files (output from "array" command)')   
+    parser.add_argument('-A', '--array', type = str, required = True, help = f'Directory containing array files (output from "count_reads" command)')   
     parser.add_argument("-t","--totalcounts", required=True, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample')
     parser.add_argument("-b","--baffile", required=True, type=str, help="1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)")
     parser.add_argument('-o', '--outfile', required = True, type = str, help = 'Filename for output')   
@@ -167,7 +167,7 @@ def parse_combine_counts_args(args=None):
     parser.add_argument("-s","--max_blocksize", required=False, default=config.combine_counts.blocksize, type=int, help=f'Maximum size of phasing block (default {config.combine_counts.blocksize})')    
     parser.add_argument("-m","--max_spb", required=False, default=config.combine_counts.max_spb, type=int, help=f'Maximum number of SNPs per phasing block (default {config.combine_counts.max_spb})')    
     parser.add_argument("-a","--alpha", required=False, default=config.combine_counts.alpha, type=float, help=f'Significance level for phase blocking adjacent SNPs. Higher means less trust in phasing. (default {config.combine_counts.alpha})')    
-    parser.add_argument("--use_em", action='store_true', default=False, required=False, help="Use EM inference for BAF instead of exhaustive/MM")
+    parser.add_argument("--use_mm", action='store_true', default=False, required=False, help="Use MM (exhaustive) inference for BAF instead of EM")
     parser.add_argument("-z", '--not_compressed', action='store_true', default=False, required=False, help="Non-compressed intermediate files")
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     args = parser.parse_args(args)
@@ -253,7 +253,7 @@ def parse_combine_counts_args(args=None):
         "blocksize":args.max_blocksize,
         "max_snps_per_block":args.max_spb,
         "test_alpha":args.alpha,
-        "use_em":args.use_em,
+        "use_mm":args.use_mm,
         "ref_version": ver
     }
 
@@ -518,16 +518,16 @@ def parse_count_reads_fw_arguments(args=None):
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-b","--size", required=True, type=str, help="Size of the bins, specified as a full number or using the notations either \"kb\" or \"Mb\"")
-    parser.add_argument("-S","--samples", required=False, default=config.count_reads.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
+    parser.add_argument("-S","--samples", required=False, default=config.count_reads_fw.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
     parser.add_argument("-st","--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the directory to \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
-    parser.add_argument("-r","--regions", required=False, default=config.count_reads.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
+    parser.add_argument("-r","--regions", required=False, default=config.count_reads_fw.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
     parser.add_argument("-g","--reference", required=False, default=config.paths.reference, type=str, help="Reference genome, note that reference must be indexed and the dictionary must exist in the same directory with the same name and .dict extension")
-    parser.add_argument("-j", "--processes", required=False, default=config.count_reads.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-q", "--readquality", required=False, default=config.count_reads.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
-    parser.add_argument("-O", "--outputnormal", required=False, default=config.count_reads.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
-    parser.add_argument("-o", "--outputtumors", required=False, default=config.count_reads.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
-    parser.add_argument("-t", "--outputtotal", required=False, default=config.count_reads.outputtotal, type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
-    parser.add_argument("-v", "--verbose", action='store_true', default=config.count_reads.verbose, required=False, help="Use verbose log messages")
+    parser.add_argument("-j", "--processes", required=False, default=config.count_reads_fw.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-q", "--readquality", required=False, default=config.count_reads_fw.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-O", "--outputnormal", required=False, default=config.count_reads_fw.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
+    parser.add_argument("-o", "--outputtumors", required=False, default=config.count_reads_fw.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
+    parser.add_argument("-t", "--outputtotal", required=False, default=config.count_reads_fw.outputtotal, type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")
+    parser.add_argument("-v", "--verbose", action='store_true', default=config.count_reads_fw.verbose, required=False, help="Use verbose log messages")
     parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
@@ -614,13 +614,13 @@ def parse_combine_counts_fw_args(args=None):
     parser.add_argument("-C","--tumorbins", required=True, type=str, help='Tumor bin counts in the format "SAMPLE\tCHR\tSTART\tEND\tCOUNT"')
     parser.add_argument("-B","--tumorbafs", required=True, type=str, help='Tumor allele counts in the format "SAMPLE\tCHR\tPOS\tREF-COUNT\tALT-COUNT"')
     parser.add_argument("-p","--phase", required=False, default=config.combine_counts.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')
-    parser.add_argument("-l","--blocklength", required=False, default=config.combine_counts.blocklength, type=str, help="Size of the haplotype blocks, specified as a full number or using the notations either \"kb\" or \"Mb\" (default: 50kb)")
-    parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.combine_counts.diploidbaf, help="Maximum diploid-BAF shift used to select the bins whose BAF should be normalized by the normal when normalbafs is given (default: 0.1)")
-    parser.add_argument("-t","--totalcounts", required=False, default=config.combine_counts.totalcounts, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample (default: none)')
-    parser.add_argument("-g","--gamma",type=float,required=False, default=config.combine_counts.gamma, help='Confidence level used to determine if a bin is copy neutral with BAF of 0.5 in the BINOMIAL_TEST mode (default: 0.05)')
-    parser.add_argument("-e","--seed", type=int, required=False, default=config.combine_counts.seed, help='Random seed used for the normal distributions used in the clouds (default: 0)')
-    parser.add_argument("-v", "--verbose", action='store_true', default=config.combine_counts.verbose, required=False, help="Use verbose log messages")
-    parser.add_argument("-r", "--disablebar", action='store_true', default=config.combine_counts.disablebar, required=False, help="Disable progress bar")
+    parser.add_argument("-d","--diploidbaf", type=float, required=False, default=0.1, help="Maximum diploid-BAF shift used to select the bins whose BAF should be normalized by the normal when normalbafs is given (default: 0.1)")
+    parser.add_argument("-l","--blocklength", required=False, default=config.combine_counts.blocksize, type=str, help="Size of the haplotype blocks, specified as a full number or using the notations either \"kb\" or \"Mb\" (default: 50kb)")
+    parser.add_argument("-t","--totalcounts", required=False, default=None, type=str, help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample (default: none)')
+    parser.add_argument("-g","--gamma",type=float,required=False, default=0.05, help='Confidence level used to determine if a bin is copy neutral with BAF of 0.5 in the BINOMIAL_TEST mode (default: 0.05)')
+    parser.add_argument("-e","--seed", type=int, required=False, default=0, help='Random seed used for the normal distributions used in the clouds (default: 0)')
+    parser.add_argument("-v", "--verbose", action='store_true', required=False, help="Use verbose log messages")
+    parser.add_argument("-r", "--disablebar", action='store_true', required=False, help="Disable progress bar")
     parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
@@ -644,6 +644,7 @@ def parse_combine_counts_fw_args(args=None):
         raise ValueError(sp.error("Seed parameter must be positive!"))
 
     size = 0
+    args.blocklength = str(args.blocklength)
     try:
         if args.blocklength[-2:] == "kb":
             size = int(args.blocklength[:-2]) * 1000
