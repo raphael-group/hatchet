@@ -31,7 +31,7 @@ def main(args=None):
     blocksize = args['blocksize']
     max_snps_per_block = args['max_snps_per_block']
     test_alpha = args['test_alpha']
-    use_em = args['use_em']
+    use_mm = args['use_mm']
 
     n_workers = min(len(chromosomes), threads)
 
@@ -67,7 +67,7 @@ def main(args=None):
     # form parameters for each worker
     params = [(baffile, all_names, ch, outfile + f'.{ch}', 
                chr2centro[ch][0], chr2centro[ch][1], msr, mtr, args['array'],
-               isX[ch] or isY[ch], use_em, phase, blocksize, max_snps_per_block, test_alpha)
+               isX[ch] or isY[ch], use_mm, phase, blocksize, max_snps_per_block, test_alpha)
               for ch in chromosomes]
     # dispatch workers
     """
@@ -90,9 +90,10 @@ def main(args=None):
     # For each sample, correct read counts to account for differences in coverage (as in HATCHet)
     # (i.e., multiply read counts by total-reads-normal/total-reads-sample)
     rc = pd.read_table(args['totalcounts'], header = None, names = ['SAMPLE', '#READS'])
-    nreads_normal = rc[rc.SAMPLE == 'normal'].iloc[0]['#READS']
+    normal_name = all_names[0]
+    nreads_normal = rc[rc.SAMPLE == normal_name].iloc[0]['#READS']
     for sample in rc.SAMPLE.unique():
-        if sample == 'normal':
+        if sample == normal_name:
             continue
         nreads_sample = rc[rc.SAMPLE == sample].iloc[0]['#READS']
         correction = nreads_normal / nreads_sample
@@ -108,12 +109,12 @@ def main(args=None):
         sp.log("# NOTE: adding NORMAL_READS column to bb file", level = "INFO")
         big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(np.uint32)
 
-
-    autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
-    big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index = False, sep = '\t')
-    
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     big_bb.END = big_bb.END + 1 
+
+    autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
+    big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index = False, sep = '\t')    
+
     big_bb.to_csv(outfile + '.withXY', index = False, sep = '\t')
 
     # Remove intermediate BB files
@@ -350,7 +351,7 @@ def apply_MM(totals_in, alts_in):
     else:
         return baf, beta, alpha
 
-def compute_baf_task(bin_snps, blocksize, max_snps_per_block, test_alpha, use_em):
+def compute_baf_task(bin_snps, blocksize, max_snps_per_block, test_alpha, use_mm):
     """
     Estimates the BAF for the bin containing exactly <bin_snps> SNPs.
     <bin_snps> is a dataframe with at least ALT and REF columns containing read counts.
@@ -377,11 +378,11 @@ def compute_baf_task(bin_snps, blocksize, max_snps_per_block, test_alpha, use_em
         if phasing:
             my_snps = collapse_blocks(my_snps, *phase_data)
             
-        if use_em:
-            baf, alpha, beta = apply_EM(totals_in = my_snps.TOTAL, 
+        if use_mm:
+            baf, alpha, beta = apply_MM(totals_in = my_snps.TOTAL, 
                                         alts_in = my_snps.ALT)   
         else:
-            baf, alpha, beta = apply_MM(totals_in = my_snps.TOTAL, 
+            baf, alpha, beta = apply_EM(totals_in = my_snps.TOTAL, 
                                         alts_in = my_snps.ALT)   
             
         cov = np.sum(alpha + beta) / n_snps
@@ -619,7 +620,7 @@ def get_chr_end(stem, chromosome):
     return last_start 
 
 def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, centromere_end, 
-         min_snp_reads, min_total_reads, arraystem, xy, use_em, phasefile, blocksize, 
+         min_snp_reads, min_total_reads, arraystem, xy, use_mm, phasefile, blocksize, 
          max_snps_per_block, test_alpha):
     """
     Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
@@ -694,13 +695,13 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                 for i in range(len(dfs_p)):
                     
                     assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
-                bafs_p = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_em) for d in dfs_p] 
+                bafs_p = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_mm) for d in dfs_p] 
                 
                 """
                 except ZeroDivisionError:    
                     import pickle
                     with open(f"dfs_p_chr{chromosome}.pickle", 'wb') as f:
-                        pickle.dump((dfs_p, blocksize, max_snps_per_block, test_alpha, use_em), f)
+                        pickle.dump((dfs_p, blocksize, max_snps_per_block, test_alpha, use_mm), f)
                     """
                 
             bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
@@ -746,7 +747,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                     assert np.all(dfs_q[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
                         
                 # Infer BAF
-                bafs_q = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_em) for d in dfs_q]
+                bafs_q = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_mm) for d in dfs_q]
             
             bb_q = merge_data(bins_q, dfs_q, bafs_q, all_names, chromosome)
         else:
