@@ -76,8 +76,8 @@ class CMakeBuild(build_ext):
 
 setup(
     name='hatchet',
-    version='0.4.4',
-    packages=['hatchet', 'hatchet.utils', 'hatchet.bin', 'hatchet.resources', 'hatchet.utils.solve', 'hatchet.data'],
+    version='0.4.6',
+    packages=['hatchet', 'hatchet.utils', 'hatchet.utils.solve', 'hatchet.bin', 'hatchet.data', 'hatchet.resources'],
     package_dir={'': 'src'},
     package_data={'hatchet': ['hatchet.ini'], 'hatchet.data': ['*'],
                   'hatchet.resources' : ['hg19.centromeres.txt', 'hg38.centromeres.txt']},
