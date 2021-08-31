@@ -7,9 +7,11 @@ import argparse
 import hatchet
 from hatchet import config
 from hatchet.utils.count_reads import main as count_reads
+from hatchet.utils.count_reads_fw import main as count_reads_fw
 from hatchet.utils.genotype_snps import main as genotype_snps
 from hatchet.utils.count_alleles import main as count_alleles
 from hatchet.utils.combine_counts import main as combine_counts
+from hatchet.utils.combine_counts_fw import main as combine_counts_fw
 from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as hatchet_main
@@ -114,54 +116,99 @@ def main(args=None):
             ] + extra_args
         )
 
-    # ----------------------------------------------------
 
-    if config.run.count_reads:
-        os.makedirs(f'{output}/rdr', exist_ok=True)
-        count_reads(
-            args=[
-                '-N', config.run.normal,
-                '-T'
-            ] + config.run.bams.split() + [
-                '-S'
-            ] + ('normal ' + config.run.samples).split() + [
-                '-V', config.genotype_snps.reference_version,
+    if config.run.fixed_width is None or not config.run.fixed_width:
+        # ----------------------------------------------------
+        # ----------------------------------------------------
+        # Variable-width/adaptive binning
+        
+        if config.run.count_reads:
+            os.makedirs(f'{output}/rdr', exist_ok=True)
+            count_reads(
+                args=[
+                    '-N', config.run.normal,
+                    '-T'
+                ] + config.run.bams.split() + [
+                    '-S'
+                ] + ('normal ' + config.run.samples).split() + [
+                    '-V', config.genotype_snps.reference_version,
+                    '-b', f'{output}/baf/tumor.1bed',
+                    '-O', f'{output}/rdr'
+                ] + extra_args
+            )
+
+        # ----------------------------------------------------
+
+        if config.run.combine_counts:
+            _stdout = sys.stdout
+            sys.stdout = StringIO()
+            os.makedirs(f'{output}/abin', exist_ok=True)
+
+            combine_counts(args=[
+                '-A', f'{output}/rdr',
                 '-b', f'{output}/baf/tumor.1bed',
-                '-O', f'{output}/rdr'
-            ] + extra_args
-        )
+                '-t', f'{output}/rdr/total.tsv', 
+                '-V', config.genotype_snps.reference_version,
+                '-p', f'{output}/phase/phased.vcf.gz',
+                '-o', f'{output}/abin/bulk.bb'
+                ] + extra_args
+            )
 
-    # ----------------------------------------------------
+            #out = sys.stdout.getvalue()
+            #sys.stdout.close()
+            #sys.stdout = _stdout
 
-    if config.run.combine_counts:
-        _stdout = sys.stdout
-        sys.stdout = StringIO()
-        os.makedirs(f'{output}/abin', exist_ok=True)
+            #with open(f'{output}/bb/bulk.bb', 'w') as f:
+            #    f.write(out)
 
-        combine_counts(args=[
-            '-A', f'{output}/rdr',
-            '-b', f'{output}/baf/tumor.1bed',
-            '-t', f'{output}/rdr/total.tsv', 
-            '-V', config.genotype_snps.reference_version,
-            '-p', f'{output}/phase/phased.vcf.gz',
-            '--use_em',
-            '-o', f'{output}/abin/bulk.bb'
-            ] + extra_args
-        )
+    else:
+        # ----------------------------------------------------
+        # ----------------------------------------------------
+        # Old fixed-width binning
+        
+            if config.run.count_reads:
+                os.makedirs(f'{output}/rdr', exist_ok=True)
+                count_reads_fw(
+                    args=[
+                        '-N', config.run.normal,
+                        '-g', config.run.reference,
+                        '-T'
+                    ] + config.run.bams.split() + [
+                        '-b', config.count_reads.size,
+                        '-S'
+                    ] + ('Normal ' + config.run.samples).split() + [
+                        '-O', f'{output}/rdr/normal.1bed',
+                        '-o', f'{output}/rdr/tumor.1bed',
+                        '-t', f'{output}/rdr/total.tsv'
+                    ] + extra_args
+                )
 
-        #out = sys.stdout.getvalue()
-        #sys.stdout.close()
-        #sys.stdout = _stdout
+            # ----------------------------------------------------
 
-        #with open(f'{output}/bb/bulk.bb', 'w') as f:
-        #    f.write(out)
+            if config.run.combine_counts:
+                _stdout = sys.stdout
+                sys.stdout = StringIO()
+                os.makedirs(f'{output}/abin', exist_ok=True)
 
-    # ----------------------------------------------------
+                combine_counts_fw(args=[
+                    '-c', f'{output}/rdr/normal.1bed',
+                    '-C', f'{output}/rdr/tumor.1bed',
+                    '-B', f'{output}/baf/tumor.1bed',
+                    '-t', f'{output}/rdr/total.tsv'
+                ])
+                out = sys.stdout.getvalue()
+                sys.stdout.close()
+                sys.stdout = _stdout
+
+                os.makedirs(f'{output}/bb', exist_ok=True)
+                with open(f'{output}/bb/bulk.bb', 'w') as f:
+                    f.write(out)
+    
 
     if config.run.cluster_bins:
         os.makedirs(f'{output}/bbc', exist_ok=True)
         cluster_bins(args=[
-            f'{output}/abin/bulk.bb',
+            f'{output}/abin/bulk.bb' if (config.run.fixed_width is None or not config.run.fixed_width) else f'{output}/bb/bulk.bb',
             '-o', f'{output}/bbc/bulk.seg',
             '-O', f'{output}/bbc/bulk.bbc'
         ])
