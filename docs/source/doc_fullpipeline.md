@@ -64,6 +64,7 @@ hatchet <step>
 | (5)   | [*plot-bins*](doc_plot_bins.html)           | BBot     | This step produces informative plots concerning the computed RDRs, BAFs, and clusters. The information produced by this step are important to validate the compute clusters of genomic regions. |
 | (6)   | [*compute-cn*](doc_compute_cn.html)         | hatchet  | This step computes allele-specific fractional copy numbers, solves a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions, and deploys a model-selection criterion select the number of clone by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication. |
 | (7)   | [*plot-cn*](doc_plot_cn.html)               | BBeval   | This step analyzes the inferred copy-number states and clone proportions and produces informative plots jointly considering all samples from the same patient. In addition, this step can also combine results obtained for different patients and perform integrative analysis. |
+| (8)   | [*check-solver*](doc_check_solver.html)     |          | This step runs the `compute_cn` step on a set of small data files pre-packaged with HATCHet, and is a quick way to verify if your solver is working correctly. |
 
 ## Recommendations and quality control
 <a name="recommendations"></a>

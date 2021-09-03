@@ -634,7 +634,8 @@ def execute_python(solver, args, n, outprefix):
         n_seed=args['p'],
         n_worker=args['j'],
         random_seed=args['r'],
-        max_iters=args['f']
+        max_iters=args['f'],
+        timelimit=args['s']
     )
 
     segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file=args['bbc'], bbc_out_file=bbc_out_file,
