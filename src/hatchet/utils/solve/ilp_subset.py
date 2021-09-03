@@ -538,8 +538,9 @@ class ILPSubset:
         else:
             solver = pe.SolverFactory(solver_type)
 
-        timelimit = int(timelimit or config.compute_cn.timelimit or 100)
-        kwargs = {'timelimit': timelimit, 'report_timing': False}
+        kwargs = {'report_timing': False}
+        if timelimit is not None:
+            kwargs['timelimit'] = int(timelimit)
         if solver.warm_start_capable():
             kwargs['warmstart'] = self.warmstart
 
