@@ -10,10 +10,10 @@ from pandas.testing import assert_frame_equal
 
 import hatchet
 from hatchet import config
-from hatchet.utils.count_reads import main as count_reads
+from hatchet.utils.count_reads_fw import main as count_reads_fw
 from hatchet.utils.genotype_snps import main as genotype_snps
 from hatchet.utils.count_alleles import main as count_alleles
-from hatchet.utils.combine_counts import main as combine_counts
+from hatchet.utils.combine_counts_fw import main as combine_counts_fw
 from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as main
@@ -51,7 +51,7 @@ def output_folder():
 def test_script(_, bams, output_folder):
     normal_bam, tumor_bams = bams
 
-    count_reads(
+    count_reads_fw(
         args=[
             '-N', normal_bam,
             '-T'
@@ -107,7 +107,7 @@ def test_script(_, bams, output_folder):
     _stdout = sys.stdout
     sys.stdout = StringIO()
 
-    combine_counts(args=[
+    combine_counts_fw(args=[
         '-c', os.path.join(output_folder, 'bin/normal.1bed'),
         '-C', os.path.join(output_folder, 'bin/bulk.1bed'),
         '-B', os.path.join(output_folder, 'baf/bulk.1bed'),
