@@ -96,7 +96,9 @@ setup(
     install_requires=[
         'biopython',
         'matplotlib',
+        'mosdepth',
         'pandas',
+        'picard',
         'psutil',
         'pyomo',
         'pysam',
@@ -104,7 +106,9 @@ setup(
         'seaborn',
         'scikit-learn',
         'scikit-image',
-        'scipy'
+        'scipy',
+        'shapeit',
+        'tabix'
     ],
 
     extras_require={
