@@ -9,6 +9,7 @@ src/hatchet/solve
 *.ucn*
 !tests/data/best.bbc.ucn
 !tests/data/best_abin.bbc.ucn
+!tests/data/best_abin_ph.bbc.ucn
 
 # Build directory
 build/

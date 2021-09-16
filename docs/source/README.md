@@ -137,6 +137,8 @@ section of your `hatchet.ini` (if using the [hatchet run](doc_runhatchet.html) c
 solver. Make sure the relevant solver binaries are in your `$PATH`, otherwise Pyomo will not be able to find them
 correctly.
 
+One HATCHet command that is very useful to sanity-check your solver is `hatchet check-solver`. This command runs the HATCHet `compute_cn` step on a small set of pre-packaged data files and completes fairly quickly (a few seconds for the Gurobi optimizer, but up to a few minutes for glpk). Running this command will ensure that you have your solver settings (including licenses) set up correctly, so you should always run this command first before trying out the `compute_cn` step on your large data files.
+
 ### Required data
 <a name="requireddata"></a>
 

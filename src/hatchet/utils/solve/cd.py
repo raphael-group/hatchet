@@ -11,7 +11,7 @@ class Worker:
         self.ilp = ilp
         self.solver_type = solver
 
-    def run(self, cA, cB, u, max_iters, max_convergence_iters, tol=0.001):
+    def run(self, cA, cB, u, max_iters, max_convergence_iters, tol=0.001, timelimit=None):
         _iters = _convergence_iters = 0
         _u = u
         _cA, _cB = cA, cB  # first hot-start values
@@ -22,7 +22,7 @@ class Worker:
             carch.fix_u(_u)
             carch.create_model()
             carch.hot_start(_cA, _cB)
-            carch_results = carch.run(self.solver_type)
+            carch_results = carch.run(self.solver_type, timelimit=timelimit)
             if carch_results is None:
                 return None
             _obj_c, _cA, _cB, _, _, _ = carch_results
@@ -30,7 +30,7 @@ class Worker:
             uarch = copy(self.ilp)
             uarch.fix_c(_cA, _cB)
             uarch.create_model()
-            uarch_results = uarch.run(self.solver_type)
+            uarch_results = uarch.run(self.solver_type, timelimit=timelimit)
             if uarch_results is None:
                 return None
             _obj_u, _, _, _u, _, _ = uarch_results
@@ -47,9 +47,9 @@ class Worker:
 
 
 # Top-level 'work' function that can be pickled for multiprocessing
-def _work(cd, u, solver_type, max_iters, max_convergence_iters):
+def _work(cd, u, solver_type, max_iters, max_convergence_iters, timelimit):
     worker = Worker(cd.ilp, solver_type)
-    return worker.run(cd.hcA, cd.hcB, u, max_iters=max_iters, max_convergence_iters=max_convergence_iters)
+    return worker.run(cd.hcA, cd.hcB, u, max_iters=max_iters, max_convergence_iters=max_convergence_iters, timelimit=timelimit)
 
 
 class CoordinateDescent:
@@ -61,7 +61,7 @@ class CoordinateDescent:
 
         self.seeds = None
 
-    def run(self, solver_type='gurobi', max_iters=10, max_convergence_iters=2, n_seed=400, j=8, random_seed=None):
+    def run(self, solver_type='gurobi', max_iters=10, max_convergence_iters=2, n_seed=400, j=8, random_seed=None, timelimit=None):
         with Random(random_seed):
             seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
 
@@ -69,7 +69,7 @@ class CoordinateDescent:
         to_do = []
         with ProcessPoolExecutor(max_workers=min(j, n_seed)) as executor:
             for u in seeds:
-                future = executor.submit(_work, self, u, solver_type, max_iters, max_convergence_iters)
+                future = executor.submit(_work, self, u, solver_type, max_iters, max_convergence_iters, timelimit)
                 to_do.append(future)
 
             for future in as_completed(to_do):

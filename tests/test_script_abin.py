@@ -51,31 +51,6 @@ def output_folder():
 def test_script(_, bams, output_folder):
     normal_bam, tumor_bams = bams
 
-    """
-    args=[
-            SOLVE,
-            '-x', os.path.join(output_folder, 'results'),
-            '-i', os.path.join(output_folder, 'bbc/bulk'),
-            '-n2',
-            '-p', '400',
-            '-v', '3',
-            '-u', '0.03',
-            '-r', '6700',  # random seed
-            '-j', '8',
-            '-eD', '6',
-            '-eT', '12',
-            '-g', '0.35',
-            '-l', '0.6'
-        ]  
-    eval_args = [
-            os.path.join(output_folder, 'results/best.bbc.ucn'),
-            '--rundir', os.path.join(output_folder, 'evaluation')]
-    with open('cmd.txt', 'w') as f:
-        f.write((' ').join(args) + '\n')
-        f.write((' ').join(eval_args) + '\n')
-    return
-    """
-
     genotype_snps(
         args=[
             '-N', normal_bam,
