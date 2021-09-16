@@ -341,11 +341,11 @@ def max_likelihood_hardphasing(alts, totals, n_candidates = 1000):
     return best_p, 1 - best_phasings[:, best_idx]
    
 def apply_MM(totals_in, alts_in):
-    baf, phaess = max_likelihood_hardphasing(alts = alts_in, totals = totals_in)
+    baf, phases = max_likelihood_hardphasing(alts = alts_in, totals = totals_in)
     
     refs = totals_in - alts_in 
-    alpha = np.sum(np.choose(phaess, [refs, alts_in]))
-    beta = np.sum(np.choose(phaess, [alts_in, refs]))   
+    alpha = np.sum(np.choose(phases, [refs, alts_in]))
+    beta = np.sum(np.choose(phases, [alts_in, refs]))   
     if alpha < beta:
         return baf, alpha, beta
     else:
