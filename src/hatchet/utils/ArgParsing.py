@@ -163,7 +163,7 @@ def parse_combine_counts_args(args=None):
     parser.add_argument('--msr', type = int, help = f'Minimum SNP reads per bin (default {config.combine_counts.msr})', default = config.combine_counts.msr)
     parser.add_argument('--mtr', type = int, help = f'Minimum total reads per bin (default {config.combine_counts.mtr})', default = config.combine_counts.mtr)
     parser.add_argument('-j', '--processes', type = int, help = f'Number of parallel processes to use (default {config.combine_counts.processes})', default = config.combine_counts.processes)   
-    parser.add_argument("-p","--phase", required=False, default=config.combine_counts.phase, type=str, help='Phasing of heterozygous germline SNPs in the format "CHR\tPOS\t<string containing 0|1 or 1|0>"')    
+    parser.add_argument("-p","--phase", required=False, default=config.combine_counts.phase, type=str, help='VCF file containing phasing for heterozygous germline SNPs')    
     parser.add_argument("-s","--max_blocksize", required=False, default=config.combine_counts.blocksize, type=int, help=f'Maximum size of phasing block (default {config.combine_counts.blocksize})')    
     parser.add_argument("-m","--max_spb", required=False, default=config.combine_counts.max_spb, type=int, help=f'Maximum number of SNPs per phasing block (default {config.combine_counts.max_spb})')    
     parser.add_argument("-a","--alpha", required=False, default=config.combine_counts.alpha, type=float, help=f'Significance level for phase blocking adjacent SNPs. Higher means less trust in phasing. (default {config.combine_counts.alpha})')    
