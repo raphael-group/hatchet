@@ -297,6 +297,7 @@ class Phaser(Process):
         cmd2 += f"--exclude-snp {self.outdir}/{chromosome}_alignments.snp.strand.exclude "
         cmd2 += f"--output-max {self.outdir}/{chromosome}.haps {self.outdir}/{chromosome}.sample "
         cmd2 += f"--chrX --no-mcmc "
+        cmd2 += "--seed 0"
         # convert output file to vcf
         cmd3 = f"shapeit -convert --input-haps {self.outdir}/{chromosome} "
         cmd3 += f"--output-vcf {self.outdir}/{chromosome}_phased.vcf"
