@@ -72,14 +72,14 @@ jobs:
       - name: Install picard
         run: |
           wget https://github.com/broadinstitute/picard/releases/download/2.26.2/picard.jar -O picard.jar
-          echo "java -jar $(realpath  picard.jar)" > picard
-          chmod 775 picard
+          echo "echo '#!/bin/bash\njava -jar $(realpath picard.jar)" > picard
+          chmod +x picard
           echo $(realpath picard) >> $GITHUB_PATH
 
       - name: Install shapeit2
         run: |
           wget https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.v2.r904.glibcv2.17.linux.tar.gz -O shapeit.v2.r904.glibcv2.17.linux.tar.gz
-          tar -xzf shapeit.v2.r904.glibcv2.17.linux.tar.gz
+          tar -xf shapeit.v2.r904.glibcv2.17.linux.tar.gz
           echo $(realpath shapeit.v2.904.3.10.0-693.11.6.el7.x86_64/bin/shapeit) >> $GITHUB_PATH
 
       - name: Install mosdepth
