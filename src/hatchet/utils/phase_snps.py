@@ -225,7 +225,9 @@ class Phaser(Process):
         tmpfile = os.path.join(self.outdir, f"{chromosome}_lifted.vcf.gz") # output from picard liftover, to be filtered
         outfile = os.path.join(self.outdir, f"{chromosome}_{outname}.vcf.gz") # filtered with bcftools
         rejfile = os.path.join(self.outdir, f"{chromosome}_rejected.vcf.gz") # required file of SNPs that didn't liftover
-        cmd1 = f"picard LiftoverVcf -Xmx4g I={infile} O={tmpfile} CHAIN={chain} R={refgen} REJECT={rejfile}"
+        # --WARN_ON_MISSING_CONTIG true: throws out liftovers to contigs not present in target reference, 
+        # e.g. small contigs variably present among the assemblies
+        cmd1 = f"picard LiftoverVcf -Xmx4g I={infile} O={tmpfile} CHAIN={chain} R={refgen} REJECT={rejfile} --WARN_ON_MISSING_CONTIG true"
         c = chromosome if ch == "false" else f"chr{chromosome}" # need to change "chr" notation depending on liftover direction
         cmd2 = f"bcftools filter --output-type z --regions {c} {tmpfile}" # filter out mapping to other chromosomes/contigs!
         cmd3 = f"bcftools norm --remove-duplicates --output {outfile}" # remove duplicate sites from liftover
