@@ -18,6 +18,7 @@ from hatchet.bin.HATCHet import main as hatchet_main
 from hatchet.utils.plot_cn import main as plot_cn
 from hatchet.utils.download_panel import main as download_panel
 from hatchet.utils.phase_snps import main as phase_snps
+from hatchet.utils.Supporting import log 
 
 solve_binary = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
@@ -144,7 +145,8 @@ def main(args=None):
             sys.stdout = StringIO()
             os.makedirs(f'{output}/abin', exist_ok=True)
 
-            combine_counts(args=[
+            phasefile = f'{output}/phase/phased.vcf.gz'
+            args=[
                 '-A', f'{output}/rdr',
                 '-b', f'{output}/baf/tumor.1bed',
                 '-t', f'{output}/rdr/total.tsv', 
@@ -152,7 +154,14 @@ def main(args=None):
                 '-p', f'{output}/phase/phased.vcf.gz',
                 '-o', f'{output}/abin/bulk.bb'
                 ] + extra_args
-            )
+            
+            if os.path.exists(phasefile):
+                log(msg="Found phasing file, including phasing in binning process.", level = "INFO")
+                args = ['-p', f'{output}/phase/phased.vcf.gz'] + args
+            else:
+                log(msg=f"NO PHASING FILE FOUND at [phasefile]. Not including phasing in binning process.", level = "INFO")
+                
+            combine_counts(args)
 
             #out = sys.stdout.getvalue()
             #sys.stdout.close()

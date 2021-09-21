@@ -62,9 +62,10 @@ def main(args=None):
         else:
             chromosomes.append(chro)
     
+    n_workers = max(1, int(args["j"] / 3))
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=chromosomes, 
                 hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
-                num_workers=args["j"], verbose=False) 
+                num_workers= n_workers, verbose=False) 
     concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=chromosomes)
 
 
@@ -227,16 +228,18 @@ class Phaser(Process):
         rejfile = os.path.join(self.outdir, f"{chromosome}_rejected.vcf.gz") # required file of SNPs that didn't liftover
         # --WARN_ON_MISSING_CONTIG true: throws out liftovers to contigs not present in target reference, 
         # e.g. small contigs variably present among the assemblies
-        cmd1 = f"picard LiftoverVcf -Xmx4g I={infile} O={tmpfile} CHAIN={chain} R={refgen} REJECT={rejfile} --WARN_ON_MISSING_CONTIG true"
+        #cmd1 = f"picard LiftoverVcf -Xmx4g -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} --WARN_ON_MISSING_CONTIG true"
+        cmd1 = f"picard LiftoverVcf -Xmx4g -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} --WARN_ON_MISSING_CONTIG true"
         c = chromosome if ch == "false" else f"chr{chromosome}" # need to change "chr" notation depending on liftover direction
         cmd2 = f"bcftools filter --output-type z --regions {c} {tmpfile}" # filter out mapping to other chromosomes/contigs!
         cmd3 = f"bcftools norm --remove-duplicates --output {outfile}" # remove duplicate sites from liftover
         with open(errname, 'w') as err:
-            pic = pr.run(cmd1, stdout=err, stderr=err, shell=True, universal_newlines=True)
+            pic = pr.run(cmd1.split(), stdout=err, stderr=err, universal_newlines=True)
             filt = pr.Popen(shlex.split(cmd2), stdout=pr.PIPE, stderr=err, universal_newlines=True)
             norm = pr.Popen(shlex.split(cmd3), stdin=filt.stdout, stdout=err, stderr=err, universal_newlines=True)
             codes = map(lambda p : p.wait(), [filt, norm])
         if any(c != 0 for c in codes) or pic.returncode != 0:
+            log(msg = cmd1, level = 'ERROR')
             raise ValueError(sp.error(f"Failed to liftover chromosomes with picard on {infile}, please check errors in {errname}!"))
         else:
             os.remove(errname)
