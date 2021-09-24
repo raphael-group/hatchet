@@ -359,7 +359,7 @@ def get_chr_end(stem, all_names, chromosome):
 
 def run_chromosome(outdir, all_names, chromosome, centromere_start, centromere_end, baf_file):
     """
-    Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
+    Construct arrays that contain all counts needed to perform adaptive binning for a single chromosome (across all samples).
     """
 
     try:
