@@ -154,7 +154,7 @@ class Caller(Process):
             else:
                 os.remove(errname)
 
-        cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}".format(self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp)
+        cmd_mpileup = "{} mpileup {} -A -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}".format(self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp)
         cmd_call = "{} call -mv -Oz -o {}".format(self.bcftools, outfile)
         if self.snplist is not None:
             assert os.path.isfile(tgtfile)

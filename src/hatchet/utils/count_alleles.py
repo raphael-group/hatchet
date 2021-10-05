@@ -183,7 +183,7 @@ class AlleleCounter(Process):
         return
 
     def countAlleles(self, bamfile, samplename, chromosome):
-        cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD -q {} -Q {} -d {} -T {}".format(self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp, self.snplist[chromosome])
+        cmd_mpileup = "{} mpileup {} -A -Ou -f {} --skip-indels -a INFO/AD -q {} -Q {} -d {} -T {}".format(self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp, self.snplist[chromosome])
         cmd_query = "{} query -f '%CHROM\\t%POS\\t%REF,%ALT\\t%AD\\n' -i 'SUM(AD)<={} & SUM(AD)>={}'".format(self.bcftools, self.dp, self.mincov)
         if self.E:
             cmd_mpileup += " -E"
