@@ -151,7 +151,6 @@ def main(args=None):
                 '-b', f'{output}/baf/tumor.1bed',
                 '-t', f'{output}/rdr/total.tsv', 
                 '-V', config.genotype_snps.reference_version,
-                '-p', f'{output}/phase/phased.vcf.gz',
                 '-o', f'{output}/abin/bulk.bb'
                 ] + extra_args
             
