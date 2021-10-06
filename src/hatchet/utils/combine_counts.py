@@ -271,7 +271,18 @@ def adaptive_bins_arm(snp_thresholds, total_counts, snp_positions, snp_counts,
         prev_threshold = next_threshold
         i += 1
     
-    # add whatever excess at the end to the last bin
+    # handle the case of 1 bin
+    if len(ends) == 0:
+        sp.log(msg = "WARNING: found only 1 bin in chromosome arm, may not meet MSR and MTR", level = "WARN")
+        assert len(starts) == 0
+        starts.append(snp_thresholds[0])
+        ends.append(snp_thresholds[-1])
+        
+        bin_total = np.sum(total_counts[:, even_index], axis = 0) - total_counts[-1, odd_index] 
+        totals.append(bin_total)
+        rdrs.append(bin_total[1:] / bin_total[0])
+    
+    # add whatever excess at the end to the last bin     
     if ends[-1] < snp_thresholds[-1]:
         # combine the last complete bin with the remainder
         last_start_idx = np.where((snp_thresholds == starts[-1] - 1) | (snp_thresholds == starts[-1]))[0][0]        
