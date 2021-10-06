@@ -2,7 +2,7 @@ import sys
 import os.path
 import argparse
 import subprocess
-import shlex
+import shutil 
 from numpy import busday_offset
 import pandas as pd
 from glob import glob
@@ -368,6 +368,11 @@ def parse_phase_snps_arguments(args=None):
 
     # add safety checks for custom ref panel
     #if args.refpanel != "1000GP_Phase3":
+
+        
+    if shutil.which("shapeit") is None:
+        raise ValueError(sp.error("The 'shapeit' executable was not found on PATH. \
+            Please install shapeit (e.g., conda install -c dranew shapeit) and/or add it to your path"))
 
         
     # Check that SNP files exist when given in input

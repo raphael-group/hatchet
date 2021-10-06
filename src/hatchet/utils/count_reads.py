@@ -42,6 +42,9 @@ def main(args=None):
             if which("mosdepth") is None:
                 raise ValueError(error("The 'mosdepth' executable was not found on PATH. \
                     Please install mosdepth (e.g., conda install -c bioconda mosdepth) and/or add it to your path"))
+            if which("tabix") is None:
+                raise ValueError(error("The 'tabix' executable was not found on PATH. \
+                    Please install tabix (e.g., conda install -c bioconda tabix) and/or add it to your path"))
 
             params = zip(np.repeat(chromosomes,  len(bams)), 
                 [outdir] * len(bams) * len(chromosomes), 

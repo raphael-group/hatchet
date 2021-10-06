@@ -376,7 +376,7 @@ def compute_baf_task(bin_snps, blocksize, max_snps_per_block, test_alpha, use_mm
         n_snps = len(my_snps)
 
         if phasing:
-            my_snps = collapse_blocks(my_snps, *phase_data)
+            my_snps = collapse_blocks(my_snps, *phase_data, bin_snps.iloc[0].CHR)
             
         if use_mm:
             baf, alpha, beta = apply_MM(totals_in = my_snps.TOTAL, 
@@ -422,7 +422,7 @@ def merge_phasing(df, all_phase_data):
     orphans = orphans.union([a[0] for a in blocks if len(a) == 1])
     blocks = [b for b in blocks if len(b) > 1]
         
-    return blocks, singletons, orphans, all_phase_data[0][-2]
+    return blocks, singletons, orphans
 
 def binom_prop_test(alt1, ref1, flip1, alt2, ref2, flip2, alpha = 0.1):
     """
@@ -484,11 +484,8 @@ def phase_blocks_sequential(df, blocksize = 50e3, max_snps_per_block = 10, alpha
         return []
     
     """NOTE: this currently only supports single-sample data"""
-    assert len(df.SAMPLE.unique()) == 1    
-    sample = df.SAMPLE.unique()[0]
-    
+    assert len(df.SAMPLE.unique()) == 1        
     assert len(df.CHR.unique()) == 1
-    ch = df.CHR.unique()[0]
     
     df = df.copy()
     df = df.reset_index(drop = True)
@@ -538,7 +535,7 @@ def phase_blocks_sequential(df, blocksize = 50e3, max_snps_per_block = 10, alpha
     blocks = sorted(blocks, key = lambda x: x[0])
     singletons = set(np.where(df.PHASE.isna())[0])
     
-    return blocks, singletons, orphans, ch, sample
+    return blocks, singletons, orphans
 
 def collapse_blocks(df, blocks, singletons, orphans, ch):
     ### Construct blocked 1-bed table
