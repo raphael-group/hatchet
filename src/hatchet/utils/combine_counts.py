@@ -273,7 +273,7 @@ def adaptive_bins_arm(snp_thresholds, total_counts, snp_positions, snp_counts,
     
     # handle the case of 1 bin
     if len(ends) == 0:
-        sp.log(msg = "WARNING: found only 1 bin in chromosome arm, may not meet MSR and MTR", level = "WARN")
+        sp.log(msg = "WARNING: found only 1 bin in chromosome arm, may not meet MSR and MTR\t", level = "WARN")
         assert len(starts) == 0
         starts.append(snp_thresholds[0])
         ends.append(snp_thresholds[-1])
@@ -700,9 +700,11 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                 bafs_p = None
             else:
                 dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])] for i in range(len(starts_p))]         
-                for i in range(len(dfs_p)):
-                    
-                    assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
+            
+                if len(dfs_p) > 1:
+                    for i in range(len(dfs_p)):
+                        assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
+                        
                 bafs_p = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_mm) for d in dfs_p] 
                 
                 """
@@ -751,8 +753,9 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                 # Partition SNPs for BAF inference
                 dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])] for i in range(len(starts_q))]
                 
-                for i in range(len(dfs_q)):
-                    assert np.all(dfs_q[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
+                if len(dfs_q) > 1:
+                    for i in range(len(dfs_q)):
+                        assert np.all(dfs_q[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
                         
                 # Infer BAF
                 bafs_q = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_mm) for d in dfs_q]
