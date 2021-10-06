@@ -371,9 +371,13 @@ def parse_phase_snps_arguments(args=None):
 
         
     if shutil.which("shapeit") is None:
-        raise ValueError(sp.error("The 'shapeit' executable was not found on PATH. \
+        raise ValueError(sp.error("The 'shapeit' executable is needed but was not found on PATH. \
             Please install shapeit (e.g., conda install -c dranew shapeit) and/or add it to your path"))
-
+    
+    if args.refversion != 'hg19' and shutil.which('picard') is None:
+        raise ValueError(sp.error("The 'picard' executable is needed but was not found on PATH. \
+            Please install shapeit (e.g., conda install -c bioconda picard) and/or add it to your path"))
+        
         
     # Check that SNP files exist when given in input
     snplists = {}
