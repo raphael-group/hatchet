@@ -238,13 +238,9 @@ def main(args=None):
 
     if config.run.compute_cn:
         os.makedirs(f'{output}/results', exist_ok=True)
-        if config.compute_cn.solver != 'cpp':
-            head = [config.compute_cn.solver]
-        else:
-            head = [solve_binary]
-            
         hatchet_main(
-            args= head + [
+            args=[
+                solve_binary,
                 '-x', f'{output}/results',
                 '-i', f'{output}/bbc/bulk'
             ] + extra_args
