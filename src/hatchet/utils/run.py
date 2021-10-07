@@ -238,7 +238,7 @@ def main(args=None):
 
     if config.run.compute_cn:
         os.makedirs(f'{output}/results', exist_ok=True)
-        if config.has_option("compute_cn", "solver") and config.compute_cn.solver != 'cpp':
+        if config.compute_cn.solver != 'cpp':
             head = [config.compute_cn.solver]
         else:
             head = [solve_binary]
