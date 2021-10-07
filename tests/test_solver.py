@@ -43,7 +43,6 @@ def test_solve_command_cpp(output_folder):
     config.compute_cn.solver = 'cpp'
 
     main(args=[
-        SOLVE,
         '-x', os.path.join(output_folder),
         '-i', os.path.join(this_dir, 'data/bulk'),
         '-n2',
@@ -72,7 +71,6 @@ def test_solve_command_gurobipy(output_folder):
     config.compute_cn.solver = 'gurobipy'
 
     main(args=[
-        SOLVE,
         '-x', os.path.join(output_folder),
         '-i', os.path.join(this_dir, 'data/bulk'),
         '-n2',
@@ -101,7 +99,6 @@ def test_solve_command_gurobi(output_folder):
     config.compute_cn.solver = 'gurobi'
 
     main(args=[
-        SOLVE,
         '-x', os.path.join(output_folder),
         '-i', os.path.join(this_dir, 'data/bulk'),
         '-n2',
@@ -130,7 +127,6 @@ def test_solve_command_cbc(output_folder):
     config.compute_cn.solver = 'cbc'
 
     main(args=[
-        SOLVE,
         '-x', os.path.join(output_folder),
         '-i', os.path.join(this_dir, 'data/bulk'),
         '-n2',

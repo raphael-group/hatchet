@@ -4,7 +4,6 @@ import os.path
 import glob
 import argparse
 
-import hatchet
 from hatchet import config
 from hatchet.utils.count_reads import main as count_reads
 from hatchet.utils.genotype_snps import main as genotype_snps
@@ -14,8 +13,6 @@ from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as hatchet_main
 from hatchet.utils.plot_cn import main as plot_cn
-
-solve_binary = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
 def main(args=None):
@@ -150,7 +147,6 @@ def main(args=None):
         os.makedirs(f'{output}/results', exist_ok=True)
         hatchet_main(
             args=[
-                solve_binary,
                 '-x', f'{output}/results',
                 '-i', f'{output}/bbc/bulk'
             ] + extra_args
