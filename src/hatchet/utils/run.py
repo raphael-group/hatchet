@@ -155,10 +155,10 @@ def main(args=None):
                 ] + extra_args
             
             if os.path.exists(phasefile):
-                log(msg="Found phasing file, including phasing in binning process.", level = "INFO")
+                log(msg="Found phasing file, including phasing in binning process.\n", level = "INFO")
                 args = ['-p', f'{output}/phase/phased.vcf.gz'] + args
             else:
-                log(msg=f"NO PHASING FILE FOUND at [phasefile]. Not including phasing in binning process.", level = "INFO")
+                log(msg=f"NO PHASING FILE FOUND at [phasefile]. Not including phasing in binning process.\n", level = "INFO")
                 
             combine_counts(args)
 
@@ -238,9 +238,13 @@ def main(args=None):
 
     if config.run.compute_cn:
         os.makedirs(f'{output}/results', exist_ok=True)
+        if config.has_option("compute_cn", "solver") and config.compute_cn.solver != 'cpp':
+            head = [config.compute_cn.solver]
+        else:
+            head = [solve_binary]
+            
         hatchet_main(
-            args=[
-                solve_binary,
+            args= head + [
                 '-x', f'{output}/results',
                 '-i', f'{output}/bbc/bulk'
             ] + extra_args
