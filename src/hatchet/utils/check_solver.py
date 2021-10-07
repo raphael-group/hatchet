@@ -10,7 +10,6 @@ from hatchet.utils.Supporting import log
 
 this_dir = os.path.dirname(__file__)
 DATA_FOLDER = os.path.join(this_dir, 'data')
-solve_binary = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
 def main(args=None):
@@ -20,7 +19,6 @@ def main(args=None):
         with path(hatchet.data, 'sample.bbc') as bbc_path:
             input_files_prefix = os.path.splitext(bbc_path)[0]
             hatchet_main(args=[
-                solve_binary,
                 '-x', os.path.join(tempdirname),
                 '-i', input_files_prefix,
                 '-n2',
