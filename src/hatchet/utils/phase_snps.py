@@ -21,6 +21,9 @@ def main(args=None):
     args = ap.parse_phase_snps_arguments(args)
     logArgs(args, 80)
 
+    bcftools = args['bcftools']
+    shapeit = args['shapeit']
+    picard = args['picard']
     #tracemalloc.start()
 
     if args["refvers"] not in ["hg19", "hg38"]:
@@ -65,8 +68,8 @@ def main(args=None):
     n_workers = max(1, int(args["j"] / 3))
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=chromosomes, 
                 hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
-                num_workers= n_workers, verbose=False) 
-    concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=chromosomes)
+                num_workers= n_workers, verbose=False, shapeit = shapeit, bcftools = bcftools, picard = picard) 
+    concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=chromosomes, bcftools = bcftools)
 
 
     # read shapeit output, print fraction of phased snps per chromosome
@@ -105,11 +108,11 @@ def print_log(path, chromosomes):
                 phased_snps = int(l.split()[1])
         print(c, phased_snps, snps, float(phased_snps/snps), file=out, sep="\t")
 
-def concat(vcfs, outdir, chromosomes):
+def concat(vcfs, outdir, chromosomes, bcftools):
     errname = os.path.join(outdir, f"concat.log")
     infiles = ' '.join(vcfs)
     outfile = os.path.join(outdir, f"phased.vcf.gz")
-    cmd_bcf = f"bcftools concat --output-type z --output {outfile} {infiles}"
+    cmd_bcf = f"{bcftools} concat --output-type z --output {outfile} {infiles}"
     with open(errname, 'w') as err:
         run = pr.run(cmd_bcf, stdout=err, stderr=err, shell=True, universal_newlines=True)
     if run.returncode != 0:
@@ -118,7 +121,7 @@ def concat(vcfs, outdir, chromosomes):
         os.remove(errname)
     return(outfile)
 
-def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refvers, chrnot, num_workers, verbose=False):
+def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refvers, chrnot, num_workers, bcftools, shapeit, picard, verbose=False):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
     counter = Value('i', 0)
@@ -135,7 +138,7 @@ def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refver
         jobs_count += 1
 
     # Setting up the workers
-    workers = [ Phaser(tasks, results, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose) 
+    workers = [ Phaser(tasks, results, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools = bcftools, shapeit = shapeit, picard = picard) 
                 for i in range(min(num_workers, jobs_count)) ]
 
     # Add a poison pill for each worker
@@ -165,7 +168,7 @@ def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refver
 
 class Phaser(Process):
 
-    def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose):
+    def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools, shapeit, picard):
         Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -180,6 +183,9 @@ class Phaser(Process):
         self.refvers = refvers
         self.chrnot = chrnot
         self.verbose = verbose
+        self.bcftools = bcftools
+        self.shapeit = shapeit
+        self.picard = picard
 
     def run(self):
         while True:
@@ -204,7 +210,7 @@ class Phaser(Process):
 
             # (2) FILTERING AND PHASING
             vcf_filtered = self.biallelic(infile=vcf_toFilter, chromosome=next_task[1]) # filter out multi-allelic sites and indels
-            vcf_phased = self.shapeit(infile=vcf_filtered, chromosome=next_task[1]) # phase
+            vcf_phased = self.run_shapeit(infile=vcf_filtered, chromosome=next_task[1]) # phase
 
             # (3) POSTPROCESS
             if self.refvers == "hg19":
@@ -229,10 +235,10 @@ class Phaser(Process):
         # --WARN_ON_MISSING_CONTIG true: throws out liftovers to contigs not present in target reference, 
         # e.g. small contigs variably present among the assemblies
         #cmd1 = f"picard LiftoverVcf -Xmx4g -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} --WARN_ON_MISSING_CONTIG true"
-        cmd1 = f"picard LiftoverVcf -Xmx4g -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} --WARN_ON_MISSING_CONTIG true"
+        cmd1 = f"{self.picard} LiftoverVcf -Xmx4g -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} --WARN_ON_MISSING_CONTIG true"
         c = chromosome if ch == "false" else f"chr{chromosome}" # need to change "chr" notation depending on liftover direction
-        cmd2 = f"bcftools filter --output-type z --regions {c} {tmpfile}" # filter out mapping to other chromosomes/contigs!
-        cmd3 = f"bcftools norm --remove-duplicates --output {outfile}" # remove duplicate sites from liftover
+        cmd2 = f"{self.bcftools} filter --output-type z --regions {c} {tmpfile}" # filter out mapping to other chromosomes/contigs!
+        cmd3 = f"{self.bcftools} norm --remove-duplicates --output {outfile}" # remove duplicate sites from liftover
         with open(errname, 'w') as err:
             pic = pr.run(cmd1.split(), stdout=err, stderr=err, universal_newlines=True)
             filt = pr.Popen(shlex.split(cmd2), stdout=pr.PIPE, stderr=err, universal_newlines=True)
@@ -249,7 +255,7 @@ class Phaser(Process):
         # use bcftools to rename chromosomes
         errname = os.path.join(self.outdir, f"{chromosome}_bcftools.log")
         outfile = os.path.join(self.outdir, f"{chromosome}_{outname}.vcf.gz")
-        cmd_bcf = f"bcftools annotate --rename-chrs {rename} --output-type z --output {outfile} {infile}"
+        cmd_bcf = f"{self.bcftools} annotate --rename-chrs {rename} --output-type z --output {outfile} {infile}"
         print(cmd_bcf)
         with open(errname, 'w') as err:
             run = pr.run(cmd_bcf, stdout=err, stderr=err, shell=True, universal_newlines=True)
@@ -269,7 +275,7 @@ class Phaser(Process):
         # use bcftools to discard multi-allelic sites and indels
         errname = os.path.join(self.outdir, f"{chromosome}_bcftools.log")
         outfile = os.path.join(self.outdir, f"{chromosome}_filtered.vcf.gz")
-        cmd_bcf = f"bcftools view --max-alleles 2 --exclude-types indels --output-type z "
+        cmd_bcf = f"{self.bcftools} view --max-alleles 2 --exclude-types indels --output-type z "
         cmd_bcf += f"--output-file {outfile} {infile}"
         with open(errname, 'w') as err:
             run = pr.run(cmd_bcf, stdout=err, stderr=err, shell=True, universal_newlines=True)
@@ -279,7 +285,7 @@ class Phaser(Process):
             os.remove(errname)
         return outfile
 
-    def shapeit(self, infile, chromosome): 
+    def run_shapeit(self, infile, chromosome): 
         # use shapeit with reference panel to phase vcf files
         errname = os.path.join(self.outdir, f"{chromosome}_shapeit.log")
 
@@ -290,13 +296,13 @@ class Phaser(Process):
         inref += f"{self.panel}/1000GP_Phase3.sample"
 
         # check data with shapeit -check; get list of sites to exclude, such as sites in target VCF that are not present in reference panel
-        cmd1 = f"shapeit -check --input-vcf {self.outdir}/{chromosome}_filtered.vcf.gz "
+        cmd1 = f"{self.shapeit} -check --input-vcf {self.outdir}/{chromosome}_filtered.vcf.gz "
         cmd1 += f"--input-map {inmap} "
         cmd1 += f"--input-ref {inref} "
         cmd1 += f"--output-log {self.outdir}/{chromosome}_alignments"
         cmd1 += "\n"
         # phase
-        cmd2 = f"shapeit --input-vcf {self.outdir}/{chromosome}_filtered.vcf.gz "
+        cmd2 = f"{self.shapeit} --input-vcf {self.outdir}/{chromosome}_filtered.vcf.gz "
         cmd2 += f"--input-map {inmap} "
         cmd2 += f"--input-ref {inref} "
         cmd2 += f"--exclude-snp {self.outdir}/{chromosome}_alignments.snp.strand.exclude "
@@ -304,12 +310,12 @@ class Phaser(Process):
         cmd2 += f"--chrX --no-mcmc "
         cmd2 += "--seed 0"
         # convert output file to vcf
-        cmd3 = f"shapeit -convert --input-haps {self.outdir}/{chromosome} "
+        cmd3 = f"{self.shapeit} -convert --input-haps {self.outdir}/{chromosome} "
         cmd3 += f"--output-vcf {self.outdir}/{chromosome}_phased.vcf"
         # compress vcf 
         cmd4 = f"bgzip {self.outdir}/{chromosome}_phased.vcf"
         # index vcf
-        cmd5 = f"bcftools index {self.outdir}/{chromosome}_phased.vcf.gz"
+        cmd5 = f"{self.bcftools} index {self.outdir}/{chromosome}_phased.vcf.gz"
         with open(errname, 'w') as err:
             run1 = pr.run(cmd1, stdout=err, stderr=err, shell=True, universal_newlines=True)
             run2 = pr.run(cmd2, stdout=err, stderr=err, shell=True, universal_newlines=True)

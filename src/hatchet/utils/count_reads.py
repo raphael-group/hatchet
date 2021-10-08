@@ -29,7 +29,8 @@ def main(args=None):
     samtools = args["samtools"]
     jobs = args["j"]
     outdir = args["outdir"]
-    
+    mosdepth = args["mosdepth"]
+    tabix = args["tabix"]
     
     if len(check_array_files(outdir, chromosomes)) == 0:
         log(msg="# Found all array files, skipping to total read counting. \n", level="STEP")
@@ -39,13 +40,6 @@ def main(args=None):
             log(msg="# Found all count files, skipping to forming arrays\n", level="STEP")
         
         else:
-            if which("mosdepth") is None:
-                raise ValueError(error("The 'mosdepth' executable was not found on PATH. \
-                    Please install mosdepth (e.g., conda install -c bioconda mosdepth) and/or add it to your path"))
-            if which("tabix") is None:
-                raise ValueError(error("The 'tabix' executable was not found on PATH. \
-                    Please install tabix (e.g., conda install -c bioconda tabix) and/or add it to your path"))
-
             params = zip(np.repeat(chromosomes,  len(bams)), 
                 [outdir] * len(bams) * len(chromosomes), 
                 [samtools] * len(bams) * len(chromosomes), 
@@ -72,8 +66,10 @@ def main(args=None):
                         remainder -= 1
             else:
                 threads_per_worker = [1] * n_workers_mosdepth
-
-            mosdepth_params = [(outdir, names[i], bams[i], threads_per_worker[i]) for i in range(len(bams))]
+            
+            #Note: These function calls are the only section that uses mosdepth
+            mosdepth_params = [(outdir, names[i], bams[i], threads_per_worker[i], mosdepth) 
+                               for i in range(len(bams))]
             with mp.Pool(n_workers_mosdepth) as p:
                 p.map(mosdepth_wrapper, mosdepth_params)
                 
@@ -82,8 +78,6 @@ def main(args=None):
 
         ### Aggregate count files into count arrays for adaptive binning ###
         # (formerly formArray)
-        
-
         use_chr = args['use_chr']
         
         with path(hatchet.resources, f'{args["refversion"]}.centromeres.txt') as centromeres:
@@ -119,7 +113,7 @@ def main(args=None):
 
         # form parameters for each worker
         params = [(outdir, names, ch,
-                chr2centro[ch][0], chr2centro[ch][1], args['baf_file'])
+                chr2centro[ch][0], chr2centro[ch][1], args['baf_file'], tabix)
                 for ch in chromosomes]
         
         # dispatch workers
@@ -159,7 +153,7 @@ def main(args=None):
 def mosdepth_wrapper(params):
     run_mosdepth(*params)
     
-def run_mosdepth(outdir, sample_name, bam, threads):
+def run_mosdepth(outdir, sample_name, bam, threads, mosdepth):
     try:
         last_file = os.path.join(outdir, sample_name + '.per-base.bed.gz.csi')
         if os.path.exists(last_file):
@@ -169,8 +163,8 @@ def run_mosdepth(outdir, sample_name, bam, threads):
         log(f"Starting mosdepth on sample {sample_name} with {threads} threads\n", level = "STEP")
         sys.stderr.flush()
         
-        mosdepth = sp.run(['mosdepth', '-t', str(threads), os.path.join(outdir, sample_name), bam])
-        mosdepth.check_returncode()
+        md = sp.run([mosdepth, '-t', str(threads), os.path.join(outdir, sample_name), bam])
+        md.check_returncode()
         log(f"Done mosdepth on sample {sample_name}\n", level = "STEP")
 
     except Exception as e:
@@ -259,7 +253,7 @@ def read_snps(baf_file, ch, all_names):
     
     return np.array(snp_counts.index), np.array(snp_counts), snpsv
 
-def form_counts_array(starts_files, perpos_files, thresholds, chromosome, chunksize = 1e5, tabix = 'tabix'):
+def form_counts_array(starts_files, perpos_files, thresholds, chromosome, tabix, chunksize = 1e5):
     """
         NOTE: Assumes that starts_files[i] corresponds to the same sample as perpos_files[i]
         Parameters:
@@ -360,7 +354,7 @@ def get_chr_end(stem, all_names, chromosome):
     
     return last_start 
 
-def run_chromosome(outdir, all_names, chromosome, centromere_start, centromere_end, baf_file):
+def run_chromosome(outdir, all_names, chromosome, centromere_start, centromere_end, baf_file, tabix):
     """
     Construct arrays that contain all counts needed to perform adaptive binning for a single chromosome (across all samples).
     """
@@ -404,7 +398,8 @@ def run_chromosome(outdir, all_names, chromosome, centromere_start, centromere_e
         
         log(msg=f"Loading counts for chromosome {chromosome}\n", level = "INFO")
         # Load read count arrays from file (also adds end of chromosome as a threshold)
-        total_counts, complete_thresholds = form_counts_array(starts_files, perpos_files, all_thresholds, chromosome) 
+        total_counts, complete_thresholds = form_counts_array(starts_files, perpos_files, all_thresholds, 
+                                                              chromosome, tabix = tabix) 
 
         np.savetxt(totals_out, total_counts, fmt = '%d')
         np.savetxt(thresholds_out, complete_thresholds, fmt = '%d')

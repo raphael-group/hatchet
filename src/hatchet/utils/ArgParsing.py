@@ -21,6 +21,8 @@ def parse_count_reads_args(args=None):
     parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
     parser.add_argument("-S","--samples", required=False, default=config.count_reads.samples, type=str, nargs='+', help="Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)")
     parser.add_argument("-st", "--samtools", required = False, type = str, default = config.paths.samtools, help = 'Path to samtools executable')   
+    parser.add_argument("-md", "--mosdepth", required = False, type = str, default = config.paths.mosdepth, help = 'Path to mosdepth executable')   
+    parser.add_argument("-tx", "--tabix", required = False, type = str, default = config.paths.tabix, help = 'Path to tabix executable')   
     parser.add_argument("-j", "--processes", required=False, default=config.count_reads.processes, type=int, help="Number of available parallel processes (default: 2)")
     
     # TODO: support these arguments
@@ -71,10 +73,21 @@ def parse_count_reads_args(args=None):
     if not os.path.exists(args.outdir):
         raise ValueError(sp.error(f"Output directory <{args.outdir}> not found!"))
 
+    mosdepth = os.path.join(args.mosdepth, "mosdepth")
+    tabix = os.path.join(args.tabix, "tabix")
+    if sp.which(mosdepth) is None:
+        raise ValueError(sp.error("The 'mosdepth' executable was not found or is not executable. \
+            Please install mosdepth (e.g., conda install -c bioconda mosdepth) and/or supply the path to the executable."))
+    if sp.which(tabix) is None:
+        raise ValueError(sp.error("The 'tabix' executable was not found or is not executable. \
+            Please install tabix (e.g., conda install -c bioconda tabix) and/or supply the path to the executable."))
+
     return {"bams" : bams,
             "names" : names,
             "chromosomes" : chromosomes,
             "samtools" : samtools,
+            "mosdepth" : mosdepth,
+            "tabix" : tabix,
             "j" : args.processes,
             "outdir" : args.outdir,
             "use_chr" : use_chr,
@@ -364,20 +377,29 @@ def parse_phase_snps_arguments(args=None):
     parser.add_argument("-o", "--outdir", required=False, type=str, help="Output folder for phased VCFs")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
     parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")
+    parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.mosdepth, help = 'Path to shapeit executable (default: look in $PATH)')   
+    parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.tabix, help = 'Path to picard executable (default: look in $PATH)')   
+    parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
     args = parser.parse_args(args)
 
     # add safety checks for custom ref panel
     #if args.refpanel != "1000GP_Phase3":
 
-        
-    if shutil.which("shapeit") is None:
-        raise ValueError(sp.error("The 'shapeit' executable is needed but was not found on PATH. \
-            Please install shapeit (e.g., conda install -c dranew shapeit) and/or add it to your path"))
+    if sp.which("bgzip") is None:
+        raise(ValueError(sp.error("The tool 'bgzip' is required to run this command. Please make sure this tool is installed and available on your PATH.")))
+
+    shapeit = os.path.join(args.shapeit, "shapeit")
+    if sp.which(shapeit) is None:
+        raise ValueError(sp.error("The 'shapeit' executable was not found or is not executable. \
+            Please install shapeit (e.g., conda install -c dranew shapeit) and/or supply the path to the executable."))
     
-    if args.refversion != 'hg19' and shutil.which('picard') is None:
-        raise ValueError(sp.error("The 'picard' executable is needed but was not found on PATH. \
-            Please install shapeit (e.g., conda install -c bioconda picard) and/or add it to your path"))
-        
+    picard = os.path.join(args.picard, "picard")
+    if sp.which(picard) is None:
+        raise ValueError(sp.error("The 'picard' executable was not found or is not executable. \
+            Please install picard (e.g., conda install -c bioconda picard) and/or supply the path to the executable."))
+    bcftools = os.path.join(args.bcftools, "bcftools")
+    if sp.which(bcftools) is None:
+        raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
         
     # Check that SNP files exist when given in input
     snplists = {}
@@ -398,7 +420,10 @@ def parse_phase_snps_arguments(args=None):
             "refvers" : args.refversion,
             "chrnot" : args.chrnotation,
             "refgenome" : args.refgenome,
-            "outdir" : os.path.abspath(args.outdir)}
+            "outdir" : os.path.abspath(args.outdir),
+            "shapeit" : shapeit,
+            "picard" : picard,
+            "bcftools" : bcftools}
 
 def parse_count_alleles_arguments(args=None):
     """
