@@ -9,6 +9,7 @@ import multiprocessing as mp
 import shlex
 from collections import Counter
 
+import hatchet
 from hatchet import config, __version__
 from hatchet.utils.solve import solve
 from hatchet.utils.solve.utils import segmentation
@@ -21,7 +22,7 @@ def parsing_arguments(args=None):
     """
     description = ""
     parser = argparse.ArgumentParser(prog='hatchet compute-cn', description=description, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("SOLVER", help="Path to the executable solver")
+    parser.add_argument("SOLVER", type=str, nargs='?', help="Path to the executable solver")
     parser.add_argument("-i","--input", type=str, required=True, help="Prefix path to seg and bbc input files (required)")
     parser.add_argument("-x","--runningdir", type=str, required=False, default=config.compute_cn.runningdir, help="Running directory (default: ./)")
     parser.add_argument("-n","--clones", type=str, required=False, default=config.compute_cn.clones, help="Either an estimated number of clones or an interval where the\nnumber of clones should be looked for given in the form LOWER,UPPER where LOWER and UPPER are two integer defining the interval (default: 2,8)")
@@ -54,8 +55,12 @@ def parsing_arguments(args=None):
     parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
-    if not os.path.isfile(args.SOLVER):
-        raise ValueError(error("Solver not found in {}!".format(args.SOLVER)))
+    if config.compute_cn.solver == 'cpp':
+        if args.SOLVER is None:
+            args.SOLVER = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
+        if not os.path.isfile(args.SOLVER):
+            raise ValueError(error("Solver not found in {}!".format(args.SOLVER)))
+
     clusters = args.input + '.seg'
     if not os.path.isfile(clusters):
         raise ValueError(error("SEG file {} not found!".format(clusters)))

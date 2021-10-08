@@ -4,7 +4,6 @@ python -m hatchet <command> <arguments> ..
 """
 
 import sys
-import os.path
 import warnings
 import hatchet
 
@@ -24,8 +23,6 @@ from hatchet.utils.check_solver import main as check_solver
 from hatchet.utils.run import main as run
 from hatchet.utils.download_panel import main as download_panel
 from hatchet.utils.phase_snps import main as phase_snps
-
-solve_bin = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 commands = ('count-reads', 'count-reads-fw', 'genotype-snps', 'count-alleles', 'combine-counts',
             'combine-counts-fw', 'cluster-bins', 'plot-bins','compute-cn', 'plot-cn', 'run',
@@ -68,11 +65,8 @@ def main():
         sys.exit(1)
 
     command = aliases.get(command, command)
-    if command != 'compute-cn':
-        command = command.replace('-', '_')
-        globals()[command](args)
-    else:
-        compute_cn([solve_bin] + args)
+    command = command.replace('-', '_')
+    globals()[command](args)
 
 
 if __name__ == '__main__':
