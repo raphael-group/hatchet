@@ -21,7 +21,6 @@ from hatchet.utils.plot_cn import main as plot_cn
 from hatchet.utils.solve import solver_available
 
 this_dir = os.path.dirname(__file__)
-SOLVE = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
 
 
 @pytest.fixture(scope='module')
@@ -142,7 +141,6 @@ def test_script(_, bams, output_folder):
 
     if solver_available():
         main(args=[
-            SOLVE,
             '-x', os.path.join(output_folder, 'results'),
             '-i', os.path.join(output_folder, 'bbc/bulk'),
             '-n2',
