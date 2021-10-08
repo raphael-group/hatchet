@@ -64,7 +64,7 @@ def solve(clonal, seg_file, n, solver='gurobi', solve_mode='cd', d=-1, cn_max=-1
 
     if solve_mode == 'ilp':
         ilp = ILPSubset(n, cn_max, d=d, mu=mu, ampdel=ampdel, copy_numbers=copy_numbers, f_a=f_a, f_b=f_b, w=weights)
-        ilp.create_model()
+        ilp.create_model(pprint=True)
         return ilp.run(solver_type=solver, timelimit=timelimit)
     elif solve_mode == 'cd':
         cd = CoordinateDescent(f_a=f_a, f_b=f_b, n=n, mu=mu, d=d, cn_max=cn_max, w=weights, ampdel=ampdel,
