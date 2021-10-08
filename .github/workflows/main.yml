@@ -98,6 +98,12 @@ jobs:
           PLATFORM: ${{ matrix.python }}
           CXXFLAGS: -pthread
 
+      # We may end up with files that have a ':' in their filenames,
+      # due to the <chr>:start:end notation of chromosomes we process through SAMtools/BCFtools.
+      # upload-artifact is unable to handle these, so we replace colons with dashes
+      - name: Clean up artifact filenames
+        run: find tests/out -name "*:*" -exec rename 's|:|-|g' {} \;
+ 
       - name: Save Pytest Output Data
         uses: actions/upload-artifact@v2
         with:
