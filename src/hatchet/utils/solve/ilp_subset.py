@@ -1,3 +1,4 @@
+import textwrap
 import math
 import numpy as np
 import pandas as pd
@@ -55,6 +56,21 @@ class ILPSubset:
             f_a=self.f_a, f_b=self.f_b, w=self.w
         )
 
+    def __str__(self):
+        # Pyomo pprint gives us too much information - too unwieldy for large models
+        # This method is implemented to supply the bare-minimum but useful model information.
+        if self.model is None:
+            return ''
+        else:
+            return textwrap.dedent(f"""
+                # ------------------------------------------
+                #   Problem Information
+                # ------------------------------------------
+                #     Number of constraints: {self.model.nconstraints()}
+                #     Number of variables: {self.model.nvariables()}
+                # ------------------------------------------
+            """)
+
     @property
     def M(self):
         return math.floor(math.log2(self.cn_max)) + 1
@@ -88,7 +104,7 @@ class ILPSubset:
         else:
             return self.u
 
-    def create_model(self):
+    def create_model(self, pprint=False):
 
         m, n, k = self.m, self.n, self.k
         f_a, f_b = self.f_a, self.f_b
@@ -369,6 +385,9 @@ class ILPSubset:
 
         model.obj = pe.Objective(expr=obj, sense=pe.minimize)
         self.model = model
+
+        if pprint:
+            print(str(self))
 
     def build_symmetry_breaking(self, model):
         for i in range(1, self.n - 1):
