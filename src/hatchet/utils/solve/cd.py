@@ -57,6 +57,10 @@ class CoordinateDescent:
     def __init__(self, f_a, f_b, n, mu, d, cn_max, cn, w, ampdel=True):
         # ilp attribute used here as a convenient storage container for properties
         self.ilp = ILPSubset(n=n, cn_max=cn_max, d=d, mu=mu, ampdel=ampdel, copy_numbers=cn, f_a=f_a, f_b=f_b, w=w)
+        # Building the model here is not strictly necessary, as, during execution,
+        #   self.carch and c.uarch will copy self.ilp and create+run those models.
+        # However, we do so here simply so we can print out some diagnostic information once for the user.
+        self.ilp.create_model(pprint=True)
         self.hcA, self.hcB = self.ilp.first_hot_start()
 
         self.seeds = None

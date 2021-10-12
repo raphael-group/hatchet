@@ -25,6 +25,7 @@ def main(args=None):
     
     bams = args["bams"]
     names = args["names"]
+    names = names[0] + sorted(names[1:])
     chromosomes = args["chromosomes"]
     samtools = args["samtools"]
     jobs = args["j"]
@@ -249,7 +250,7 @@ def read_snps(baf_file, ch, all_names):
     check_pivot = snpsv.pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL')
     assert np.array_equal(check_pivot, snp_counts), "SNP file reading failed"
     assert not np.any(check_pivot.isna()), "SNP file reading failed"
-    assert np.array_equal(all_names, list(snp_counts.columns)) # make sure that sample order is the same
+    assert np.array_equal(all_names, list(snp_counts.columns)), (all_names, list(snp_counts.columns)) # make sure that sample order is the same
     
     return np.array(snp_counts.index), np.array(snp_counts), snpsv
 
