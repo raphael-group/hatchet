@@ -25,7 +25,7 @@ def main(args=None):
     
     bams = args["bams"]
     names = args["names"]
-    names = names[0] + sorted(names[1:])
+    names = [names[0]] + sorted(names[1:])
     chromosomes = args["chromosomes"]
     samtools = args["samtools"]
     jobs = args["j"]

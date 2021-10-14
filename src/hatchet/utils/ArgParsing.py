@@ -10,6 +10,77 @@ from glob import glob
 from . import Supporting as sp
 from hatchet import config, __version__
 
+def parse_cluster_bins_loc_args(args=None):
+    """
+    Parse command line arguments
+    Returns:
+    """
+    description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
+    parser = argparse.ArgumentParser(prog='hatchet cluster-bins', description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("BBFILE", help="A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)")
+    parser.add_argument("-o", "--outsegments", required=False, default=config.cluster_bins_loc.outsegments, type=str, help="Output filename for the segments computed by clustering bins (default: stdout)")
+    parser.add_argument("-O", "--outbins", required=False, default=config.cluster_bins_loc.outbins, type=str, help="Output filename for a BB file adding the clusters (default: stdout)")
+    parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.cluster_bins_loc.diploidbaf, help="Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the cluster inside this threshold accordingly (default: None, scaling is not performed)")
+    parser.add_argument("-e","--seed", type=int, required=False, default=config.cluster_bins_loc.seed, help='Random seed used for clustering (default: 0)')
+    parser.add_argument("--minK", type=int, required=False, default=config.cluster_bins_loc.mink, help=f'Minimum number of clusters to infer (default = {config.cluster_bins_loc.mink})')
+    parser.add_argument("--maxK", type=int, required=False, default=config.cluster_bins_loc.maxk, help=f'Maximum number of clusters to infer (default = {config.cluster_bins_loc.maxk})')    
+    parser.add_argument("--exactK", type=int, required=False, default=config.cluster_bins_loc.exactk, help='Skip model selection and infer exactly this many clusters (default: None)')        
+    parser.add_argument("-t", "--transmat", type=str, required=False, default=config.cluster_bins_loc.transmat, help="Form of transition matrix to infer: fixed, diag (1-parameter), or full (default: diag)")         
+    parser.add_argument("--tau", type=float, required=False, default=config.cluster_bins_loc.tau, help=f"Off-diagonal value for initializing transition matrix ({config.cluster_bins_loc.tau})")
+    parser.add_argument("-c", "--covar", type=str, required=False, default=config.cluster_bins_loc.covar, help="Form of covariance matrix: spherical, diag, full, or tied (default: diag)")         
+    parser.add_argument("-x", "--decoding", type=str, required=False, default=config.cluster_bins_loc.decoding, help="Decoding algorithm to use: map or viterbi (default: map)")    
+    parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
+    args = parser.parse_args(args)
+
+    if not os.path.isfile(args.BBFILE):
+        raise ValueError(sp.error("The specified BB file does not exist!"))
+    if args.diploidbaf != None and not 0.0 <= args.diploidbaf <= 0.5:
+        raise ValueError(sp.error("The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]"))
+    
+    if args.seed < 0:
+        raise ValueError(sp.error("Seed parameter must be non-negative."))
+    
+    
+    if args.exactK > 0:
+        sp.log(msg = f"WARNING: using fixed K (K={args.exactK}) will bypass model selection.\n", level = 'WARN')
+
+    if args.minK < 0:
+        raise ValueError(sp.error("Min. number of clusters must be non-negative."))
+    if args.maxK < 0:
+        raise ValueError(sp.error("Max. number of clusters must be non-negative."))
+    if args.maxK < args.minK:
+        raise ValueError(sp.error("Min number of clusters must be smaller than max number of clusters."))
+    elif args.maxK == args.minK:
+        sp.log(msg = f"WARNING: minK = maxK = {args.minK}, so no model selection will be performed.\n", level = 'WARN')
+
+    valid_covars = ['spherical', 'diag', 'full', 'tied']
+    if args.covar not in valid_covars:
+         raise ValueError(sp.error(f"Invalid -c/--covar argument: {args.covar}. Valid values are {valid_covars}."))
+    
+    valid_decodings = ['map', 'viterbi']
+    if args.decoding not in valid_decodings:
+         raise ValueError(sp.error(f"Invalid -x/--decoding argument: {args.decoding}. Valid values are {valid_decodings}."))
+       
+    valid_transmat = ['fixed', 'diag', 'tied']
+    if args.transmat not in valid_transmat:
+         raise ValueError(sp.error(f"Invalid -t/--transmat argument: {args.transmat}. Valid values are {valid_transmat}."))
+           
+    if args.tau < 0:
+        raise ValueError(sp.error("Transition parameter --tau must be non-negative."))
+
+    return {"bbfile" : args.BBFILE,
+            "diploidbaf" : args.diploidbaf,
+            "seed" : args.seed,
+            "decoding":args.decoding,
+            "minK":args.minK,
+            "maxK":args.maxK,
+            "exactK":args.exactK,
+            "covar":args.covar,
+            "transmat":args.transmat,
+            "tau": args.tau,
+            "outsegments" : args.outsegments,
+            "outbins" : args.outbins}
+
 def parse_count_reads_args(args=None):
 
     description = "Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES."
