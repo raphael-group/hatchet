@@ -47,19 +47,11 @@ def main(args=None):
                 bams * len(chromosomes),
                 names * len(chromosomes))
 
-<<<<<<< HEAD
             n_workers_samtools = max(1, min(int(jobs / 2), len(bams) * len(chromosomes)))
-=======
-            n_workers_samtools = min(int(np.round(jobs / 2)), len(bams) * len(chromosomes))
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
             with mp.Pool(n_workers_samtools) as p: # divide by 2 because each worker starts 2 processes
                 p.map(count_chromosome_wrapper, params)
             
             n_workers_mosdepth = min(jobs, len(bams))
-<<<<<<< HEAD
-=======
-
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
             # compute number of decompression threads to use for each call to mosdepth
             if jobs > len(bams):
                 base = min(int(jobs / n_workers_mosdepth), 4)
@@ -73,13 +65,7 @@ def main(args=None):
                         i += 1
                         remainder -= 1
             else:
-<<<<<<< HEAD
                 threads_per_worker = [1] * len(bams)
-=======
-                threads_per_worker = [1] * n_workers_mosdepth
-            
-            #Note: These function calls are the only section that uses mosdepth
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
             mosdepth_params = [(outdir, names[i], bams[i], threads_per_worker[i], mosdepth) 
                                for i in range(len(bams))]
             with mp.Pool(n_workers_mosdepth) as p:
@@ -331,22 +317,13 @@ def form_counts_array(starts_files, perpos_files, thresholds, chromosome, tabix,
                         
             if i == 0:
                 # identify the (effective) chromosome end as the last well-formed record
-<<<<<<< HEAD
                 assert idx == len(thresholds), (idx, len(thresholds))
-=======
-                assert idx == len(thresholds)
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
                 _, _, chr_end, end_reads = last_record.split()
                 chr_end = int(chr_end)
                 end_reads = int(end_reads)
 
-<<<<<<< HEAD
                 assert chr_end > thresholds[-1], (chr_end, thresholds[-1])
                 assert len(thresholds) == len(arr) - 1, (len(thresholds), len(arr) - 1)
-=======
-                assert chr_end > thresholds[-1] 
-                assert len(thresholds) == len(arr) - 1
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
 
                 # add the chromosome end to thresholds
                 thresholds = np.concatenate([thresholds, [chr_end]])

@@ -23,16 +23,8 @@ def output_folder():
         os.makedirs(os.path.join(out, sub_folder))
     return out
 
-<<<<<<< HEAD
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
 def test_script(_, output_folder):    
-=======
-
-@pytest.mark.skipif(shutil.which('picard') is None, reason='picard is not available on PATH')
-@pytest.mark.skipif(shutil.which('shapeit') is None, reason='shapeit is not available on PATH')
-@patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
-def test_script(_, output_folder):
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
     download_panel(
         args=[
             '-D', os.path.join(output_folder, 'panel'),
@@ -47,12 +39,9 @@ def test_script(_, output_folder):
         args=[
             '-D', os.path.join(output_folder, 'panel'),
             '-g', config.paths.reference,
-<<<<<<< HEAD
             '-si', config.paths.shapeit,
             '-pc', config.paths.picard,
             '-bg', config.paths.bgzip,
-=======
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
             '-V', 'hg19',
             '-N', 'true',
             '-o', os.path.join(output_folder, 'phase'),

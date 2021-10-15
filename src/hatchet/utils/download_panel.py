@@ -33,11 +33,7 @@ def main(args=None):
     # if users aligned reads to the hg38 build, we need to liftover coordinates to the reference panel (hg38 -> hg19)
     # since the 1000GP panel is in hg19 coordinates, we need to download (1) hg19  genome and (2) chain files
     # for liftover via picard
-<<<<<<< HEAD
     hg19_path = dwnld_refpanel_genome(path=args["refpaneldir"], samtools = args["samtools"])
-=======
-    hg19_path = dwnld_refpanel_genome(path=args["refpaneldir"])
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
     chains = dwnld_chains(path=args["refpaneldir"], refpanel_chr="False", sample_chr=args["chrnot"] )
     # if users aligned reads to the same reference genome as used in the reference panel, liftover isn't required, but
     # there could be different naming conventions of chromosomes, with or without the 'chr' prefix. The 1000GP reference 
@@ -78,11 +74,7 @@ def mod_chain(infile, refpanel_chr, sample_chr, refpanel_index, sample_index):
                     new.write(l)
     return name
 
-<<<<<<< HEAD
 def dwnld_refpanel_genome(path, samtools):
-=======
-def dwnld_refpanel_genome(path):
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
     url = "http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz"
     out = os.path.join(path, "hg19.fa.gz")
     newref = os.path.join(path, "hg19_no_chr.fa")
@@ -100,11 +92,7 @@ def dwnld_refpanel_genome(path):
         os.remove(out)
         # make dict file
         dict_file = newref.replace(".fa",".dict")
-<<<<<<< HEAD
         cmd = f"{samtools} dict {newref} > {dict_file}"
-=======
-        cmd = f"samtools dict {newref} > {dict_file}"
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
         errname = os.path.join(path, f"samtools.log")
         with open(errname, 'w') as err:
             run = pr.run(cmd, stdout=err, stderr=err, shell=True, universal_newlines=True)

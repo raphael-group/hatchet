@@ -13,18 +13,10 @@ from pandas.testing import assert_frame_equal
 
 from hatchet import config
 from hatchet.utils import ArgParsing
-<<<<<<< HEAD
 from hatchet.utils.count_reads_fw import main as count_reads_fw
-from hatchet.utils.count_reads import main as count_reads
 from hatchet.utils.genotype_snps import main as genotype_snps
 from hatchet.utils.count_alleles import counting
 from hatchet.utils.combine_counts_fw import main as combine_counts_fw
-=======
-from hatchet.utils.count_reads import main as count_reads
-from hatchet.utils.genotype_snps import main as genotype_snps
-from hatchet.utils.count_alleles import counting
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
-from hatchet.utils.combine_counts import main as combine_counts
 from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as main
@@ -70,19 +62,11 @@ def output_folder():
 
 @pytest.mark.skipif(not config.paths.reference, reason='paths.reference not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
-<<<<<<< HEAD
 @patch('hatchet.utils.count_reads_fw.knownRegions', return_value={'chr22': [(30256931, 32622323)]})
 def test_count_reads_fw(_mock0, _mock1, bams, output_folder):
     normal_bam, tumor_bams = bams
 
     count_reads_fw(
-=======
-@patch('hatchet.utils.count_reads.knownRegions', return_value={'chr22': [(30256931, 32622323)]})
-def test_count_reads(_mock0, _mock1, bams, output_folder):
-    normal_bam, tumor_bams = bams
-
-    count_reads(
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
         args=[
             '-N', normal_bam,
             '-T'
@@ -174,19 +158,11 @@ def test_count_alleles_normal_snps(_mock1, bams, normal_snps, output_folder):
     assert snps == normal_snps
 
 
-<<<<<<< HEAD
 def test_combine_counts_fw(output_folder):
     _stdout = sys.stdout
     sys.stdout = StringIO()
 
     combine_counts_fw(args=[
-=======
-def test_combine_counts(output_folder):
-    _stdout = sys.stdout
-    sys.stdout = StringIO()
-
-    combine_counts(args=[
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
         '-c', f'{this_dir}/data/bin/normal.1bed',
         '-C', f'{this_dir}/data/bin/bulk.1bed',
         '-B', f'{this_dir}/data/baf/bulk.1bed',

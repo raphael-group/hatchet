@@ -10,8 +10,6 @@ from glob import glob
 from . import Supporting as sp
 from hatchet import config, __version__
 
-<<<<<<< HEAD
-=======
 def parse_cluster_bins_loc_args(args=None):
     """
     Parse command line arguments
@@ -83,7 +81,6 @@ def parse_cluster_bins_loc_args(args=None):
             "outsegments" : args.outsegments,
             "outbins" : args.outbins}
 
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
 def parse_count_reads_args(args=None):
 
     description = "Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES."
@@ -426,7 +423,6 @@ def parse_download_panel_arguments(args=None):
     """
     description = "Download and prepare files for phasing germline SNPs using a reference panel"
     parser = argparse.ArgumentParser(description=description)
-<<<<<<< HEAD
     parser.add_argument("-D","--refpaneldir", required=False, type=str, help="Path to Reference Panel", default = config.paths.panel)
     parser.add_argument("-R","--refpanel", required=False, type=str, help="Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project", default = config.phasing.refpanel)
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
@@ -444,18 +440,6 @@ def parse_download_panel_arguments(args=None):
             "refvers" : args.refversion,
             "chrnot" : args.chrnotation,
             "samtools" : samtools}
-=======
-    parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
-    parser.add_argument("-R","--refpanel", required=True, type=str, help="Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
-    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
-    parser.add_argument("-N","--chrnotation", required=True, type=str, help="Notation of chromosomes, with or without \"chr\"")
-    args = parser.parse_args(args)
-
-    return {"refpanel" : args.refpanel,
-            "refpaneldir" : os.path.abspath(args.refpaneldir),
-            "refvers" : args.refversion,
-            "chrnot" : args.chrnotation}
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
 
 def parse_phase_snps_arguments(args=None):
     """
@@ -464,34 +448,22 @@ def parse_phase_snps_arguments(args=None):
     """
     description = "Phase germline SNPs using a reference panel"
     parser = argparse.ArgumentParser(description=description)
-<<<<<<< HEAD
     parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel", default = config.paths.panel)
     parser.add_argument("-g","--refgenome", required=True, type=str, help="Path to Reference genome used in BAM files")
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     parser.add_argument("-N","--chrnotation", required=True, type=str, help="'true' or 'false' to indicate whether the chromosomes in the input VCF file(s) begin with 'chr' (e.g., 'chr1' rather than '1'). ")
-=======
-    parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
-    parser.add_argument("-g","--refgenome", required=True, type=str, help="Path to Reference genome used in BAM files")
-    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
-    parser.add_argument("-N","--chrnotation", required=True, type=str, help="Notation of chromosomes, with or without \"chr\"")
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
     parser.add_argument("-o", "--outdir", required=False, type=str, help="Output folder for phased VCFs")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
     parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")
     parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.mosdepth, help = 'Path to shapeit executable (default: look in $PATH)')   
     parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.tabix, help = 'Path to picard executable (default: look in $PATH)')   
-<<<<<<< HEAD
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")    
     parser.add_argument("-bg","--bgzip", required=False, default=config.paths.bgzip, type=str, help="Path to the directory of \"bgzip\" executable (default: look in $PATH)")
-=======
-    parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
     args = parser.parse_args(args)
 
     # add safety checks for custom ref panel
     #if args.refpanel != "1000GP_Phase3":
 
-<<<<<<< HEAD
     chrnot = args.chrnotation
     if chrnot.upper() == 'TRUE':
         chrnot = 'true'
@@ -504,10 +476,6 @@ def parse_phase_snps_arguments(args=None):
     if sp.which(bgzip) is None:
         raise ValueError(sp.error("The 'bgzip' executable was not found or is not executable. \
             Please install bgzip (e.g., conda install -c bioconda tabix) and/or supply the path to the executable. It can also be installed manually by downloading and compiling htslib."))
-=======
-    if sp.which("bgzip") is None:
-        raise(ValueError(sp.error("The tool 'bgzip' is required to run this command. Please make sure this tool is installed and available on your PATH.")))
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
 
     shapeit = os.path.join(args.shapeit, "shapeit")
     if sp.which(shapeit) is None:
@@ -539,21 +507,13 @@ def parse_phase_snps_arguments(args=None):
             "chromosomes" : chromosomes,
             "snps" : snplists,
             "refvers" : args.refversion,
-<<<<<<< HEAD
             "chrnot" : chrnot,
-=======
-            "chrnot" : args.chrnotation,
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
             "refgenome" : args.refgenome,
             "outdir" : os.path.abspath(args.outdir),
             "shapeit" : shapeit,
             "picard" : picard,
-<<<<<<< HEAD
             "bcftools" : bcftools,
             "bgzip" : bgzip}
-=======
-            "bcftools" : bcftools}
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
 
 def parse_count_alleles_arguments(args=None):
     """

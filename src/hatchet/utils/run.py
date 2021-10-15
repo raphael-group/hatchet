@@ -19,10 +19,6 @@ from hatchet.utils.download_panel import main as download_panel
 from hatchet.utils.phase_snps import main as phase_snps
 from hatchet.utils.Supporting import log 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
 def main(args=None):
 
     parser = argparse.ArgumentParser(prog='hatchet run', description='Run HATCHet pipeline')
@@ -227,15 +223,7 @@ def main(args=None):
         os.makedirs(f'{output}/plots', exist_ok=True)
         plot_bins(args=[
             f'{output}/bbc/bulk.bbc',
-<<<<<<< HEAD
             '--rundir', f'{output}/plots',
-=======
-            '--rundir', 
-            f'{output}/plots',
-            '--ymin', '0',
-            '--ymax', '3',
-            #'--pdf'
->>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
         ])
 
     # ----------------------------------------------------
