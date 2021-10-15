@@ -4,15 +4,19 @@ This step of HATCHet phases genotypes found in VCF files. It automatically takes
 
 ## Input
 
-| Name | Description | Usage |
-|------|-------------|-------|
-| `-D`, `--refpaneldir` | Path to the Reference Panel | This is the location where the 1000 genome project reference panel will be downloaded |
+| Name | Description | Usage | Default |
+|------|-------------|-------|---------|
+| `-D`, `--refpaneldir` | Path to the Reference Panel | This is the location where the 1000 genome project reference panel will be downloaded | "" (current directory)
 | `-g`, `--refgenome` | Path to the reference genome used to align reads | Path should include the filename |
 | `-V`, `--refversion` | Version of reference genome used to align reads | Specify the human reference genome used for aligning reads; hg19 or hg38 |
 | `-N`, `--chrnotation` | Notation of chromosomes, with or without "chr" | Specify "true" or "false" according to whether chromosomes are prefixed by "chr" |
 | `-o`, `--outdir` | Output folder for phased VCFs | Specify a path or relative path |
 | `-L`, `--snps` | A list of VCF files to phase, one per chromosome | Specify a list using a path along with a wildcard, e.g. /path/to/snps/*.vcf.gz |
-| `-j`, `--processes` | Number of parallel jobs | Parallel jobs independently phase VCF files, which are split up by chromosome |
+| `-j`, `--processes` | Number of parallel jobs | Parallel jobs independently phase VCF files, which are split up by chromosome | 2
+| `--si`, `--shapeit` | Path to shapeit executable |  | "" (look on PATH)
+| `--pc`, `--picard` | Path to picard executable |  | "" (look on PATH)
+| `--bt`, `--bcftools` | Path to bcftools executable |  | "" (look on PATH)
+| `--bg`, `--bgzip` | Path to bgzip executable |  | "" (look on PATH)
 
 ## Output
 

@@ -84,9 +84,14 @@ conda config --add channels bioconda
 conda config --add channels conda-forge
 ```
 
-Next, `HATCHet` can be installed with the following one-time commands:
+Next, `HATCHet` can be installed with the following one-time command:
 ```shell
-conda install hatchet tabix picard mosdepth
+conda install hatchet tabix mosdepth
+```
+
+If you optionally want to phase SNPs, the following dependencies are required as well:
+```shell
+conda install tabix picard
 conda install shapeit -c dranew
 ```
 
