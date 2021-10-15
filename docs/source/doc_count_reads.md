@@ -34,7 +34,7 @@ This step of HATCHet uses the locations of heterozygous SNPs (called by `count-a
 |------|-------------|-------|
 | `-st`, `--samtools` | Location of `samtools` executable (default "" -- assumes `samtools` is on the PATH) |  |
 | `-md`, `--mosdepth` | Location of `mosdepth` executable (default "" -- assumes `mosdepth` is on the PATH) |  |
-| `-tabix`, `--tabix` | Location of `tabix` executable (default "" -- assumes `tabix` is on the PATH) |  |
+| `-tx`, `--tabix` | Location of `tabix` executable (default "" -- assumes `tabix` is on the PATH) |  |
 | `-j`, `--processes` | Number of parallel processes to use (default 1) |  |
 
 ## Example usage
