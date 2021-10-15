@@ -2,10 +2,6 @@ import sys
 import os.path
 import argparse
 import subprocess
-import shutil 
-from numpy import busday_offset
-import pandas as pd
-from glob import glob
 
 from . import Supporting as sp
 from hatchet import config, __version__
@@ -455,8 +451,8 @@ def parse_phase_snps_arguments(args=None):
     parser.add_argument("-o", "--outdir", required=False, type=str, help="Output folder for phased VCFs")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
     parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.mosdepth, help = 'Path to shapeit executable (default: look in $PATH)')   
-    parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.tabix, help = 'Path to picard executable (default: look in $PATH)')   
+    parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.shapeit, help = 'Path to shapeit executable (default: look in $PATH)')   
+    parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.picard, help = 'Path to picard executable (default: look in $PATH)')   
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")    
     parser.add_argument("-bg","--bgzip", required=False, default=config.paths.bgzip, type=str, help="Path to the directory of \"bgzip\" executable (default: look in $PATH)")
     args = parser.parse_args(args)
