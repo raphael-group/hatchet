@@ -47,6 +47,7 @@ Worker::Worker(const DoubleMatrix& FA,
     , _seedIndex(seedIndex)
     , _v(v)
 {
+    std::locale::global(std::locale("C"));
 }
 
 

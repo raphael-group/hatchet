@@ -185,6 +185,7 @@ void CoordinateDescent::runWorker()
             
             {
                 std::lock_guard<std::mutex> lock(g_output_mutex);
+                std::locale::global(std::locale("C"));
                 log(std::to_string(obj) + "; ", VERBOSITY_t::VERBOSE, _v);
             }
         } else {

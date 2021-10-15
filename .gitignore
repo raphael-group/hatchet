@@ -1,5 +1,15 @@
+######## STUFF I ADDED BETWEEN POUND SIGNS
+script/*
+src/hatchet.egg-info/
+src/hatchet/solve
+########
+
 # Temp
 *~
+*.ucn*
+!tests/data/best.bbc.ucn
+!tests/data/best_abin.bbc.ucn
+!tests/data/best_abin_ph.bbc.ucn
 
 # Build directory
 build/
@@ -21,6 +31,7 @@ build/
 *.so
 *.dylib
 *.dll
+*.pyc
 
 # Fortran module files
 *.mod
@@ -36,3 +47,4 @@ build/
 *.exe
 *.out
 *.app
+.vscode/*

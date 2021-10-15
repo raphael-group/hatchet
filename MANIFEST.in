@@ -1,0 +1,5 @@
+include LICENSE setup.py CMakeLists.txt FindGUROBI.cmake
+include bin *.py
+recursive-include custom *
+recursive-include script *
+recursive-include src *.py *.h *.cpp *.c

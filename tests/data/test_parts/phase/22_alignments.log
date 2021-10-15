@@ -1,0 +1,31 @@
+Mode    : Summarizer
+Options : --input-vcf /n/fs/ragr-code/raphael-lab/hatchet-matt-dev/abin/tests/out_abin_ph/phase/22_filtered.vcf.gz --input-map /n/fs/ragr-code/raphael-lab/hatchet-matt-dev/abin/tests/out_abin_ph/panel/1000GP_Phase3/genetic_map_chr22_combined_b37.txt --input-ref /n/fs/ragr-code/raphael-lab/hatchet-matt-dev/abin/tests/out_abin_ph/panel/1000GP_Phase3/1000GP_Phase3_chr22.hap.gz /n/fs/ragr-code/raphael-lab/hatchet-matt-dev/abin/tests/out_abin_ph/panel/1000GP_Phase3/1000GP_Phase3_chr22.legend.gz /n/fs/ragr-code/raphael-lab/hatchet-matt-dev/abin/tests/out_abin_ph/panel/1000GP_Phase3/1000GP_Phase3.sample --output-log /n/fs/ragr-code/raphael-lab/hatchet-matt-dev/abin/tests/out_abin_ph/phase/22_alignments
+Version : v2.r904
+Date    : 29/09/2021 11:30:42
+
+MODE -summarise : GENERATING SUMMARY STATISTICS OF THE INPUT DATA
+  * Autosome (chr1 ... chr22)
+  * Reference panel of haplotypes used
+
+
+Parameters :
+  * Seed : 1632929442
+  * Parallelisation: 1 threads
+  * Ref allele is NOT aligned on the reference genome
+
+Reading unphased data in [/n/fs/ragr-code/raphael-lab/hatchet-matt-dev/abin/tests/out_abin_ph/phase/22_filtered.vcf.gz]
+  * 1 samples included
+  * 1 unrelateds / 0 duos / 0 trios in 1 different families
+  * 276614 SNPs included
+
+Reading sample list [/n/fs/ragr-code/raphael-lab/hatchet-matt-dev/abin/tests/out_abin_ph/panel/1000GP_Phase3/1000GP_Phase3.sample]
+  * 5008 reference haplotypes included
+
+Reading SNPs in [/n/fs/ragr-code/raphael-lab/hatchet-matt-dev/abin/tests/out_abin_ph/panel/1000GP_Phase3/1000GP_Phase3_chr22.legend.gz]
+  * 276157 reference panel sites included
+  * 834060 reference panel sites excluded
+
+ERROR: Reference and Main panels are not well aligned:
+  * #Missing sites in reference panel = 214
+  * #Misaligned sites between panels = 243
+  * #Multiple alignments between panels = 0

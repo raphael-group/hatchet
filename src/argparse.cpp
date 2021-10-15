@@ -50,8 +50,7 @@ ArgParse::ArgParse(int argc, char** argv)
 
     _required.insert(std::make_pair("input", false));
     _required.insert(std::make_pair("-n", false));
-    
-    _optional["-c"] = false;
+
     _optional["-h"] = false;
     _optional["-d"] = false;
     _optional["-e"] = false;
@@ -62,10 +61,12 @@ ArgParse::ArgParse(int argc, char** argv)
     _optional["-s"] = false;
     _optional["-r"] = false;
     _optional["-i"] = false;
+    _optional["-c"] = false;
     _optional["-M"] = false;
     _optional["-v"] = false;
     _optional["-o"] = false;
     _optional["-t"] = false;
+    _optional["-f"] = false;
 
     parse();
     
@@ -363,7 +364,7 @@ void ArgParse::parseOptional(const std::string &arg, const std::string &value)
     } else if (arg == "-f") {
         if((*_optional.find("-f")).second)
         {
-            throw "Multiple -i arguments found!";
+            throw "Multiple -f arguments found!";
         } else {
             (*_optional.find("-f")).second = true;
             _f = true;
