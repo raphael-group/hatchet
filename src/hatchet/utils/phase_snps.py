@@ -24,7 +24,10 @@ def main(args=None):
     bcftools = args['bcftools']
     shapeit = args['shapeit']
     picard = args['picard']
+<<<<<<< HEAD
     bgzip = args['bgzip']
+=======
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
     #tracemalloc.start()
 
     if args["refvers"] not in ["hg19", "hg38"]:
@@ -68,8 +71,13 @@ def main(args=None):
     
     n_workers = max(1, int(args["j"] / 3))
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=chromosomes, 
+<<<<<<< HEAD
                 hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], num_workers= n_workers, verbose=False, 
                 shapeit = shapeit, bcftools = bcftools, picard = picard, bgzip = bgzip) 
+=======
+                hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
+                num_workers= n_workers, verbose=False, shapeit = shapeit, bcftools = bcftools, picard = picard) 
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
     concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=chromosomes, bcftools = bcftools)
 
 
@@ -122,7 +130,11 @@ def concat(vcfs, outdir, chromosomes, bcftools):
         os.remove(errname)
     return(outfile)
 
+<<<<<<< HEAD
 def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refvers, chrnot, num_workers, bcftools, shapeit, picard, bgzip, verbose=False):
+=======
+def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refvers, chrnot, num_workers, bcftools, shapeit, picard, verbose=False):
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
     counter = Value('i', 0)
@@ -139,7 +151,11 @@ def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refver
         jobs_count += 1
 
     # Setting up the workers
+<<<<<<< HEAD
     workers = [ Phaser(tasks, results, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools = bcftools, shapeit = shapeit, picard = picard, bgzip = bgzip) 
+=======
+    workers = [ Phaser(tasks, results, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools = bcftools, shapeit = shapeit, picard = picard) 
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
                 for i in range(min(num_workers, jobs_count)) ]
 
     # Add a poison pill for each worker
@@ -150,12 +166,17 @@ def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refver
     for w in workers:
         w.start()
 
+<<<<<<< HEAD
     # Wait for all workers to finish
     for w in workers:
         w.join()
 
     if not tasks.empty():
         raise ValueError(error("ERROR: all workers finished before tasks were complete."))
+=======
+    # Wait for all of the tasks to finish
+    tasks.join()
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
 
     # Get the results
     sorted_results = sorted([results.get() for i in range(jobs_count)])
@@ -173,7 +194,11 @@ def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refver
 
 class Phaser(Process):
 
+<<<<<<< HEAD
     def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools, shapeit, picard, bgzip):
+=======
+    def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools, shapeit, picard):
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
         Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -191,7 +216,10 @@ class Phaser(Process):
         self.bcftools = bcftools
         self.shapeit = shapeit
         self.picard = picard
+<<<<<<< HEAD
         self.bgzip = bgzip
+=======
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
 
     def run(self):
         while True:
@@ -201,8 +229,11 @@ class Phaser(Process):
                 self.task_queue.task_done()
                 break
 
+<<<<<<< HEAD
             #log(msg=f"{next_task[-1]}: Starting task\n", level = 'INFO')
             
+=======
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
             # begin work
             self.progress_bar.progress(advance=False, msg=f"{self.name} starts on vcf {next_task[0]} for chromosome {next_task[1]}")
             # (1) PREPROCESS
@@ -216,12 +247,18 @@ class Phaser(Process):
                 # liftover
                 vcf_toFilter = self.liftover(infile=next_task[0], chromosome=next_task[1], outname="toFilter", chain=self.chains["hg38_hg19"], refgen=self.hg19, ch="false")
 
+<<<<<<< HEAD
             #log(msg=f"{next_task[-1]}: done preprocessing\n", level = 'INFO')
+=======
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
             # (2) FILTERING AND PHASING
             vcf_filtered = self.biallelic(infile=vcf_toFilter, chromosome=next_task[1]) # filter out multi-allelic sites and indels
             vcf_phased = self.run_shapeit(infile=vcf_filtered, chromosome=next_task[1]) # phase
 
+<<<<<<< HEAD
             #log(msg=f"{next_task[-1]}: done phasing\n", level = 'INFO')
+=======
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
             # (3) POSTPROCESS
             if self.refvers == "hg19":
                 if self.chrnot == "true":
@@ -232,6 +269,7 @@ class Phaser(Process):
             else:
                 vcf_toConcat = self.liftover(infile=vcf_phased, chromosome=next_task[1], outname="toConcat", chain=self.chains["hg19_hg38"], refgen=self.ref, ch=self.chrnot)
 
+<<<<<<< HEAD
             #log(msg=f"{next_task[-1]}: done postprocessing\n", level = 'INFO')
 
             self.progress_bar.progress(advance=True, msg=f"{self.name} ends on vcf {next_task[0]} for chromosome {next_task[1]})")
@@ -240,6 +278,11 @@ class Phaser(Process):
             
             #log(msg=f"{next_task[-1]}: completely done\n", level = 'INFO')
 
+=======
+            self.progress_bar.progress(advance=True, msg=f"{self.name} ends on vcf {next_task[0]} for chromosome {next_task[1]})")
+            self.task_queue.task_done()
+            self.result_queue.put(vcf_toConcat)
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
         return
 
     def liftover(self, infile, chromosome, outname, chain, refgen, ch):
@@ -328,7 +371,11 @@ class Phaser(Process):
         cmd3 = f"{self.shapeit} -convert --input-haps {self.outdir}/{chromosome} "
         cmd3 += f"--output-vcf {self.outdir}/{chromosome}_phased.vcf"
         # compress vcf 
+<<<<<<< HEAD
         cmd4 = f"{self.bgzip} {self.outdir}/{chromosome}_phased.vcf"
+=======
+        cmd4 = f"bgzip {self.outdir}/{chromosome}_phased.vcf"
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
         # index vcf
         cmd5 = f"{self.bcftools} index {self.outdir}/{chromosome}_phased.vcf.gz"
         with open(errname, 'w') as err:
@@ -348,11 +395,19 @@ class Phaser(Process):
     def index(self, infile, chromosome): 
         # use bcftools to rename chromosomes
         errname = os.path.join(self.outdir, f"{chromosome}_bcftools.log")
+<<<<<<< HEAD
         cmd = f"{self.bcftools} index {infile}"
         with open(errname, 'w') as err:
             run = pr.run(cmd, stdout=err, stderr=err, shell=True, universal_newlines=True)
         if run.returncode != 0:
             raise ValueError(sp.error(f"Failed to index {infile} with bcftools, please check errors in {errname}!"))
+=======
+        cmd = f"bcftools index {infile}"
+        with open(errname, 'w') as err:
+            run = pr.run(cmd, stdout=err, stderr=err, shell=True, universal_newlines=True)
+        if run.returncode != 0:
+            raise ValueError(sp.error(f"Failed to index {infile}with bcftools, please check errors in {errname}!"))
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
         else:
             os.remove(errname)
         return 

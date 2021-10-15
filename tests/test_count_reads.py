@@ -35,6 +35,11 @@ def output_folder():
         os.makedirs(os.path.join(out, sub_folder))
     return out
 
+<<<<<<< HEAD
+=======
+@pytest.mark.skipif(shutil.which('mosdepth') is None, reason='mosdepth is not available on PATH')
+@pytest.mark.skipif(shutil.which('tabix') is None, reason='tabix is not available on PATH')
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
 def test_script(_, bams, output_folder):
     normal_bam, tumor_bams = bams
@@ -45,10 +50,15 @@ def test_script(_, bams, output_folder):
             '-T'
         ] + tumor_bams + [
             '-st', config.paths.samtools,
+<<<<<<< HEAD
             '-md', config.paths.mosdepth,
             '-tx', config.paths.tabix,
             '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
             '-j', '1',
+=======
+            '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
+            '-j', '12',
+>>>>>>> 2834f935f1745ae61ffeeaa017921add2cdceb2b
             '-b', os.path.join(this_dir, 'data', 'test_parts', 'baf', 'bulk.1bed'),
             '-O', os.path.join(output_folder, 'rdr'),
             '-V', 'hg19'
