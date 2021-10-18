@@ -4,6 +4,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from scipy.stats import binom, norm
+from scipy.special import logsumexp
 import gzip
 import subprocess
 import traceback
@@ -31,7 +32,7 @@ def main(args=None):
     blocksize = args['blocksize']
     max_snps_per_block = args['max_snps_per_block']
     test_alpha = args['test_alpha']
-    use_mm = args['use_mm']
+    multisample = args['multisample']
 
     n_workers = min(len(chromosomes), threads)
 
@@ -67,7 +68,7 @@ def main(args=None):
     # form parameters for each worker
     params = [(baffile, all_names, ch, outfile + f'.{ch}', 
                chr2centro[ch][0], chr2centro[ch][1], msr, mtr, args['array'],
-               isX[ch] or isY[ch], use_mm, phase, blocksize, max_snps_per_block, test_alpha)
+               isX[ch] or isY[ch], multisample, phase, blocksize, max_snps_per_block, test_alpha)
               for ch in chromosomes]
     # dispatch workers
     """
@@ -362,7 +363,13 @@ def apply_MM(totals_in, alts_in):
     else:
         return baf, beta, alpha
 
-def compute_baf_task(bin_snps, blocksize, max_snps_per_block, test_alpha, use_mm):
+def compute_baf_wrapper(bin_snps, blocksize, max_snps_per_block, test_alpha, multisample):
+    if multisample:
+        return compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha) 
+    else:
+        return compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha) 
+
+def compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha):
     """
     Estimates the BAF for the bin containing exactly <bin_snps> SNPs.
     <bin_snps> is a dataframe with at least ALT and REF columns containing read counts.
@@ -389,17 +396,109 @@ def compute_baf_task(bin_snps, blocksize, max_snps_per_block, test_alpha, use_mm
         if phasing:
             my_snps = collapse_blocks(my_snps, *phase_data, bin_snps.iloc[0].CHR)
             
-        if use_mm:
-            baf, alpha, beta = apply_MM(totals_in = my_snps.TOTAL, 
-                                        alts_in = my_snps.ALT)   
-        else:
-            baf, alpha, beta = apply_EM(totals_in = my_snps.TOTAL, 
+        baf, alpha, beta = apply_EM(totals_in = my_snps.TOTAL, 
                                         alts_in = my_snps.ALT)   
             
         cov = np.sum(alpha + beta) / n_snps
 
         result[sample] = n_snps, cov, baf, alpha, beta
     return result
+
+
+def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
+    """
+    Estimates the BAF for the bin containing exactly <bin_snps> SNPs.
+    <bin_snps> is a dataframe with at least ALT and REF columns containing read counts.
+    <blocksize>, <max_snps_per_block>, and <test_alpha> are used only for constructing phase blocks.
+    """
+    
+    samples = sorted(bin_snps.SAMPLE.unique())
+    result = {}
+    
+    phasing = "PHASE" in bin_snps.columns
+    if phasing:
+        # TODO: select the highest coverage sample to use for constructing phase blocks?
+        # or maybe use all samples for BAF test?
+        all_phase_data = [phase_blocks_sequential(d, blocksize = blocksize, 
+                                             max_snps_per_block = max_snps_per_block,
+                                             alpha = test_alpha) for _, d in bin_snps.groupby('SAMPLE')]
+        phase_data = merge_phasing(bin_snps, all_phase_data)
+        
+        bin_snps = collapse_blocks(bin_snps, *phase_data, bin_snps.iloc[0].CHR)
+    
+    alts = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'ALT').to_numpy()
+    refs = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'REF').to_numpy()
+    
+    runs = {b:multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)}
+    bafs, phases, ll = max(runs.values(), key = lambda x: x[1][-1])
+    
+    # Need hard phasing to assign ref/alt reads to alpha/beta
+    phases = np.round(phases).astype(np.int8)
+
+    # Compose results table
+    for i in range(len(samples)):
+        sample = samples[i]
+        
+        # Check that sample indexing lines up
+        my_snps = bin_snps[bin_snps.SAMPLE == sample]
+        assert np.array_equal(my_snps.ALT, alts[i])
+        assert np.array_equal(my_snps.REF, refs[i])
+        
+        n_snps = len(my_snps)
+        
+        alpha = np.sum(np.choose(phases, [refs[i], alts[i]]))
+        beta = np.sum(np.choose(phases, [alts[i], refs[i]]))  
+        baf = bafs[i]
+        cov = np.sum(alpha + beta) / n_snps
+
+        result[sample] = n_snps, cov, baf, alpha, beta
+    return result
+
+
+def multisample_em(alts, refs, start, tol = 10e-6):
+    assert refs.shape == alts.shape
+    assert 0 < start <= 0.5 
+    assert np.all(alts >= 0) 
+    assert np.all(refs >= 0)
+    
+    n_samples, n_snps = alts.shape
+    
+    if np.all(np.logical_or(refs == 0, alts == 0)):
+        return np.array([0.0] * n_samples), np.ones(n_snps) * 0.5, 0.0
+    else:
+        theta = np.array([start] * n_samples)
+        prev = None
+        while prev is None or np.all(np.abs(prev - theta) >= tol):
+            prev = theta
+            
+            # E-step in log space
+            t1 = np.sum((refs.T * np.log(theta)).T + (alts.T * np.log(1 - theta)).T, axis = 0)
+            t2 = np.sum((refs.T * np.log(1 - theta)).T + (alts.T * np.log(theta)).T, axis = 0)
+            phases = np.exp(t1 - logsumexp([t1, t2], axis = 0))
+            assert not np.any(np.isnan(phases)), (phases, t1, t2)
+
+
+            # M-step
+            t1 = np.sum(refs * phases + alts * (1 - phases), axis = 1)
+            t2 = np.sum(refs * (1 - phases) + alts * phases, axis = 1)
+            theta = t1 / (t1 + t2)
+            assert not np.any(np.isnan(theta)), (theta, t1, t2)
+
+            theta = np.clip(theta, tol, 1 - tol)
+    
+    # Force BAF <= 0.5 and flip phases accordingly
+    theta = np.minimum(theta, 1 - theta)
+    t1 = np.sum((refs.T * np.log(theta)).T + (alts.T * np.log(1 - theta)).T, axis = 0)
+    t2 = np.sum((refs.T * np.log(1 - theta)).T + (alts.T * np.log(theta)).T, axis = 0)
+    phases = np.exp(t1 - logsumexp([t1, t2], axis = 0))
+    
+    t1 = np.sum(np.log(theta) * (phases * refs).T, axis = 0)
+    t2 = np.sum(np.log(1 - theta) * (phases * alts).T, axis = 0)
+    t3 = np.sum(np.log(theta) * ((1 - phases) * alts).T, axis = 0)
+    t4 = np.sum(np.log(1 - theta) * ((1 - phases) * refs).T, axis = 0)
+    log_likelihood = np.sum(t1 + t2 + t3 + t4)
+    
+    return theta, phases, log_likelihood
 
 def merge_phasing(df, all_phase_data):
     N = len(df)
@@ -551,33 +650,33 @@ def phase_blocks_sequential(df, blocksize = 50e3, max_snps_per_block = 10, alpha
 def collapse_blocks(df, blocks, singletons, orphans, ch):
     ### Construct blocked 1-bed table
     # First, merge blocks for those SNPs that are in the same block
-    assert len(df.SAMPLE.unique()) == 1
-    sample = list(df.SAMPLE.unique())[0]
-    
+
     rows = []
-    i = 0
-    j = 0
-    while i < len(df):
-        if i in singletons or i in orphans:
-            r = df.iloc[i]
-            rows.append([ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1])
-            i += 1
-        else:
-            block = blocks[j]
-            assert i in block, (block, i)
-            i += len(block)
-            j += 1
-    
-            my_snps = df.iloc[block]
-            start = my_snps.POS.min()
-            end = my_snps.POS.max()
-            alt = np.sum(my_snps.FLIP * my_snps.REF + (1 - my_snps.FLIP) * my_snps.ALT).astype(np.uint64)
-            ref = np.sum(my_snps.FLIP * my_snps.ALT + (1 - my_snps.FLIP) * my_snps.REF).astype(np.uint64)
-            total = np.sum(my_snps.TOTAL)
-            n_snps = len(my_snps)
-            rows.append([ch, start, end, sample, alt, ref, total, n_snps])
+    for sample, df0 in df.groupby('SAMPLE'):        
+        i = 0
+        j = 0
+        while i < len(df0):
+            if i in singletons or i in orphans:
+                r = df0.iloc[i]
+                rows.append([ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1])
+                i += 1
+            else:
+                block = blocks[j]
+                assert i in block, (block, i)
+                i += len(block)
+                j += 1
         
-    return pd.DataFrame(rows, columns = ['CHR', 'START', 'END', 'SAMPLE', 'ALT', 'REF', 'TOTAL', '#SNPS'])
+                my_snps = df0.iloc[block]
+                start = my_snps.POS.min()
+                end = my_snps.POS.max()
+                alt = np.sum(my_snps.FLIP * my_snps.REF + (1 - my_snps.FLIP) * my_snps.ALT).astype(np.uint64)
+                ref = np.sum(my_snps.FLIP * my_snps.ALT + (1 - my_snps.FLIP) * my_snps.REF).astype(np.uint64)
+                total = np.sum(my_snps.TOTAL)
+                n_snps = len(my_snps)
+                rows.append([ch, start, end, sample, alt, ref, total, n_snps])
+        
+    return pd.DataFrame(rows, columns = ['CHR', 'START', 'END', 'SAMPLE', 'ALT', 'REF', 'TOTAL', '#SNPS']).sort_values(
+        by = ['CHR', 'START', 'SAMPLE'])
 
 def merge_data(bins, dfs, bafs, sample_names, chromosome):
     """
@@ -628,7 +727,7 @@ def get_chr_end(stem, chromosome):
     return last_start 
 
 def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, centromere_end, 
-         min_snp_reads, min_total_reads, arraystem, xy, use_mm, phasefile, blocksize, 
+         min_snp_reads, min_total_reads, arraystem, xy, multisample, phasefile, blocksize, 
          max_snps_per_block, test_alpha):
     """
     Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
@@ -705,7 +804,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                     for i in range(len(dfs_p)):
                         assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
                         
-                bafs_p = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_mm) for d in dfs_p] 
+                bafs_p = [compute_baf_wrapper(d, blocksize, max_snps_per_block, test_alpha, multisample) for d in dfs_p] 
                 
                 """
                 except ZeroDivisionError:    
@@ -758,7 +857,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                         assert np.all(dfs_q[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
                         
                 # Infer BAF
-                bafs_q = [compute_baf_task(d, blocksize, max_snps_per_block, test_alpha, use_mm) for d in dfs_q]
+                bafs_q = [compute_baf_wrapper(d, blocksize, max_snps_per_block, test_alpha, multisample) for d in dfs_q]
             
             bb_q = merge_data(bins_q, dfs_q, bafs_q, all_names, chromosome)
         else:

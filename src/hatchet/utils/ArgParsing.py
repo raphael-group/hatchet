@@ -251,7 +251,7 @@ def parse_combine_counts_args(args=None):
     parser.add_argument("-s","--max_blocksize", required=False, default=config.combine_counts.blocksize, type=int, help=f'Maximum size of phasing block (default {config.combine_counts.blocksize})')    
     parser.add_argument("-m","--max_spb", required=False, default=config.combine_counts.max_spb, type=int, help=f'Maximum number of SNPs per phasing block (default {config.combine_counts.max_spb})')    
     parser.add_argument("-a","--alpha", required=False, default=config.combine_counts.alpha, type=float, help=f'Significance level for phase blocking adjacent SNPs. Higher means less trust in phasing. (default {config.combine_counts.alpha})')    
-    parser.add_argument("--use_mm", action='store_true', default=False, required=False, help="Use MM (exhaustive) inference for BAF instead of EM")
+    parser.add_argument("--ss_em", action='store_true', default=False, required=False, help="Use single-sample EM BAF inference (instead of multi-sample)")
     parser.add_argument("-z", '--not_compressed', action='store_true', default=False, required=False, help="Non-compressed intermediate files")
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     args = parser.parse_args(args)
@@ -337,7 +337,7 @@ def parse_combine_counts_args(args=None):
         "blocksize":args.max_blocksize,
         "max_snps_per_block":args.max_spb,
         "test_alpha":args.alpha,
-        "use_mm":args.use_mm,
+        "multisample": not args.ss_em,
         "ref_version": ver
     }
 
