@@ -53,6 +53,7 @@ def parsing_arguments(args=None):
     parser.add_argument("--tetraploid", action='store_true', default=config.compute_cn.tetraploid, required=False, help="Force the tumor clones to be tetraploid with an occured WGD (default: false)")
     parser.add_argument("-v","--verbosity", type=int, required=False, default=config.compute_cn.verbosity, help="Level of verbosity among: none (0), essential (1), verbose (2), and debug (3) (default: 1)")
     parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
+    parser.add_argument("-b","--binwise", action='store_true', default=config.compute_cn.binwise, required=False, help="Use bin-wise objective function which requires more variables and constraints but accounts for cluster variances (default False). Only works with non-'cpp' solvers.")
     args = parser.parse_args(args)
 
     if config.compute_cn.solver == 'cpp':
@@ -60,6 +61,9 @@ def parsing_arguments(args=None):
             args.SOLVER = os.path.join(os.path.dirname(hatchet.__file__), 'solve')
         if not os.path.isfile(args.SOLVER):
             raise ValueError(error("Solver not found in {}!".format(args.SOLVER)))
+
+    if config.compute_cn.solver == 'cpp' and args.binwise:
+        raise ValueError(error("The bin-wise objective is not supported for the solver 'cpp'. Please use a pyomo solver."))
 
     clusters = args.input + '.seg'
     if not os.path.isfile(clusters):
@@ -167,7 +171,8 @@ def parsing_arguments(args=None):
             "x" : args.runningdir,
             "diploid" : args.diploid,
             "tetraploid" : args.tetraploid,
-            "v" : args.verbosity}
+            "v" : args.verbosity,
+            "binwise" : args.binwise}
 
 
 def main(args=None):
@@ -630,6 +635,7 @@ def execute_python(solver, args, n, outprefix):
     obj, cA, cB, u, cluster_ids, sample_ids = solve(
         solver=solver,
         clonal=args['c'],
+        bbc_file=args['bbc'],
         seg_file=args['seg'],
         n=n,
         solve_mode=_mode,
@@ -642,7 +648,8 @@ def execute_python(solver, args, n, outprefix):
         n_worker=args['j'],
         random_seed=args['r'],
         max_iters=args['f'],
-        timelimit=args['s']
+        timelimit=args['s'],
+        binwise = args['binwise']
     )
 
     segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file=args['bbc'], bbc_out_file=bbc_out_file,

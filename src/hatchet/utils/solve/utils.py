@@ -76,8 +76,7 @@ def scale_rdr(rdr, copy_numbers, purity_tol=0.05):
         scale = (2 - (2 - cn_sum_1) * purity) / rdr_1
         assert np.all((0 <= purity) & (purity <= 1) & (scale >= 0)), 'scaling failed'
 
-    rdr = scale * rdr
-    return rdr
+    return scale
 
 
 def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None, seg_out_file=None):

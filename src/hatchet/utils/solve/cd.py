@@ -1,7 +1,7 @@
 from copy import copy
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from hatchet.utils.solve.ilp_subset import ILPSubset
+from hatchet.utils.solve.ilp_subset import ILPSubset, ILPSubsetSplit
 from hatchet.utils.solve.utils import Random
 
 
@@ -87,3 +87,15 @@ class CoordinateDescent:
 
         best = min(result)
         return (best,) + result[best] + (self.ilp.cluster_ids, self.ilp.sample_ids)
+
+class CoordinateDescentSplit(CoordinateDescent):
+    def __init__(self, f_a, f_b, n, mu, d, cn_max, cn, binsA, binsB, lengths, ampdel=True):
+        # ilp attribute used here as a convenient storage container for properties
+        self.ilp = ILPSubsetSplit(n=n, cn_max=cn_max, d=d, mu=mu, ampdel=ampdel, copy_numbers=cn, f_a=f_a, f_b=f_b, binsA=binsA, binsB=binsB, lengths=lengths)
+        # Building the model here is not strictly necessary, as, during execution,
+        #   self.carch and c.uarch will copy self.ilp and create+run those models.
+        # However, we do so here simply so we can print out some diagnostic information once for the user.
+        self.ilp.create_model(pprint=True)
+        self.hcA, self.hcB = self.ilp.first_hot_start()
+
+        self.seeds = None
