@@ -65,10 +65,10 @@ def main(args=None):
 
     # Verify that cluster labels were applied correctly
     cl_check = pivot_check.to_numpy().T
-    assert np.all(cl_check == cl_check[0], axis = 1)
-
+    assert np.all(cl_check == cl_check[0])
 
     sp.log(msg="# Writing output\n", level="STEP")
+    bb = bb[['#CHR', 'START', 'END', 'SAMPLE', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF', 'CLUSTER']]
     bb.to_csv(args['outbins'], index = False, sep = '\t')
 
     seg = form_seg(bb, args['diploidbaf'])

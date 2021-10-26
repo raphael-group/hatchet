@@ -12,6 +12,7 @@ from hatchet.utils.count_alleles import main as count_alleles
 from hatchet.utils.combine_counts import main as combine_counts
 from hatchet.utils.combine_counts_fw import main as combine_counts_fw
 from hatchet.utils.cluster_bins import main as cluster_bins
+from hatchet.utils.cluster_bins_loc import main as loc_clust
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as hatchet_main
 from hatchet.utils.plot_cn import main as plot_cn
@@ -55,6 +56,7 @@ def main(args=None):
     # ----------------------------------------------------
 
     if config.run.genotype_snps:
+        """
         snps = ''
         if config.genotype_snps.snps:
            snps = config.genotype_snps.snps
@@ -70,13 +72,13 @@ def main(args=None):
                 raise RuntimeError('Please specify valid values of reference_version and chr_notation')
             else:
                 snps = snps_mapping[config.genotype_snps.reference_version, config.genotype_snps.chr_notation]
-
+        """
         os.makedirs(f'{output}/snps', exist_ok=True)
         genotype_snps(
             args=[
                 '-N', config.run.normal,
                 '-r', config.run.reference,
-                '-R', snps,
+                #'-R', snps,
                 '-o', f'{output}/snps/'
             ] + extra_args
         )
@@ -179,7 +181,7 @@ def main(args=None):
                         '-g', config.run.reference,
                         '-T'
                     ] + config.run.bams.split() + [
-                        '-b', config.count_reads.size,
+                        '-b', config.count_reads_fw.size,
                         '-S'
                     ] + ('Normal ' + config.run.samples).split() + [
                         '-O', f'{output}/rdr/normal.1bed',
@@ -212,11 +214,19 @@ def main(args=None):
 
     if config.run.cluster_bins:
         os.makedirs(f'{output}/bbc', exist_ok=True)
-        cluster_bins(args=[
-            f'{output}/abin/bulk.bb' if (config.run.fixed_width is None or not config.run.fixed_width) else f'{output}/bb/bulk.bb',
-            '-o', f'{output}/bbc/bulk.seg',
-            '-O', f'{output}/bbc/bulk.bbc'
-        ])
+
+        if config.run.loc_clust:
+            loc_clust(args=[
+                f'{output}/abin/bulk.bb' if (config.run.fixed_width is None or not config.run.fixed_width) else f'{output}/bb/bulk.bb',
+                '-o', f'{output}/bbc/bulk.seg',
+                '-O', f'{output}/bbc/bulk.bbc'
+            ])
+        else:
+            cluster_bins(args=[
+                f'{output}/abin/bulk.bb' if (config.run.fixed_width is None or not config.run.fixed_width) else f'{output}/bb/bulk.bb',
+                '-o', f'{output}/bbc/bulk.seg',
+                '-O', f'{output}/bbc/bulk.bbc'
+            ])
 
     # ----------------------------------------------------
 
