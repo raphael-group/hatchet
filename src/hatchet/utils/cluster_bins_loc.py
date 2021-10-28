@@ -36,6 +36,7 @@ def main(args=None):
                                                                             covar = args['covar'], decode_alg = args['decoding'], 
                                                                             tmat = args['transmat'], tau = args['tau'])
 
+    best_labels = reindex(best_labels)
     bb['CLUSTER'] = np.repeat(best_labels, len(sample_labels))
 
     sp.log(msg="# Checking consistency of results\n", level="STEP")
