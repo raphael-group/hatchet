@@ -65,7 +65,7 @@ def main(args=None):
         else:
             chromosomes.append(chro)
     
-    n_workers = max(1, int(args["j"] / 3))
+    n_workers = min(max(1, int(args["j"])), len(chromosomes))
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=chromosomes, 
                 hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
                 num_workers= n_workers, verbose=False, shapeit = shapeit, bcftools = bcftools, picard = picard) 
