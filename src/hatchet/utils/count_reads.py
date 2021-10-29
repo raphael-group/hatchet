@@ -1,7 +1,6 @@
 import multiprocessing as mp
 import os
 import subprocess as sp
-import numpy as np
 from shutil import which
 import sys
 import os
@@ -32,6 +31,7 @@ def main(args=None):
     outdir = args["outdir"]
     mosdepth = args["mosdepth"]
     tabix = args["tabix"]
+    readquality = args["readquality"]
     
     if len(check_array_files(outdir, chromosomes)) == 0:
         log(msg="# Found all array files, skipping to total read counting. \n", level="STEP")
@@ -45,7 +45,7 @@ def main(args=None):
                 [outdir] * len(bams) * len(chromosomes), 
                 [samtools] * len(bams) * len(chromosomes), 
                 bams * len(chromosomes),
-                names * len(chromosomes))
+                names * len(chromosomes), [readquality] * len(bams) * len(chromosomes))
 
             n_workers_samtools = min(int(np.round(jobs / 2)), len(bams) * len(chromosomes))
             with mp.Pool(n_workers_samtools) as p: # divide by 2 because each worker starts 2 processes
@@ -69,7 +69,8 @@ def main(args=None):
                 threads_per_worker = [1] * n_workers_mosdepth
             
             #Note: These function calls are the only section that uses mosdepth
-            mosdepth_params = [(outdir, names[i], bams[i], threads_per_worker[i], mosdepth) 
+            mosdepth_params = [(outdir, names[i], bams[i], threads_per_worker[i], mosdepth,
+                                readquality) 
                                for i in range(len(bams))]
             with mp.Pool(n_workers_mosdepth) as p:
                 p.map(mosdepth_wrapper, mosdepth_params)
@@ -138,7 +139,7 @@ def main(args=None):
         # TODO: take -q option and pass in here
         log(msg="# Counting total number of reads for normal and tumor samples\n", level="STEP")
         total_counts = tc.tcount(samtools= samtools, samples=[(bams[i], names[i]) for i in range(len(names))], chromosomes= chromosomes,
-                                num_workers= jobs, q= 0)
+                                num_workers= jobs, q= readquality)
 
         try:
             total = {name : sum(total_counts[name, chromosome] for chromosome in chromosomes) for name in names}
@@ -154,7 +155,7 @@ def main(args=None):
 def mosdepth_wrapper(params):
     run_mosdepth(*params)
     
-def run_mosdepth(outdir, sample_name, bam, threads, mosdepth):
+def run_mosdepth(outdir, sample_name, bam, threads, mosdepth, readquality):
     try:
         last_file = os.path.join(outdir, sample_name + '.per-base.bed.gz.csi')
         if os.path.exists(last_file):
@@ -164,7 +165,7 @@ def run_mosdepth(outdir, sample_name, bam, threads, mosdepth):
         log(f"Starting mosdepth on sample {sample_name} with {threads} threads\n", level = "STEP")
         sys.stderr.flush()
         
-        md = sp.run([mosdepth, '-t', str(threads), os.path.join(outdir, sample_name), bam])
+        md = sp.run([mosdepth, '-t', str(threads), '-Q', str(readquality), os.path.join(outdir, sample_name), bam])
         md.check_returncode()
         log(f"Done mosdepth on sample {sample_name}\n", level = "STEP")
 
@@ -172,7 +173,7 @@ def run_mosdepth(outdir, sample_name, bam, threads, mosdepth):
         log("Exception in countPos: {}\n".format(e), level = "ERROR")
         raise e  
 
-def count_chromosome(ch, outdir, samtools, bam, sample_name, compression_level=6):
+def count_chromosome(ch, outdir, samtools, bam, sample_name, readquality, compression_level=6):
     try:    
         outfile = os.path.join(outdir, f'{sample_name}.{ch}.starts')
         if os.path.exists(outfile):
@@ -183,7 +184,7 @@ def count_chromosome(ch, outdir, samtools, bam, sample_name, compression_level=6
         sys.stderr.flush()
         
         # Get start positions
-        st = sp.Popen((samtools, 'view', bam,  ch), stdout=sp.PIPE)
+        st = sp.Popen((samtools, 'view', '-q', str(readquality), bam,  ch), stdout=sp.PIPE)
         cut = sp.Popen(('cut', '-f', '4'), stdin=st.stdout, stdout=sp.PIPE)
         gzip = sp.Popen(('gzip', '-{}'.format(compression_level)),  stdin = cut.stdout, stdout=open(outfile + ".gz", 'w'))
         st.wait()

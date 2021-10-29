@@ -24,6 +24,7 @@ def main(args=None):
     bcftools = args['bcftools']
     shapeit = args['shapeit']
     picard = args['picard']
+    bgzip = args['bgzip']
     #tracemalloc.start()
 
     if args["refvers"] not in ["hg19", "hg38"]:
@@ -68,7 +69,7 @@ def main(args=None):
     n_workers = min(max(1, int(args["j"])), len(chromosomes))
     vcfs = phase(panel, snplist=args["snps"], outdir=args["outdir"], chromosomes=chromosomes, 
                 hg19=hg19_path, ref=args["refgenome"], chains=chains, rename=rename_files, refvers=args["refvers"], chrnot=args["chrnot"], 
-                num_workers= n_workers, verbose=False, shapeit = shapeit, bcftools = bcftools, picard = picard) 
+                num_workers= n_workers, verbose=False, shapeit = shapeit, bcftools = bcftools, picard = picard, bgzip = bgzip) 
     concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=chromosomes, bcftools = bcftools)
 
 
@@ -121,7 +122,7 @@ def concat(vcfs, outdir, chromosomes, bcftools):
         os.remove(errname)
     return(outfile)
 
-def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refvers, chrnot, num_workers, bcftools, shapeit, picard, verbose=False):
+def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refvers, chrnot, num_workers, bcftools, shapeit, picard, bgzip, verbose=False):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
     counter = Value('i', 0)
@@ -138,7 +139,7 @@ def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refver
         jobs_count += 1
 
     # Setting up the workers
-    workers = [ Phaser(tasks, results, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools = bcftools, shapeit = shapeit, picard = picard) 
+    workers = [ Phaser(tasks, results, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools = bcftools, shapeit = shapeit, picard = picard, bgzip = bgzip) 
                 for i in range(min(num_workers, jobs_count)) ]
 
     # Add a poison pill for each worker
@@ -168,7 +169,7 @@ def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refver
 
 class Phaser(Process):
 
-    def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools, shapeit, picard):
+    def __init__(self, task_queue, result_queue, progress_bar, panel, outdir, snplist, hg19, ref, chains, rename, refvers, chrnot, verbose, bcftools, shapeit, picard, bgzip):
         Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -186,6 +187,7 @@ class Phaser(Process):
         self.bcftools = bcftools
         self.shapeit = shapeit
         self.picard = picard
+        self.bgzip = bgzip
 
     def run(self):
         while True:
@@ -313,7 +315,7 @@ class Phaser(Process):
         cmd3 = f"{self.shapeit} -convert --input-haps {self.outdir}/{chromosome} "
         cmd3 += f"--output-vcf {self.outdir}/{chromosome}_phased.vcf"
         # compress vcf 
-        cmd4 = f"bgzip {self.outdir}/{chromosome}_phased.vcf"
+        cmd4 = f"{self.bgzip} -f {self.outdir}/{chromosome}_phased.vcf"
         # index vcf
         cmd5 = f"{self.bcftools} index {self.outdir}/{chromosome}_phased.vcf.gz"
         with open(errname, 'w') as err:

@@ -95,7 +95,8 @@ def parse_count_reads_args(args=None):
     parser.add_argument("-md", "--mosdepth", required = False, type = str, default = config.paths.mosdepth, help = 'Path to mosdepth executable')   
     parser.add_argument("-tx", "--tabix", required = False, type = str, default = config.paths.tabix, help = 'Path to tabix executable')   
     parser.add_argument("-j", "--processes", required=False, default=config.count_reads.processes, type=int, help="Number of available parallel processes (default: 2)")
-    
+    parser.add_argument("-q", "--readquality", required=False, default=config.count_reads.readquality, type=int, help=f"Minimum mapping quality for an aligned read to be considered (default: {config.count_reads.readquality})")
+
     # TODO: support these arguments
     #parser.add_argument("-r","--regions", required=False, default=config.count_reads.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
     #parser.add_argument("-q", "--readquality", required=False, default=config.count_reads.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
@@ -163,7 +164,8 @@ def parse_count_reads_args(args=None):
             "outdir" : args.outdir,
             "use_chr" : use_chr,
             "refversion":ver,
-            "baf_file" : args.baffile}
+            "baf_file" : args.baffile,
+            "readquality" : args.readquality}
 
 def parse_cluster_kde_args(args=None):
     """
@@ -451,13 +453,16 @@ def parse_phase_snps_arguments(args=None):
     parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.mosdepth, help = 'Path to shapeit executable (default: look in $PATH)')   
     parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.tabix, help = 'Path to picard executable (default: look in $PATH)')   
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
+    parser.add_argument("-bg","--bgzip", required=False, default=config.paths.bgzip, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
     args = parser.parse_args(args)
 
     # add safety checks for custom ref panel
     #if args.refpanel != "1000GP_Phase3":
 
+    bgzip = os.path.join(args.bgzip, "bgzip")
     if sp.which("bgzip") is None:
-        raise(ValueError(sp.error("The tool 'bgzip' is required to run this command. Please make sure this tool is installed and available on your PATH.")))
+        raise ValueError(sp.error("The 'bgzip' executable was not found or is not executable. \
+            Please install bgzip and/or supply the path to the executable."))
 
     shapeit = os.path.join(args.shapeit, "shapeit")
     if sp.which(shapeit) is None:
@@ -494,7 +499,8 @@ def parse_phase_snps_arguments(args=None):
             "outdir" : os.path.abspath(args.outdir),
             "shapeit" : shapeit,
             "picard" : picard,
-            "bcftools" : bcftools}
+            "bcftools" : bcftools,
+            "bgzip" : bgzip}
 
 def parse_count_alleles_arguments(args=None):
     """
@@ -628,7 +634,7 @@ def parse_count_reads_fw_arguments(args=None):
     parser.add_argument("-r","--regions", required=False, default=config.count_reads_fw.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
     parser.add_argument("-g","--reference", required=False, default=config.paths.reference, type=str, help="Reference genome, note that reference must be indexed and the dictionary must exist in the same directory with the same name and .dict extension")
     parser.add_argument("-j", "--processes", required=False, default=config.count_reads_fw.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-q", "--readquality", required=False, default=config.count_reads_fw.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
+    parser.add_argument("-q", "--readquality", required=False, default=config.count_reads_fw.readquality, type=int, help=f"Minimum mapping quality for an aligned read to be considered (default: {config.count_reads_fw.readquality})")
     parser.add_argument("-O", "--outputnormal", required=False, default=config.count_reads_fw.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
     parser.add_argument("-o", "--outputtumors", required=False, default=config.count_reads_fw.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
     parser.add_argument("-t", "--outputtotal", required=False, default=config.count_reads_fw.outputtotal, type=str, help="Output filename for total read counts in all tumor samples (default: \"total_read.counts\")")

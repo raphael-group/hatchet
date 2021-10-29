@@ -199,7 +199,7 @@ def adaptive_bins_arm(snp_thresholds, total_counts, snp_positions, snp_counts,
         snp_thresholds: length <n> array of 1-based genomic positions of candidate bin thresholds
             
         total_counts: <n> x <2d> np.ndarray 
-            entry [i, 2j] contains the number of reads starting in (snp_thresholds[i], snp_thresholds[i + 1]) in sample j (only the first n-1 positions are populated)
+            entry [i, 2j] contains the number of reads starting in [snp_thresholds[i], snp_thresholds[i + 1]] in sample j (only the first n-1 positions are populated)
             entry [i, 2j + 1] contains the number of reads covering position snp_thresholds[i] in sample j
 
 
