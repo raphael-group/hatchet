@@ -109,7 +109,7 @@ def parse_count_alleles_arguments(args=None):
     parser.add_argument("-E","--newbaq", required=False, action='store_true', default=config.count_alleles.newbaq, help="Recompute alignment of reads on the fly during SNP calling (default: false)")
     parser.add_argument("-O", "--outputnormal", required=False, default=config.count_alleles.outputnormal, type=str, help="Filename of output for allele counts in the normal sample (default: standard output)")
     parser.add_argument("-o", "--outputtumors", required=False, default=config.count_alleles.outputtumors, type=str, help="Output filename for allele counts in tumor samples (default: standard output)")
-    parser.add_argument("-l", "--outputsnps", required=False, default=config.count_alleles.outputsnps, type=str, help="Output directory for lists of selected SNPs (default: ./)")
+    parser.add_argument("-l", "--outputsnps", required=False, default=config.run.output, type=str, help="Output directory for lists of selected SNPs (default: output dir of patient)")
     parser.add_argument("-v", "--verbose", action='store_true', default=config.count_alleles.verbose, required=False, help="Use verbose log messages")
     parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
