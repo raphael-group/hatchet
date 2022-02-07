@@ -36,7 +36,7 @@ def main(args=None):
     with tempfile.TemporaryDirectory(dir=args["outputSnps"]) as tmpdirname:
         hetsnpsfiles = {}
         for chro in args["chromosomes"]:
-            hetsnpsfiles[chro] = os.path.join(args["outputSnps"], tmpdirname, 'TMP_{}.tsv'.format(chro))
+            hetsnpsfiles[chro] = os.path.join(tmpdirname, 'TMP_{}.tsv'.format(chro))
             with open(hetsnpsfiles[chro], 'w') as f:
                 if (args["normal"][1], chro) in hetSNPs:
                     for snp in sorted(hetSNPs[args["normal"][1], chro]):
