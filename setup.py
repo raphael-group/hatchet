@@ -95,6 +95,7 @@ setup(
 
     install_requires=[
         'biopython',
+        'hmmlearn',
         'matplotlib',
         'pandas',
         'psutil',
