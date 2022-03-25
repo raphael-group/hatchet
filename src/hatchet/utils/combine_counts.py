@@ -430,7 +430,7 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
     refs = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'REF').to_numpy()
     
     runs = {b:multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)}
-    bafs, phases, ll = max(runs.values(), key = lambda x: x[1][-1])
+    bafs, phases, ll = max(runs.values(), key = lambda x: x[-1])
     
     # Need hard phasing to assign ref/alt reads to alpha/beta
     phases = np.round(phases).astype(np.int8)
@@ -501,6 +501,10 @@ def multisample_em(alts, refs, start, tol = 10e-6):
     return theta, phases, log_likelihood
 
 def merge_phasing(df, all_phase_data):
+    """
+    Merge phasing results across all samples:
+    if a pair of SNPs is split in any sample, they won't be split.
+    """
     N = len(df)
     
     if len(all_phase_data) == 1:
