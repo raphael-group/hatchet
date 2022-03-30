@@ -18,7 +18,7 @@ from hatchet.bin.HATCHet import main as hatchet_main
 from hatchet.utils.plot_cn import main as plot_cn
 from hatchet.utils.download_panel import main as download_panel
 from hatchet.utils.phase_snps import main as phase_snps
-from hatchet.utils.Supporting import log 
+from hatchet.utils.Supporting import log, error
 
 
 def main(args=None):
@@ -86,6 +86,9 @@ def main(args=None):
     # ----------------------------------------------------
 
     if config.run.phase_snps:
+        if len(glob.glob(f'{output}/snps/*.vcf.gz')) == 0:
+            raise ValueError(error("No SNP files were found for phasing. Are there any .vcf.gz files in the 'snps' subdirectory of the output folder? Try running 'genotype_snps'."))
+        
         os.makedirs(f'{output}/phase', exist_ok=True)
         phase_snps(
             args=[
