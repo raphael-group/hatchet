@@ -7,6 +7,7 @@ import shlex
 import subprocess as pr
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 from scipy.stats import beta
+import tempfile
 # from statsmodels.stats.proportion import *
 
 
@@ -31,36 +32,37 @@ def main(args=None):
     if not hetSNPs: sp.close("No heterozygous SNPs found in the selected regions of the normal!\n")
 
     log(msg="# Writing the list of selected SNPs, covered and heterozygous in the normal sample\n", level="STEP")
-    hetsnpsfiles = {}
-    for chro in args["chromosomes"]:
-        hetsnpsfiles[chro] = os.path.join(args["outputSnps"], 'TMP_{}.tsv'.format(chro))
-        with open(hetsnpsfiles[chro], 'w') as f:
+    # put lists of SNPs in uniquely named temporary dir to prevent concurrent hatchet runs from overwriting eachothers temp files
+    with tempfile.TemporaryDirectory(dir=args["outputSnps"]) as tmpdirname:
+        hetsnpsfiles = {}
+        for chro in args["chromosomes"]:
+            hetsnpsfiles[chro] = os.path.join(tmpdirname, 'TMP_{}.tsv'.format(chro))
+            with open(hetsnpsfiles[chro], 'w') as f:
+                if (args["normal"][1], chro) in hetSNPs:
+                    for snp in sorted(hetSNPs[args["normal"][1], chro]):
+                        f.write("{}\t{}\n".format(chro, snp))
+
+        log(msg="# Writing the allele counts of the normal sample for selected SNPs\n", level="STEP")
+        handle = open(args['outputNormal'], 'w') if args['outputNormal'] is not None else sys.stdout
+        for chro in args["chromosomes"]:
             if (args["normal"][1], chro) in hetSNPs:
                 for snp in sorted(hetSNPs[args["normal"][1], chro]):
-                    f.write("{}\t{}\n".format(chro, snp))
+                    count = hetSNPs[args["normal"][1], chro][snp]
+                    handle.write("{}\t{}\t{}\t{}\t{}\n".format(chro, snp, args["normal"][1], count[0][1], count[1][1]))
+        if handle is not sys.stdout:
+            handle.close()
 
-    log(msg="# Writing the allele counts of the normal sample for selected SNPs\n", level="STEP")
-    handle = open(args['outputNormal'], 'w') if args['outputNormal'] is not None else sys.stdout
-    for chro in args["chromosomes"]:
-        if (args["normal"][1], chro) in hetSNPs:
-            for snp in sorted(hetSNPs[args["normal"][1], chro]):
-                count = hetSNPs[args["normal"][1], chro][snp]
-                handle.write("{}\t{}\t{}\t{}\t{}\n".format(chro, snp, args["normal"][1], count[0][1], count[1][1]))
-    if handle is not sys.stdout:
-        handle.close()
-
-    log(msg="# Counting SNPs alleles from tumour samples\n", level="STEP")
-    rcounts = counting(bcftools=args["bcftools"], reference=args["reference"], samples=args["samples"], chromosomes=args["chromosomes"], num_workers=args["j"], 
-                       snplist=hetsnpsfiles, q=args["q"], Q=args["Q"], mincov=args["mincov"], dp=args["maxcov"], E=args["E"], 
-                       verbose=args["verbose"], outdir=args['outputSnps'])
-    if not rcounts: sp.close("The selected SNPs are not covered in the tumors!\n")
-    rcounts = {c : dict(map(lambda r : (int(r[2]), dict(r[3])), rcounts[c])) for c in rcounts}
-    het = (lambda chro : hetSNPs[args["normal"][1], chro])
-    form = (lambda REF, ALT, T : ((REF, T[REF] if REF in T else 0), (ALT, T[ALT] if ALT in T else 0)))
-    counts = {c : {o : form(het(c[1])[o][0][0], het(c[1])[o][1][0], rcounts[c][o]) for o in rcounts[c]} for c in rcounts}
+        log(msg="# Counting SNPs alleles from tumour samples\n", level="STEP")
+        rcounts = counting(bcftools=args["bcftools"], reference=args["reference"], samples=args["samples"], chromosomes=args["chromosomes"], num_workers=args["j"], 
+                           snplist=hetsnpsfiles, q=args["q"], Q=args["Q"], mincov=args["mincov"], dp=args["maxcov"], E=args["E"], 
+                           verbose=args["verbose"], outdir=args['outputSnps'])
+        if not rcounts: sp.close("The selected SNPs are not covered in the tumors!\n")
+        rcounts = {c : dict(map(lambda r : (int(r[2]), dict(r[3])), rcounts[c])) for c in rcounts}
+        het = (lambda chro : hetSNPs[args["normal"][1], chro])
+        form = (lambda REF, ALT, T : ((REF, T[REF] if REF in T else 0), (ALT, T[ALT] if ALT in T else 0)))
+        counts = {c : {o : form(het(c[1])[o][0][0], het(c[1])[o][1][0], rcounts[c][o]) for o in rcounts[c]} for c in rcounts}
 
     log(msg="# Writing the allele counts of tumor samples for selected SNPs\n", level="STEP")
-    [os.remove(f) for f in hetsnpsfiles.values()]
     handle = open(args['outputTumors'], 'w') if args['outputTumors'] is not None else sys.stdout
     for sample in args["samples"]:
         for chro in args["chromosomes"]:

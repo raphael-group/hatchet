@@ -116,7 +116,8 @@ def main(args=None):
                 '-L'
             ] + glob.glob(f'{output}/snps/*.vcf.gz') + [
                 '-O', f'{output}/baf/normal.1bed',
-                '-o', f'{output}/baf/tumor.1bed'
+                '-o', f'{output}/baf/tumor.1bed',
+                '-l', f'{output}'
             ] + extra_args
         )
 
