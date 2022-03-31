@@ -24,10 +24,14 @@ def main(args=None):
     
     bams = args["bams"]
     names = args["names"]
-    names = [names[0]] + sorted(names[1:])
+    
+    tbams, tnames = zip(*sorted(zip(*(bams[1:], names[1:])), key = lambda x: x[1]))
+    bams = [bams[0]] + list(tbams)
+    names = [names[0]] + list(tnames)
+    
     chromosomes = args["chromosomes"]
     samtools = args["samtools"]
-    jobs = args["j"]
+    processes = args["j"]
     outdir = args["outdir"]
     mosdepth = args["mosdepth"]
     tabix = args["tabix"]
@@ -47,29 +51,29 @@ def main(args=None):
                 bams * len(chromosomes),
                 names * len(chromosomes), [readquality] * len(bams) * len(chromosomes))
 
-            n_workers_samtools = min(int(np.round(jobs / 2)), len(bams) * len(chromosomes))
+            n_workers_samtools = min(int(np.round(processes / 2)), len(bams) * len(chromosomes))
             with mp.Pool(n_workers_samtools) as p: # divide by 2 because each worker starts 2 processes
                 p.map(count_chromosome_wrapper, params)
             
-            n_workers_mosdepth = min(jobs, len(bams))
+            n_workers_mosdepth = min(processes, len(bams))
 
             # compute number of decompression threads to use for each call to mosdepth
-            if jobs > len(bams):
-                base = min(int(jobs / n_workers_mosdepth), 4)
-                threads_per_worker = [base] * n_workers_mosdepth
+            if processes > len(bams):
+                base = min(int(processes / n_workers_mosdepth), 4)
+                threads_per_task = [base] * len(bams)
 
                 if base < 4:
-                    remainder = jobs % n_workers_mosdepth
+                    remainder = processes % n_workers_mosdepth
                     i = 0
                     while remainder > 0:
-                        threads_per_worker[i] += 1
+                        threads_per_task[i] += 1
                         i += 1
                         remainder -= 1
             else:
-                threads_per_worker = [1] * n_workers_mosdepth
+                threads_per_task = [1] * len(bams)
             
             #Note: These function calls are the only section that uses mosdepth
-            mosdepth_params = [(outdir, names[i], bams[i], threads_per_worker[i], mosdepth,
+            mosdepth_params = [(outdir, names[i], bams[i], threads_per_task[i], mosdepth,
                                 readquality) 
                                for i in range(len(bams))]
             with mp.Pool(n_workers_mosdepth) as p:
@@ -82,10 +86,7 @@ def main(args=None):
         # (formerly formArray)
         use_chr = args['use_chr']
         
-        with path(hatchet.resources, f'{args["refversion"]}.centromeres.txt') as centromeres:
-            centromeres = pd.read_table(centromeres, header = None, names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
-
-        n_workers = min(len(chromosomes), jobs)
+        n_workers = min(len(chromosomes), processes)
 
         # Read in centromere locations table
         with path(hatchet.resources, f'{args["refversion"]}.centromeres.txt') as centromeres:
@@ -139,7 +140,7 @@ def main(args=None):
         # TODO: take -q option and pass in here
         log(msg="# Counting total number of reads for normal and tumor samples\n", level="STEP")
         total_counts = tc.tcount(samtools= samtools, samples=[(bams[i], names[i]) for i in range(len(names))], chromosomes= chromosomes,
-                                num_workers= jobs, q= readquality)
+                                num_workers= processes, q= readquality)
 
         try:
             total = {name : sum(total_counts[name, chromosome] for chromosome in chromosomes) for name in names}

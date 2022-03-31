@@ -174,12 +174,18 @@ def parsing_arguments(args=None):
             "v" : args.verbosity,
             "binwise" : args.binwise}
 
-
+def logArgs(args, width):
+    text = "\n"
+    for key in args:
+        text += "\t{}: {}\n".format(key, args[key])
+    sys.stderr.write(log(text))
+    
 def main(args=None):
     sys.stderr.write(log("# Checking and parsing input arguments\n"))
     args = parsing_arguments(args)
     if args['v'] >= 2:
         sys.stdout.write(info("\n".join(["## {}:\t{}".format(key, args[key]) for key in args]) + '\n'))
+    logArgs(args, 80)
 
     sys.stderr.write(log("# Reading and parsing clustered bins in BBC file\n"))
     bbc, bsamples = readBBC(args["bbc"])

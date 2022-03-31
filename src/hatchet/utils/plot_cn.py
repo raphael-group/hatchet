@@ -38,8 +38,8 @@ def parsing_arguments(args=None):
     """
     description = ""
     parser = argparse.ArgumentParser(prog='hatchet plot-cn', description=description, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("INPUT", help="A single file or multiple files between apices in CN_BBC format")
-    parser.add_argument("-n","--patientnames", required=False, default=config.plot_cn.patientnames, type=str, help='Names of patients between apices (default: inferred from filenames)')
+    parser.add_argument("INPUT", help="One or more space-separated files in CN_BBC format")
+    parser.add_argument("-n","--patientnames", required=False, default=config.plot_cn.patientnames, type=str, help='One or more space-separated patient names (default: inferred from filenames)')
     parser.add_argument("-u","--minu", required=False, default=config.plot_cn.minu, type=float, help='Minimum proportion of a CNA to be considered subclonal (default: 0.2)"')
     parser.add_argument("-x","--rundir", required=False, default=config.plot_cn.rundir, type=str, help='Running directory (default: current directory)')
     parser.add_argument("-b","--baseCN", required=False, default=config.plot_cn.basecn, type=int, help='Base copy number (default: inferred from tumor ploidy)')
@@ -141,7 +141,7 @@ def main(args=None):
     infbase = pp(tumors, clones, props, args)
 
     if args['base'] is None:
-        sys.stderr.write(log("# The esimated basic copy number for each patient is\n"))
+        sys.stderr.write(log("# The estimated basic copy number for each patient is\n"))
         sys.stderr.write(info('\n'.join(["## {}: {}".format(b, infbase[b]) for b in infbase]) + '\n'))
         base = infbase
     else:
