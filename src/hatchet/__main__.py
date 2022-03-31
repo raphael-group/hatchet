@@ -20,6 +20,7 @@ from hatchet.utils.cluster_bins_loc import main as cluster_bins_loc
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as compute_cn
 from hatchet.utils.plot_cn import main as plot_cn
+from hatchet.utils.plot_cn_1d2d import main as plot_cn_1d2d
 
 from hatchet.utils.check_solver import main as check_solver
 from hatchet.utils.run import main as run
@@ -28,7 +29,7 @@ from hatchet.utils.phase_snps import main as phase_snps
 
 commands = ('count-reads', 'count-reads-fw', 'genotype-snps', 'count-alleles', 'combine-counts',
             'combine-counts-fw', 'cluster-bins', 'plot-bins','compute-cn', 'plot-cn', 'run',
-            'download-panel', 'phase-snps', 'check-solver', 'cluster-bins-loc')
+            'download-panel', 'phase-snps', 'check-solver', 'cluster-bins-loc', 'plot-cn-1d2d')
 
 def print_usage():
     print('HATCHet v' + hatchet.__version__)

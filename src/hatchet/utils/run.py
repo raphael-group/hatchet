@@ -16,6 +16,7 @@ from hatchet.utils.cluster_bins_loc import main as loc_clust
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as hatchet_main
 from hatchet.utils.plot_cn import main as plot_cn
+from hatchet.utils.plot_cn_1d2d import main as plot_cn_1d2d
 from hatchet.utils.download_panel import main as download_panel
 from hatchet.utils.phase_snps import main as phase_snps
 from hatchet.utils.Supporting import log, error
@@ -262,6 +263,13 @@ def main(args=None):
         plot_cn(args=[
             f'{output}/results/best.bbc.ucn',
             '--rundir', f'{output}/summary'
+        ])
+
+        os.makedirs(f'{output}/summary/1d2d', exist_ok = True)
+        plot_cn_1d2d(args = [
+            f'{output}/results/best.bbc.ucn',
+            '--outdir', f'{output}/summary/1d2d', 
+            '--bysample'
         ])
 
 

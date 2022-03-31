@@ -10,6 +10,58 @@ from glob import glob
 from . import Supporting as sp
 from hatchet import config, __version__
 
+
+
+def parse_plot_cn_1d2d_args(args=None):
+    """
+    Parse command line arguments for auxiliary plotting command (1D and 2D plot with labeled copy states)
+    """
+    description = ""
+    parser = argparse.ArgumentParser(prog='hatchet plot-cn', description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("INPUT", help="Filename for BBC table (e.g., results/best.bbc.ucn)")
+    parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
+    parser.add_argument("--baflim", required=False, type=str, help="Axis limits for mirrored BAF values to show as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)", default = config.plot_1d2d.baflim)
+    parser.add_argument("--fcnlim", required=False, type=str, help="Axis limits for fractional copy number values to show as comma-separated values, e.g., '0,3' (default: None -- show full range of data)", default = config.plot_1d2d.fcnlim)
+    parser.add_argument("--bysample", required=False, action = 'store_true', help="Write each sample to a separate file rather than combining all into 2 file", default = config.plot_1d2d.bysample)
+    #parser.add_argument("-V","--refversion", required=False, type=str, help="Version of reference genome used in BAM files", default = config.plot_1d2d.refversion)
+
+    args = parser.parse_args(args)
+
+    if not os.path.isfile(args.INPUT):
+        raise ValueError(sp.error(f"Input file [{args.INPUT}] not found."))
+
+    if args.baflim is not None:
+        tkns = args.baflim.split(',')
+        try:
+            minbaf = float(tkns[0])
+            maxbaf = float(tkns[1])
+        except ValueError:
+            raise ValueError(sp.error("--baflim must be comma-separated float or integer values."))
+    else:
+        minbaf = None
+        maxbaf = None
+
+    if args.fcnlim is not None:
+        tkns = args.fcnlim.split(',')
+        try:
+            minfcn = float(tkns[0])
+            maxfcn = float(tkns[1])
+        except ValueError:
+            raise ValueError(sp.error("--fcnlim must be comma-separated float or integer values."))
+    else:
+        minfcn = None
+        maxfcn = None
+
+    return {
+        'input':args.INPUT,
+        'outdir':args.outdir,
+        'minbaf':minbaf,
+        'maxbaf':maxbaf,
+        'minfcn':minfcn,
+        'maxfcn':maxfcn,
+        'bysample':args.bysample,
+    }
+
 def parse_cluster_bins_loc_args(args=None):
     """
     Parse command line arguments
