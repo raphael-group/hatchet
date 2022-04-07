@@ -425,10 +425,14 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
         phase_data = merge_phasing(bin_snps, all_phase_data)
         
         bin_snps = collapse_blocks(bin_snps, *phase_data, bin_snps.iloc[0].CHR)
-    
-    alts = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'ALT').to_numpy()
-    refs = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'REF').to_numpy()
-    
+
+        alts = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'ALT').to_numpy()
+        refs = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'REF').to_numpy()
+        
+    else:
+        alts = bin_snps.pivot(index = 'SAMPLE', columns = 'POS', values = 'ALT').to_numpy()
+        refs = bin_snps.pivot(index = 'SAMPLE', columns = 'POS', values = 'REF').to_numpy()
+
     runs = {b:multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)}
     bafs, phases, ll = max(runs.values(), key = lambda x: x[-1])
     
