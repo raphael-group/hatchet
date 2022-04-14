@@ -82,6 +82,9 @@ def main(args=None):
             if len(check_counts_files(outdir, chromosomes, names)) > 0:
                 raise ValueError(error("Missing some counts files!"))
 
+        if args['intermediate-only']:
+            return
+
         ### Aggregate count files into count arrays for adaptive binning ###
         # (formerly formArray)
         use_chr = args['use_chr']

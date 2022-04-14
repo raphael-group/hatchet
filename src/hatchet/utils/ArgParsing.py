@@ -148,6 +148,8 @@ def parse_count_reads_args(args=None):
     parser.add_argument("-tx", "--tabix", required = False, type = str, default = config.paths.tabix, help = 'Path to tabix executable')   
     parser.add_argument("-j", "--processes", required=False, default=config.count_reads.processes, type=int, help="Number of available parallel processes (default: 2)")
     parser.add_argument("-q", "--readquality", required=False, default=config.count_reads.readquality, type=int, help=f"Minimum mapping quality for an aligned read to be considered (default: {config.count_reads.readquality})")
+    parser.add_argument("-i", "--intermediates", required=False, action = 'store_true', default=config.count_reads.intermediates, help=f"Produce intemediate counts files only and do not proceed to forming arrays (default: False)")
+
 
     # TODO: support these arguments
     #parser.add_argument("-r","--regions", required=False, default=config.count_reads.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
@@ -217,7 +219,8 @@ def parse_count_reads_args(args=None):
             "use_chr" : use_chr,
             "refversion":ver,
             "baf_file" : args.baffile,
-            "readquality" : args.readquality}
+            "readquality" : args.readquality,
+            "intermediate-only" : args.intermediates}
 
 def parse_cluster_kde_args(args=None):
     """
@@ -677,7 +680,7 @@ def parse_count_reads_fw_arguments(args=None):
     Returns:
     """
     description = "Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES."
-    parser = argparse.ArgumentParser(prog='hatchet count-reads', description=description)
+    parser = argparse.ArgumentParser(prog='hatchet count-reads-fw', description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-b","--size", required=True, type=str, help="Size of the bins, specified as a full number or using the notations either \"kb\" or \"Mb\"")
