@@ -5,7 +5,11 @@ import subprocess
 import textwrap
 import importlib
 from contextlib import contextmanager
+import tempfile
+import shutil
+
 from hatchet import config
+import hatchet.data
 from hatchet.utils.check_solver import main as check_solver
 
 
@@ -16,28 +20,49 @@ def suppress_stdout():
         old_stdout = sys.stdout
         old_stderr = sys.stderr
         sys.stdout = devnull
-        #sys.stderr = devnull
+        sys.stderr = devnull
         try:
             yield
         finally:
             sys.stdout = old_stdout
-            #sys.stderr = old_stderr
+            sys.stderr = old_stderr
 
 
-def _check_cmd(exe, *args, exe_with_path=None):
+def _check_cmd(exe, *args):
     # This function should never raise Exceptions unless it's a genuine implementation bug
-    if exe_with_path is not None and exe_with_path.strip() != '':
-        exe = exe_with_path
+    # Only use exe and args that return a return code of 0
     cmd = [exe, *args]
     try:
         p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, universal_newlines=True)
         p.communicate()
-        # We would like to verify the returncode, but certain programs like picard/tabix never return a 0!
-        # assert p.returncode == 0
-    except Exception:  # yes, a broad exception; See above
+        assert p.returncode == 0
+    except Exception as e:
         return False
     else:
         return True
+
+
+# Most command-line commands can be checked using _check_cmd(<command>, '--version')
+# Others, like below, need special handling because they have no simple invocations that return 0
+def _check_tabix():
+    with tempfile.TemporaryDirectory() as tempdirname:
+        with importlib.resources.path(hatchet.data, 'sample.sorted.gff.gz') as gz_path:
+            _temp_gz_path = os.path.join(tempdirname, 'sample.sorted.gff.gz')
+            shutil.copy(gz_path, _temp_gz_path)
+            return _check_cmd(config.paths.tabix, '-p', 'gff', _temp_gz_path, '-f')
+
+
+def _check_picard():
+    if config.paths.picard.endswith('.jar'):
+        cmd = 'java'
+        args_pre = ('-jar', config.paths.picard)
+    else:
+        cmd = config.paths.picard
+        args_pre = ()
+
+    with tempfile.TemporaryDirectory() as tempdirname:
+        with importlib.resources.path(hatchet.data, 'sample.sorted.bam') as bam_path:
+            return _check_cmd(cmd, *args_pre, 'BuildBamIndex', '--INPUT', bam_path, '--OUTPUT', f'{tempdirname}/sample.sorted.bam.bai')
 
 
 def _check_python_import(which):
@@ -49,63 +74,64 @@ def _check_python_import(which):
         return True
 
 
-_picard_jar_path = config.paths.picard or 'picard.jar'
-
-
 # <HATCHet_command> => [(<dependency_name>, <error_message>, <boolean_func>, <func_args>..), ..] mapping
-with suppress_stdout():
-    CHECKS = {
-        'count-reads': [
-            (
-                'tabix',
-                'Please install tabix executable and either ensure its on your PATH, or its location specified in '
-                'hatchet.ini as config.paths.tabix, or its location specified using the environment variable '
-                'HATCHET_PATHS_TABIX',
-                _check_cmd('tabix', exe_with_path=config.paths.tabix)
-            ),
-            (
-                'mosdepth',
-                'Please install mosdepth executable and either ensure its on your PATH, or its location specified in '
-                'hatchet.ini as config.paths.mosdepth, or its location specified using the environment variable '
-                'HATCHET_PATHS_MOSDEPTH',
-                _check_cmd('mosdepth', '--version', exe_with_path=config.paths.mosdepth)
-            )
-        ],
+CHECKS = {
+    'count-reads': [
+        (
+            'tabix',
+            'Please install tabix executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.tabix, or its location specified using the environment variable '
+            'HATCHET_PATHS_TABIX',
+            _check_tabix
+        ),
+        (
+            'mosdepth',
+            'Please install mosdepth executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.mosdepth, or its location specified using the environment variable '
+            'HATCHET_PATHS_MOSDEPTH',
+            _check_cmd,
+            config.paths.mosdepth,
+            '--version'
+        )
+    ],
 
-        'phase-snps': [
-            (
-                'picard',
-                'Please install picard.jar and ensure that its location is specified in hatchet.ini as '
-                'config.paths.picard, or its location specified using the environment variable HATCHET_PATHS_PICARD. '
-                'Also make sure "java" is on your path',
-                os.path.exists(_picard_jar_path) and _check_cmd('java', '-jar', _picard_jar_path)
-            ),
-            (
-                'shapeit',
-                'Please install shapeit executable and either ensure its on your PATH, or its location specified in '
-                'hatchet.ini as config.paths.shapeit, or its location specified using the environment variable '
-                'HATCHET_PATHS_SHAPEIT',
-                _check_cmd('shapeit', '--version', exe_with_path=config.paths.shapeit)
-            )
-        ],
+    'phase-snps': [
+        (
+            'picard',
+            'Please install picard.jar and ensure that its location is specified in hatchet.ini as '
+            'config.paths.picard, or its location specified using the environment variable HATCHET_PATHS_PICARD. '
+            'Also make sure "java" is on your path',
+            _check_picard
+        ),
+        (
+            'shapeit',
+            'Please install shapeit executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.shapeit, or its location specified using the environment variable '
+            'HATCHET_PATHS_SHAPEIT',
+            _check_cmd,
+            config.paths.shapeit,
+            '--version'
+        )
+    ],
 
-        'compute-cn': [
-            (
-                'solver',
-                'See http://compbio.cs.brown.edu/hatchet/README.html#using-a-solver',
-                check_solver() is None
-            )
-        ],
+    'compute-cn': [
+        (
+            'solver',
+            'See http://compbio.cs.brown.edu/hatchet/README.html#using-a-solver',
+            check_solver
+        )
+    ],
 
-        'cluster-bins': [
-            (
-                'hmmlearn',
-                'Please install hmmlearn using pip/conda.',
-                _check_python_import('hmmlearn')
-            )
-        ],
+    'cluster-bins': [
+        (
+            'hmmlearn',
+            'Please install hmmlearn using pip/conda.',
+            _check_python_import,
+            'hmmlearn'
+        )
+    ]
 
-    }
+}
 
 
 def main(hatchet_cmds=None):
@@ -116,12 +142,15 @@ def main(hatchet_cmds=None):
         if hatchet_cmd in CHECKS:
             checks = CHECKS[hatchet_cmd]
             print(f'----------------------\nCommand: {hatchet_cmd}\n----------------------')
-            for (cmd_name, msg, pred) in checks:
+            for check in checks:
+                cmd_name, msg, func, args = check[0], check[1], check[2], check[3:]
+                with suppress_stdout():
+                    pred = func(*args)
                 if pred:
-                    print(f'  {cmd_name} SUCCESSFUL')
+                    print(f'  {cmd_name} check SUCCESSFUL')
                 else:
                     msg = textwrap.fill(msg, initial_indent='    ', subsequent_indent='    ')
-                    print(f'  {cmd_name} FAILED\n{msg}')
+                    print(f'  {cmd_name} check FAILED\n{msg}')
                     all_ok = False
 
     sys.exit(0 if all_ok else 1)
