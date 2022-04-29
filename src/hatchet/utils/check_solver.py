@@ -35,6 +35,7 @@ def main(args=None):
             ])
 
     log(msg=f'# Your current solver {config.compute_cn.solver} seems to be working correctly\n')
+    return True
 
 
 if __name__ == '__main__':

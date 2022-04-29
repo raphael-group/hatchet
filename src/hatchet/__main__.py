@@ -15,11 +15,11 @@ from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as compute_cn
 from hatchet.utils.plot_cn import main as plot_cn
 
-from hatchet.utils.check_solver import main as check_solver
 from hatchet.utils.run import main as run
+from hatchet.utils.check import main as check
 
 commands = ('count-reads', 'genotype-snps', 'count-alleles', 'combine-counts', 'cluster-bins', 'plot-bins',
-            'compute-cn', 'plot-cn', 'check-solver', 'run')
+            'compute-cn', 'plot-cn', 'run', 'check')
 
 
 def print_usage():
@@ -38,7 +38,8 @@ def main():
         'cluBB': 'cluster-bins',
         'BBot': 'plot-bins',
         'solve': 'compute-cn',
-        'BBeval': 'plot-cn'
+        'BBeval': 'plot-cn',
+        'check-solver': 'check'
     }
 
     if len(sys.argv) < 2:
