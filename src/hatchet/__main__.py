@@ -17,9 +17,10 @@ from hatchet.utils.plot_cn import main as plot_cn
 
 from hatchet.utils.check_solver import main as check_solver
 from hatchet.utils.run import main as run
+from hatchet.utils.check import main as check
 
 commands = ('count-reads', 'genotype-snps', 'count-alleles', 'combine-counts', 'cluster-bins', 'plot-bins',
-            'compute-cn', 'plot-cn', 'check-solver', 'run')
+            'compute-cn', 'plot-cn', 'check-solver', 'run', 'check')
 
 
 def print_usage():
