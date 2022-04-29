@@ -28,10 +28,11 @@ def suppress_stdout():
             sys.stderr = old_stderr
 
 
-def _check_cmd(exe, *args):
+def _check_cmd(exe_path, exe_name, *args):
     # This function should never raise Exceptions unless it's a genuine implementation bug
     # Only use exe and args that return a return code of 0
-    cmd = [exe, *args]
+    # Use exe_path as '' if you expect <exe_name> to be on PATH
+    cmd = [os.path.join(exe_path, exe_name), *args]
     try:
         p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, universal_newlines=True)
         p.communicate()
@@ -42,27 +43,32 @@ def _check_cmd(exe, *args):
         return True
 
 
-# Most command-line commands can be checked using _check_cmd(<command>, '--version')
+# Most command-line commands can be checked using _check_cmd(<folder_with_command>, <command>, '--version')
 # Others, like below, need special handling because they have no simple invocations that return 0
 def _check_tabix():
     with tempfile.TemporaryDirectory() as tempdirname:
         with importlib.resources.path(hatchet.data, 'sample.sorted.gff.gz') as gz_path:
             _temp_gz_path = os.path.join(tempdirname, 'sample.sorted.gff.gz')
             shutil.copy(gz_path, _temp_gz_path)
-            return _check_cmd(config.paths.tabix, '-p', 'gff', _temp_gz_path, '-f')
+            return _check_cmd(config.paths.tabix, 'tabix', '-p', 'gff', _temp_gz_path, '-f')
 
 
 def _check_picard():
-    if config.paths.picard.endswith('.jar'):
-        cmd = 'java'
-        args_pre = ('-jar', config.paths.picard)
+    picard_dir = config.paths.picard
+    picard_java_flags = config.phase_snps.picard_java_flags
+    picard_bin_path = os.path.join(picard_dir, 'picard')
+    if os.path.exists(picard_bin_path):
+        exe_path = f'{picard_dir}'
+        exe_name = 'picard'
+        args_pre = (picard_java_flags, )
     else:
-        cmd = config.paths.picard
-        args_pre = ()
+        exe_path = ''  # Assume java is on PATH
+        exe_name = 'java'
+        args_pre = (picard_java_flags, '-jar', os.path.join(picard_dir, 'picard.jar'))
 
     with tempfile.TemporaryDirectory() as tempdirname:
         with importlib.resources.path(hatchet.data, 'sample.sorted.bam') as bam_path:
-            return _check_cmd(cmd, *args_pre, 'BuildBamIndex', '--INPUT', bam_path, '--OUTPUT', f'{tempdirname}/sample.sorted.bam.bai')
+            return _check_cmd(exe_path, exe_name, *args_pre, 'BuildBamIndex', '--INPUT', bam_path, '--OUTPUT', f'{tempdirname}/sample.sorted.bam.bai')
 
 
 def _check_python_import(which):
@@ -80,7 +86,7 @@ CHECKS = {
     'compute-cn': [
         (
             'solver',
-            f'Your selected solver "{config.compute_cn.solver}" seems to be working correctly.',
+            f'Your selected solver "{config.compute_cn.solver}" seems to be working correctly',
             'See http://compbio.cs.brown.edu/hatchet/README.html#using-a-solver',
             check_solver
         )
