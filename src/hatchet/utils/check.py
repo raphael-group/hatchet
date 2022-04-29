@@ -74,11 +74,12 @@ def _check_python_import(which):
         return True
 
 
-# <HATCHet_command> => [(<dependency_name>, <error_message>, <boolean_func>, <func_args>..), ..] mapping
+# <HATCHet_command> => [(<dependency_name>, <success_message>, <failure_message>, <boolean_func>, <func_args>..), ..] mapping
 CHECKS = {
     'count-reads': [
         (
             'tabix',
+            '',
             'Please install tabix executable and either ensure its on your PATH, or its location specified in '
             'hatchet.ini as config.paths.tabix, or its location specified using the environment variable '
             'HATCHET_PATHS_TABIX',
@@ -86,6 +87,7 @@ CHECKS = {
         ),
         (
             'mosdepth',
+            '',
             'Please install mosdepth executable and either ensure its on your PATH, or its location specified in '
             'hatchet.ini as config.paths.mosdepth, or its location specified using the environment variable '
             'HATCHET_PATHS_MOSDEPTH',
@@ -98,6 +100,7 @@ CHECKS = {
     'phase-snps': [
         (
             'picard',
+            '',
             'Please install picard.jar and ensure that its location is specified in hatchet.ini as '
             'config.paths.picard, or its location specified using the environment variable HATCHET_PATHS_PICARD. '
             'Also make sure "java" is on your path',
@@ -105,6 +108,7 @@ CHECKS = {
         ),
         (
             'shapeit',
+            '',
             'Please install shapeit executable and either ensure its on your PATH, or its location specified in '
             'hatchet.ini as config.paths.shapeit, or its location specified using the environment variable '
             'HATCHET_PATHS_SHAPEIT',
@@ -117,19 +121,11 @@ CHECKS = {
     'compute-cn': [
         (
             'solver',
+            f'Your selected solver "{config.compute_cn.solver}" seems to be working correctly',
             'See http://compbio.cs.brown.edu/hatchet/README.html#using-a-solver',
             check_solver
         )
     ],
-
-    'cluster-bins': [
-        (
-            'hmmlearn',
-            'Please install hmmlearn using pip/conda.',
-            _check_python_import,
-            'hmmlearn'
-        )
-    ]
 
 }
 
@@ -143,14 +139,14 @@ def main(hatchet_cmds=None):
             checks = CHECKS[hatchet_cmd]
             print(f'----------------------\nCommand: {hatchet_cmd}\n----------------------')
             for check in checks:
-                cmd_name, msg, func, args = check[0], check[1], check[2], check[3:]
+                cmd_name, success_msg, err_msg, func, args = check[0], check[1], check[2], check[3], check[4:]
                 with suppress_stdout():
                     pred = func(*args)
                 if pred:
-                    print(f'  {cmd_name} check SUCCESSFUL')
+                    print(f'  {cmd_name} check SUCCESSFUL. {success_msg}')
                 else:
-                    msg = textwrap.fill(msg, initial_indent='    ', subsequent_indent='    ')
-                    print(f'  {cmd_name} check FAILED\n{msg}')
+                    msg = textwrap.fill(err_msg, initial_indent='    ', subsequent_indent='    ')
+                    print(f'  {cmd_name} check FAILED.\n{msg}')
                     all_ok = False
 
     sys.exit(0 if all_ok else 1)
