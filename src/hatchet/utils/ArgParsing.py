@@ -219,8 +219,7 @@ def parse_count_reads_args(args=None):
             "use_chr" : use_chr,
             "refversion":ver,
             "baf_file" : args.baffile,
-            "readquality" : args.readquality,
-            "intermediate-only" : args.intermediates}
+            "readquality" : args.readquality}
 
 def parse_cluster_kde_args(args=None):
     """
@@ -505,8 +504,8 @@ def parse_phase_snps_arguments(args=None):
     parser.add_argument("-o", "--outdir", required=False, type=str, help="Output folder for phased VCFs")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
     parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.mosdepth, help = 'Path to shapeit executable (default: look in $PATH)')   
-    parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.tabix, help = 'Path to picard executable (default: look in $PATH)')   
+    parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.shapeit, help = 'Path to shapeit executable (default: look in $PATH)')   
+    parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.picard, help = 'Path to picard executable (default: look in $PATH)')   
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
     parser.add_argument("-bg","--bgzip", required=False, default=config.paths.bgzip, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
     args = parser.parse_args(args)
@@ -680,7 +679,7 @@ def parse_count_reads_fw_arguments(args=None):
     Returns:
     """
     description = "Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES."
-    parser = argparse.ArgumentParser(prog='hatchet count-reads-fw', description=description)
+    parser = argparse.ArgumentParser(prog='hatchet count-reads', description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-b","--size", required=True, type=str, help="Size of the bins, specified as a full number or using the notations either \"kb\" or \"Mb\"")
