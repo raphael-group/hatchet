@@ -398,10 +398,12 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
 
         alts = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'ALT').to_numpy()
         refs = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'REF').to_numpy()
-        
+        n_snps = (bin_snps['#SNPS'].sum() / len(bin_snps.SAMPLE.unique())).astype(np.uint32)
+
     else:
         alts = bin_snps.pivot(index = 'SAMPLE', columns = 'POS', values = 'ALT').to_numpy()
         refs = bin_snps.pivot(index = 'SAMPLE', columns = 'POS', values = 'REF').to_numpy()
+        n_snps = alts.shape[1] 
 
     runs = {b:multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)}
     bafs, phases, ll = max(runs.values(), key = lambda x: x[-1])
@@ -418,7 +420,6 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
         assert np.array_equal(my_snps.ALT, alts[i])
         assert np.array_equal(my_snps.REF, refs[i])
         
-        n_snps = len(my_snps)
         
         alpha = np.sum(np.choose(phases, [refs[i], alts[i]]))
         beta = np.sum(np.choose(phases, [alts[i], refs[i]]))  
