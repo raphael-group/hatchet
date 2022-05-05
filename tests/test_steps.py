@@ -13,10 +13,10 @@ from pandas.testing import assert_frame_equal
 
 from hatchet import config
 from hatchet.utils import ArgParsing
-from hatchet.utils.count_reads import main as count_reads
+from hatchet.utils.count_reads_fw import main as count_reads
 from hatchet.utils.genotype_snps import main as genotype_snps
 from hatchet.utils.count_alleles import counting
-from hatchet.utils.combine_counts import main as combine_counts
+from hatchet.utils.combine_counts_fw import main as combine_counts
 from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as main
@@ -31,7 +31,7 @@ def bams():
     bam_directory = config.tests.bam_directory
     normal_bam = os.path.join(bam_directory, 'normal.bam')
     if not os.path.exists(normal_bam):
-        pytest.skip('File not found: {}/{}'.format(bam_directory, normal_bam))
+        pytest.skip('File not found: {}'.format(os.path.join(bam_directory, 'normal.bam')))
     tumor_bams = sorted([f for f in glob.glob(bam_directory + '/*.bam') if os.path.basename(f) != 'normal.bam'])
     if not tumor_bams:
         pytest.skip('No tumor bams found in {}'.format(bam_directory))
@@ -62,7 +62,7 @@ def output_folder():
 
 @pytest.mark.skipif(not config.paths.reference, reason='paths.reference not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
-@patch('hatchet.utils.count_reads.knownRegions', return_value={'chr22': [(30256931, 32622323)]})
+@patch('hatchet.utils.count_reads_fw.knownRegions', return_value={'chr22': [(30256931, 32622323)]})
 def test_count_reads(_mock0, _mock1, bams, output_folder):
     normal_bam, tumor_bams = bams
 
