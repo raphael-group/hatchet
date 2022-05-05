@@ -204,6 +204,7 @@ def adaptive_bins_arm(snp_thresholds, total_counts, snp_positions, snp_counts,
 
 
         snp_positions: length <m> list of 1-based genomic positions of SNPs
+            NOTE: this function requires that m = n-1 for convenience of programming (could be relaxed in a different implementation)
         snp_counts: <m> x <d> np.ndarray containing the number of overlapping reads at each of the <n - 1> snp positions in <d> samples
                 
         min_snp_reads: the minimum number of SNP-covering reads required in each bin and each sample
@@ -291,6 +292,7 @@ def adaptive_bins_arm(snp_thresholds, total_counts, snp_positions, snp_counts,
                            axis = 0) - total_counts[-1, odd_index] 
         totals[-1] = bin_total
         rdrs[-1] = bin_total[1:] / bin_total[0]
+        ends[-1] = snp_thresholds[-1]
 
     return starts, ends, totals, rdrs
 
@@ -330,38 +332,6 @@ def apply_EM(totals_in, alts_in):
     refs = totals_in - alts_in
     phases = phases.round().astype(np.int8)
     return baf, np.sum(np.choose(phases, [refs, alts_in])), np.sum(np.choose(phases, [alts_in, refs]))
-   
-def max_likelihood_hardphasing(alts, totals, n_candidates = 1000):
-    """
-    Essentially a "maximum-maximum" approach: computes the maximum-likelihood h for many values of p,
-    then uses these h's ("phasing" for each SNP/block) for each p to evaluate its likelihood 
-    (then takes p which maximizes likelihood).
-    """
-    candidates = np.linspace(0, 0.5, n_candidates)
-    likelihoods_noflip = binom.logpmf(k = np.repeat(alts, len(candidates)), 
-                                  n = np.repeat(totals, len(candidates)), 
-                                  p = np.tile(candidates, len(alts))).reshape(len(alts), len(candidates))
-    likelihoods_flip = binom.logpmf(k = np.repeat(alts, len(candidates)), 
-                                    n = np.repeat(totals, len(candidates)), 
-                                    p = 1 - np.tile(candidates, len(alts))).reshape(len(alts), len(candidates))
-    
-    best_phasings = np.argmax(np.stack([likelihoods_noflip, likelihoods_flip]), axis = 0)
-    likelihoods_best = np.max(np.stack([likelihoods_noflip, likelihoods_flip]), axis = 0)
-    best_idx = np.argmax(likelihoods_best.sum(axis = 0))
-    best_p = candidates[best_idx]
-    
-    return best_p, 1 - best_phasings[:, best_idx]
-   
-def apply_MM(totals_in, alts_in):
-    baf, phases = max_likelihood_hardphasing(alts = alts_in, totals = totals_in)
-    
-    refs = totals_in - alts_in 
-    alpha = np.sum(np.choose(phases, [refs, alts_in]))
-    beta = np.sum(np.choose(phases, [alts_in, refs]))   
-    if alpha < beta:
-        return baf, alpha, beta
-    else:
-        return baf, beta, alpha
 
 def compute_baf_wrapper(bin_snps, blocksize, max_snps_per_block, test_alpha, multisample):
     if multisample:
@@ -769,9 +739,6 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
             #sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
             # Load SNP positions and counts for this chromosome
             positions, snp_counts, snpsv = read_snps(baffile, chromosome, all_names, phasefile = phasefile)
-            
-            
-
 
         sp.log(msg=f"Binning p arm of chromosome {chromosome}\n", level = "INFO")
         if len(np.where(positions <= centromere_start)[0]) > 0:
@@ -813,14 +780,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                         assert np.all(dfs_p[i].pivot(index = 'POS', columns = 'SAMPLE', values = 'TOTAL').sum(axis = 0) >= min_snp_reads), i
                         
                 bafs_p = [compute_baf_wrapper(d, blocksize, max_snps_per_block, test_alpha, multisample) for d in dfs_p] 
-                
-                """
-                except ZeroDivisionError:    
-                    import pickle
-                    with open(f"dfs_p_chr{chromosome}.pickle", 'wb') as f:
-                        pickle.dump((dfs_p, blocksize, max_snps_per_block, test_alpha, use_mm), f)
-                    """
-                
+
             bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
         else:
             sp.log(msg=f"No SNPs found in p arm for {chromosome}\n", level = "INFO")
