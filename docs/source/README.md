@@ -84,10 +84,9 @@ conda config --add channels bioconda
 conda config --add channels conda-forge
 ```
 
-Next, `HATCHet` can be installed with the following one-time commands:
+Next, `HATCHet` can be installed with the following one-time command:
 ```shell
-conda install hatchet tabix picard mosdepth
-conda install shapeit -c dranew
+conda install hatchet
 ```
 
 This command installs `hatchet` in the base conda environment, however best practices generally recommend, especially in computing servers, to keep distinct packages independent.
