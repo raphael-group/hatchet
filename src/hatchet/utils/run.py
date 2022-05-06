@@ -57,7 +57,6 @@ def main(args=None):
     # ----------------------------------------------------
 
     if config.run.genotype_snps:
-        """
         snps = ''
         if config.genotype_snps.snps:
            snps = config.genotype_snps.snps
@@ -70,16 +69,16 @@ def main(args=None):
             }
 
             if (config.genotype_snps.reference_version, config.genotype_snps.chr_notation) not in snps_mapping:
-                raise RuntimeError('Please specify valid values of reference_version and chr_notation')
+                raise RuntimeError(f'Please specify valid values of reference_version and chr_notation. Valid pairs include: {snps_mapping.keys()}')
             else:
                 snps = snps_mapping[config.genotype_snps.reference_version, config.genotype_snps.chr_notation]
-        """
+
         os.makedirs(f'{output}/snps', exist_ok=True)
         genotype_snps(
             args=[
                 '-N', config.run.normal,
                 '-r', config.run.reference,
-                #'-R', snps,
+                '-R', snps,
                 '-o', f'{output}/snps/'
             ] + extra_args
         )
@@ -165,13 +164,6 @@ def main(args=None):
                 log(msg=f"NO PHASING FILE FOUND at [phasefile]. Not including phasing in binning process.\n", level = "INFO")
                 
             combine_counts(args)
-
-            #out = sys.stdout.getvalue()
-            #sys.stdout.close()
-            #sys.stdout = _stdout
-
-            #with open(f'{output}/bb/bulk.bb', 'w') as f:
-            #    f.write(out)
 
     else:
         # ----------------------------------------------------
