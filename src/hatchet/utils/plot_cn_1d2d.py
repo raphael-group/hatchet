@@ -16,7 +16,7 @@ import matplotlib.colors as mcolors
 from hatchet.utils.ArgParsing import parse_plot_cn_1d2d_args
 from hatchet.utils import Supporting as sp
 from importlib.resources import path
-import hatchet.resources
+import hatchet.data
 from hatchet import config, __version__
 
 plt.style.use('ggplot')
@@ -84,7 +84,7 @@ def generate_1D2D_plots(bbc, genome_version, fcn_lim = None,
     _, mapping = reindex([k for k, _ in bbc.groupby([f'cn_clone{i + 1}' for i in range(n_clones)])])
 
     if show_centromeres:
-        with path(hatchet.resources, f'{genome_version}.centromeres.txt') as centromeres_file:
+        with path(hatchet.data, f'{genome_version}.centromeres.txt') as centromeres_file:
             centromeres = pd.read_table(centromeres_file, header = None, 
                                         names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
         chr2centro = {}

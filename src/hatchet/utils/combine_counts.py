@@ -9,7 +9,7 @@ import gzip
 import subprocess
 import traceback
 from importlib.resources import path
-import hatchet.resources
+import hatchet.data
 
 from .ArgParsing import parse_combine_counts_args
 from . import Supporting as sp
@@ -37,7 +37,7 @@ def main(args=None):
     n_workers = min(len(chromosomes), threads)
 
     # Read in centromere locations table
-    with path(hatchet.resources, f'{args["ref_version"]}.centromeres.txt') as centromeres:
+    with path(hatchet.data, f'{args["ref_version"]}.centromeres.txt') as centromeres:
         centromeres = pd.read_table(centromeres, header = None, names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
     chr2centro = {}
     for ch in centromeres.CHR.unique():
@@ -199,7 +199,7 @@ def adaptive_bins_arm(snp_thresholds, total_counts, snp_positions, snp_counts,
         snp_thresholds: length <n> array of 1-based genomic positions of candidate bin thresholds
             
         total_counts: <n> x <2d> np.ndarray 
-            entry [i, 2j] contains the number of reads starting in [snp_thresholds[i], snp_thresholds[i + 1]] in sample j (only the first n-1 positions are populated)
+            entry [i, 2j] contains the number of reads starting in [snp_thresholds[i], snp_thresholds[i + 1]) in sample j (only the first n-1 positions are populated)
             entry [i, 2j + 1] contains the number of reads covering position snp_thresholds[i] in sample j
 
 
