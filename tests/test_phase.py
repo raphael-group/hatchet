@@ -23,9 +23,6 @@ def output_folder():
         os.makedirs(os.path.join(out, sub_folder))
     return out
 
-
-@pytest.mark.skipif(shutil.which('picard') is None, reason='picard is not available on PATH')
-@pytest.mark.skipif(shutil.which('shapeit') is None, reason='shapeit is not available on PATH')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
 def test_script(_, output_folder):
     download_panel(
