@@ -480,15 +480,15 @@ def parse_download_panel_arguments(args=None):
     description = "Download and prepare files for phasing germline SNPs using a reference panel"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
-    parser.add_argument("-R","--refpanel", required=True, type=str, help="Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
-    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
-    parser.add_argument("-N","--chrnotation", required=True, type=str, help="Notation of chromosomes, with or without \"chr\"")
+    parser.add_argument("-R","--refpanel", default=config.download_panel.refpanel, required=False, type=str, help="Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
     args = parser.parse_args(args)
 
+    if args.refpaneldir is None:
+        sp.error(ValueError('The command "download_panel" requires a path for the variable "refpaneldir".'))
+
     return {"refpanel" : args.refpanel,
-            "refpaneldir" : os.path.abspath(args.refpaneldir),
-            "refvers" : args.refversion,
-            "chrnot" : args.chrnotation}
+            "refpaneldir" : os.path.abspath(args.refpaneldir)
+            }
 
 def parse_phase_snps_arguments(args=None):
     """
@@ -500,7 +500,7 @@ def parse_phase_snps_arguments(args=None):
     parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
     parser.add_argument("-g","--refgenome", required=True, type=str, help="Path to Reference genome used in BAM files")
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
-    parser.add_argument("-N","--chrnotation", required=True, type=str, help="Notation of chromosomes, with or without \"chr\"")
+    parser.add_argument("-N","--chrnotation", required=True, action = 'store_true', help="Notation of chromosomes, with or without \"chr\"")
     parser.add_argument("-o", "--outdir", required=False, type=str, help="Output folder for phased VCFs")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
     parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")

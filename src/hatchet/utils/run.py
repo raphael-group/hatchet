@@ -44,13 +44,13 @@ def main(args=None):
     # ----------------------------------------------------
 
     if config.run.download_panel:
-        os.makedirs(config.download_panel.ref_panel_dir, exist_ok=True)
+        if config.download_panel.refpaneldir is None:
+            raise ValueError(error('The step "download_panel" requires that the variable "refpaneldir" indicates the directory in which to store the reference panel.'))
+
         download_panel(
             args=[
-                '-D', config.download_panel.ref_panel_dir,
-                '-R', config.download_panel.ref_panel,
-                '-V', config.genotype_snps.reference_version,
-                '-N', config.genotype_snps.chr_notation
+                '-D', config.download_panel.refpaneldir,
+                '-R', config.download_panel.refpanel,
             ]
         )
 
@@ -89,13 +89,16 @@ def main(args=None):
         if len(glob.glob(f'{output}/snps/*.vcf.gz')) == 0:
             raise ValueError(error("No SNP files were found for phasing. Are there any .vcf.gz files in the 'snps' subdirectory of the output folder? Try running 'genotype_snps'."))
         
+        if config.download_panel.refpaneldir is None:
+            raise ValueError(error('The step "phase_snps" requires that the config variable "download_panel.refpaneldir" indicates the directory where the reference panel is located.'))
+  
         os.makedirs(f'{output}/phase', exist_ok=True)
         phase_snps(
             args=[
-                '-D', config.download_panel.ref_panel_dir,
+                '-D', config.download_panel.refpaneldir,
                 '-g', config.run.reference,
                 '-V', config.genotype_snps.reference_version,
-                '-N', config.genotype_snps.chr_notation,
+                '-N' if config.genotype_snps.chr_notation else '',
                 '-o', f'{output}/phase/',
                 '-L'
                 ] + glob.glob(f'{output}/snps/*.vcf.gz') + extra_args
