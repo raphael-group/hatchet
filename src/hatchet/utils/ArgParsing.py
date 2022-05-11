@@ -12,6 +12,69 @@ from hatchet import config, __version__
 
 
 
+def parse_plot_bins_1d2d_args(args=None):
+    """
+    Parse command line arguments for auxiliary cluster plotting command (1D and 2D plot with matching colors and optional labeled centers)
+    """
+    description = ""
+    parser = argparse.ArgumentParser(prog='hatchet plot-cn', description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("-b", "--bbc", help="Filename for BBC table (e.g., bbc/bulk.bbc)", required = True, type=str)
+    parser.add_argument("-s", "--seg", help="Filename for SEG table (e.g., bbc/bulk.seg) optional but required to show cluster centers", required=False, type=str, default = config.plot_bins_1d2d.seg)
+    parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')
+    parser.add_argument("--baflim", required=False, type=str, help="Axis limits for mirrored BAF as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)", default = config.plot_bins_1d2d.baflim)
+    parser.add_argument("--rdrlim", required=False, type=str, help="Axis limits for read-depth ratio as comma-separated values, e.g., '0,3' (default: None -- show full range of data)", default = config.plot_bins_1d2d.fcnlim)
+    parser.add_argument("--centers", required=False, action='store_true', help="Show cluster centers (requires SEG file provided via -s/--seg)", default = config.plot_bins_1d2d.centers)
+    parser.add_argument("--centromeres", required=False, action='store_true', help="Mark centromere locations with grey rectangles", default = config.plot_bins_1d2d.centromeres)
+    parser.add_argument("-a", "--alpha", required=False, type=float, help="Opacity alpha (default 1)", default = config.plot_bins_1d2d.alpha)
+    args = parser.parse_args(args)
+
+    if not os.path.isfile(args.bbc):
+        raise ValueError(sp.error(f"Input BBC file [{args.bbc}] not found."))
+
+    if args.seg is not None and not os.path.isfile(args.seg):
+        raise ValueError(sp.error(f"Input SEG file [{args.seg}] not found."))
+
+    if args.baflim is not None:
+        tkns = args.baflim.split(',')
+        try:
+            minbaf = float(tkns[0].strip())
+            maxbaf = float(tkns[1].strip())
+        except ValueError:
+            raise ValueError(sp.error("--baflim must be comma-separated float or integer values."))
+        if minbaf >= maxbaf:
+            raise ValueError(sp.error("Minimum BAF must be < maximum BAF."))
+
+    else:
+        minbaf = None
+        maxbaf = None
+
+    if args.rdrlim is not None:
+        tkns = args.rdrlim.split(',')
+        try:
+            minrdr = float(tkns[0].strip())
+            maxrdr = float(tkns[1].strip())
+        except ValueError:
+            raise ValueError(sp.error("--rdrlim must be comma-separated float or integer values."))
+        if minrdr >= maxrdr:
+            raise ValueError(sp.error("Minimum RDR must be < maximum RDR."))
+    else:
+        minrdr = None
+        maxrdr = None
+
+    return {
+        'bbc':args.bbc,
+        'seg':args.seg,
+        'outdir':args.outdir,
+        'minbaf':minbaf,
+        'maxbaf':maxbaf,
+        'minrdr':minrdr,
+        'maxrdr':maxrdr,
+        'centers':args.centers,
+        'centromeres':args.centromeres,
+        'alpha':args.alpha
+    }
+
+
 def parse_plot_cn_1d2d_args(args=None):
     """
     Parse command line arguments for auxiliary plotting command (1D and 2D plot with labeled copy states)
@@ -20,9 +83,9 @@ def parse_plot_cn_1d2d_args(args=None):
     parser = argparse.ArgumentParser(prog='hatchet plot-cn', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("INPUT", help="Filename for BBC table (e.g., results/best.bbc.ucn)")
     parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
-    parser.add_argument("--baflim", required=False, type=str, help="Axis limits for mirrored BAF values to show as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)", default = config.plot_1d2d.baflim)
-    parser.add_argument("--fcnlim", required=False, type=str, help="Axis limits for fractional copy number values to show as comma-separated values, e.g., '0,3' (default: None -- show full range of data)", default = config.plot_1d2d.fcnlim)
-    parser.add_argument("--bysample", required=False, action = 'store_true', help="Write each sample to a separate file rather than combining all into 2 file", default = config.plot_1d2d.bysample)
+    parser.add_argument("--baflim", required=False, type=str, help="Axis limits for mirrored BAF values to show as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)", default = config.plot_cn_1d2d.baflim)
+    parser.add_argument("--fcnlim", required=False, type=str, help="Axis limits for fractional copy number values to show as comma-separated values, e.g., '0,3' (default: None -- show full range of data)", default = config.plot_cn_1d2d.fcnlim)
+    parser.add_argument("--bysample", required=False, action = 'store_true', help="Write each sample to a separate file rather than combining all into 2 file", default = config.plot_cn_1d2d.bysample)
     #parser.add_argument("-V","--refversion", required=False, type=str, help="Version of reference genome used in BAM files", default = config.plot_1d2d.refversion)
 
     args = parser.parse_args(args)
@@ -33,8 +96,8 @@ def parse_plot_cn_1d2d_args(args=None):
     if args.baflim is not None:
         tkns = args.baflim.split(',')
         try:
-            minbaf = float(tkns[0])
-            maxbaf = float(tkns[1])
+            minbaf = float(tkns[0].strip())
+            maxbaf = float(tkns[1].strip())
         except ValueError:
             raise ValueError(sp.error("--baflim must be comma-separated float or integer values."))
     else:
@@ -44,8 +107,8 @@ def parse_plot_cn_1d2d_args(args=None):
     if args.fcnlim is not None:
         tkns = args.fcnlim.split(',')
         try:
-            minfcn = float(tkns[0])
-            maxfcn = float(tkns[1])
+            minfcn = float(tkns[0].strip())
+            maxfcn = float(tkns[1].strip())
         except ValueError:
             raise ValueError(sp.error("--fcnlim must be comma-separated float or integer values."))
     else:

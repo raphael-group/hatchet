@@ -14,6 +14,7 @@ from hatchet.utils.combine_counts_fw import main as combine_counts_fw
 from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.cluster_bins_loc import main as loc_clust
 from hatchet.utils.plot_bins import main as plot_bins
+from hatchet.utils.plot_bins_1d2d import main as plot_bins_1d2d
 from hatchet.bin.HATCHet import main as hatchet_main
 from hatchet.utils.plot_cn import main as plot_cn
 from hatchet.utils.plot_cn_1d2d import main as plot_cn_1d2d
@@ -239,6 +240,15 @@ def main(args=None):
             '--ymin', '0',
             '--ymax', '3',
             #'--pdf'
+        ])
+
+        os.makedirs(f'{output}/plots/1d2d', exist_ok = True)
+        plot_bins_1d2d(args = [
+            '-b', f'{output}/bbc/bulk.bbc',
+            '-s', f'{output}/bbc/bulk.seg',
+            '--outdir', f'{output}/plots/1d2d', 
+            '--centers', 
+            '--centromeres'
         ])
 
     # ----------------------------------------------------

@@ -32,14 +32,7 @@ def main(args=None):
     title = None
     reflect_baf = False
     show_centromeres = False
-    genome_version = None
     resample_balanced = False
-
-    if show_centromeres: 
-        # Reference genome version is only used to locate centromeres
-        if args.genome_version not in ['hg19', 'hg38']:
-            # throw HATCHet error
-            raise ValueError(f"GENOME VERSION UNSUPPORTED (saw {genome_version}, need 'hg19' or 'hg38'). If -sc/--show_centromeres is set, this command requires -V/--refversion indicating the reference genome version.")
 
     generate_1D2D_plots(
         bbc = pd.read_table(args['input']),
@@ -48,7 +41,6 @@ def main(args=None):
         by_sample = args['bysample'],
         outdir = args['outdir'],
         # dummy variables
-        genome_version = genome_version,
         title = title,
         show_centromeres = show_centromeres,
         resample_balanced = resample_balanced,
@@ -83,29 +75,16 @@ def generate_1D2D_plots(bbc, genome_version, fcn_lim = None,
     n_clones = max([i for i in range(5) if f'cn_clone{i}' in bbc.columns])
     _, mapping = reindex([k for k, _ in bbc.groupby([f'cn_clone{i + 1}' for i in range(n_clones)])])
 
-    if show_centromeres:
-        with path(hatchet.data, f'{genome_version}.centromeres.txt') as centromeres_file:
-            centromeres = pd.read_table(centromeres_file, header = None, 
-                                        names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
-        chr2centro = {}
-        for ch in centromeres.CHR.unique():
-            my_df = centromeres[centromeres.CHR == ch]
-            assert (my_df.gieStain == 'acen').all()
-            # Each centromere should consist of 2 adjacent segments
-            assert len(my_df == 2)
-            assert my_df.START.max() == my_df.END.min()
-            if use_chr:
-                if ch.startswith('chr'):
-                    chr2centro[ch] = my_df.START.min(), my_df.END.max()
-                else:
-                    chr2centro['chr' + ch] = my_df.START.min(), my_df.END.max()
-            else:
-                if ch.startswith('chr'):
-                    chr2centro[ch[3:]] = my_df.START.min(), my_df.END.max()
-                else:
-                    chr2centro[ch] 
-    else:
-        chr2centro = None
+    chr2centro = {}
+    ss_bbc = bbc[bbc.SAMPLE == bbc.iloc[0].SAMPLE]
+    break_idx = np.where(np.logical_and(
+        ss_bbc.END.to_numpy()[:-1] != ss_bbc.START.to_numpy()[1:],
+        ss_bbc['#CHR'].to_numpy()[:-1] == ss_bbc['#CHR'].to_numpy()[1:]))[0]
+    chr2centro = {}
+    for i in break_idx:
+        rows = ss_bbc.iloc[i:i+2]
+        chr2centro[rows.iloc[0]['#CHR']] = (rows.iloc[0].END, rows.iloc[1].START)
+
                 
     if resample_balanced:
         # Reflect BAF about 0.5 w.p. 0.5 for clusters where all clones are balanced
