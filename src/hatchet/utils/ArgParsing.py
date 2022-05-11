@@ -85,6 +85,7 @@ def parse_plot_cn_1d2d_args(args=None):
     parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
     parser.add_argument("--baflim", required=False, type=str, help="Axis limits for mirrored BAF values to show as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)", default = config.plot_cn_1d2d.baflim)
     parser.add_argument("--fcnlim", required=False, type=str, help="Axis limits for fractional copy number values to show as comma-separated values, e.g., '0,3' (default: None -- show full range of data)", default = config.plot_cn_1d2d.fcnlim)
+    parser.add_argument("--centromeres", required=False, action='store_true', help="Mark centromere locations with grey rectangles", default = config.plot_cn_1d2d.centromeres)
     parser.add_argument("--bysample", required=False, action = 'store_true', help="Write each sample to a separate file rather than combining all into 2 file", default = config.plot_cn_1d2d.bysample)
     #parser.add_argument("-V","--refversion", required=False, type=str, help="Version of reference genome used in BAM files", default = config.plot_1d2d.refversion)
 
@@ -123,6 +124,7 @@ def parse_plot_cn_1d2d_args(args=None):
         'minfcn':minfcn,
         'maxfcn':maxfcn,
         'bysample':args.bysample,
+        'centromeres':args.centromeres
     }
 
 def parse_cluster_bins_loc_args(args=None):
