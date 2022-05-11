@@ -7,7 +7,6 @@ import sys
 import warnings
 import hatchet
 
-from hatchet.utils.preprocess import main as preprocess
 from hatchet.utils.count_reads import main as count_reads
 from hatchet.utils.count_reads_fw import main as count_reads_fw
 from hatchet.utils.genotype_snps import main as genotype_snps
