@@ -96,7 +96,7 @@ def plot_2d(bbc, seg = None, show_centers = False, xlim = None, ylim = None,
         plt.tight_layout()
 
         if outdir is not None:
-            plt.savefig(os.path.join(outdir, f'{s}_2D.png'))
+            plt.savefig(os.path.join(outdir, f'2D_{s}.png'))
         
         if not display:
             plt.close()
@@ -150,7 +150,7 @@ def plot_1d(bbc, baf_lim = None, rdr_lim = None, display = False, outdir = None,
                    alpha = alpha, title = s, show_centromeres=show_centromeres)
         
         if outdir is not None:
-            plt.savefig(os.path.join(outdir, f'{s}_1D.png'))
+            plt.savefig(os.path.join(outdir, f'1D_{s}.png'))
                     
         if not display:
             plt.close()
