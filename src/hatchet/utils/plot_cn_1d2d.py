@@ -22,6 +22,8 @@ from hatchet import config, __version__
 plt.style.use('ggplot')
 sns.set_style("whitegrid")
 
+MAX_CLONES = 20
+
 def main(args=None):
     sp.log("# Checking and parsing input arguments\n")
     args = parse_plot_cn_1d2d_args(args)
@@ -71,7 +73,7 @@ def generate_1D2D_plots(bbc, fcn_lim = None,
     for i in range(22):
         chr_ends.append(chr_ends[-1] + chrlengths[f'chr{i + 1}'])
   
-    n_clones = max([i for i in range(5) if f'cn_clone{i}' in bbc.columns])
+    n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc.columns])
     _, mapping = reindex([k for k, _ in bbc.groupby([f'cn_clone{i + 1}' for i in range(n_clones)])])
 
     ss_bbc = bbc[bbc.SAMPLE == bbc.iloc[0].SAMPLE]
@@ -244,7 +246,7 @@ def plot_genome(big_bbc, mapping, chr_ends, chr2centro, chromosomes = None, dpi 
             # WARNING: THIS WILL PUT CHROMOSOMES OUT OF ORDER IF USING 'chr' NOTATION
             chromosomes = sorted(bbc_['#CHR'].unique())
             
-        n_clones = max([i for i in range(5) if f'cn_clone{i}' in bbc_.columns])
+        n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc_.columns])
         props = np.array([bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]).round(6)
         n_clones2, gamma = compute_gamma(bbc_)
         assert n_clones2 == n_clones
@@ -407,10 +409,10 @@ def plot_clusters(bbc, mapping, figsize = (4,4), fname = None,
         bbc_ = bbc[bbc.SAMPLE == sample]
         bbc_ = bbc_.reset_index(drop=True)
 
-        n_clones = max([i for i in range(5) if f'cn_clone{i}' in bbc_.columns])
+        n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc_.columns])
         props = np.array([bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]).round(6)
         n_clones2, gamma = compute_gamma(bbc_)
-        assert n_clones2 == n_clones
+        assert n_clones2 == n_clones, (n_clones2, n_clones)
 
         if n_clones == 1:
             my_colors = [cmap(mapping[r]) for r in bbc_.cn_clone1]
@@ -477,8 +479,8 @@ def plot_clusters(bbc, mapping, figsize = (4,4), fname = None,
             my_ax.set_xlabel("Mirrored BAF") 
             
         if save_samples:
-            plt.tight_layout()
             plt.title(sample)
+            plt.tight_layout()
             plt.savefig(f'{save_prefix}_{sample}.png')
             plt.close()
             fig, axs = plt.subplots(figsize=figsize)

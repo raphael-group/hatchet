@@ -92,7 +92,8 @@ def plot_2d(bbc, seg = None, show_centers = False, xlim = None, ylim = None,
 
             for _, r in my_seg.iterrows():
                 plt.annotate(r['#ID'], (r.BAF, r.RD))
-                
+
+        plt.title(s)                
         plt.tight_layout()
 
         if outdir is not None:
@@ -139,6 +140,7 @@ def plot_1d(bbc, baf_lim = None, rdr_lim = None, display = False, outdir = None,
 
     for s, df in bbc.groupby('SAMPLE'):
         plt.figure(figsize = (8, 5.6))
+        plt.title(s)                
         plt.subplot(211)
         plot_track(df, chr_ends, chr2centro, yval = 'RD', ylabel = 'Read-depth ratio', 
                    color_field = 'CLUSTER', ylim = rdr_lim, display = display, 
