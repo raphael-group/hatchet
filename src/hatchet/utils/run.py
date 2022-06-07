@@ -150,7 +150,7 @@ def main(args=None):
         if config.run.combine_counts:
             _stdout = sys.stdout
             sys.stdout = StringIO()
-            os.makedirs(f'{output}/abin', exist_ok=True)
+            os.makedirs(f'{output}/bb', exist_ok=True)
 
             phasefile = f'{output}/phase/phased.vcf.gz'
             args=[
@@ -158,7 +158,7 @@ def main(args=None):
                 '-b', f'{output}/baf/tumor.1bed',
                 '-t', f'{output}/rdr/total.tsv', 
                 '-V', config.genotype_snps.reference_version,
-                '-o', f'{output}/abin/bulk.bb'
+                '-o', f'{output}/bb/bulk.bb'
                 ] + extra_args
             
             if os.path.exists(phasefile):
@@ -196,7 +196,6 @@ def main(args=None):
             if config.run.combine_counts:
                 _stdout = sys.stdout
                 sys.stdout = StringIO()
-                os.makedirs(f'{output}/abin', exist_ok=True)
 
                 combine_counts_fw(args=[
                     '-c', f'{output}/rdr/normal.1bed',
@@ -218,13 +217,13 @@ def main(args=None):
 
         if config.run.loc_clust:
             loc_clust(args=[
-                f'{output}/abin/bulk.bb' if (config.run.fixed_width is None or not config.run.fixed_width) else f'{output}/bb/bulk.bb',
+                f'{output}/bb/bulk.bb',
                 '-o', f'{output}/bbc/bulk.seg',
                 '-O', f'{output}/bbc/bulk.bbc'
             ])
         else:
             cluster_bins(args=[
-                f'{output}/abin/bulk.bb' if (config.run.fixed_width is None or not config.run.fixed_width) else f'{output}/bb/bulk.bb',
+                f'{output}/bb/bulk.bb',
                 '-o', f'{output}/bbc/bulk.seg',
                 '-O', f'{output}/bbc/bulk.bbc'
             ])
