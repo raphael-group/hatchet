@@ -13,9 +13,6 @@ from .Supporting import *
 from . import Supporting as sp
 from . import ProgressBar as pb
 
-#import resource
-#import tracemalloc
-
 def main(args=None):
     log(msg="# log notes\n", level="STEP")
     args = ap.parse_phase_snps_arguments(args)
@@ -25,7 +22,6 @@ def main(args=None):
     shapeit = args['shapeit']
     picard = args['picard']
     bgzip = args['bgzip']
-    #tracemalloc.start()
 
     if args["refvers"] not in ["hg19", "hg38"]:
         raise ValueError(sp.error("The reference genome version of your samples is not \"hg19\" or \"hg38\", please specify one of these two options!\n"))
@@ -76,15 +72,6 @@ def main(args=None):
     # read shapeit output, print fraction of phased snps per chromosome
     print_log(path=args["outdir"], chromosomes=chromosomes)
     cleanup(args["outdir"])
-            
-    """
-    current, peak = tracemalloc.get_traced_memory()
-    print(f"Current memory usage is {current / 10**6}MB; Peak was {peak / 10**6}MB")
-    print(concat_vcf)
-    print(resource.getrusage(resource.RUSAGE_SELF))
-    print()
-    print(resource.getrusage(resource.RUSAGE_CHILDREN))
-    """
     
 def cleanup(outdir):
     f = []

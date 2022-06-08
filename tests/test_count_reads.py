@@ -35,8 +35,6 @@ def output_folder():
         os.makedirs(os.path.join(out, sub_folder))
     return out
 
-@pytest.mark.skipif(shutil.which('mosdepth') is None, reason='mosdepth is not available on PATH')
-@pytest.mark.skipif(shutil.which('tabix') is None, reason='tabix is not available on PATH')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
 def test_script(_, bams, output_folder):
     normal_bam, tumor_bams = bams

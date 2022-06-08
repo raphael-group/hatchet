@@ -16,8 +16,7 @@ def main(args=None):
     args = ap.parse_download_panel_arguments(args)
     logArgs(args, 80)
 
-    if args["refvers"] not in ["hg19", "hg38"]:
-        raise ValueError(sp.error("The reference genome version of your samples is not \"hg19\" or \"hg38\", please specify one of these two options!\n"))
+    os.makedirs(args["refpaneldir"], exist_ok=True)
 
     # download reference panel, prepare files for liftover
     if args["refpanel"] == "1000GP_Phase3":
@@ -34,13 +33,13 @@ def main(args=None):
     # since the 1000GP panel is in hg19 coordinates, we need to download (1) hg19  genome and (2) chain files
     # for liftover via picard
     hg19_path = dwnld_refpanel_genome(path=args["refpaneldir"])
-    chains = dwnld_chains(path=args["refpaneldir"], refpanel_chr="False", sample_chr=args["chrnot"] )
+    chains = dwnld_chains(path=args["refpaneldir"], refpanel_chr="False")
     # if users aligned reads to the same reference genome as used in the reference panel, liftover isn't required, but
     # there could be different naming conventions of chromosomes, with or without the 'chr' prefix. The 1000GP reference 
     # panel does not use 'chr' prefix, so input into shapeit also should not have this
     rename_files = mk_rename_file(path = args["refpaneldir"]) 
 
-def dwnld_chains(path, refpanel_chr, sample_chr):
+def dwnld_chains(path, refpanel_chr):
     # order of urls important! [0] chain for sample -> ref panel, [1] chain for ref panel -> sample
     urls = ("https://hgdownload.soe.ucsc.edu/goldenPath/hg38/liftOver/hg38ToHg19.over.chain.gz", "http://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/hg19ToHg38.over.chain.gz")
     paths = [os.path.join(path, os.path.basename(i)) for i in urls] # paths for url downloads

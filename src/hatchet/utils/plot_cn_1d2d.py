@@ -16,11 +16,13 @@ import matplotlib.colors as mcolors
 from hatchet.utils.ArgParsing import parse_plot_cn_1d2d_args
 from hatchet.utils import Supporting as sp
 from importlib.resources import path
-import hatchet.resources
+import hatchet.data
 from hatchet import config, __version__
 
 plt.style.use('ggplot')
 sns.set_style("whitegrid")
+
+MAX_CLONES = 20
 
 def main(args=None):
     sp.log("# Checking and parsing input arguments\n")
@@ -31,15 +33,7 @@ def main(args=None):
     # Consider exposing these as command-line arguments in the future
     title = None
     reflect_baf = False
-    show_centromeres = False
-    genome_version = None
     resample_balanced = False
-
-    if show_centromeres: 
-        # Reference genome version is only used to locate centromeres
-        if args.genome_version not in ['hg19', 'hg38']:
-            # throw HATCHet error
-            raise ValueError(f"GENOME VERSION UNSUPPORTED (saw {genome_version}, need 'hg19' or 'hg38'). If -sc/--show_centromeres is set, this command requires -V/--refversion indicating the reference genome version.")
 
     generate_1D2D_plots(
         bbc = pd.read_table(args['input']),
@@ -48,13 +42,12 @@ def main(args=None):
         by_sample = args['bysample'],
         outdir = args['outdir'],
         # dummy variables
-        genome_version = genome_version,
         title = title,
-        show_centromeres = show_centromeres,
+        show_centromeres = args['centromeres'],
         resample_balanced = resample_balanced,
     )
 
-def generate_1D2D_plots(bbc, genome_version, fcn_lim = None, 
+def generate_1D2D_plots(bbc, fcn_lim = None, 
                    baf_lim = None, title = None, show_centromeres = False,
                   by_sample = False, outdir = None, resample_balanced = False):
     
@@ -80,32 +73,18 @@ def generate_1D2D_plots(bbc, genome_version, fcn_lim = None,
     for i in range(22):
         chr_ends.append(chr_ends[-1] + chrlengths[f'chr{i + 1}'])
   
-    n_clones = max([i for i in range(5) if f'cn_clone{i}' in bbc.columns])
+    n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc.columns])
     _, mapping = reindex([k for k, _ in bbc.groupby([f'cn_clone{i + 1}' for i in range(n_clones)])])
 
-    if show_centromeres:
-        with path(hatchet.resources, f'{genome_version}.centromeres.txt') as centromeres_file:
-            centromeres = pd.read_table(centromeres_file, header = None, 
-                                        names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
-        chr2centro = {}
-        for ch in centromeres.CHR.unique():
-            my_df = centromeres[centromeres.CHR == ch]
-            assert (my_df.gieStain == 'acen').all()
-            # Each centromere should consist of 2 adjacent segments
-            assert len(my_df == 2)
-            assert my_df.START.max() == my_df.END.min()
-            if use_chr:
-                if ch.startswith('chr'):
-                    chr2centro[ch] = my_df.START.min(), my_df.END.max()
-                else:
-                    chr2centro['chr' + ch] = my_df.START.min(), my_df.END.max()
-            else:
-                if ch.startswith('chr'):
-                    chr2centro[ch[3:]] = my_df.START.min(), my_df.END.max()
-                else:
-                    chr2centro[ch] 
-    else:
-        chr2centro = None
+    ss_bbc = bbc[bbc.SAMPLE == bbc.iloc[0].SAMPLE]
+    break_idx = np.where(np.logical_and(
+        ss_bbc.END.to_numpy()[:-1] != ss_bbc.START.to_numpy()[1:],
+        ss_bbc['#CHR'].to_numpy()[:-1] == ss_bbc['#CHR'].to_numpy()[1:]))[0]
+    chr2centro = {}
+    for i in break_idx:
+        rows = ss_bbc.iloc[i:i+2]
+        chr2centro[rows.iloc[0]['#CHR']] = (rows.iloc[0].END, rows.iloc[1].START)
+
                 
     if resample_balanced:
         # Reflect BAF about 0.5 w.p. 0.5 for clusters where all clones are balanced
@@ -141,193 +120,6 @@ def generate_1D2D_plots(bbc, genome_version, fcn_lim = None,
                 baf_ylim = baf_lim, fcn_ylim = fcn_lim, fname = os.path.join(outdir, '1D-plot.png'))
     
     sp.log("Done\n", level = 'INFO')
-
-
-def plot_genome(big_bbc, mapping, chr_ends, chr2centro, chromosomes = None, dpi = 400, 
-                figsize = (8, 5), fname = None, 
-                show_centromeres = False, fcn_ylim = None, baf_ylim = None,
-               save_samples = False, save_prefix = None): 
-    if save_samples:
-        if save_prefix is None:
-            raise ValueError("If save_samples=True, 1D plotting requires filename prefix in [save_prefix] but found [None].")
-    
-    colors1 = plt.cm.tab20b(np.arange(20))
-    colors2 = plt.cm.tab20c(np.arange(20))
-
-    # combine them and build a new colormap
-    colors = np.vstack((colors1, colors2))
-    cmap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
-
-    big_bbc = big_bbc.copy()
-    np.random.seed(0)
-    flips = np.random.randint(2, size = len(big_bbc))
-    big_bbc.loc[:, 'BAF'] = np.choose(flips, 
-                                      [big_bbc.loc[:, 'BAF'], 1-big_bbc.loc[:, 'BAF']])
-
-    
-    samples = big_bbc.SAMPLE.unique()
-    
-    if save_samples:
-        fig, axes = plt.subplots(2, dpi = dpi, figsize =figsize)
-    else:
-        fig, axes = plt.subplots(2*len(samples), dpi = dpi, figsize=(8 * figsize[0],
-        int(len(samples)*figsize[1])))
-
-    n_states = len(mapping)
-    mapping = mapping.copy()
-    
-    n_bins = len(big_bbc) / len(samples)
-    
-    # markersize decreases from 4 at 1-500 bins to 1 at >1500 bins
-    markersize = int(max(1, 4 - np.floor(n_bins / 500)))
-    
-    if n_states <= 20:
-        cmap = plt.get_cmap('tab20')
-        mapping = {k:v%20 for k,v in mapping.items()}
-        
-    else:
-        colors1 = plt.cm.tab20b(np.arange(20))
-        colors2 = plt.cm.tab20c(np.arange(20))
-
-        # combine them and build a new colormap
-        colors = np.vstack((colors1, colors2))
-        cmap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
-        mapping = {k:v%40 / n_states for k,v in mapping.items()}
-
-    for idx,sample in enumerate(samples):
-        if save_samples:
-            # Ignore the sample index and write on first 2 axes
-            idx = 0
-    
-        bbc_ = big_bbc[big_bbc.SAMPLE == sample]
-        bbc_ = bbc_.reset_index(drop=True)
-
-        if chromosomes is None:
-            #chromosomes = sorted(big_bbc['#CHR'].unique(), key = lambda x: int(x[3:]))
-            # WARNING: THIS WILL PUT CHROMOSOMES OUT OF ORDER IF USING 'chr' NOTATION
-            chromosomes = sorted(bbc_['#CHR'].unique())
-            
-        n_clones = max([i for i in range(5) if f'cn_clone{i}' in bbc_.columns])
-        props = np.array([bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]).round(6)
-        n_clones2, gamma = compute_gamma(bbc_)
-        assert n_clones2 == n_clones
-        
-        #fig, axes = plt.subplots(2, 1, dpi = dpi, figsize = figsize)
-
-        if limits_valid(fcn_ylim):
-            minFCN, maxFCN = fcn_ylim
-        else:
-            minFCN = np.min(bbc_.RD * gamma)
-            maxFCN = np.max(bbc_.RD * gamma)
-            
-        if limits_valid(baf_ylim):
-            minBAF, maxBAF = baf_ylim
-        else:
-            minBAF = np.min(bbc_.BAF)
-            maxBAF = np.max(bbc_.BAF)
-        
-        FCNrange = maxFCN - minFCN
-        BAFrange = maxBAF - minBAF
-        
-        chrkey = 'CHR' if 'CHR' in bbc_.columns else '#CHR'
-        
-        for chromosome in chromosomes:
-            bbc = bbc_[bbc_[chrkey] == chromosome]
-            chr_start = chr_ends[int(chromosome[3:]) - 1]
-            
-            flag = bbc['#CHR'] == chromosome
-            bbc = bbc[flag]
-
-            my_rows = np.where(flag)[0]
-
-            offset = bbc.END.max()
-            midpoint = np.mean(np.array([bbc.START, bbc.END]), axis = 0) + chr_start
-
-            # Add black bars indicating 
-            fcn_lines = []
-            baf_lines = []
-            colors = []
-            for _, r in bbc.iterrows():
-                x0 = r.START + chr_start
-                x1 = r.END + chr_start
-                state = [(1,1)] + [str2state(r[f'cn_clone{i + 1}']) for i in range(n_clones)]
-                y_fcn, y_baf = cn2evs(state, props)
-                fcn_lines.append([(x0, y_fcn), (x1, y_fcn)])
-                baf_lines.append([(x0, y_baf), (x1, y_baf)])
-                baf_lines.append([(x0, 1-y_baf), (x1, 1-y_baf)])
-
-                colors.append((0, 0, 0, 1))
-
-            lc_fcn = collections.LineCollection(fcn_lines, linewidth = 2, colors = colors)
-            axes[idx*2+0].add_collection(lc_fcn)
-            lc_baf = collections.LineCollection(baf_lines, linewidth = 2, colors = colors)
-            axes[idx*2+1].add_collection(lc_baf)
-
-            if show_centromeres:
-                centro = chr2centro['chr'+str(chromosome)]
-                axes[idx*2+0].add_patch(Rectangle((centro[0] + chr_start, minFCN - 0.1), 
-                                            centro[1] - centro[0], maxFCN - minFCN + 0.2, 
-                                            linewidth = 0, color = (0, 0, 0, 0.4)))
-                axes[idx*2+1].add_patch(Rectangle((centro[0] + chr_start, minBAF - 0.02), 
-                                            centro[1] - centro[0], 0.52 - minBAF + 0.02, 
-                                            linewidth = 0, color = (0, 0, 0, 0.4)))
-                """
-                # Try plotting centromeres that only occupy the middle 50% of the y-range
-                # (to avoid confusing centromeres with chromosome thresholds)
-                axes[idx*2+0].add_patch(Rectangle((centro[0] + chr_start, minFCN - 0.1 + FCNrange/4), 
-                                            centro[1] - centro[0], maxFCN - minFCN - FCNrange/2 + 0.2, 
-                                            linewidth = 0, color = (0, 0, 0, 0.4)))
-                axes[idx*2+1].add_patch(Rectangle((centro[0] + chr_start, minBAF - 0.02 + BAFrange/4), 
-                                            centro[1] - centro[0], 0.52 - minBAF + 0.02 - BAFrange/2, 
-                                            linewidth = 0, color = (0, 0, 0, 0.4)))
-                """
-
-            if n_clones == 1:
-                my_colors = [cmap(mapping[r]) for r in bbc.cn_clone1]
-            else:
-                my_colors = [cmap(mapping[tuple(r)]) for _, r in bbc[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()]
-
-            axes[idx*2+0].scatter(midpoint, bbc.RD * gamma, s = markersize, alpha = 1, c = my_colors)
-            axes[idx*2+1].scatter(midpoint, bbc.BAF, s = markersize, alpha = 1, c = my_colors)
-
-
-        if limits_valid(fcn_ylim):
-            axes[idx*2+0].set_ylim(fcn_ylim)
-        else:
-            axes[idx*2+0].set_ylim([minFCN - 0.1, maxFCN + 0.1])
-        
-        axes[idx*2+0].set_xlim([0, chr_ends[-1]])
-        axes[idx*2+0].set_ylabel("Fractional Copy Number")
-
-        if limits_valid(baf_ylim):
-            axes[idx*2+1].set_ylim(baf_ylim)
-        else:
-            axes[idx*2+1].set_ylim([minBAF - 0.02, (1-minBAF) + 0.02])
-        
-        axes[idx*2+1].set_xlim([0, chr_ends[-1]])
-        axes[idx*2+1].set_ylabel("B-allele Frequency")
-        
-        axes[idx*2+0].vlines(chr_ends[1:-1], minFCN - 0.1, maxFCN + 0.1, 
-                             linewidth = 0.5, colors = 'k')
-        axes[idx*2+1].vlines(chr_ends[1:-1], minBAF - 0.02, (1-minBAF) + 0.02, 
-                             linewidth = 0.5, colors = 'k')
-
-        xtick_labels = [f'chr{i}' for i in range(1, 23)]
-        xtick_locs = [(chr_ends[i] + chr_ends[i + 1]) / 2 for i in range(22)]
-        axes[idx*2+0].set_xticks(xtick_locs)
-        axes[idx*2+0].set_xticklabels(xtick_labels)
-        axes[idx*2+0].tick_params(axis='x', rotation=70)
-        axes[idx*2+1].set_xticks(xtick_locs)
-        axes[idx*2+1].set_xticklabels(xtick_labels)
-        axes[idx*2+1].tick_params(axis='x', rotation=70)
-    
-        axes[idx*2+0].title.set_text(f'Sample: {sample}')        
-        axes[idx*2+1].title.set_text(f'Sample: {sample}')     
-        
-        plt.tight_layout()
-        if not save_samples and fname is not None:
-            plt.savefig(fname)
-            plt.close()
 
 def limits_valid(lim):
     return lim is not None and len(lim) == 2 and lim[0] is not None and lim[1] is not None
@@ -454,7 +246,7 @@ def plot_genome(big_bbc, mapping, chr_ends, chr2centro, chromosomes = None, dpi 
             # WARNING: THIS WILL PUT CHROMOSOMES OUT OF ORDER IF USING 'chr' NOTATION
             chromosomes = sorted(bbc_['#CHR'].unique())
             
-        n_clones = max([i for i in range(5) if f'cn_clone{i}' in bbc_.columns])
+        n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc_.columns])
         props = np.array([bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]).round(6)
         n_clones2, gamma = compute_gamma(bbc_)
         assert n_clones2 == n_clones
@@ -511,23 +303,14 @@ def plot_genome(big_bbc, mapping, chr_ends, chr2centro, chromosomes = None, dpi 
             axes[idx*2+1].add_collection(lc_baf)
 
             if show_centromeres:
-                centro = chr2centro['chr'+str(chromosome)]
-                axes[idx*2+0].add_patch(Rectangle((centro[0] + chr_start, minFCN - 0.1), 
-                                            centro[1] - centro[0], maxFCN - minFCN + 0.2, 
-                                            linewidth = 0, color = (0, 0, 0, 0.4)))
-                axes[idx*2+1].add_patch(Rectangle((centro[0] + chr_start, minBAF - 0.02), 
-                                            centro[1] - centro[0], 0.52 - minBAF + 0.02, 
-                                            linewidth = 0, color = (0, 0, 0, 0.4)))
-                """
-                # Try plotting centromeres that only occupy the middle 50% of the y-range
-                # (to avoid confusing centromeres with chromosome thresholds)
-                axes[idx*2+0].add_patch(Rectangle((centro[0] + chr_start, minFCN - 0.1 + FCNrange/4), 
-                                            centro[1] - centro[0], maxFCN - minFCN - FCNrange/2 + 0.2, 
-                                            linewidth = 0, color = (0, 0, 0, 0.4)))
-                axes[idx*2+1].add_patch(Rectangle((centro[0] + chr_start, minBAF - 0.02 + BAFrange/4), 
-                                            centro[1] - centro[0], 0.52 - minBAF + 0.02 - BAFrange/2, 
-                                            linewidth = 0, color = (0, 0, 0, 0.4)))
-                """
+                if chromosome in chr2centro:
+                    centro = chr2centro[chromosome]
+                    axes[idx*2+0].add_patch(Rectangle((centro[0] + chr_start, minFCN - 0.1), 
+                                                centro[1] - centro[0], maxFCN - minFCN + 0.2, 
+                                                linewidth = 0, color = (0, 0, 0, 0.4)))
+                    axes[idx*2+1].add_patch(Rectangle((centro[0] + chr_start, minBAF - 0.02), 
+                                                centro[1] - centro[0], 1 - minBAF + 0.02, 
+                                                linewidth = 0, color = (0, 0, 0, 0.4)))
 
             if n_clones == 1:
                 my_colors = [cmap(mapping[r]) for r in bbc.cn_clone1]
@@ -536,6 +319,10 @@ def plot_genome(big_bbc, mapping, chr_ends, chr2centro, chromosomes = None, dpi 
 
             axes[idx*2+0].scatter(midpoint, bbc.RD * gamma, s = markersize, alpha = 1, c = my_colors)
             axes[idx*2+1].scatter(midpoint, bbc.BAF, s = markersize, alpha = 1, c = my_colors)
+            
+        if show_centromeres:
+            axes[idx*2+0].grid(False)
+            axes[idx*2+1].grid(False)
 
 
         if limits_valid(fcn_ylim):
@@ -622,10 +409,10 @@ def plot_clusters(bbc, mapping, figsize = (4,4), fname = None,
         bbc_ = bbc[bbc.SAMPLE == sample]
         bbc_ = bbc_.reset_index(drop=True)
 
-        n_clones = max([i for i in range(5) if f'cn_clone{i}' in bbc_.columns])
+        n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc_.columns])
         props = np.array([bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]).round(6)
         n_clones2, gamma = compute_gamma(bbc_)
-        assert n_clones2 == n_clones
+        assert n_clones2 == n_clones, (n_clones2, n_clones)
 
         if n_clones == 1:
             my_colors = [cmap(mapping[r]) for r in bbc_.cn_clone1]
@@ -645,10 +432,10 @@ def plot_clusters(bbc, mapping, figsize = (4,4), fname = None,
             ey, ex = cn2evs(state, props)
             if all([a == state[1] for a in state[1:]]) and n_clones > 1:
                 my_ax.annotate(f'{str(state[1])} ', (ex, ey), fontsize = 'x-small', 
-                               fontweight = 'bold', ha = 'right', va = 'center')
+                               fontweight = 'bold')
             else:
                 my_ax.annotate(f'{",".join([str(a) for a in state[1:]])} ', (ex, ey), 
-                               fontsize = 'x-small', ha = 'right', va = 'center')
+                               fontsize = 'x-small')
             exs.append(ex)
             eys.append(ey)
             cs.append(cmap(mapping[k]))
@@ -685,15 +472,15 @@ def plot_clusters(bbc, mapping, figsize = (4,4), fname = None,
                         
         my_ax.vlines(ymin = ymin, ymax = ymax, x = 0.5, linestyle = ':',
                          linewidth = 1, colors = 'grey')            
-            
+        my_ax.set_ylim(ymin, ymax)
     
         my_ax.set_ylabel("Fractional Copy Number") 
         if idx == len(samples)-1 or save_samples:
             my_ax.set_xlabel("Mirrored BAF") 
             
         if save_samples:
-            plt.tight_layout()
             plt.title(sample)
+            plt.tight_layout()
             plt.savefig(f'{save_prefix}_{sample}.png')
             plt.close()
             fig, axs = plt.subplots(figsize=figsize)

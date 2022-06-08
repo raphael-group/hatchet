@@ -31,10 +31,17 @@ def main(args=None):
         minK = args['minK']
         maxK = args['maxK']
 
-    sp.log(msg="# Clustering bins by RD and BAF across tumor samples using locality\n", level="STEP")    
-    best_score, best_model, best_labels, best_K, results = hmm_model_select(tracks, minK = minK, maxK = maxK, seed = args['seed'], 
-                                                                            covar = args['covar'], decode_alg = args['decoding'], 
-                                                                            tmat = args['transmat'], tau = args['tau'])
+        if minK <= 1:
+            sp.log(msg = "# WARNING: model selection does not support comparing K=1 to K>1. K=1 will be ignored.\n", level = "WARNING")
+
+    if args['exactK'] > 0 and args['exactK'] == 1:
+        sp.log(msg="# Found exactK=1, returning trivial clustering.\n", level="STEP")    
+        best_labels = [1] * int(len(bb) / len(sample_labels))
+    else:
+        sp.log(msg="# Clustering bins by RD and BAF across tumor samples using locality\n", level="STEP")    
+        best_score, best_model, best_labels, best_K, results = hmm_model_select(tracks, minK = minK, maxK = maxK, seed = args['seed'], 
+                                                                                covar = args['covar'], decode_alg = args['decoding'], 
+                                                                                tmat = args['transmat'], tau = args['tau'])
 
     best_labels = reindex(best_labels)
     bb['CLUSTER'] = np.repeat(best_labels, len(sample_labels))
@@ -145,14 +152,9 @@ def read_bb(bbfile, use_chr = True, compressed = False):
         
         else:
             tracks.append(np.array(p_arrs))
-            chr_labels.append(str(ch) + '_q')
+            chr_labels.append(str(ch) + '_p')
         
         populated_labels = True
-        
-    if not any_split:
-        # No chromosomes had evidence of splitting by centromere
-        # Redo labels to refer only to chromosome
-        chr_labels = [a[:-2] for a in chr_labels]
         
     return tracks, bb.sort_values(by = ['#CHR', 'START', 'SAMPLE']), sample_labels, chr_labels
 

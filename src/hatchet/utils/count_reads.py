@@ -11,7 +11,7 @@ import gzip
 import subprocess
 import traceback
 from importlib.resources import path
-import hatchet.resources
+import hatchet.data
 
 from .ArgParsing import parse_count_reads_args
 from .Supporting import log, logArgs, error
@@ -82,9 +82,6 @@ def main(args=None):
             if len(check_counts_files(outdir, chromosomes, names)) > 0:
                 raise ValueError(error("Missing some counts files!"))
 
-        if args['intermediate-only']:
-            return
-
         ### Aggregate count files into count arrays for adaptive binning ###
         # (formerly formArray)
         use_chr = args['use_chr']
@@ -92,7 +89,7 @@ def main(args=None):
         n_workers = min(len(chromosomes), processes)
 
         # Read in centromere locations table
-        with path(hatchet.resources, f'{args["refversion"]}.centromeres.txt') as centromeres:
+        with path(hatchet.data, f'{args["refversion"]}.centromeres.txt') as centromeres:
             centromeres = pd.read_table(centromeres, header = None, names = ['CHR', 'START', 'END', 'NAME', 'gieStain'])
         
         chr2centro = {}
@@ -216,7 +213,7 @@ def read_snps(baf_file, ch, all_names):
     all_names = all_names[1:] # remove normal sample -- not looking for SNP counts from normal
 
     # Read in HATCHet BAF table
-    all_snps = pd.read_table(baf_file, names = ['CHR', 'POS', 'SAMPLE', 'ALT', 'REF'], 
+    all_snps = pd.read_table(baf_file, names = ['CHR', 'POS', 'SAMPLE', 'REF', 'ALT'], 
                              dtype = {'CHR':object, 'POS':np.uint32, 'SAMPLE':object, 
                                       'ALT':np.uint32, 'REF':np.uint32})
     
@@ -277,23 +274,27 @@ def form_counts_array(starts_files, perpos_files, thresholds, chromosome, tabix,
     for i in range(len(starts_files)):
         # populate starts in even entries
         fname = starts_files[i]
-        next_idx = 1
         if fname.endswith('.gz'):
             f = gzip.open(fname)
         else:
             f = open(fname)
         
-        for line in f:
-            pos = int(line)
-            while next_idx < len(thresholds) and pos > thresholds[next_idx]:
-                next_idx += 1
-                
-            if next_idx == len(thresholds):
-                arr[next_idx - 1, i * 2] += 1
-            elif not (pos == thresholds[next_idx - 1] or pos == thresholds[next_idx]):
-                assert pos > thresholds[next_idx - 1] and pos < thresholds[next_idx], (next_idx, pos)
-                arr[next_idx - 1, i * 2] += 1
-                
+        read_starts = [int(a) for a in gzip.open(fname, 'r')]
+        end = thresholds[0]
+        j = 0
+        for idx in range(1, len(thresholds)):
+            start = end
+            end = thresholds[idx]
+
+            my_count = 0
+            while j < len(read_starts) and read_starts[j] < end:
+                assert read_starts[j] >= start
+                my_count += 1
+                j += 1
+
+            arr[idx - 1, i * 2] = my_count
+
+        arr[idx - 1, i * 2] += len(read_starts) - j                
         f.close()
             
     for i in range(len(perpos_files)):

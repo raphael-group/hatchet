@@ -20,12 +20,6 @@ def main(args=None):
     log(msg="# Parsing the input arguments, checking the consistency of given files, and extracting required information\n", level="STEP")
     args = ap.parse_genotype_snps_arguments(args)
     logArgs(args, 80)
-
-    """
-    # Create subdirectory for sex chromosomes to separate them from autosomes
-    if not os.path.exists(os.path.join(args['outputsnps'], 'sexchroms')):
-        os.mkdir(os.path.join(args['outputsnps'], 'sexchroms'))
-    """
     
     log(msg="# Inferring SNPs from the normal sample\n", level="STEP")
     snps = call(bcftools=args["bcftools"], reference=args["reference"], samples=[args["normal"]], chromosomes=args["chromosomes"], 
@@ -134,13 +128,7 @@ class Caller(Process):
         errname = os.path.join(self.outdir, "{}_{}_bcftools.log".format(samplename, chromosome))
         
         outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
-        """
-        if chromosome.endswith('X') or chromosome.endswith('Y'):
-            outfile = os.path.join(self.outdir, 'sexchroms', '{}.vcf.gz'.format(chromosome))
-        else:
-            outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
-        """
-            
+
         if self.snplist is not None:
             cmd_tgt = "{} query -f '%CHROM\t%POS\n' -r {} {}".format(self.bcftools, chromosome, self.snplist)
             cmd_gzip = "gzip -9 -"

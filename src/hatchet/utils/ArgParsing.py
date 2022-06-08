@@ -12,6 +12,69 @@ from hatchet import config, __version__
 
 
 
+def parse_plot_bins_1d2d_args(args=None):
+    """
+    Parse command line arguments for auxiliary cluster plotting command (1D and 2D plot with matching colors and optional labeled centers)
+    """
+    description = ""
+    parser = argparse.ArgumentParser(prog='hatchet plot-cn', description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("-b", "--bbc", help="Filename for BBC table (e.g., bbc/bulk.bbc)", required = True, type=str)
+    parser.add_argument("-s", "--seg", help="Filename for SEG table (e.g., bbc/bulk.seg) optional but required to show cluster centers", required=False, type=str, default = config.plot_bins_1d2d.seg)
+    parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')
+    parser.add_argument("--baflim", required=False, type=str, help="Axis limits for mirrored BAF as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)", default = config.plot_bins_1d2d.baflim)
+    parser.add_argument("--rdrlim", required=False, type=str, help="Axis limits for read-depth ratio as comma-separated values, e.g., '0,3' (default: None -- show full range of data)", default = config.plot_bins_1d2d.fcnlim)
+    parser.add_argument("--centers", required=False, action='store_true', help="Show cluster centers (requires SEG file provided via -s/--seg)", default = config.plot_bins_1d2d.centers)
+    parser.add_argument("--centromeres", required=False, action='store_true', help="Mark centromere locations with grey rectangles", default = config.plot_bins_1d2d.centromeres)
+    parser.add_argument("-a", "--alpha", required=False, type=float, help="Opacity alpha (default 1)", default = config.plot_bins_1d2d.alpha)
+    args = parser.parse_args(args)
+
+    if not os.path.isfile(args.bbc):
+        raise ValueError(sp.error(f"Input BBC file [{args.bbc}] not found."))
+
+    if args.seg is not None and not os.path.isfile(args.seg):
+        raise ValueError(sp.error(f"Input SEG file [{args.seg}] not found."))
+
+    if args.baflim is not None:
+        tkns = args.baflim.split(',')
+        try:
+            minbaf = float(tkns[0].strip())
+            maxbaf = float(tkns[1].strip())
+        except ValueError:
+            raise ValueError(sp.error("--baflim must be comma-separated float or integer values."))
+        if minbaf >= maxbaf:
+            raise ValueError(sp.error("Minimum BAF must be < maximum BAF."))
+
+    else:
+        minbaf = None
+        maxbaf = None
+
+    if args.rdrlim is not None:
+        tkns = args.rdrlim.split(',')
+        try:
+            minrdr = float(tkns[0].strip())
+            maxrdr = float(tkns[1].strip())
+        except ValueError:
+            raise ValueError(sp.error("--rdrlim must be comma-separated float or integer values."))
+        if minrdr >= maxrdr:
+            raise ValueError(sp.error("Minimum RDR must be < maximum RDR."))
+    else:
+        minrdr = None
+        maxrdr = None
+
+    return {
+        'bbc':args.bbc,
+        'seg':args.seg,
+        'outdir':args.outdir,
+        'minbaf':minbaf,
+        'maxbaf':maxbaf,
+        'minrdr':minrdr,
+        'maxrdr':maxrdr,
+        'centers':args.centers,
+        'centromeres':args.centromeres,
+        'alpha':args.alpha
+    }
+
+
 def parse_plot_cn_1d2d_args(args=None):
     """
     Parse command line arguments for auxiliary plotting command (1D and 2D plot with labeled copy states)
@@ -20,9 +83,10 @@ def parse_plot_cn_1d2d_args(args=None):
     parser = argparse.ArgumentParser(prog='hatchet plot-cn', description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("INPUT", help="Filename for BBC table (e.g., results/best.bbc.ucn)")
     parser.add_argument("-O","--outdir", required = True, type = str, help = 'Directory for output files')   
-    parser.add_argument("--baflim", required=False, type=str, help="Axis limits for mirrored BAF values to show as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)", default = config.plot_1d2d.baflim)
-    parser.add_argument("--fcnlim", required=False, type=str, help="Axis limits for fractional copy number values to show as comma-separated values, e.g., '0,3' (default: None -- show full range of data)", default = config.plot_1d2d.fcnlim)
-    parser.add_argument("--bysample", required=False, action = 'store_true', help="Write each sample to a separate file rather than combining all into 2 file", default = config.plot_1d2d.bysample)
+    parser.add_argument("--baflim", required=False, type=str, help="Axis limits for mirrored BAF values to show as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)", default = config.plot_cn_1d2d.baflim)
+    parser.add_argument("--fcnlim", required=False, type=str, help="Axis limits for fractional copy number values to show as comma-separated values, e.g., '0,3' (default: None -- show full range of data)", default = config.plot_cn_1d2d.fcnlim)
+    parser.add_argument("--centromeres", required=False, action='store_true', help="Mark centromere locations with grey rectangles", default = config.plot_cn_1d2d.centromeres)
+    parser.add_argument("--bysample", required=False, action = 'store_true', help="Write each sample to a separate file rather than combining all into 2 file", default = config.plot_cn_1d2d.bysample)
     #parser.add_argument("-V","--refversion", required=False, type=str, help="Version of reference genome used in BAM files", default = config.plot_1d2d.refversion)
 
     args = parser.parse_args(args)
@@ -33,8 +97,8 @@ def parse_plot_cn_1d2d_args(args=None):
     if args.baflim is not None:
         tkns = args.baflim.split(',')
         try:
-            minbaf = float(tkns[0])
-            maxbaf = float(tkns[1])
+            minbaf = float(tkns[0].strip())
+            maxbaf = float(tkns[1].strip())
         except ValueError:
             raise ValueError(sp.error("--baflim must be comma-separated float or integer values."))
     else:
@@ -44,8 +108,8 @@ def parse_plot_cn_1d2d_args(args=None):
     if args.fcnlim is not None:
         tkns = args.fcnlim.split(',')
         try:
-            minfcn = float(tkns[0])
-            maxfcn = float(tkns[1])
+            minfcn = float(tkns[0].strip())
+            maxfcn = float(tkns[1].strip())
         except ValueError:
             raise ValueError(sp.error("--fcnlim must be comma-separated float or integer values."))
     else:
@@ -60,6 +124,7 @@ def parse_plot_cn_1d2d_args(args=None):
         'minfcn':minfcn,
         'maxfcn':maxfcn,
         'bysample':args.bysample,
+        'centromeres':args.centromeres
     }
 
 def parse_cluster_bins_loc_args(args=None):
@@ -219,81 +284,7 @@ def parse_count_reads_args(args=None):
             "use_chr" : use_chr,
             "refversion":ver,
             "baf_file" : args.baffile,
-            "readquality" : args.readquality,
-            "intermediate-only" : args.intermediates}
-
-def parse_cluster_kde_args(args=None):
-    """
-    Parse command line arguments
-    Returns:
-    """
-    description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
-    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("BBFILE", help="A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)")
-    parser.add_argument("-o", "--outsegments", required=False, default=config.kdebb.outsegments, type=str, help=f"Output filename for the segments computed by clustering bins (default: {config.kdebb.outsegments})")
-    parser.add_argument("-O", "--outbins", required=False, default=config.kdebb.outbins, type=str, help=f"Output filename for a BB file adding the clusters (default: {config.kdebb.outbins})")
-    parser.add_argument("-d","--diploidbaf", type=float, required=False, default=config.kdebb.diploidbaf, help=f"Maximum BAF shift (from 0.5) for a cluster to be considered balanced (default: {config.kdebb.diploidbaf})")
-    parser.add_argument("-b","--bandwidth", type=float, required=False, default=config.kdebb.bandwidth, help=f"Bandwidth to use for KDE (default: {config.kdebb.bandwidth})")
-    parser.add_argument("-c","--centroiddensity", type=float, required=False, default=config.kdebb.min_center_density, help=f"Minimum density for KDE mesh centroids (default: {config.kdebb.min_center_density})")
-    parser.add_argument("-m","--mesh", type=int, required=False, default=config.kdebb.grid_dimension, help=f"Resolution/number of points per axis for KDE mesh (default: {config.kdebb.grid_dimension})")
-    parser.add_argument("-v","--variance", type=float, required=False, default=config.kdebb.yvariance, help=f"RDR variance for copy-number grid vertices (default: {config.kdebb.yvariance})")
-    parser.add_argument("-g","--griddensity", type=float, required=False, default=config.kdebb.min_grid_density, help=f"Minimum density for copy-number grid centroids (default: {config.kdebb.min_grid_density})")
-    parser.add_argument("-x","--maxcopies", type=int, required=False, default=config.kdebb.max_copies, help=f"Maximum number of copies per allele, used to find centroids using fitted copy-number grid (default: {config.kdebb.max_copies})")
-    parser.add_argument("-f","--outfigure", required=False, default=config.kdebb.kde_fig_filename, help=f"Filename to output optional KDE figure (default: {config.kdebb.kde_fig_filename})")
-    parser.add_argument("-S","--snpsfile", required=False, default=config.kdebb.snpsfile, help=f"Filename containing SNP data for binomial model (default: None)")
-    parser.add_argument("-s","--minsize", required=False, type = int, default=config.kdebb.minsize, help=f"Minimum number of bins per cluster (default: {config.kdebb.minsize})")
-
-    #TODO:  SNPs file for binomial model?
-
-    args = parser.parse_args(args)
-
-    if not os.path.isfile(args.BBFILE):
-        raise ValueError(sp.error("The specified BB file does not exist!"))
-    if args.diploidbaf != None and not 0.0 <= args.diploidbaf <= 0.5:
-        raise ValueError(sp.error("The specified maximum diploid-BAF shift (-d) must be a value in [0.0, 0.5]"))
-
-    # bandwidth
-    if args.bandwidth <= 0:
-        raise ValueError(sp.error("Bandwidth must be positive."))
-    
-    # min center density
-    if args.centroiddensity <= 0:
-        raise ValueError(sp.error("Minimum mesh centroid density must be positive."))
-    
-    # grid dimension
-    if args.mesh < 1:
-        raise ValueError(sp.error("Mesh must have at least 1 point per dimension."))
-    
-    # y variance
-    if args.variance <= 0:
-        raise ValueError(sp.error("RDR variance must be positive."))
-    
-    # min_grid_density
-    if args.griddensity <= 0:
-        raise ValueError(sp.error("Minimum grid centroid density must be positive."))
-    
-    # max_copies
-    if args.maxcopies <= 0:
-        raise ValueError(sp.error("Max copies per allele must be positive."))
-
-    if args.minsize < 0:
-        raise ValueError(sp.error("Minimum cluster size must be non-negative."))
-
-
-    return {"bbfile" : args.BBFILE,
-            "diploidbaf" : args.diploidbaf,
-            "outbins" : args.outbins,
-            "outsegments" : args.outsegments,
-            "bandwidth" : args.bandwidth,
-            "centroiddensity" : args.centroiddensity,
-            "mesh" : args.mesh,
-            "variance" : args.variance,
-            "griddensity" : args.griddensity,
-            "maxcopies" : args.maxcopies,
-            "outfigure" : args.outfigure,
-            "snpsfile" : args.snpsfile,
-            "minsize" : args.minsize
-            }
+            "readquality" : args.readquality}
 
 def parse_combine_counts_args(args=None):    
     parser = argparse.ArgumentParser(description = "Perform adaptive binning, compute RDR and BAF for each bin, and produce a BB file.")
@@ -481,15 +472,15 @@ def parse_download_panel_arguments(args=None):
     description = "Download and prepare files for phasing germline SNPs using a reference panel"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
-    parser.add_argument("-R","--refpanel", required=True, type=str, help="Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
-    parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
-    parser.add_argument("-N","--chrnotation", required=True, type=str, help="Notation of chromosomes, with or without \"chr\"")
+    parser.add_argument("-R","--refpanel", default=config.download_panel.refpanel, required=False, type=str, help="Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
     args = parser.parse_args(args)
 
+    if args.refpaneldir is None:
+        sp.error(ValueError('The command "download_panel" requires a path for the variable "refpaneldir".'))
+
     return {"refpanel" : args.refpanel,
-            "refpaneldir" : os.path.abspath(args.refpaneldir),
-            "refvers" : args.refversion,
-            "chrnot" : args.chrnotation}
+            "refpaneldir" : os.path.abspath(args.refpaneldir)
+            }
 
 def parse_phase_snps_arguments(args=None):
     """
@@ -501,12 +492,12 @@ def parse_phase_snps_arguments(args=None):
     parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
     parser.add_argument("-g","--refgenome", required=True, type=str, help="Path to Reference genome used in BAM files")
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
-    parser.add_argument("-N","--chrnotation", required=True, type=str, help="Notation of chromosomes, with or without \"chr\"")
+    parser.add_argument("-N","--chrnotation", required=True, action = 'store_true', help="Notation of chromosomes, with or without \"chr\"")
     parser.add_argument("-o", "--outdir", required=False, type=str, help="Output folder for phased VCFs")
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
     parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")
-    parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.mosdepth, help = 'Path to shapeit executable (default: look in $PATH)')   
-    parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.tabix, help = 'Path to picard executable or jar (default: look in $PATH)')
+    parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.shapeit, help = 'Path to shapeit executable (default: look in $PATH)')   
+    parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.picard, help = 'Path to picard executable or jar (default: look in $PATH)')   
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
     parser.add_argument("-bg","--bgzip", required=False, default=config.paths.bgzip, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
     args = parser.parse_args(args)
@@ -691,7 +682,7 @@ def parse_count_reads_fw_arguments(args=None):
     Returns:
     """
     description = "Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES."
-    parser = argparse.ArgumentParser(prog='hatchet count-reads-fw', description=description)
+    parser = argparse.ArgumentParser(prog='hatchet count-reads', description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
     parser.add_argument("-T","--tumors", required=True, type=str, nargs='+', help="BAM files corresponding to samples from the same tumor")
     parser.add_argument("-b","--size", required=True, type=str, help="Size of the bins, specified as a full number or using the notations either \"kb\" or \"Mb\"")
@@ -986,96 +977,6 @@ def parse_plot_bins_args(args=None):
             "pdf" : args.pdf,
             "dpi" : args.dpi
     }
-
-
-def parse_preprocess_args(args=None):
-    description = "This command automatically runs HATCHet's preprocessing pipeline."
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("-t","--tumor", required=True, type=str, nargs = '+', help="White-space separated list of input tumor BAM files, corresponding to multiple samples from the same patient")
-    parser.add_argument("-n","--normal", required=True, type=str, help="Matched-normal BAM file")
-    parser.add_argument("-r","--reference", type=str, required=True, help="Reference genome")
-    parser.add_argument("-o","--output", type=str, required=False, default = config.preprocess.output, help="Output filename")   
-    parser.add_argument("-s","--samplenames", required=False, type=str, nargs = '+', default=config.preprocess.samplenames, help="Tumor sample names in a white-space separated list in the same order as the corresponding BAM files (default: file names are used as names)")
-    parser.add_argument("-b","--size", type=str, required=False, default=config.preprocess.size, help="Bin size, with or without \"kb\" or \"Mb\" (default: 250kb)")
-    parser.add_argument("-c","--minreads", type=int, required=False, default=config.preprocess.minreads, help="Minimum read counts for heterozygous germline SNPs (default: 8)")
-    parser.add_argument("-C","--maxreads", type=int, required=False, default=config.preprocess.maxreads, help="Maximum read counts for heterozygous germline SNPs (default: 1000)")
-    parser.add_argument("-p","--phred", type=int, required=False, default=config.preprocess.phred, help="Phred quality score (default: 11)")
-    parser.add_argument("-x","--rundir", required=False, default=config.preprocess.rundir, type=str, help="Running directory (default: current directory)")
-    parser.add_argument("--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the \"bcftools\" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)")
-    parser.add_argument("--samtools", required=False, default=config.paths.samtools, type=str, help="Path to the \"samtools\" executable, required in default mode (default: samtools is directly called as it is in user $PATH)")
-    parser.add_argument("--seed", required=False, type=int, default=config.preprocess.seed, help="Random seed for replication (default: None)")
-    parser.add_argument("-j","--jobs", required=False, type=int, default=config.preprocess.jobs, help="Number of parallel jobs to use (default: equal to number of available processors)")
-    args = parser.parse_args(args)
-
-    # In default mode, check the existence and compatibility of samtools and bcftools
-    samtools = os.path.join(args.samtools, "samtools")
-    bcftools = os.path.join(args.bcftools, "bcftools")
-    if sp.which(samtools) is None:
-        raise ValueError(sp.error("{}samtools has not been found or is not executable!{}"))
-    elif sp.which(bcftools) is None:
-        raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
-
-    tumor = args.tumor
-    for t in tumor:
-        if not os.path.isfile(t):
-            raise ValueError("The following BAM file does not exist: {}".format(t))
-    if args.samplenames is None:
-        names = set(os.path.splitext(os.path.basename(t))[0] for t in tumor)
-        if len(names) != len(tumor):
-            names = tumor
-    else:
-        names = args.samplenames
-        if len(names) != len(tumor):
-            raise ValueError("A different number of samples names has been provided compared to the number of BAM files, remember to add the list within quotes!")
-        
-    tumor = [os.path.abspath(t) for t in tumor]
-    if not os.path.isdir(args.rundir):
-        raise ValueError("Running directory does not exists: {}".format(args.rundir))
-    if not os.path.isfile(args.normal):
-        raise ValueError("Matched-normal BAM file does not exist: {}".format(args.normal))
-    if not os.path.isfile(args.reference):
-        raise ValueError("Reference genome file does not exist: {}".format(args.reference))
-    if args.seed and args.seed < 1:
-        raise ValueError("The random seed  must be positive!")
-    if args.minreads < 1:
-        raise ValueError("The minimum number of reads must be positive!")
-    if args.maxreads < 1:
-        raise ValueError("The maximum number of reads must be positive!")
-
-    size = 0
-    try:
-        if args.size[-2:] == "kb":
-            size = int(args.size[:-2]) * 1000
-        elif args.size[-2:] == "Mb":
-            size = int(args.size[:-2]) * 1000000
-        else:
-            size = int(args.size)
-    except:
-        raise ValueError("Size must be a number, optionally ending with either \"kb\" or \"Mb\"!")
-
-    from multiprocessing import cpu_count
-    if not args.jobs:
-        args.jobs = min(cpu_count(), 24)
-    if args.jobs < 1:
-        raise ValueError("The number of jobs must be positive!")
-
-    return {
-        "tumor" : list(tumor),
-        "normal" : os.path.abspath(args.normal),
-        "ref" : os.path.abspath(args.reference),
-        "names" : list(names),
-        "size" : size,
-        "samtools" : args.samtools,
-        "bcftools" : args.bcftools,
-        "J" : args.jobs,
-        "minreads" : args.minreads,
-        "maxreads" : args.maxreads,
-        "phred" : args.phred,
-        "rundir" : os.path.abspath(args.rundir),
-        "seed" : args.seed,
-        "output" : args.output,
-    }
-
 
 def extractChromosomes(samtools, normal, tumors, reference=None):
     """

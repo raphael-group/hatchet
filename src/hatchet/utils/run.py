@@ -14,6 +14,7 @@ from hatchet.utils.combine_counts_fw import main as combine_counts_fw
 from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.cluster_bins_loc import main as loc_clust
 from hatchet.utils.plot_bins import main as plot_bins
+from hatchet.utils.plot_bins_1d2d import main as plot_bins_1d2d
 from hatchet.bin.HATCHet import main as hatchet_main
 from hatchet.utils.plot_cn import main as plot_cn
 from hatchet.utils.plot_cn_1d2d import main as plot_cn_1d2d
@@ -44,20 +45,19 @@ def main(args=None):
     # ----------------------------------------------------
 
     if config.run.download_panel:
-        os.makedirs(config.download_panel.ref_panel_dir, exist_ok=True)
+        if config.download_panel.refpaneldir is None:
+            raise ValueError(error('The step "download_panel" requires that the variable "refpaneldir" indicates the directory in which to store the reference panel.'))
+
         download_panel(
             args=[
-                '-D', config.download_panel.ref_panel_dir,
-                '-R', config.download_panel.ref_panel,
-                '-V', config.genotype_snps.reference_version,
-                '-N', config.genotype_snps.chr_notation
+                '-D', config.download_panel.refpaneldir,
+                '-R', config.download_panel.refpanel,
             ]
         )
 
     # ----------------------------------------------------
 
     if config.run.genotype_snps:
-        """
         snps = ''
         if config.genotype_snps.snps:
            snps = config.genotype_snps.snps
@@ -70,16 +70,16 @@ def main(args=None):
             }
 
             if (config.genotype_snps.reference_version, config.genotype_snps.chr_notation) not in snps_mapping:
-                raise RuntimeError('Please specify valid values of reference_version and chr_notation')
+                raise RuntimeError(f'Please specify valid values of reference_version and chr_notation. Valid pairs include: {snps_mapping.keys()}')
             else:
                 snps = snps_mapping[config.genotype_snps.reference_version, config.genotype_snps.chr_notation]
-        """
+
         os.makedirs(f'{output}/snps', exist_ok=True)
         genotype_snps(
             args=[
                 '-N', config.run.normal,
                 '-r', config.run.reference,
-                #'-R', snps,
+                '-R', snps,
                 '-o', f'{output}/snps/'
             ] + extra_args
         )
@@ -90,13 +90,16 @@ def main(args=None):
         if len(glob.glob(f'{output}/snps/*.vcf.gz')) == 0:
             raise ValueError(error("No SNP files were found for phasing. Are there any .vcf.gz files in the 'snps' subdirectory of the output folder? Try running 'genotype_snps'."))
         
+        if config.download_panel.refpaneldir is None:
+            raise ValueError(error('The step "phase_snps" requires that the config variable "download_panel.refpaneldir" indicates the directory where the reference panel is located.'))
+  
         os.makedirs(f'{output}/phase', exist_ok=True)
         phase_snps(
             args=[
-                '-D', config.download_panel.ref_panel_dir,
+                '-D', config.download_panel.refpaneldir,
                 '-g', config.run.reference,
                 '-V', config.genotype_snps.reference_version,
-                '-N', config.genotype_snps.chr_notation,
+                '-N' if config.genotype_snps.chr_notation else '',
                 '-o', f'{output}/phase/',
                 '-L'
                 ] + glob.glob(f'{output}/snps/*.vcf.gz') + extra_args
@@ -147,7 +150,7 @@ def main(args=None):
         if config.run.combine_counts:
             _stdout = sys.stdout
             sys.stdout = StringIO()
-            os.makedirs(f'{output}/abin', exist_ok=True)
+            os.makedirs(f'{output}/bb', exist_ok=True)
 
             phasefile = f'{output}/phase/phased.vcf.gz'
             args=[
@@ -155,7 +158,7 @@ def main(args=None):
                 '-b', f'{output}/baf/tumor.1bed',
                 '-t', f'{output}/rdr/total.tsv', 
                 '-V', config.genotype_snps.reference_version,
-                '-o', f'{output}/abin/bulk.bb'
+                '-o', f'{output}/bb/bulk.bb'
                 ] + extra_args
             
             if os.path.exists(phasefile):
@@ -165,13 +168,6 @@ def main(args=None):
                 log(msg=f"NO PHASING FILE FOUND at [phasefile]. Not including phasing in binning process.\n", level = "INFO")
                 
             combine_counts(args)
-
-            #out = sys.stdout.getvalue()
-            #sys.stdout.close()
-            #sys.stdout = _stdout
-
-            #with open(f'{output}/bb/bulk.bb', 'w') as f:
-            #    f.write(out)
 
     else:
         # ----------------------------------------------------
@@ -200,7 +196,6 @@ def main(args=None):
             if config.run.combine_counts:
                 _stdout = sys.stdout
                 sys.stdout = StringIO()
-                os.makedirs(f'{output}/abin', exist_ok=True)
 
                 combine_counts_fw(args=[
                     '-c', f'{output}/rdr/normal.1bed',
@@ -222,13 +217,13 @@ def main(args=None):
 
         if config.run.loc_clust:
             loc_clust(args=[
-                f'{output}/abin/bulk.bb' if (config.run.fixed_width is None or not config.run.fixed_width) else f'{output}/bb/bulk.bb',
+                f'{output}/bb/bulk.bb',
                 '-o', f'{output}/bbc/bulk.seg',
                 '-O', f'{output}/bbc/bulk.bbc'
             ])
         else:
             cluster_bins(args=[
-                f'{output}/abin/bulk.bb' if (config.run.fixed_width is None or not config.run.fixed_width) else f'{output}/bb/bulk.bb',
+                f'{output}/bb/bulk.bb',
                 '-o', f'{output}/bbc/bulk.seg',
                 '-O', f'{output}/bbc/bulk.bbc'
             ])
@@ -244,6 +239,15 @@ def main(args=None):
             '--ymin', '0',
             '--ymax', '3',
             #'--pdf'
+        ])
+
+        os.makedirs(f'{output}/plots/1d2d', exist_ok = True)
+        plot_bins_1d2d(args = [
+            '-b', f'{output}/bbc/bulk.bbc',
+            '-s', f'{output}/bbc/bulk.seg',
+            '--outdir', f'{output}/plots/1d2d', 
+            '--centers', 
+            '--centromeres'
         ])
 
     # ----------------------------------------------------
