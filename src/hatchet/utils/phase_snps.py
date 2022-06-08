@@ -224,7 +224,7 @@ class Phaser(Process):
         # --WARN_ON_MISSING_CONTIG true: throws out liftovers to contigs not present in target reference, 
         # e.g. small contigs variably present among the assemblies
         #cmd1 = f"picard LiftoverVcf -Xmx4g -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} --WARN_ON_MISSING_CONTIG true"
-        cmd1 = f"{self.picard} LiftoverVcf -Xmx4g -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} --WARN_ON_MISSING_CONTIG true"
+        cmd1 = f"{self.picard} LiftoverVcf -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} --WARN_ON_MISSING_CONTIG true"
         c = chromosome if ch == "false" else f"chr{chromosome}" # need to change "chr" notation depending on liftover direction
         cmd2 = f"{self.bcftools} filter --output-type z --regions {c} {tmpfile}" # filter out mapping to other chromosomes/contigs!
         cmd3 = f"{self.bcftools} norm --remove-duplicates --output {outfile}" # remove duplicate sites from liftover

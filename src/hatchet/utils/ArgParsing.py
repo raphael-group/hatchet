@@ -497,7 +497,7 @@ def parse_phase_snps_arguments(args=None):
     parser.add_argument("-L","--snps", required=True, type=str, nargs='+', help="List of SNPs in the normal sample to phase")
     parser.add_argument("-j", "--processes", required=False, default=config.genotype_snps.processes, type=int, help="Number of available parallel processes (default: 2)")
     parser.add_argument("-si", "--shapeit", required = False, type = str, default = config.paths.shapeit, help = 'Path to shapeit executable (default: look in $PATH)')   
-    parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.picard, help = 'Path to picard executable (default: look in $PATH)')   
+    parser.add_argument("-pc", "--picard", required = False, type = str, default = config.paths.picard, help = 'Path to picard executable or jar (default: look in $PATH)')   
     parser.add_argument("-bt","--bcftools", required=False, default=config.paths.bcftools, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
     parser.add_argument("-bg","--bgzip", required=False, default=config.paths.bgzip, type=str, help="Path to the directory of \"bcftools\" executable (default: look in $PATH)")
     args = parser.parse_args(args)
@@ -514,11 +514,22 @@ def parse_phase_snps_arguments(args=None):
     if sp.which(shapeit) is None:
         raise ValueError(sp.error("The 'shapeit' executable was not found or is not executable. \
             Please install shapeit (e.g., conda install -c dranew shapeit) and/or supply the path to the executable."))
-    
-    picard = os.path.join(args.picard, "picard")
-    if sp.which(picard) is None:
-        raise ValueError(sp.error("The 'picard' executable was not found or is not executable. \
-            Please install picard (e.g., conda install -c bioconda picard) and/or supply the path to the executable."))
+
+    # We may have access to a picard wrapper executable or picard.jar. Take care of both scenarios.
+    picard_dir = args.picard
+    picard_java_flags = config.phase_snps.picard_java_flags
+    picard_bin_path = os.path.join(picard_dir, 'picard')
+    picard_jar_path = os.path.join(picard_dir, 'picard.jar')
+    if os.path.exists(picard_bin_path):
+        if sp.which(picard_bin_path) is None:
+            raise ValueError(sp.error("The 'picard' executable was not found or is not executable. \
+                Please install picard (e.g., conda install -c bioconda picard) and/or supply the path to the executable."))
+
+        picard = f'{picard_bin_path} {picard_java_flags}'
+
+    elif os.path.exists(picard_jar_path):
+        picard = f'java {picard_java_flags} -jar {picard_jar_path}'
+
     bcftools = os.path.join(args.bcftools, "bcftools")
     if sp.which(bcftools) is None:
         raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
