@@ -23,7 +23,7 @@ def output_folder():
 
 def test_cluster_bins_loc(output_folder):
     cluster_bins_loc(args=[
-        f'{this_dir}/data/bb/bulk.bb',
+        f'{this_dir}/data/fl/bb/bulk.bb',
         '-o', f'{output_folder}/bbc/bulk.seg',
         '-O', f'{output_folder}/bbc/bulk.bbc',
         '--seed', '11111',
@@ -36,15 +36,15 @@ def test_cluster_bins_loc(output_folder):
     seg1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk.seg'), sep = '\t')
     bbc1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk.bbc'), sep = '\t')
 
-    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'test_parts', 'bbc', 'bulk.seg'), sep = '\t')
-    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'test_parts', 'bbc', 'bulk.bbc'), sep = '\t')
+    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk.seg'), sep = '\t')
+    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk.bbc'), sep = '\t')
     assert_frame_equal(seg1, seg2)
     assert_frame_equal(bbc1, bbc2)
 
 
 def test_cluster_bins_loc_singleton(output_folder):
     cluster_bins_loc(args=[
-        f'{this_dir}/data/bb/bulk.bb',
+        f'{this_dir}/data/fl/bb/bulk.bb',
         '-o', f'{output_folder}/bbc/bulk_onecl.seg',
         '-O', f'{output_folder}/bbc/bulk_onecl.bbc',
         '--seed', '11111',
@@ -56,7 +56,7 @@ def test_cluster_bins_loc_singleton(output_folder):
     seg1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk_onecl.seg'), sep = '\t')
     bbc1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk_onecl.bbc'), sep = '\t')
 
-    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'test_parts', 'bbc', 'bulk_onecl.seg'), sep = '\t')
-    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'test_parts', 'bbc', 'bulk_onecl.bbc'), sep = '\t')
+    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk_onecl.seg'), sep = '\t')
+    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk_onecl.bbc'), sep = '\t')
     assert_frame_equal(seg1, seg2)
     assert_frame_equal(bbc1, bbc2)

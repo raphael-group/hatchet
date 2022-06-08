@@ -29,30 +29,30 @@ def output_folder():
 def test_script(_, output_folder):
     # Test without phasing
     combine_counts(args=[
-        '-A', os.path.join(this_dir, 'data', 'test_parts', 'rdr'),
-        '-t',  os.path.join(this_dir, 'data', 'test_parts', 'rdr', 'total.tsv'),
+        '-A', os.path.join(this_dir, 'data', 'vl', 'rdr'),
+        '-t',  os.path.join(this_dir, 'data', 'vl', 'rdr', 'total.tsv'),
         '-j', '1',
-        '-b',  os.path.join(this_dir, 'data', 'test_parts', 'baf', 'bulk.1bed'),
+        '-b',  os.path.join(this_dir, 'data', 'vl', 'baf', 'bulk.1bed'),
         '-o',  os.path.join(output_folder, 'bb', 'bulk_nophase.bb'),
         '-V', 'hg19'
     ])
     df1 = pd.read_csv(os.path.join(output_folder, 'bb', 'bulk_nophase.bb'), sep='\t')
-    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'test_parts', 'bb', 'bulk_nophase.bb'), sep = '\t')
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bb', 'bulk_nophase.bb'), sep = '\t')
     assert_frame_equal(df1, df2)
     
     # Test with phasing
     combine_counts(args=[
-        '-A', os.path.join(this_dir, 'data', 'test_parts', 'rdr'),
-        '-t',  os.path.join(this_dir, 'data', 'test_parts', 'rdr', 'total.tsv'),
+        '-A', os.path.join(this_dir, 'data', 'vl', 'rdr'),
+        '-t',  os.path.join(this_dir, 'data', 'vl', 'rdr', 'total.tsv'),
         '-j', '1',
-        '-b',  os.path.join(this_dir, 'data', 'test_parts', 'baf', 'bulk.1bed'),
+        '-b',  os.path.join(this_dir, 'data', 'vl', 'baf', 'bulk.1bed'),
         '-o',  os.path.join(output_folder, 'bb', 'bulk_yesphase.bb'),
         '-V', 'hg19', 
-        '-p', os.path.join(this_dir, 'data', 'test_parts', 'phase', 'phased.vcf.gz')
+        '-p', os.path.join(this_dir, 'data', 'vl', 'phase', 'phased.vcf.gz')
     ])
 
     df3 = pd.read_csv(os.path.join(output_folder, 'bb', 'bulk_yesphase.bb'), sep='\t')
-    df4 = pd.read_csv(os.path.join(this_dir, 'data', 'test_parts', 'bb', 'bulk_yesphase.bb'), sep = '\t')
+    df4 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bb', 'bulk_yesphase.bb'), sep = '\t')
     assert_frame_equal(df3, df4)
     
 

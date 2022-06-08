@@ -47,7 +47,7 @@ def test_script(_, bams, output_folder):
             '-st', config.paths.samtools,
             '-S', 'Normal', 'Tumor1', 'Tumor2', 'Tumor3',
             '-j', '12',
-            '-b', os.path.join(this_dir, 'data', 'test_parts', 'baf', 'bulk.1bed'),
+            '-b', os.path.join(this_dir, 'data', 'vl', 'baf', 'bulk.1bed'),
             '-O', os.path.join(output_folder, 'rdr'),
             '-V', 'hg19'
         ]
@@ -58,10 +58,10 @@ def test_script(_, bams, output_folder):
     arr3 = [l for l in open(os.path.join(output_folder, 'rdr', 'samples.txt'), 'r')]
     arr4 = pd.read_table(os.path.join(output_folder, 'rdr', 'total.tsv'))
     
-    truth1 = np.loadtxt(os.path.join(this_dir, 'data', 'test_parts', 'rdr', 'chr22.thresholds.gz'))
-    truth2 = np.loadtxt(os.path.join(this_dir, 'data', 'test_parts', 'rdr', 'chr22.total.gz'))
-    truth3 = [l for l in open(os.path.join(this_dir, 'data', 'test_parts', 'rdr', 'samples.txt'), 'r')]
-    truth4 = pd.read_table(os.path.join(this_dir, 'data', 'test_parts', 'rdr', 'total.tsv'))
+    truth1 = np.loadtxt(os.path.join(this_dir, 'data', 'vl', 'rdr', 'chr22.thresholds.gz'))
+    truth2 = np.loadtxt(os.path.join(this_dir, 'data', 'vl', 'rdr', 'chr22.total.gz'))
+    truth3 = [l for l in open(os.path.join(this_dir, 'data', 'vl', 'rdr', 'samples.txt'), 'r')]
+    truth4 = pd.read_table(os.path.join(this_dir, 'data', 'vl', 'rdr', 'total.tsv'))
   
     assert_array_equal(arr1, truth1)
     assert_array_equal(arr2, truth2)
