@@ -17,7 +17,7 @@ this_dir = os.path.dirname(__file__)
 
 @pytest.fixture(scope='module')
 def output_folder():
-    out = os.path.join(this_dir, 'parts')
+    out = os.path.join(this_dir, 'out', 'vl')
     shutil.rmtree(out, ignore_errors=True)
     for sub_folder in ['phase', 'panel']:
         os.makedirs(os.path.join(out, sub_folder))
@@ -40,12 +40,12 @@ def test_script(_, output_folder):
             '-V', 'hg19',
             '-N',
             '-o', os.path.join(output_folder, 'phase'),
-            '-L', os.path.join(this_dir, 'data', 'test_parts', 'snps', 'chr22.vcf.gz')
+            '-L', os.path.join(this_dir, 'data', 'vl', 'snps', 'chr22.vcf.gz')
             ]
     )
     
     
     df1 = pd.read_table(os.path.join(output_folder, 'phase', 'phased.vcf.gz'), comment = '#')
-    df2 = pd.read_table(os.path.join(this_dir, 'data', 'test_parts', 'phase', 'phased.vcf.gz'), comment = '#')
+    df2 = pd.read_table(os.path.join(this_dir, 'data', 'vl', 'phase', 'phased.vcf.gz'), comment = '#')
     assert_frame_equal(df1, df2)
     
