@@ -82,6 +82,49 @@ def _check_python_import(which):
 
 # <HATCHet_command> => [(<dependency_name>, <success_message>, <failure_message>, <boolean_func>, <func_args>..), ..] mapping
 CHECKS = {
+    'count-reads': [
+        (
+            'tabix',
+            '',
+            'Please install tabix executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.tabix, or its location specified using the environment variable '
+            'HATCHET_PATHS_TABIX',
+            _check_tabix
+        ),
+        (
+            'mosdepth',
+            '',
+            'Please install mosdepth executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.mosdepth, or its location specified using the environment variable '
+            'HATCHET_PATHS_MOSDEPTH',
+            _check_cmd,
+            config.paths.mosdepth,
+            'mosdepth',
+            '--version'
+        )
+    ],
+
+    'phase-snps': [
+        (
+            'picard',
+            '',
+            'Please install picard.jar and ensure that its location is specified in hatchet.ini as '
+            'config.paths.picard, or its location specified using the environment variable HATCHET_PATHS_PICARD. '
+            'Also make sure "java" is on your path',
+            _check_picard
+        ),
+        (
+            'shapeit',
+            '',
+            'Please install shapeit executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.shapeit, or its location specified using the environment variable '
+            'HATCHET_PATHS_SHAPEIT',
+            _check_cmd,
+            config.paths.shapeit,
+            'shapeit',
+            '--version'
+        )
+    ],
 
     'compute-cn': [
         (
@@ -91,7 +134,6 @@ CHECKS = {
             check_solver
         )
     ],
-
 }
 
 
