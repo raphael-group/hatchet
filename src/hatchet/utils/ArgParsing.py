@@ -2,14 +2,9 @@ import sys
 import os.path
 import argparse
 import subprocess
-import shutil 
-from numpy import busday_offset
-import pandas as pd
-from glob import glob
 
 from . import Supporting as sp
 from hatchet import config, __version__
-
 
 
 def parse_plot_bins_1d2d_args(args=None):
@@ -127,6 +122,7 @@ def parse_plot_cn_1d2d_args(args=None):
         'centromeres':args.centromeres
     }
 
+
 def parse_cluster_bins_loc_args(args=None):
     """
     Parse command line arguments
@@ -156,7 +152,6 @@ def parse_cluster_bins_loc_args(args=None):
     
     if args.seed < 0:
         raise ValueError(sp.error("Seed parameter must be non-negative."))
-    
     
     if args.exactK > 0:
         sp.log(msg = f"WARNING: using fixed K (K={args.exactK}) will bypass model selection.\n", level = 'WARN')
@@ -197,6 +192,7 @@ def parse_cluster_bins_loc_args(args=None):
             "tau": args.tau,
             "outsegments" : args.outsegments,
             "outbins" : args.outbins}
+
 
 def parse_count_reads_args(args=None):
 
@@ -252,17 +248,10 @@ def parse_count_reads_args(args=None):
         use_chr = False
 
     ver = args.refversion
-    if ver != 'hg19' and ver != 'hg38':
-        raise ValueError(sp.error("Invalid reference genome version. Supported versions are 'hg38' and 'hg19'."))
-
-    if not os.path.exists(args.baffile):
-        raise ValueError(sp.error(f"BAF file not found: {args.baffile}"))
-
-    if not args.processes > 0: raise ValueError(sp.error("The number of parallel processes must be greater than 0"))
-    #if not args.readquality >= 0: raise ValueError(sp.error("The read mapping quality must be positive"))
-   
-    if not os.path.exists(args.outdir):
-        raise ValueError(sp.error(f"Output directory <{args.outdir}> not found!"))
+    sp.ensure(ver in ('hg19', 'hg38'), 'Invalid reference genome version. Supported versions are hg38 and hg19.')
+    sp.ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
+    sp.ensure(args.processes > 0, 'The number of parallel processes must be greater than 0')
+    sp.ensure(os.path.exists(args.outdir), f'Output directory <{args.outdir}> not found!')
 
     mosdepth = os.path.join(args.mosdepth, "mosdepth")
     tabix = os.path.join(args.tabix, "tabix")
@@ -286,6 +275,7 @@ def parse_count_reads_args(args=None):
             "baf_file" : args.baffile,
             "readquality" : args.readquality}
 
+
 def parse_combine_counts_args(args=None):    
     parser = argparse.ArgumentParser(description = "Perform adaptive binning, compute RDR and BAF for each bin, and produce a BB file.")
     parser.add_argument('-A', '--array', type = str, required = True, help = f'Directory containing array files (output from "count_reads" command)')   
@@ -303,26 +293,21 @@ def parse_combine_counts_args(args=None):
     parser.add_argument("-z", '--not_compressed', action='store_true', default=config.combine_counts.not_compressed, required=False, help="Non-compressed intermediate files")
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     args = parser.parse_args(args)
-    
-    if not os.path.exists(args.baffile):
-        raise ValueError(sp.error(f"BAF file not found: <{args.baffile}>"))
+
+    sp.ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
+
     if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
         raise ValueError(sp.error("The specified file for total read counts does not exist!"))
     if args.phase is not None and not os.path.isfile(args.phase):
         raise ValueError(sp.error("The specified phasing file does not exist!"))
-        
-    if args.max_blocksize <= 0:
-        raise ValueError(sp.error("The max_blocksize argument must be positive."))
-    if args.max_blocksize <= 0:
-        raise ValueError(sp.error("The max_snps_per_bin argument must be positive."))
-    if args.alpha < 0 or args.alpha > 1:
-        raise ValueError(sp.error("The alpha argument must be between 0 and 1, inclusive."))
-            
-    if not os.path.exists(args.array):
-        raise ValueError(sp.error(f"The provided 'array' directory does not exist: {args.array}"))
+
+    sp.ensure(args.max_blocksize > 0, 'The max_blocksize argument must be positive.')
+    sp.ensure(args.max_spb > 0, 'The max_snps_per_bin argument must be positive.')
+    sp.ensure(0 <= args.alpha <= 1, 'The alpha argument must be between 0 and 1, inclusive.')
+    sp.ensure(os.path.exists(args.array), f'The provided array directory does not exist: {args.array}')
+
     namesfile = os.path.join(args.array, 'samples.txt')
-    if not os.path.exists(namesfile):
-        raise ValueError(sp.error(f"Missing file containing sample names (1 per line): {namesfile}"))
+    sp.ensure(os.path.exists(namesfile), 'Missing file containing sample names (1 per line): {namesfile}')
     names = open(namesfile).read().split()
     
     chromosomes = set()
@@ -389,11 +374,8 @@ def parse_combine_counts_args(args=None):
         "ref_version": ver
     }
 
+
 def parse_genotype_snps_arguments(args=None):
-    """
-    Parse command line arguments
-    Returns:
-    """
     description = "Genotype and call SNPs in a matched-normal sample."
     parser = argparse.ArgumentParser(prog='hatchet genotype-snps', description=description)
     parser.add_argument("-N","--normal", required=True, type=str, help="BAM file corresponding to matched normal sample")
@@ -433,7 +415,7 @@ def parse_genotype_snps_arguments(args=None):
         raise ValueError(sp.error("The folder for output SNPs does not exist!"))
     if args.snps != None and len(args.snps) < 2:
         args.snps = None
-    if args.snps != None and not (os.path.isfile(args.snps) or sp.urlexists(args.snps)):
+    if args.snps != None and not (os.path.isfile(args.snps) or sp.url_exists(args.snps)):
         raise ValueError(sp.error("The provided list of SNPs does not exist!"))
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
@@ -465,31 +447,25 @@ def parse_genotype_snps_arguments(args=None):
             "verbose" : args.verbose}
 
 def parse_download_panel_arguments(args=None):
-    """
-    Parse command line arguments
-    Returns:
-    """
     description = "Download and prepare files for phasing germline SNPs using a reference panel"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
+    parser.add_argument("-D","--refpaneldir", required=False, type=str, default=config.download_panel.refpaneldir, help="Path to Reference Panel")
     parser.add_argument("-R","--refpanel", default=config.download_panel.refpanel, required=False, type=str, help="Reference Panel; specify \"1000GP_Phase3\" to automatically download and use the panel form the 1000 genomes project")
     args = parser.parse_args(args)
 
-    if args.refpaneldir is None:
+    if not args.refpaneldir:
         sp.error(ValueError('The command "download_panel" requires a path for the variable "refpaneldir".'))
 
-    return {"refpanel" : args.refpanel,
-            "refpaneldir" : os.path.abspath(args.refpaneldir)
-            }
+    return {
+        "refpanel": args.refpanel,
+        "refpaneldir": os.path.abspath(args.refpaneldir)
+    }
+
 
 def parse_phase_snps_arguments(args=None):
-    """
-    Parse command line arguments
-    Returns:
-    """
     description = "Phase germline SNPs using a reference panel"
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("-D","--refpaneldir", required=True, type=str, help="Path to Reference Panel")
+    parser.add_argument("-D","--refpaneldir", required=False, type=str, default=config.download_panel.refpaneldir, help="Path to Reference Panel")
     parser.add_argument("-g","--refgenome", required=True, type=str, help="Path to Reference genome used in BAM files")
     parser.add_argument("-V","--refversion", required=True, type=str, help="Version of reference genome used in BAM files")
     parser.add_argument("-N","--chrnotation", required=True, action = 'store_true', help="Notation of chromosomes, with or without \"chr\"")
@@ -506,7 +482,7 @@ def parse_phase_snps_arguments(args=None):
     #if args.refpanel != "1000GP_Phase3":
 
     bgzip = os.path.join(args.bgzip, "bgzip")
-    if sp.which("bgzip") is None:
+    if sp.which(bgzip) is None:
         raise ValueError(sp.error("The 'bgzip' executable was not found or is not executable. \
             Please install bgzip and/or supply the path to the executable."))
 
@@ -529,6 +505,9 @@ def parse_phase_snps_arguments(args=None):
 
     elif os.path.exists(picard_jar_path):
         picard = f'java {picard_java_flags} -jar {picard_jar_path}'
+    else:
+        raise ValueError(sp.error("The 'picard' executable was not found or is not executable. \
+            Please install picard (e.g., conda install -c bioconda picard) and/or supply the path to the executable."))
 
     bcftools = os.path.join(args.bcftools, "bcftools")
     if sp.which(bcftools) is None:
@@ -747,7 +726,7 @@ def parse_count_reads_fw_arguments(args=None):
         raise ValueError(sp.error("The specified reference genome does not exist!"))
     refdict = os.path.splitext(args.reference)[0] + '.dict'
     if args.reference is not None and not os.path.isfile(refdict):
-        raise ValueError(sp.error("The dictionary of the refence genome has not been found! Reference genome must be indeced and its dictionary must exist in the same directory with same name but extension .dict"))
+        raise ValueError(sp.error("The dictionary of the reference genome has not been found! Reference genome must be indexed and its dictionary must exist in the same directory with same name but extension .dict"))
     
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples)

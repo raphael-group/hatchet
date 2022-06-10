@@ -1,8 +1,4 @@
-#!/usr/bin/python3
-
-import os, sys
 import os.path
-import argparse
 import subprocess as pr
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 import glob
@@ -12,6 +8,7 @@ from . import ArgParsing as ap
 from .Supporting import *
 from . import Supporting as sp
 from . import ProgressBar as pb
+
 
 def main(args=None):
     log(msg="# log notes\n", level="STEP")
@@ -27,33 +24,32 @@ def main(args=None):
         raise ValueError(sp.error("The reference genome version of your samples is not \"hg19\" or \"hg38\", please specify one of these two options!\n"))
 
     rpd = args["refpaneldir"]
-    try:
-        open( os.path.join(rpd, "1000GP_Phase3", "1000GP_Phase3.sample"), 'r' ) 
-    except FileNotFoundError:
-        print("Please download the 1000GP reference panel before proceeding")
+    if not os.path.exists(os.path.join(rpd, "1000GP_Phase3.sample")):
+        raise ValueError(sp.error("Please download the 1000GP reference panel before proceeding\n"))
+
     panel = os.path.join(rpd, "1000GP_Phase3" )
             
     hg19_path = ""      # path to hg19, 1000GP in hg19 coords, potentially needed for liftover
     chains = ""         # chain files for liftover, chains["hg38_hg19"]=path, chains["hg19_hg38"]=path
-    rename_files = ""   # file for renaming chrs with bcftools, rename_files[0] for removing "chr, rename_files[1] for adding "chr" 
+    rename_files = ""   # file for renaming chrs with bcftools, rename_files[0] for removing "chr, rename_files[1] for adding "chr"
+
     if args["refvers"] == "hg38":
-        #dwnld reference panel genome and chain files
+        # Download reference panel genome and chain files
         hg19_path = os.path.join(rpd, "hg19_no_chr.fa")
-        if args["chrnot"] == "true":
+        if args["chrnot"]:
             chains = {"hg38_hg19" : os.path.join(rpd, "hg38ToHg19.chr.chain"), 
                     "hg19_hg38" : os.path.join(rpd, "hg19ToHg38.chr.chain")}
-        elif args["chrnot"] == "false":
+        elif args["chrnot"]:
             chains = {"hg38_hg19" : os.path.join(rpd, "hg38ToHg19.no_chr.chain"), 
                     "hg19_hg38" : os.path.join(rpd, "hg19ToHg38.no_chr.chain")}
         if not os.path.isfile(chains["hg38_hg19"]) or not os.path.isfile(chains["hg19_hg38"]):
             raise ValueError(sp.error("The appropriate liftover chain files could not be located! Please run the PhasePrep.py command that downloads these\n"))
 
-    elif args["refvers"] == "hg19" and args["chrnot"] == "true":
-        rename_files = [ os.path.join(rpd, f"rename_chrs{i}.txt") for i in range(1,3) ] 
+    elif args["refvers"] == "hg19" and args["chrnot"]:
+        rename_files = [ os.path.join(rpd, f"rename_chrs{i}.txt") for i in range(1, 3) ]
 
     # liftover VCFs, phase, liftover again to original coordinates 
-    if not os.path.exists(args["outdir"]):
-        os.makedirs(args["outdir"])
+    os.makedirs(args['outdir'], exist_ok=True)
     
     chromosomes = []
     for chro in args["chromosomes"]:
@@ -68,11 +64,11 @@ def main(args=None):
                 num_workers= n_workers, verbose=False, shapeit = shapeit, bcftools = bcftools, picard = picard, bgzip = bgzip) 
     concat_vcf = concat(vcfs, outdir=args["outdir"], chromosomes=chromosomes, bcftools = bcftools)
 
-
     # read shapeit output, print fraction of phased snps per chromosome
     print_log(path=args["outdir"], chromosomes=chromosomes)
     cleanup(args["outdir"])
-    
+
+
 def cleanup(outdir):
     f = []
     # shapeit logs
@@ -85,6 +81,7 @@ def cleanup(outdir):
     [ f.append( os.path.join(outdir, f"{c}{e}") ) for c in range(1,23) for e in exts ]
     [ os.remove(i) for i in f if os.path.isfile(i) ]
 
+
 def print_log(path, chromosomes):
     out = open( os.path.join(path, "phased.log"), 'w')
     print("chrom", "phased_snps", "original_snps", "proportion", file=out, sep="\t")
@@ -95,6 +92,7 @@ def print_log(path, chromosomes):
             elif "reference panel sites included" in l:
                 phased_snps = int(l.split()[1])
         print(c, phased_snps, snps, float(phased_snps/snps), file=out, sep="\t")
+
 
 def concat(vcfs, outdir, chromosomes, bcftools):
     errname = os.path.join(outdir, f"concat.log")
@@ -108,6 +106,7 @@ def concat(vcfs, outdir, chromosomes, bcftools):
     else:
         os.remove(errname)
     return(outfile)
+
 
 def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refvers, chrnot, num_workers, bcftools, shapeit, picard, bgzip, verbose=False):
     # Define a Lock and a shared value for log printing through ProgressBar
@@ -153,6 +152,7 @@ def phase(panel, snplist, outdir, chromosomes, hg19, ref, chains, rename, refver
         w.join()
 
     return sorted_results
+
 
 class Phaser(Process):
 
@@ -330,6 +330,7 @@ class Phaser(Process):
         else:
             os.remove(errname)
         return 
+
 
 if __name__ == '__main__':
     main()

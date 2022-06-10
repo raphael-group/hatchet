@@ -44,8 +44,7 @@ def main(args=None):
 
     # ----------------------------------------------------
 
-    if config.run.download_panel:
-        if config.download_panel.refpaneldir is None:
+    if config.run.download_panel and not config.download_panel.refpaneldir:
             raise ValueError(error('The step "download_panel" requires that the variable "refpaneldir" indicates the directory in which to store the reference panel.'))
 
         download_panel(
@@ -90,7 +89,7 @@ def main(args=None):
         if len(glob.glob(f'{output}/snps/*.vcf.gz')) == 0:
             raise ValueError(error("No SNP files were found for phasing. Are there any .vcf.gz files in the 'snps' subdirectory of the output folder? Try running 'genotype_snps'."))
         
-        if config.download_panel.refpaneldir is None:
+        if not config.download_panel.refpaneldir:
             raise ValueError(error('The step "phase_snps" requires that the config variable "download_panel.refpaneldir" indicates the directory where the reference panel is located.'))
   
         os.makedirs(f'{output}/phase', exist_ok=True)
