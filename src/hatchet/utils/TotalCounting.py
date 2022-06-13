@@ -12,7 +12,13 @@ def tcount(samtools, samples, chromosomes, num_workers, q, verbose=False):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
     counter = Value('i', 0)
-    progress_bar = pb.ProgressBar(total=len(samples)*len(chromosomes), length=40, lock=err_lock, counter=counter, verbose=verbose)
+    progress_bar = pb.ProgressBar(
+        total=len(samples) * len(chromosomes),
+        length=40,
+        lock=err_lock,
+        counter=counter,
+        verbose=verbose,
+    )
 
     # Establish communication queues
     tasks = JoinableQueue()
@@ -26,7 +32,10 @@ def tcount(samtools, samples, chromosomes, num_workers, q, verbose=False):
             jobs_count += 1
 
     # Setting up the workers
-    workers = [TotalCounter(tasks, results, progress_bar, samtools, q, verbose) for i in range(min(num_workers, jobs_count))]
+    workers = [
+        TotalCounter(tasks, results, progress_bar, samtools, q, verbose)
+        for i in range(min(num_workers, jobs_count))
+    ]
 
     # Add a poison pill for each worker
     for i in range(len(workers)):
@@ -57,10 +66,10 @@ def tcount(samtools, samples, chromosomes, num_workers, q, verbose=False):
     return sorted_results
 
 
-
 class TotalCounter(Process):
-
-    def __init__(self, task_queue, result_queue, progress_bar, samtools, q, verbose):
+    def __init__(
+        self, task_queue, result_queue, progress_bar, samtools, q, verbose
+    ):
         Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -77,9 +86,23 @@ class TotalCounter(Process):
                 self.task_queue.task_done()
                 break
 
-            self.progress_bar.progress(advance=False, msg="{} starts on {} for {}".format(self.name, next_task[1], next_task[2]))
-            count = self.binChr(bamfile=next_task[0], samplename=next_task[1], chromosome=next_task[2])
-            self.progress_bar.progress(advance=True, msg="{} ends on {} for {}".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(
+                advance=False,
+                msg='{} starts on {} for {}'.format(
+                    self.name, next_task[1], next_task[2]
+                ),
+            )
+            count = self.binChr(
+                bamfile=next_task[0],
+                samplename=next_task[1],
+                chromosome=next_task[2],
+            )
+            self.progress_bar.progress(
+                advance=True,
+                msg='{} ends on {} for {}'.format(
+                    self.name, next_task[1], next_task[2]
+                ),
+            )
             self.task_queue.task_done()
             self.result_queue.put(count)
         return
@@ -88,8 +111,22 @@ class TotalCounter(Process):
         popen = subprocess.Popen
         pipe = subprocess.PIPE
         split = shlex.split
-        cmd = "{} view {} -c -q {} {}".format(self.samtools, bamfile, self.q, chromosome)
-        stdout, stderr = popen(split(cmd), stdout=pipe, stderr=pipe, universal_newlines=True).communicate()
-        if stderr != "":
-            self.progress_bar.progress(advance=False, msg="{}{}: samtools warns \"{}\"on (sample={}, chromosome={}){}".format(sp.bcolors.WARNING, self.name, stderr, samplename, chromosome, sp.bcolors.ENDC))
+        cmd = '{} view {} -c -q {} {}'.format(
+            self.samtools, bamfile, self.q, chromosome
+        )
+        stdout, stderr = popen(
+            split(cmd), stdout=pipe, stderr=pipe, universal_newlines=True
+        ).communicate()
+        if stderr != '':
+            self.progress_bar.progress(
+                advance=False,
+                msg='{}{}: samtools warns "{}"on (sample={}, chromosome={}){}'.format(
+                    sp.bcolors.WARNING,
+                    self.name,
+                    stderr,
+                    samplename,
+                    chromosome,
+                    sp.bcolors.ENDC,
+                ),
+            )
         return (samplename, chromosome, int(stdout.strip()))

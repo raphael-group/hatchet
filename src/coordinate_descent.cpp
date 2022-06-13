@@ -70,7 +70,7 @@ void CoordinateDescent::run()
     {
         _seeds.push_back(buildRandomU());
     }
-    
+
     log("Detailed data about coordinate descence is going to be written in: coordinate_descence.tsv", VERBOSITY_t::DEBUGGING, _v);
     if(_v >= VERBOSITY_t::VERBOSE)
     {
@@ -87,7 +87,7 @@ void CoordinateDescent::run()
     {
         thread.join();
     }
-    
+
     log("}", VERBOSITY_t::VERBOSE, _v);
     _best = std::distance(_objs.begin(), std::min_element(_objs.begin(), _objs.end()));
 }
@@ -115,7 +115,7 @@ DoubleArray CoordinateDescent::buildPartitionVector(const int num_parts)
     IntArray positions(_n);
     std::iota(positions.begin(), positions.end(), 0);
     std::shuffle(positions.begin(), positions.end(), g_rng);
-    
+
     DoubleArray result(_n, 0.0);
     if(num_parts > 1)
     {
@@ -123,7 +123,7 @@ DoubleArray CoordinateDescent::buildPartitionVector(const int num_parts)
         std::iota(samples.begin(), samples.end(), 1);
         assert(samples.front() == 1 && samples.back() == _sizeBubbles - 1);
         std::shuffle(samples.begin(), samples.end(), g_rng);
-        
+
         DoubleArray bubbles(num_parts - 1, 0.0);
         for(unsigned int i = 0; i < num_parts - 1; ++i)
         {
@@ -131,7 +131,7 @@ DoubleArray CoordinateDescent::buildPartitionVector(const int num_parts)
             samples.pop_back();
         }
         std::sort(bubbles.begin(), bubbles.end());
-        
+
         for(unsigned int i = 0; i < num_parts; ++i)
         {
             if(i == 0)
@@ -174,7 +174,7 @@ void CoordinateDescent::runWorker()
             Worker worker(_FA, _FB, _bins, _m, _k, _n, _cmax, _d, _mu, _base, _ampdel, _cn, _iterConvergence, _maxIter,
                           _timeLimit, _memoryLimit, _nrILPthreads, _seeds[seed], seed, _v);
             double obj = worker.solve();
-            
+
             {
                 std::lock_guard<std::mutex> lock(_mutexResults);
                 _objs.push_back(obj);
@@ -182,7 +182,7 @@ void CoordinateDescent::runWorker()
                 _CBs.push_back(worker.getCB());
                 _Us.push_back(worker.getU());
             }
-            
+
             {
                 std::lock_guard<std::mutex> lock(g_output_mutex);
                 std::locale::global(std::locale("C"));
@@ -193,4 +193,3 @@ void CoordinateDescent::runWorker()
         }
     }
 }
-

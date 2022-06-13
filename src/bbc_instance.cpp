@@ -46,10 +46,10 @@ std::istream& operator>>(std::istream& in, BBCInstance& instance)
     instance._binsToSampleRdBaf.clear();
     instance._binsToSampleSCAB.clear();
     instance._binsToCluster.clear();
-    
+
     std::string line;
     std::vector<std::string> tokens;
-    
+
     while(!in.eof())
     {
         std::getline(in, line, '\n');
@@ -57,7 +57,7 @@ std::istream& operator>>(std::istream& in, BBCInstance& instance)
         {
             std::replace(line.begin(), line.end(), '\t', ' ');
             tokens = split(rtrim(ltrim(line)), ' ');
-            
+
             std::string chr(tokens[0]);
             size_t idx_chr = -1;
             if(instance._chromosomes.find(chr) == instance._chromosomes.end())
@@ -71,17 +71,17 @@ std::istream& operator>>(std::istream& in, BBCInstance& instance)
             } else {
                 idx_chr = instance._chromosomes.at(chr);
             }
-            
+
             std::string sample(tokens[3]);
             instance._samples.insert(sample);
-            
+
             std::pair<long long, long long> bin = std::make_pair(std::stoll(tokens[1]), std::stoll(tokens[2]));
             size_t idx_bin = -1;
             if(instance._bins[idx_chr].find(bin) == instance._bins[idx_chr].end())
             {
                 idx_bin = instance._bins[idx_chr].size();
                 instance._bins[idx_chr][bin] = idx_bin;
-                
+
                 assert(instance._binsToSampleRdBaf[idx_chr].size() == idx_bin);
                 instance._binsToSampleRdBaf[idx_chr].emplace_back();
                 instance._binsToSampleRdBaf[idx_chr][idx_bin][sample] = std::make_pair(std::stod(tokens[4]), std::stod(tokens[9]));
@@ -89,22 +89,22 @@ std::istream& operator>>(std::istream& in, BBCInstance& instance)
                 assert(instance._binsToSampleSCAB[idx_chr].size() == idx_bin);
                 instance._binsToSampleSCAB[idx_chr].emplace_back();
                 instance._binsToSampleSCAB[idx_chr][idx_bin][sample] = std::make_tuple(std::stoi(tokens[5]), std::stoi(tokens[6]), std::stoi(tokens[7]), std::stoi(tokens[8]));
-                
+
                 assert(instance._binsToCluster[idx_chr].size() == idx_bin);
                 instance._binsToCluster[idx_chr].emplace_back(tokens[10]);
             } else {
                 idx_bin = instance._bins[idx_chr].at(bin);
-                
+
                 if(instance._binsToSampleRdBaf[idx_chr][idx_bin].find(sample) != instance._binsToSampleRdBaf[idx_chr][idx_bin].end())
                 {
                     throw std::string("Found a bin defined multiple times for the same sample!\n\t" + line);
                 } else {
                     instance._binsToSampleRdBaf[idx_chr][idx_bin][sample] = std::make_pair(std::stod(tokens[4]), std::stod(tokens[9]));
                 }
-                
+
                 assert(instance._binsToSampleSCAB[idx_chr][idx_bin].find(sample) == instance._binsToSampleSCAB[idx_chr][idx_bin].end());
                 instance._binsToSampleSCAB[idx_chr][idx_bin][sample] = std::make_tuple(std::stoi(tokens[5]), std::stoi(tokens[6]), std::stoi(tokens[7]), std::stoi(tokens[8]));
-                
+
                 if(instance._binsToCluster[idx_chr].at(idx_bin) != tokens[10])
                 {
                     throw std::string("Found a bin with different clusters in different samples!\n\t" + line);
@@ -112,7 +112,7 @@ std::istream& operator>>(std::istream& in, BBCInstance& instance)
             }
         }
     }
-    
+
     for(auto const& chr : instance._chromosomes)
     {
         size_t idx_chr = chr.second;
@@ -130,6 +130,6 @@ std::istream& operator>>(std::istream& in, BBCInstance& instance)
             }
         }
     }
-    
+
     return in;
 };

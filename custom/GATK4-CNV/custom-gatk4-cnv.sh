@@ -46,4 +46,3 @@ cd ${RES}
 
 cd ${EVA}
 \time -v python3 -m hatchet plot-cn ${RES}/best.bbc.ucn
-

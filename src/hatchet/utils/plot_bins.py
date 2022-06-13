@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import matplotlib as mpl
+
 mpl.use('Agg')
 import sys, os, argparse
 import math
@@ -21,73 +22,133 @@ from collections import Counter
 from .ArgParsing import parse_plot_bins_args
 
 plt.style.use('ggplot')
-sns.set_style("whitegrid")
+sns.set_style('whitegrid')
 
 
 def main(args=None):
-    sys.stderr.write(log("# Parsing and checking input arguments\n"))
+    sys.stderr.write(log('# Parsing and checking input arguments\n'))
     args = parse_plot_bins_args(args)
-    sys.stdout.write(info("\n".join(["## {}:\t{}".format(key, args[key]) for key in args]) + '\n'))
+    sys.stdout.write(
+        info(
+            '\n'.join(['## {}:\t{}'.format(key, args[key]) for key in args])
+            + '\n'
+        )
+    )
 
-    sys.stderr.write(log("# Reading input BBC file\n"))
+    sys.stderr.write(log('# Reading input BBC file\n'))
     bbc, clusters = readBBC(args['input'])
 
-    sys.stderr.write(log("# Bin's clusters are selected accordingly to the provided thresholds\n"))
+    sys.stderr.write(
+        log(
+            "# Bin's clusters are selected accordingly to the provided thresholds\n"
+        )
+    )
     clust_order, pal = select(bbc, clusters, args)
 
     if args['fontscale'] != 1:
-        sns.set(font_scale = args['fontscale'])
+        sns.set(font_scale=args['fontscale'])
 
     if args['resolution'] is not None:
-        sys.stderr.write(log("# Merging bins according to resolution\n"))
+        sys.stderr.write(log('# Merging bins according to resolution\n'))
         bbc, clusters = join(bbc, clusters, args['resolution'])
 
     if args['command'] is None or args['command'] == 'RD':
         out = os.path.join(args['x'], 'readdepthratio.pdf')
-        sys.stderr.write(log("# [RD] Plotting read-depth ratio (RDR) for all samples in {}\n".format(out)))
+        sys.stderr.write(
+            log(
+                '# [RD] Plotting read-depth ratio (RDR) for all samples in {}\n'.format(
+                    out
+                )
+            )
+        )
         rdr(bbc, args, out)
 
     if args['command'] is None or args['command'] == 'CRD':
         out = os.path.join(args['x'], 'readdepthratio_clustered.pdf')
-        sys.stderr.write(log("# [CRD] Plotting the clustered read-depth ratio (RDR) for each sample in {}\n".format(out)))
+        sys.stderr.write(
+            log(
+                '# [CRD] Plotting the clustered read-depth ratio (RDR) for each sample in {}\n'.format(
+                    out
+                )
+            )
+        )
         clurdr(bbc, clusters, args, out)
 
     if args['command'] is None or args['command'] == 'BAF':
         out = os.path.join(args['x'], 'ballelefrequency.pdf')
-        sys.stderr.write(log("# [BAF] Plotting B-allele frequency (BAF) for all samples in {}\n".format(out)))
+        sys.stderr.write(
+            log(
+                '# [BAF] Plotting B-allele frequency (BAF) for all samples in {}\n'.format(
+                    out
+                )
+            )
+        )
         baf(bbc, args, out)
 
     if args['command'] is None or args['command'] == 'CBAF':
         out = os.path.join(args['x'], 'ballelefrequency_clustered.pdf')
-        sys.stderr.write(log("# [CBAF] Plotting the clustered B-allele frequency (BAF) for each sample in {}\n".format(out)))
+        sys.stderr.write(
+            log(
+                '# [CBAF] Plotting the clustered B-allele frequency (BAF) for each sample in {}\n'.format(
+                    out
+                )
+            )
+        )
         clubaf(bbc, clusters, args, out)
 
     if args['command'] is None or args['command'] == 'BB':
         out = os.path.join(args['x'], 'bb.pdf')
-        sys.stderr.write(log("# [BB] Plotting RDR-BB for all samples in {}\n".format(out)))
+        sys.stderr.write(
+            log('# [BB] Plotting RDR-BB for all samples in {}\n'.format(out))
+        )
         bb(bbc, clusters, args, out)
 
     if args['command'] is None or args['command'] == 'CBB':
-        out = os.path.join(args['x'], 'bb_clustered.pdf' if args['pdf'] else 'bb_clustered.png')
-        sys.stderr.write(log("# [CBB] Plotting clustered RDR-BB for all samples in {}\n".format(out)))
+        out = os.path.join(
+            args['x'],
+            'bb_clustered.pdf' if args['pdf'] else 'bb_clustered.png',
+        )
+        sys.stderr.write(
+            log(
+                '# [CBB] Plotting clustered RDR-BB for all samples in {}\n'.format(
+                    out
+                )
+            )
+        )
         cluster_bins(bbc, clusters, args, out, clust_order, pal)
 
     if args['command'] is None or args['command'] == 'CLUSTER':
         if args['segfile'] is not None:
             seg = readSEG(args['segfile'])
             out = os.path.join(args['x'], 'clusters.pdf')
-            sys.stderr.write(log("# [CLUSTER] Plotting clusters for all samples in {}\n".format(out)))
+            sys.stderr.write(
+                log(
+                    '# [CLUSTER] Plotting clusters for all samples in {}\n'.format(
+                        out
+                    )
+                )
+            )
             clus(seg, args, out)
         else:
-            sys.stderr.write(warning('### Provide a .seg file to also plot CLUSTER\n'))
+            sys.stderr.write(
+                warning('### Provide a .seg file to also plot CLUSTER\n')
+            )
 
 
 def rdr(bbc, args, out):
-    pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
+    pos = [
+        (c, s)
+        for c in sorted(bbc, key=sortchr)
+        for s in sorted(bbc[c], key=(lambda z: z[0]))
+    ]
     lx = 'Genome'
     ly = 'Read-depth ratio (RDR)'
     lh = 'Sample'
-    data = [{lx : x, ly : bbc[b[0]][b[1]][p]['RDR'], lh : p} for x, b in enumerate(pos) for p in bbc[b[0]][b[1]]]
+    data = [
+        {lx: x, ly: bbc[b[0]][b[1]][p]['RDR'], lh: p}
+        for x, b in enumerate(pos)
+        for p in bbc[b[0]][b[1]]
+    ]
     df = pd.DataFrame(data)
     df.sort_values([lx, lh], ascending=[True, False])
     figsize = args['figsize'] if args['figsize'] is not None else (8, 2)
@@ -95,34 +156,62 @@ def rdr(bbc, args, out):
     mpl.rcParams['figure.figsize'] = (figsize[0], figsize[1])
 
     with PdfPages(out) as pdf:
-        sys.stderr.write(info("## Plotting for all samples..\n"))
-        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, palette=args['cmap'], fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
+        sys.stderr.write(info('## Plotting for all samples..\n'))
+        g = sns.lmplot(
+            data=df,
+            x=lx,
+            y=ly,
+            hue=lh,
+            palette=args['cmap'],
+            fit_reg=False,
+            height=figsize[0],
+            aspect=figsize[1],
+            markers='|',
+            scatter_kws={'s': s},
+        )
         addchr(pos)
         coordinates(args, g)
-        plt.xlim(xmin=0, xmax=(len(pos)+1))
+        plt.xlim(xmin=0, xmax=(len(pos) + 1))
         coordinates(args, g)
         pdf.savefig(bbox_inches='tight')
         plt.close()
 
         for sample, group in df.groupby(lh):
-            sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
-            g = sns.lmplot(data=group, x=lx, y=ly, fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
+            sys.stderr.write(info('## Plotting for {}..\n'.format(sample)))
+            g = sns.lmplot(
+                data=group,
+                x=lx,
+                y=ly,
+                fit_reg=False,
+                height=figsize[0],
+                aspect=figsize[1],
+                markers='|',
+                scatter_kws={'s': s},
+            )
             addchr(pos)
             coordinates(args, g)
-            plt.title("Read-depth ratio in {}".format(sample))
-            plt.xlim(xmin=0, xmax=(len(pos)+1))
+            plt.title('Read-depth ratio in {}'.format(sample))
+            plt.xlim(xmin=0, xmax=(len(pos) + 1))
             coordinates(args, g)
             pdf.savefig(bbox_inches='tight')
             plt.close()
 
 
 def clurdr(bbc, clusters, args, out):
-    pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
+    pos = [
+        (c, s)
+        for c in sorted(bbc, key=sortchr)
+        for s in sorted(bbc[c], key=(lambda z: z[0]))
+    ]
     lx = 'Genome'
     ly = 'Read-depth ratio (RDR)'
     g = 'Sample'
     lh = 'Cluster'
-    data = [{lx : x, ly : bbc[b[0]][b[1]][p]['RDR'], g : p, lh : clusters[b[0]][b[1]]} for x, b in enumerate(pos) for p in bbc[b[0]][b[1]]]
+    data = [
+        {lx: x, ly: bbc[b[0]][b[1]][p]['RDR'], g: p, lh: clusters[b[0]][b[1]]}
+        for x, b in enumerate(pos)
+        for p in bbc[b[0]][b[1]]
+    ]
     df = pd.DataFrame(data)
     df.sort_values([lx, lh], ascending=[True, True])
     figsize = args['figsize'] if args['figsize'] is not None else (8, 2)
@@ -131,22 +220,41 @@ def clurdr(bbc, clusters, args, out):
 
     with PdfPages(out) as pdf:
         for sample, group in df.groupby(g):
-            sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
-            sns.lmplot(data=group, x=lx, y=ly, hue=lh, fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s}, legend=False)
+            sys.stderr.write(info('## Plotting for {}..\n'.format(sample)))
+            sns.lmplot(
+                data=group,
+                x=lx,
+                y=ly,
+                hue=lh,
+                fit_reg=False,
+                height=figsize[0],
+                aspect=figsize[1],
+                markers='|',
+                scatter_kws={'s': s},
+                legend=False,
+            )
             addchr(pos)
             coordinates(args)
-            plt.title("Read-depth ratio in {}".format(sample))
-            plt.xlim(xmin=0, xmax=(len(pos)+1))
+            plt.title('Read-depth ratio in {}'.format(sample))
+            plt.xlim(xmin=0, xmax=(len(pos) + 1))
             pdf.savefig(bbox_inches='tight')
             plt.close()
 
 
 def baf(bbc, args, out):
-    pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
+    pos = [
+        (c, s)
+        for c in sorted(bbc, key=sortchr)
+        for s in sorted(bbc[c], key=(lambda z: z[0]))
+    ]
     lx = 'Genome'
     ly = 'B-allele frequency (BAF)'
     lh = 'Sample'
-    data = [{lx : x, ly : bbc[b[0]][b[1]][p]['BAF'], lh : p} for x, b in enumerate(pos) for p in bbc[b[0]][b[1]]]
+    data = [
+        {lx: x, ly: bbc[b[0]][b[1]][p]['BAF'], lh: p}
+        for x, b in enumerate(pos)
+        for p in bbc[b[0]][b[1]]
+    ]
     df = pd.DataFrame(data)
     df.sort_values([lx, lh], ascending=[True, False])
     figsize = args['figsize'] if args['figsize'] is not None else (8, 2)
@@ -154,34 +262,62 @@ def baf(bbc, args, out):
     mpl.rcParams['figure.figsize'] = (figsize[0], figsize[1])
 
     with PdfPages(out) as pdf:
-        sys.stderr.write(info("## Plotting for all samples..\n"))
-        g = sns.lmplot(data=df, x=lx, y=ly, hue=lh, palette=args['cmap'], fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
+        sys.stderr.write(info('## Plotting for all samples..\n'))
+        g = sns.lmplot(
+            data=df,
+            x=lx,
+            y=ly,
+            hue=lh,
+            palette=args['cmap'],
+            fit_reg=False,
+            height=figsize[0],
+            aspect=figsize[1],
+            markers='|',
+            scatter_kws={'s': s},
+        )
         plt.ylim(ymax=0.5)
         addchr(pos)
         coordinates(args)
-        plt.xlim(xmin=0, xmax=(len(pos)+1))
+        plt.xlim(xmin=0, xmax=(len(pos) + 1))
         pdf.savefig(bbox_inches='tight')
         plt.close()
 
         for sample, group in df.groupby(lh):
-            sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
-            sns.lmplot(data=group, x=lx, y=ly, fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s})
+            sys.stderr.write(info('## Plotting for {}..\n'.format(sample)))
+            sns.lmplot(
+                data=group,
+                x=lx,
+                y=ly,
+                fit_reg=False,
+                height=figsize[0],
+                aspect=figsize[1],
+                markers='|',
+                scatter_kws={'s': s},
+            )
             plt.ylim(ymax=0.5)
             addchr(pos)
             coordinates(args)
-            plt.title("B-allele frequency in {}".format(sample))
-            plt.xlim(xmin=0, xmax=(len(pos)+1))
+            plt.title('B-allele frequency in {}'.format(sample))
+            plt.xlim(xmin=0, xmax=(len(pos) + 1))
             pdf.savefig(bbox_inches='tight')
             plt.close()
 
 
 def clubaf(bbc, clusters, args, out):
-    pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
+    pos = [
+        (c, s)
+        for c in sorted(bbc, key=sortchr)
+        for s in sorted(bbc[c], key=(lambda z: z[0]))
+    ]
     lx = 'Genome'
     ly = 'B-allele frequency (BAF)'
     g = 'Sample'
     lh = 'Cluster'
-    data = [{lx : x, ly : bbc[b[0]][b[1]][p]['BAF'], g : p, lh : clusters[b[0]][b[1]]} for x, b in enumerate(pos) for p in bbc[b[0]][b[1]]]
+    data = [
+        {lx: x, ly: bbc[b[0]][b[1]][p]['BAF'], g: p, lh: clusters[b[0]][b[1]]}
+        for x, b in enumerate(pos)
+        for p in bbc[b[0]][b[1]]
+    ]
     df = pd.DataFrame(data)
     df.sort_values([lx, lh], ascending=[True, True])
     figsize = args['figsize'] if args['figsize'] is not None else (8, 2)
@@ -190,35 +326,58 @@ def clubaf(bbc, clusters, args, out):
 
     with PdfPages(out) as pdf:
         for sample, group in df.groupby(g):
-            sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
-            sns.lmplot(data=group, x=lx, y=ly, hue=lh, fit_reg=False, height=figsize[0], aspect=figsize[1], markers="|", scatter_kws={"s":s}, legend=False)
+            sys.stderr.write(info('## Plotting for {}..\n'.format(sample)))
+            sns.lmplot(
+                data=group,
+                x=lx,
+                y=ly,
+                hue=lh,
+                fit_reg=False,
+                height=figsize[0],
+                aspect=figsize[1],
+                markers='|',
+                scatter_kws={'s': s},
+                legend=False,
+            )
             plt.ylim(ymax=0.5)
             addchr(pos)
             coordinates(args)
-            plt.title("B-allele frequency in {}".format(sample))
-            plt.xlim(xmin=0, xmax=(len(pos)+1))
+            plt.title('B-allele frequency in {}'.format(sample))
+            plt.xlim(xmin=0, xmax=(len(pos) + 1))
             pdf.savefig(bbox_inches='tight')
             plt.close()
 
 
 def bb(bbc, clusters, args, out):
-    pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
+    pos = [
+        (c, s)
+        for c in sorted(bbc, key=sortchr)
+        for s in sorted(bbc[c], key=(lambda z: z[0]))
+    ]
     ly = 'RDR'
     lx = '0.5 - BAF'
     g = 'Sample'
-    data = [{ly : bbc[b[0]][b[1]][p]['RDR'], lx : 0.5 - bbc[b[0]][b[1]][p]['BAF'], g : p} for b in pos for p in bbc[b[0]][b[1]]]
+    data = [
+        {
+            ly: bbc[b[0]][b[1]][p]['RDR'],
+            lx: 0.5 - bbc[b[0]][b[1]][p]['BAF'],
+            g: p,
+        }
+        for b in pos
+        for p in bbc[b[0]][b[1]]
+    ]
     df = pd.DataFrame(data)
     figsize = args['figsize'] if args['figsize'] is not None else (16, 10)
     s = args['markersize'] if args['markersize'] > 0 else 10
 
     with PdfPages(out) as pdf:
         for sample, group in df.groupby(g):
-            sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
+            sys.stderr.write(info('## Plotting for {}..\n'.format(sample)))
             rdratio = np.array(group[lx])
             baf = np.array(group[ly])
 
             # Calculate the point density
-            xy = np.vstack([rdratio,baf])
+            xy = np.vstack([rdratio, baf])
             z = gaussian_kde(xy)(xy)
 
             # Sort the points by density, so that the densest points are plotted last
@@ -226,7 +385,9 @@ def bb(bbc, clusters, args, out):
             rdratio, baf, z = rdratio[idx], baf[idx], z[idx]
 
             fig, ax = plt.subplots(1, figsize=figsize)
-            cax = ax.scatter(rdratio, baf, c=z, cmap=plt.cm.jet, norm=col.LogNorm(),s=s)
+            cax = ax.scatter(
+                rdratio, baf, c=z, cmap=plt.cm.jet, norm=col.LogNorm(), s=s
+            )
             ax.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
             ax.grid(True)
             plt.colorbar(cax)
@@ -237,20 +398,39 @@ def bb(bbc, clusters, args, out):
 
 
 def cluster_bins(bbc, clusters, args, out, clust_order, pal):
-    pos = [(c, s) for c in sorted(bbc, key=sortchr) for s in sorted(bbc[c], key=(lambda z : z[0]))]
+    pos = [
+        (c, s)
+        for c in sorted(bbc, key=sortchr)
+        for s in sorted(bbc[c], key=(lambda z: z[0]))
+    ]
     ly = 'RDR'
     lx = '0.5 - BAF'
     g = 'Sample'
     lh = 'Cluster'
-    size = {i : float(sum(clusters[b[0]][b[1]] == i for b in pos)) for i in set(clusters[b[0]][b[1]] for b in pos)}
-    data = [{ly : bbc[b[0]][b[1]][p]['RDR'], lx : 0.5 - bbc[b[0]][b[1]][p]['BAF'], g : p, lh : clusters[b[0]][b[1]], 'size' : size[clusters[b[0]][b[1]]]} for b in pos for p in bbc[b[0]][b[1]]]
+    size = {
+        i: float(sum(clusters[b[0]][b[1]] == i for b in pos))
+        for i in set(clusters[b[0]][b[1]] for b in pos)
+    }
+    data = [
+        {
+            ly: bbc[b[0]][b[1]][p]['RDR'],
+            lx: 0.5 - bbc[b[0]][b[1]][p]['BAF'],
+            g: p,
+            lh: clusters[b[0]][b[1]],
+            'size': size[clusters[b[0]][b[1]]],
+        }
+        for b in pos
+        for p in bbc[b[0]][b[1]]
+    ]
     df = pd.DataFrame(data)
 
-    # for the top clusters in clust_order (leftmost in list) that have an asigned color (not gray) in palette pal, 
+    # for the top clusters in clust_order (leftmost in list) that have an asigned color (not gray) in palette pal,
     # get their index in pal, otherwise assign the rest of the clusters to the last color in the palette (gray)
     l = []
     for i in df['Cluster']:
-        l.append(clust_order.index(i)) if clust_order.index(i) <= len(pal)-2 else l.append(len(pal)-1)
+        l.append(clust_order.index(i)) if clust_order.index(i) <= len(
+            pal
+        ) - 2 else l.append(len(pal) - 1)
     df['Color'] = l
     # reverse order so largest clusters with color plotted last and on top
     order = [i for i in range(len(pal))]
@@ -258,17 +438,44 @@ def cluster_bins(bbc, clusters, args, out, clust_order, pal):
     pal.reverse()
     figsize = args['figsize'] if args['figsize'] is not None else (10, 1.1)
     s = args['markersize'] if args['markersize'] > 0 else 7
-    
-    #with PdfPages(out) as pdf:
+
+    # with PdfPages(out) as pdf:
     #    for sample, group in df.groupby(g):
-    #sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
+    # sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
     if args['colwrap'] > 1:
-        g = sns.lmplot(data=df, x=lx, y=ly, hue='Color', hue_order=order, palette=pal, fit_reg=False, height=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, col=g, col_wrap=args['colwrap'])
+        g = sns.lmplot(
+            data=df,
+            x=lx,
+            y=ly,
+            hue='Color',
+            hue_order=order,
+            palette=pal,
+            fit_reg=False,
+            height=figsize[0],
+            aspect=figsize[1],
+            scatter_kws={'s': s},
+            legend=False,
+            col=g,
+            col_wrap=args['colwrap'],
+        )
     else:
-        g = sns.lmplot(data=df, x=lx, y=ly, hue='Color', hue_order=order, palette=pal, fit_reg=False, height=figsize[0], aspect=figsize[1], scatter_kws={"s":s}, legend=False, row=g)
-    #plt.title("{}".format(sample))
+        g = sns.lmplot(
+            data=df,
+            x=lx,
+            y=ly,
+            hue='Color',
+            hue_order=order,
+            palette=pal,
+            fit_reg=False,
+            height=figsize[0],
+            aspect=figsize[1],
+            scatter_kws={'s': s},
+            legend=False,
+            row=g,
+        )
+    # plt.title("{}".format(sample))
     coordinates(args, g)
-    #pdf.savefig(bbox_inches='tight')
+    # pdf.savefig(bbox_inches='tight')
     if args['pdf']:
         plt.savefig(out, bbox_inches='tight')
     else:
@@ -286,14 +493,20 @@ def clus(seg, args, out):
     s = args['markersize'] if args['markersize'] > 0 else 20
     mpl.rcParams['figure.figsize'] = (figsize[0], figsize[1])
     pal = cycle(sns.color_palette(args['cmap'], min(20, len(set(seg)))))
-    col = {idx : next(pal) for idx in seg}
+    col = {idx: next(pal) for idx in seg}
 
     with PdfPages(out) as pdf:
         for p in samples:
-            sys.stderr.write(info("## Plotting for {}..\n".format(p)))
+            sys.stderr.write(info('## Plotting for {}..\n'.format(p)))
             for idx in seg:
-                plt.scatter(0.5 - seg[idx][p]['BAF'], seg[idx][p]['RDR'], c=col[idx], s=(seg[idx][p]['SIZE']**0.5)*20, alpha=0.8)
-            plt.title("{}".format(p))
+                plt.scatter(
+                    0.5 - seg[idx][p]['BAF'],
+                    seg[idx][p]['RDR'],
+                    c=col[idx],
+                    s=(seg[idx][p]['SIZE'] ** 0.5) * 20,
+                    alpha=0.8,
+                )
+            plt.title('{}'.format(p))
             coordinates(args)
             pdf.savefig(bbox_inches='tight')
             plt.close()
@@ -361,7 +574,7 @@ def join(bbc, clusters, resolution):
     projclu = {}
     samples = set(p for c in bbc for s in bbc[c] for p in bbc[c][s])
     for c in bbc:
-        bins = sorted(list(bbc[c]), key=(lambda x : x[0]))
+        bins = sorted(list(bbc[c]), key=(lambda x: x[0]))
         projbbc[c] = {}
         projclu[c] = {}
         while bins:
@@ -371,16 +584,24 @@ def join(bbc, clusters, resolution):
             for p in samples:
                 projbbc[c][tmp[0][0], tmp[-1][1]][p] = {}
                 projclu[c][tmp[0][0], tmp[-1][1]][p] = {}
-                projbbc[c][tmp[0][0], tmp[-1][1]][p]['RDR'] = sum(bbc[c][b][p]['RDR'] for b in tmp) / float(len(tmp))
-                projbbc[c][tmp[0][0], tmp[-1][1]][p]['BAF'] = sum(bbc[c][b][p]['BAF'] for b in tmp) / float(len(tmp))
-            projclu[c][tmp[0][0], tmp[-1][1]] = argmax(dict(Counter([clusters[c][s] for s in tmp])))
+                projbbc[c][tmp[0][0], tmp[-1][1]][p]['RDR'] = sum(
+                    bbc[c][b][p]['RDR'] for b in tmp
+                ) / float(len(tmp))
+                projbbc[c][tmp[0][0], tmp[-1][1]][p]['BAF'] = sum(
+                    bbc[c][b][p]['BAF'] for b in tmp
+                ) / float(len(tmp))
+            projclu[c][tmp[0][0], tmp[-1][1]] = argmax(
+                dict(Counter([clusters[c][s] for s in tmp]))
+            )
             bins = bins[resolution:]
     return projbbc, projclu
 
 
 def select(bbc, clusters, args):
-    alls = set(clusters[c][s] for c in clusters for s in clusters[c]) # all cluster IDs
-    count = {idx : {'SIZE' : 0.0, 'CHRS' : set()} for idx in alls}
+    alls = set(
+        clusters[c][s] for c in clusters for s in clusters[c]
+    )   # all cluster IDs
+    count = {idx: {'SIZE': 0.0, 'CHRS': set()} for idx in alls}
     totsize = sum(1.0 for c in bbc for s in bbc[c])
     for c in bbc:
         for s in bbc[c]:
@@ -390,27 +611,49 @@ def select(bbc, clusters, args):
     # sel(ect) clusters based on size
     sel = set(alls)
     if args['st'] is not None:
-        sel = set(idx for idx in sel if float(count[idx]['SIZE'] / totsize) >= args['st'])
+        sel = set(
+            idx
+            for idx in sel
+            if float(count[idx]['SIZE'] / totsize) >= args['st']
+        )
     if args['ct'] is not None:
         sel = set(idx for idx in sel if len(count[idx]['CHRS']) >= args['ct'])
-    s = ['{}:\tSIZE= {},\t# CHRS= {}'.format(idx, count[idx]['SIZE'], count[idx]['CHRS']) for idx in sel]
+    s = [
+        '{}:\tSIZE= {},\t# CHRS= {}'.format(
+            idx, count[idx]['SIZE'], count[idx]['CHRS']
+        )
+        for idx in sel
+    ]
     sys.stderr.write(info('## Selected clusters: \n{}\n'.format('\n'.join(s))))
 
     # if too many clusters are selected, still select the largest ones based on the number of colors in palette
-    sel = sorted(sel, key=(lambda x: count[x]['SIZE']), reverse=True) # order selected clusters large -> small
-    sel = sel[0:len(sns.color_palette(args['cmap']))]            # select the top ones if more selected clusters than colors
-    clust_order = [i for i in reversed(sel)]                    # reverse order for later plotting, smaller selected clusters in front
+    sel = sorted(
+        sel, key=(lambda x: count[x]['SIZE']), reverse=True
+    )   # order selected clusters large -> small
+    sel = sel[
+        0 : len(sns.color_palette(args['cmap']))
+    ]            # select the top ones if more selected clusters than colors
+    clust_order = [
+        i for i in reversed(sel)
+    ]                    # reverse order for later plotting, smaller selected clusters in front
     # add on the rest of the unselected clusters, but we'll know which ones to color based on the number of
     # colors in the palette pal
-    [ clust_order.append(i) if not i in sel else next for i in alls ]
+    [clust_order.append(i) if not i in sel else next for i in alls]
     # configure palette; subselecting colors if there are fewer selected clusters than colors
-    if len(sel) <= len(sns.color_palette(args['cmap'])): # are there more colors than selected clusters?    
-        pal = sns.color_palette(args['cmap'])[0:len(sel)] # only select colors for the selected clusters at begining of clust_order
-    else:    
-        pal = sns.color_palette(args['cmap'])    
-    pal.append('0.75') # all non selected clusters (or additional ones beyond palette colors) get colors gray
+    if len(sel) <= len(
+        sns.color_palette(args['cmap'])
+    ):   # are there more colors than selected clusters?
+        pal = sns.color_palette(args['cmap'])[
+            0 : len(sel)
+        ]   # only select colors for the selected clusters at begining of clust_order
+    else:
+        pal = sns.color_palette(args['cmap'])
+    pal.append(
+        '0.75'
+    )   # all non selected clusters (or additional ones beyond palette colors) get colors gray
 
     return clust_order, pal
+
 
 def addchr(pos):
     ymin, ymax = plt.ylim()
@@ -418,14 +661,16 @@ def addchr(pos):
     prev = 0
     val = pos[0][0]
     for x, s in enumerate(pos):
-        if x != 0 and pos[x-1][0] != pos[x][0]:
-            plt.plot((x, x), (0, ymax+0.4), '--b', linewidth=0.2)
+        if x != 0 and pos[x - 1][0] != pos[x][0]:
+            plt.plot((x, x), (0, ymax + 0.4), '--b', linewidth=0.2)
             corners.append((prev, x, val))
             prev = x
             val = s[0]
     corners.append((prev, x, val))
     ticks = [(int(float(o[1] + o[0] + 1) / 2.0), o[2]) for o in corners]
-    plt.xticks([x[0] for x in ticks], [x[1] for x in ticks], rotation=45, ha='center')
+    plt.xticks(
+        [x[0] for x in ticks], [x[1] for x in ticks], rotation=45, ha='center'
+    )
     plt.yticks(rotation=0)
 
 
@@ -440,7 +685,10 @@ def coordinates(args, g=None):
         if args['ymax'] is not None:
             plt.ylim(ymax=args['ymax'])
     else:
-        g.set(xlim=(args['xmin'], args['xmax']), ylim=(args['ymin'], args['ymax']))
+        g.set(
+            xlim=(args['xmin'], args['xmax']),
+            ylim=(args['ymin'], args['ymax']),
+        )
 
 
 def sortchr(x):
@@ -451,11 +699,14 @@ def sortchr(x):
     else:
         return int(''.join([d for d in x if d.isdigit()]))
 
+
 def argmax(d):
-    return max(d, key=(lambda x : d[x]))
+    return max(d, key=(lambda x: d[x]))
+
 
 def argmin(d):
-    return min(d, key=(lambda x : d[x]))
+    return min(d, key=(lambda x: d[x]))
+
 
 def isfloat(value):
     try:
@@ -464,20 +715,26 @@ def isfloat(value):
     except ValueError:
         return False
 
+
 def error(msg):
-    return "{}{}{}".format("\033[91m\033[1m", msg, "\033[0m")
+    return '{}{}{}'.format('\033[91m\033[1m', msg, '\033[0m')
+
 
 def warning(msg):
-    return "{}{}{}".format("\033[93m\033[1m", msg, "\033[0m")
+    return '{}{}{}'.format('\033[93m\033[1m', msg, '\033[0m')
+
 
 def log(msg):
-    return "{}{}{}".format("\033[95m\033[1m", msg, "\033[0m")
+    return '{}{}{}'.format('\033[95m\033[1m', msg, '\033[0m')
+
 
 def info(msg):
-    return "{}{}{}".format("\033[96m", msg, "\033[0m")
+    return '{}{}{}'.format('\033[96m', msg, '\033[0m')
+
 
 def debug(msg):
-    return "{}{}{}".format("\033[92m", msg, "\033[0m")
+    return '{}{}{}'.format('\033[92m', msg, '\033[0m')
+
 
 if __name__ == '__main__':
     main()

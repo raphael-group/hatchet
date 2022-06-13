@@ -6,43 +6,43 @@
 
 class BBCInstance
 {
-    
+
 public:
     BBCInstance();
-    
+
     friend std::ostream& operator<<(std::ostream& out, const BBCInstance& instance);
     friend std::istream& operator>>(std::istream& in, BBCInstance& instance);
-    
+
     int m() const
     {
         return _m;
     }
-    
+
     int k() const
     {
         return _k;
     }
-    
+
     const StringMap& chromosomes() const
     {
         return _chromosomes;
     }
-    
+
     const StringSet& clusters() const
     {
         return _clusters;
     }
-    
+
     const BinMap& bins() const
     {
         return _bins;
     }
-    
+
     const StringSet& samples() const
     {
         return _samples;
     }
-    
+
     const StringMap& mapSampleToIdx() const
     {
         return _mapSampleToIdx;
@@ -62,9 +62,9 @@ public:
     {
         return _binsToCluster;
     }
-    
+
 private:
-    
+
     ///
     int _m;
     ///
@@ -91,5 +91,3 @@ std::ostream& operator<<(std::ostream& out, const BBCInstance& instance);
 std::istream& operator>>(std::istream& in, BBCInstance& instance);
 
 #endif // _INPUTINSTANCE_H_
-
-

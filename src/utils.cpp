@@ -173,15 +173,15 @@ std::string trim(const std::string &s)
 }
 
 IntArray sort_indexes(const IntArray &v) {
-    
+
     // initialize original index locations
     IntArray idx(v.size());
     std::iota(idx.begin(), idx.end(), 0);
-    
+
     // sort indexes based on comparing values in v
     std::sort(idx.begin(), idx.end(),
          [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
-    
+
     return idx;
 }
 
@@ -271,4 +271,3 @@ std::string remove_extension(std::string const& filename)
     typename std::string::size_type const p(filename.find_last_of('.'));
     return p > 0 && p != std::string::npos ? filename.substr(0, p) : filename;
 }
-

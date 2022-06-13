@@ -84,11 +84,11 @@ We thus obtain the following clustering:
 
 ![CBB](cbb.png)
 
-We can easily notice that the clustering is good and not tuning is needed as every pair of clusters is clearly distinct in one of the two dimensions (RDR and BAF) in **at least one** sample. 
+We can easily notice that the clustering is good and not tuning is needed as every pair of clusters is clearly distinct in one of the two dimensions (RDR and BAF) in **at least one** sample.
 
 ## hatchet's step
 
-Next we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD. 
+Next we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
 We apply the last step with default parameters and, for simplicity of this demo, we consider 6 clones, which can be easily considered by HATCHet in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
 
 ```shell
@@ -117,7 +117,7 @@ We obtain the following summary of results:
 	## The related-tetraploid resulting files are copied to ./chosen.tetraploid.bbc.ucn and ./chosen.tetraploid.seg.ucn
 	# The chosen solution is diploid with 3 clones and is written in ./best.bbc.ucn and ./best.seg.ucn
 
-HATCHet predicts the presence of 3 clones in the 2 tumor samples and, especially, predicts that a sample contains two distinct tumor clones, according to the true clonal composition, and one of these clones is shared with the other sample. 
+HATCHet predicts the presence of 3 clones in the 2 tumor samples and, especially, predicts that a sample contains two distinct tumor clones, according to the true clonal composition, and one of these clones is shared with the other sample.
 
 ## Analyzing inferred results
 

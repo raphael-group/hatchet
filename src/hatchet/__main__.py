@@ -28,9 +28,26 @@ from hatchet.utils.phase_snps import main as phase_snps
 
 from hatchet.utils.check import main as check
 
-commands = ('count-reads', 'count-reads-fw', 'genotype-snps', 'count-alleles', 'combine-counts',
-            'combine-counts-fw', 'cluster-bins', 'plot-bins','compute-cn', 'plot-cn', 'run', 'check',
-            'download-panel', 'phase-snps', 'cluster-bins-loc', 'plot-cn-1d2d', 'plot-bins-1d2d')
+commands = (
+    'count-reads',
+    'count-reads-fw',
+    'genotype-snps',
+    'count-alleles',
+    'combine-counts',
+    'combine-counts-fw',
+    'cluster-bins',
+    'plot-bins',
+    'compute-cn',
+    'plot-cn',
+    'run',
+    'check',
+    'download-panel',
+    'phase-snps',
+    'cluster-bins-loc',
+    'plot-cn-1d2d',
+    'plot-bins-1d2d',
+)
+
 
 def print_usage():
     print('HATCHet v' + hatchet.__version__)
@@ -51,7 +68,7 @@ def main():
         'BBeval': 'plot-cn',
         'PhasePrep': 'download-panel',
         'Phase': 'phase-snps',
-        'check-solver': 'check'
+        'check-solver': 'check',
     }
 
     if len(sys.argv) < 2:
@@ -62,8 +79,10 @@ def main():
     args = sys.argv[2:]
 
     if command in aliases:
-        msg = f'The HATCHet command "{command}" has been replaced by "{aliases[command]}" and will be absent in ' \
-              f'future releases. Please update your scripts accordingly.'
+        msg = (
+            f'The HATCHet command "{command}" has been replaced by "{aliases[command]}" and will be absent in '
+            f'future releases. Please update your scripts accordingly.'
+        )
         warnings.warn(msg, FutureWarning)
     elif command not in commands:
         print_usage()

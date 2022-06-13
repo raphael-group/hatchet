@@ -23,20 +23,22 @@ def numericOrder(text):
         return int(digits(text))
     else:
         if not (text.endswith('X') or text.endswith('Y')):
-            raise ValueError(f'Found chromosome ID that is not numeric or X/Y: {text}')
+            raise ValueError(
+                f'Found chromosome ID that is not numeric or X/Y: {text}'
+            )
         return ascii_uppercase.index(text[-1])
 
 
 def digits(string):
-    return "".join(x for x in string if x.isdigit())
+    return ''.join(x for x in string if x.isdigit())
 
 
 def argmax(d):
-    return max(d, key=(lambda x : d[x]))
+    return max(d, key=(lambda x: d[x]))
 
 
 def argmin(d):
-    return min(d, key=(lambda x : d[x]))
+    return min(d, key=(lambda x: d[x]))
 
 
 def which(program):
@@ -76,15 +78,24 @@ class bcolors:
 
 # format strings with 'timestamp' and 'msg' as placeholders
 MSG_FORMAT_STRINGS = {
-    'STEP': bcolors.BOLD + bcolors.HEADER + '[{timestamp}]{msg}' + bcolors.ENDC,
+    'STEP': bcolors.BOLD
+    + bcolors.HEADER
+    + '[{timestamp}]{msg}'
+    + bcolors.ENDC,
     'INFO': bcolors.OKGREEN + '{msg}' + bcolors.ENDC,
     'WARN': bcolors.WARNING + '{msg}' + bcolors.ENDC,
     'PROGRESS': bcolors.BBLUE + '{msg}' + bcolors.ENDC,
-    'ERROR': bcolors.FAIL + '{msg}' + bcolors.ENDC
+    'ERROR': bcolors.FAIL + '{msg}' + bcolors.ENDC,
 }
 
 
-def log(msg, level=None, lock=None, raise_exception=False, exception_class=ValueError):
+def log(
+    msg,
+    level=None,
+    lock=None,
+    raise_exception=False,
+    exception_class=ValueError,
+):
     timestamp = '{:%Y-%b-%d %H:%M:%S}'.format(datetime.datetime.now())
     format_string = MSG_FORMAT_STRINGS.get(level) or '{msg}'
     formatted_msg = format_string.format(msg=msg, timestamp=timestamp)
@@ -107,12 +118,19 @@ def logArgs(args, width=40):
 
 
 def error(msg, raise_exception=False, exception_class=ValueError):
-    return log(msg, level='ERROR', raise_exception=raise_exception, exception_class=exception_class)
+    return log(
+        msg,
+        level='ERROR',
+        raise_exception=raise_exception,
+        exception_class=exception_class,
+    )
 
 
 def ensure(pred, msg, exception_class=ValueError):
     if not pred:
-        return error(msg, raise_exception=True, exception_class=exception_class)
+        return error(
+            msg, raise_exception=True, exception_class=exception_class
+        )
 
 
 def close(msg):
@@ -120,8 +138,14 @@ def close(msg):
     sys.exit(0)
 
 
-def run(commands, stdouterr_filepath=None, check_return_codes=True, error_msg=None, stdouterr_filepath_autoremove=True,
-        **kwargs):
+def run(
+    commands,
+    stdouterr_filepath=None,
+    check_return_codes=True,
+    error_msg=None,
+    stdouterr_filepath_autoremove=True,
+    **kwargs,
+):
     singleton = isinstance(commands, str)
     if singleton:
         commands = [commands]
@@ -133,7 +157,11 @@ def run(commands, stdouterr_filepath=None, check_return_codes=True, error_msg=No
     if 'shell' not in kwargs:
         kwargs['shell'] = True
 
-    f = open(stdouterr_filepath, 'w') if stdouterr_filepath is not None else None
+    f = (
+        open(stdouterr_filepath, 'w')
+        if stdouterr_filepath is not None
+        else None
+    )
     for command in commands:
         p = subprocess.run(command, stdout=f, stderr=f, **kwargs)
         return_codes.append(p.returncode)
@@ -144,7 +172,9 @@ def run(commands, stdouterr_filepath=None, check_return_codes=True, error_msg=No
         if error_msg is None:
             error_msg = 'Command "{command}" did not run successfully.'
         if stdouterr_filepath:
-            error_msg += f' Please check {stdouterr_filepath} for possible hints.'
+            error_msg += (
+                f' Please check {stdouterr_filepath} for possible hints.'
+            )
 
         for command, return_code in zip(commands, return_codes):
             if return_code != 0:
@@ -156,11 +186,20 @@ def run(commands, stdouterr_filepath=None, check_return_codes=True, error_msg=No
     return return_codes[0] if singleton else return_codes
 
 
-def download(url, dirpath, overwrite=False, extract=True, sentinel_file=None, chunk_size=8192):
+def download(
+    url,
+    dirpath,
+    overwrite=False,
+    extract=True,
+    sentinel_file=None,
+    chunk_size=8192,
+):
     out_basename = os.path.basename(urlparse(url).path)
     out_filepath = os.path.join(dirpath, out_basename)
 
-    if sentinel_file is None or not os.path.exists(os.path.join(dirpath, sentinel_file)):
+    if sentinel_file is None or not os.path.exists(
+        os.path.join(dirpath, sentinel_file)
+    ):
         if overwrite or not os.path.exists(out_filepath):
             with requests.get(url, stream=True) as r:
                 r.raise_for_status()
@@ -168,7 +207,9 @@ def download(url, dirpath, overwrite=False, extract=True, sentinel_file=None, ch
                     for chunk in r.iter_content(chunk_size=chunk_size):
                         f.write(chunk)
 
-        if (out_basename.endswith('.tar.gz') or out_basename.endswith('.tgz')) and extract:
+        if (
+            out_basename.endswith('.tar.gz') or out_basename.endswith('.tgz')
+        ) and extract:
             t = tarfile.open(out_filepath)
             t.extractall(dirpath)
             t.close()

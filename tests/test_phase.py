@@ -28,21 +28,30 @@ def output_folder():
 def test_script(_, output_folder):
     download_panel(
         args=[
-            '-R', '1000GP_Phase3',
+            '-R',
+            '1000GP_Phase3',
         ]
     )
-    
+
     phase_snps(
         args=[
-            '-g', config.paths.reference,
-            '-V', 'hg19',
+            '-g',
+            config.paths.reference,
+            '-V',
+            'hg19',
             '-N',
-            '-o', os.path.join(output_folder, 'phase'),
-            '-L', os.path.join(this_dir, 'data', 'vl', 'snps', 'chr22.vcf.gz')
+            '-o',
+            os.path.join(output_folder, 'phase'),
+            '-L',
+            os.path.join(this_dir, 'data', 'vl', 'snps', 'chr22.vcf.gz'),
         ]
     )
 
-    df1 = pd.read_table(os.path.join(output_folder, 'phase', 'phased.vcf.gz'), comment='#')
-    df2 = pd.read_table(os.path.join(this_dir, 'data', 'vl', 'phase', 'phased.vcf.gz'), comment='#')
+    df1 = pd.read_table(
+        os.path.join(output_folder, 'phase', 'phased.vcf.gz'), comment='#'
+    )
+    df2 = pd.read_table(
+        os.path.join(this_dir, 'data', 'vl', 'phase', 'phased.vcf.gz'),
+        comment='#',
+    )
     assert_frame_equal(df1, df2)
-

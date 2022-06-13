@@ -15,7 +15,7 @@ This step of HATCHet uses the locations of heterozygous SNPs (called by `count-a
 
 ## Output
 
-`count-reads` writes all output files to a given output directory. For each chromosome `chr`, count-reads produces two gzipped files needed to construct adaptive bins: `chr.threhsolds.gz` and `chr.total.gz`. `count-reads` also produces a tab-separated file `total.tsv` containing the total number of reads in each sample, and a text file `samples.txt` containing the list of sample names. 
+`count-reads` writes all output files to a given output directory. For each chromosome `chr`, count-reads produces two gzipped files needed to construct adaptive bins: `chr.threhsolds.gz` and `chr.total.gz`. `count-reads` also produces a tab-separated file `total.tsv` containing the total number of reads in each sample, and a text file `samples.txt` containing the list of sample names.
 
 | Name | Description |
 |------|-------------|

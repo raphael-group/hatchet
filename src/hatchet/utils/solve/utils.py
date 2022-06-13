@@ -30,7 +30,9 @@ class Random:
 
 
 def parse_clonal(clonal):
-    copy_numbers = OrderedDict()  # dict from cluster_id => (cn_a, cn_b) 2-tuple
+    copy_numbers = (
+        OrderedDict()
+    )  # dict from cluster_id => (cn_a, cn_b) 2-tuple
     clonal_parts = clonal.split(',')
     n_clonal_parts = len(clonal_parts)
 
@@ -41,7 +43,9 @@ def parse_clonal(clonal):
         if i == 1:
             _first_cn_a, _first_cn_b = list(copy_numbers.values())[0]
             if _first_cn_a + _first_cn_b == cn_a + cn_b:
-                raise ValueError('When >= 2 clonal copy numbers are given, the first two must be different in the two segmental clusters')
+                raise ValueError(
+                    'When >= 2 clonal copy numbers are given, the first two must be different in the two segmental clusters'
+                )
 
         cn_total = cn_a + cn_b
         if (cn_total == 2) and (n_clonal_parts > 1):
@@ -50,7 +54,9 @@ def parse_clonal(clonal):
             # This is suppressed by default, which is what we do here for now.
             pass
         if cluster_id in copy_numbers:
-            raise ValueError('Already encountered cluster_id =', str(cluster_id))
+            raise ValueError(
+                'Already encountered cluster_id =', str(cluster_id)
+            )
         copy_numbers[cluster_id] = cn_a, cn_b
 
     return copy_numbers
@@ -67,19 +73,36 @@ def scale_rdr(rdr, copy_numbers, purity_tol=0.05):
         # Note the reversed assignment order to conform to C++ behavior - check with Simone!
         cluster_id_2, cluster_id_1 = tuple(copy_numbers.keys())[:2]  # TODO
         rdr_1, rdr_2 = rdr.loc[cluster_id_1], rdr.loc[cluster_id_2]
-        cn_sum_1, cn_sum_2 = sum(copy_numbers[cluster_id_1]), sum(copy_numbers[cluster_id_2])
-        purity = 2 * (rdr_1 - rdr_2) / ((2 - cn_sum_2) * rdr_1 - (2 - cn_sum_1) * rdr_2)
+        cn_sum_1, cn_sum_2 = sum(copy_numbers[cluster_id_1]), sum(
+            copy_numbers[cluster_id_2]
+        )
+        purity = (
+            2
+            * (rdr_1 - rdr_2)
+            / ((2 - cn_sum_2) * rdr_1 - (2 - cn_sum_1) * rdr_2)
+        )
 
         purity[(1 <= purity) & (purity <= 1 + purity_tol)] = 1
         purity[(-purity_tol <= purity) & (purity <= 0)] = 0
 
         scale = (2 - (2 - cn_sum_1) * purity) / rdr_1
-        assert np.all((0 <= purity) & (purity <= 1) & (scale >= 0)), 'scaling failed'
+        assert np.all(
+            (0 <= purity) & (purity <= 1) & (scale >= 0)
+        ), 'scaling failed'
 
     return scale
 
 
-def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None, seg_out_file=None):
+def segmentation(
+    cA,
+    cB,
+    u,
+    cluster_ids,
+    sample_ids,
+    bbc_file,
+    bbc_out_file=None,
+    seg_out_file=None,
+):
     df = pd.read_csv(bbc_file, sep='\t')
     # Chromosomes may or may not have chr notation - force a string dtype anyway
     df['#CHR'] = df['#CHR'].astype(str)
@@ -108,8 +131,10 @@ def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None
     df = df.reset_index(drop=True)
 
     # last 2*n_clone columns names = [cn_normal, u_normal, cn_clone1, u_clone1, cn_clone2, ...]
-    extra_columns = [col for sublist in zip(cN.columns, u.columns) for col in sublist]
-    all_columns = df.columns.values[:-2*n_clone].tolist() + extra_columns
+    extra_columns = [
+        col for sublist in zip(cN.columns, u.columns) for col in sublist
+    ]
+    all_columns = df.columns.values[: -2 * n_clone].tolist() + extra_columns
 
     if bbc_out_file is not None:
         # rearrange columns for easy comparison to legacy files
@@ -124,7 +149,9 @@ def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None
         # all columns names with mixture information (normal + clone)
         u_column_names = u.columns.tolist()
         # create a new column with all cnA|cnB strings joined as a single column
-        df['all_copy_numbers'] = df[cN_column_names].apply(lambda x: ','.join(x), axis=1)
+        df['all_copy_numbers'] = df[cN_column_names].apply(
+            lambda x: ','.join(x), axis=1
+        )
 
         _first_sample_name = df['SAMPLE'].iloc[0]
 
@@ -133,19 +160,22 @@ def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None
         group_name_to_indices = df.groupby(
             (
                 # Find indices where we see the first sample name AND
-                (df['SAMPLE'] == _first_sample_name) &
-                (
+                (df['SAMPLE'] == _first_sample_name)
+                & (
                     # The chromosome changed values from the previous row OR
                     # any of the copy-numbers changed from the previous row OR
                     # the START changed from the END in the previous row
-                    (df['#CHR'] != df['#CHR'].shift()) |
-                    (df['all_copy_numbers'] != df['all_copy_numbers'].shift()) |
-                    (df['START'] != df['END'].shift())
+                    (df['#CHR'] != df['#CHR'].shift())
+                    | (
+                        df['all_copy_numbers']
+                        != df['all_copy_numbers'].shift()
+                    )
+                    | (df['START'] != df['END'].shift())
                 )
             ).cumsum(),
             # cumulative sum increments whenever a True is encountered, thus creating a series of monotonically
             # increasing values we can use as segment numbers
-            sort=False
+            sort=False,
         ).indices
         # 'indices' of a Pandas GroupBy object gives us a mapping from the group 'name'
         # (numbers starting from 1) -> indices in the Dataframe
@@ -153,7 +183,12 @@ def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None
         for group_name, indices in group_name_to_indices.items():
             df.loc[indices, 'segment'] = group_name
 
-        aggregation_rules = {'#CHR': 'first', 'START': 'min', 'END': 'max', 'SAMPLE': 'first'}
+        aggregation_rules = {
+            '#CHR': 'first',
+            'START': 'min',
+            'END': 'max',
+            'SAMPLE': 'first',
+        }
         aggregation_rules.update({c: 'first' for c in extra_columns})
         df = df.groupby(['segment', 'SAMPLE']).agg(aggregation_rules)
 
