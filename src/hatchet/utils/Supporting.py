@@ -4,9 +4,14 @@ import os.path
 import subprocess
 import datetime
 import requests
+import hashlib
 from urllib.parse import urlparse
 import tarfile
 from string import ascii_uppercase
+
+
+def checksum(filepath):
+    return hashlib.md5(open(filepath, 'rb').read()).hexdigest()
 
 
 def naturalOrder(text):

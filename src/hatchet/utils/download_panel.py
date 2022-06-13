@@ -75,11 +75,21 @@ def dwnld_chains(dirpath):
 def dwnld_refpanel_genome(path):
     newref = os.path.join(path, "hg19_no_chr.fa")
     if not os.path.isfile(newref):
-        out = download(config.urls.refpanel_genome, dirpath=path, extract=False)
+
+        # If the genome reference file used in other parts of HATCHet matches the one we want, use it
+        reference_file = config.paths.reference
+        if os.path.isfile(reference_file) and checksum(reference_file) == config.urls.refpanel_genome_checksum:
+            out = reference_file
+        else:
+            out = download(config.urls.refpanel_genome, dirpath=path, extract=False)
+
+        _open, _mode = open, 'r'
+        if out.endswith('gz'):
+            _open, _mode = gzip.open, 'rt'
 
         # change chr notation
         with open(newref, 'w') as new:
-            with gzip.open(out, 'rt') as f:
+            with _open(out, _mode) as f:
                 for line in f:
                     if line.startswith('>'):
                         new.write(line.replace('chr', ''))
@@ -88,7 +98,8 @@ def dwnld_refpanel_genome(path):
 
         # make dict file
         dict_file = newref.replace('.fa', '.dict')
-        cmd = f'samtools dict {newref} > {dict_file}'
+        samtools = os.path.join(config.paths.samtools, 'samtools')
+        cmd = f'{samtools} dict {newref} > {dict_file}'
         errname = os.path.join(path, 'samtools.log')
         with open(errname, 'w') as err:
             run = pr.run(cmd, stdout=err, stderr=err, shell=True, universal_newlines=True)
