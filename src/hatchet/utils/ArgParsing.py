@@ -1,5 +1,6 @@
 import sys
 import os.path
+from os.path import isfile
 import argparse
 import subprocess
 
@@ -36,10 +37,9 @@ def parse_plot_bins_1d2d_args(args=None):
                         default=config.plot_bins_1d2d.alpha)
     args = parser.parse_args(args)
 
-    if not os.path.isfile(args.bbc):
-        raise ValueError(sp.error(f"Input BBC file [{args.bbc}] not found."))
+    ensure(isfile(args.bbc), f'Input BBC file [{args.bbc}] not found.')
 
-    if args.seg is not None and not os.path.isfile(args.seg):
+    if args.seg is not None and not isfile(args.seg):
         raise ValueError(sp.error(f"Input SEG file [{args.seg}] not found."))
 
     if args.baflim is not None:
@@ -107,7 +107,7 @@ def parse_plot_cn_1d2d_args(args=None):
 
     args = parser.parse_args(args)
 
-    if not os.path.isfile(args.INPUT):
+    if not isfile(args.INPUT):
         raise ValueError(sp.error(f"Input file [{args.INPUT}] not found."))
 
     if args.baflim is not None:
@@ -179,7 +179,7 @@ def parse_cluster_bins_loc_args(args=None):
     parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
-    ensure(os.path.isfile(args.BBFILE), 'The specified BB file does not exist!')
+    ensure(isfile(args.BBFILE), 'The specified BB file does not exist!')
     ensure((args.diploidbaf is None) or (0.0 <= args.diploidbaf <= 0.5),
            'The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]')
     ensure(args.seed >= 0, 'Seed parameter must be non-negative.')
@@ -258,7 +258,7 @@ def parse_count_reads_args(args=None):
     bams = [args.normal] + args.tumor
     names = args.samples
     for bamfile in bams:
-        if (not os.path.isfile(bamfile)): raise ValueError(sp.error("The specified tumor BAM file does not exist"))
+        if (not isfile(bamfile)): raise ValueError(sp.error("The specified tumor BAM file does not exist"))
     names = args.samples
     if names != None and len(bams) != len(names):
         raise ValueError(sp.error(
@@ -351,9 +351,9 @@ def parse_combine_counts_args(args=None):
 
     ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
 
-    if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
+    if args.totalcounts is not None and not isfile(args.totalcounts):
         raise ValueError(sp.error("The specified file for total read counts does not exist!"))
-    if args.phase is not None and not os.path.isfile(args.phase):
+    if args.phase is not None and not isfile(args.phase):
         raise ValueError(sp.error("The specified phasing file does not exist!"))
 
     ensure(args.max_blocksize > 0, 'The max_blocksize argument must be positive.')
@@ -457,7 +457,7 @@ def parse_genotype_snps_arguments(args=None):
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     normalbaf = args.normal
-    if not os.path.isfile(os.path.abspath(normalbaf)):
+    if not isfile(os.path.abspath(normalbaf)):
         raise ValueError(sp.error("The specified normal BAM file does not exist"))
     normal = (os.path.abspath(normalbaf), 'Normal')
 
@@ -470,13 +470,13 @@ def parse_genotype_snps_arguments(args=None):
         raise ValueError(sp.error("{}bcftools has not been found or is not executable!{}"))
 
     # Check that SNP, reference, and region files exist when given in input
-    if not os.path.isfile(args.reference):
+    if not isfile(args.reference):
         raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
     if args.outputsnps != None and not os.path.isdir(args.outputsnps):
         raise ValueError(sp.error("The folder for output SNPs does not exist!"))
     if args.snps != None and len(args.snps) < 2:
         args.snps = None
-    if args.snps != None and not (os.path.isfile(args.snps) or sp.url_exists(args.snps)):
+    if args.snps != None and not (isfile(args.snps) or sp.url_exists(args.snps)):
         raise ValueError(sp.error("The provided list of SNPs does not exist!"))
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
@@ -592,7 +592,7 @@ def parse_phase_snps_arguments(args=None):
     # Check that SNP files exist when given in input
     snplists = {}
     for f in args.snps:
-        if not os.path.isfile(f):
+        if not isfile(f):
             raise ValueError(sp.error("The specified SNP file {} does not exist!".format(f)))
         # use keys that correspond to chromosomes names used (below)
         snplists = {os.path.basename(f).split('.')[0].replace("chr", ""): f for f in args.snps}
@@ -666,10 +666,10 @@ def parse_count_alleles_arguments(args=None):
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     normalbaf = args.normal
-    if not os.path.isfile(normalbaf): raise ValueError(sp.error("The specified normal BAM file does not exist"))
+    if not isfile(normalbaf): raise ValueError(sp.error("The specified normal BAM file does not exist"))
     tumors = args.tumors
     for tumor in tumors:
-        if (not os.path.isfile(tumor)): raise ValueError(
+        if (not isfile(tumor)): raise ValueError(
             sp.error(f"The specified tumor BAM file does not exist: {tumor}"))
     names = args.samples
     if names != None and (len(tumors) + 1) != len(names):
@@ -697,24 +697,16 @@ def parse_count_alleles_arguments(args=None):
     # Check that SNP, reference, and region files exist when given in input
     snplists = {}
     for f in args.snps:
-        if not os.path.isfile(f):
+        if not isfile(f):
             raise ValueError(sp.error("The specified SNP file {} does not exist!".format(f)))
         snplists = {os.path.basename(f).split('.')[0]: f for f in args.snps}
-    if not os.path.isfile(args.reference):
+    if not isfile(args.reference):
         raise ValueError(sp.error("The provided file for human reference genome does not exist!"))
-    if args.regions != None and not os.path.isfile(args.regions):
-        raise ValueError(sp.error("The BED file of regions does not exist!"))
-    # elif args.regions is None:
-    #    sp.log(msg="In case of WES data a BED file specified by --regions is REQUIRED, or the mincov parameter should be increased sufficiently to discard off-target regions\n", level="WARN")
-    if args.snps != None and args.regions != None:
-        raise ValueError(
-            sp.error("Both SNP list and genomic regions have been provided, please provide only one of these!"))
+    ensure((args.regions is None) or (isfile(args.regions)), 'The BED file of regions does not exist!')
+    ensure(not all([args.snps, args.regions]), 'Both SNP list and genomic regions have been provided, please provide only one of these!')
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples, args.reference)
-    # for c in chromosomes:
-    #    if c not in snplists:
-    #        raise ValueError(sp.error('The SNP file for analyzed chromosome {} was expected with name {}.* but not found in the provided list!'.format(c, c)))
     snplists = {c: snplists.get(c, []) for c in chromosomes}
 
     ensure(args.processes > 0, 'The number of parallel processes must be greater than 0')
@@ -790,13 +782,13 @@ def parse_count_reads_fw_arguments(args=None):
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     normalbaf = args.normal
-    if not os.path.isfile(normalbaf): raise ValueError(sp.error("The specified normal BAM file does not exist"))
+    ensure(isfile(normalbaf), 'The specified normal BAM file does not exist')
     tumors = args.tumors
     for tumor in tumors:
-        if (not os.path.isfile(tumor)): raise ValueError(
-            sp.error(f"The specified tumor BAM file {tumor} does not exist"))
+        ensure(isfile(tumor), f'The specified tumor BAM file {tumor} does not exist')
+
     names = args.samples
-    if names != None and (len(tumors) + 1) != len(names):
+    if names is not None and (len(tumors) + 1) != len(names):
         raise ValueError(sp.error(
             "A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample"))
     normal = ()
@@ -811,7 +803,7 @@ def parse_count_reads_fw_arguments(args=None):
             samples.add((tumors[i], names[i + 1]))
 
     # Check the region file
-    if args.regions is not None and not os.path.isfile(args.regions):
+    if args.regions is not None and not isfile(args.regions):
         raise ValueError(sp.error("The specified region file does not exist"))
 
     # In default mode, check the existence and compatibility of samtools and bcftools
@@ -835,42 +827,38 @@ def parse_count_reads_fw_arguments(args=None):
     if args.reference is None and args.regions is None:
         raise ValueError(sp.error(
             "Please either provide a BED file of regions or specify a name of an available references for inferring maximum-chromosome lengths"))
-    if args.reference is not None and not os.path.isfile(args.reference):
+    if args.reference is not None and not isfile(args.reference):
         raise ValueError(sp.error("The specified reference genome does not exist!"))
     refdict = os.path.splitext(args.reference)[0] + '.dict'
-    if args.reference is not None and not os.path.isfile(refdict):
+    if args.reference is not None and not isfile(refdict):
         raise ValueError(sp.error(
             "The dictionary of the reference genome has not been found! Reference genome must be indexed and its dictionary must exist in the same directory with same name but extension .dict"))
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples)
 
-    if not args.processes > 0: raise ValueError(sp.error("The number of parallel processes must be greater than 0"))
-    if not args.readquality >= 0: raise ValueError(sp.error("The read mapping quality must be positive"))
+    ensure(args.processes > 0, 'The number of parallel processes must be greater than 0')
+    ensure(args.readquality >= 0, 'The read mapping quality must be positive')
 
     return {
-        "normal": normal,
-        "samples": samples,
-        "chromosomes": chromosomes,
-        "samtools": samtools,
-        "regions": args.regions,
-        "size": size,
-        "reference": args.reference,
-        "refdict": refdict,
-        "j": args.processes,
-        "q": args.readquality,
-        "outputNormal": args.outputnormal,
-        "outputTumors": args.outputtumors,
-        "outputTotal": args.outputtotal,
-        "verbose": args.verbose
+        'normal': normal,
+        'samples': samples,
+        'chromosomes': chromosomes,
+        'samtools': samtools,
+        'regions': args.regions,
+        'size': size,
+        'reference': args.reference,
+        'refdict': refdict,
+        'j': args.processes,
+        'q': args.readquality,
+        'outputNormal': args.outputnormal,
+        'outputTumors': args.outputtumors,
+        'outputTotal': args.outputtotal,
+        'verbose': args.verbose
     }
 
 
 def parse_combine_counts_fw_args(args=None):
-    """
-    Parse command line arguments
-    Returns:
-    """
     description = "Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout."
     parser = argparse.ArgumentParser(prog='hatchet combine-counts', description=description,
                                      formatter_class=argparse.RawTextHelpFormatter)
@@ -897,24 +885,16 @@ def parse_combine_counts_fw_args(args=None):
     parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
-    if not os.path.isfile(args.normalbins):
-        raise ValueError(sp.error("The specified file for normal bin counts does not exist!"))
-    if not os.path.isfile(args.tumorbins):
-        raise ValueError(sp.error("The specified file for tumor bin counts does not exist!"))
-    if not os.path.isfile(args.normalbins):
-        raise ValueError(sp.error("The specified file for normal bin counts does not exist!"))
-    if args.phase == 'None':
+    ensure(isfile(args.normalbins), 'The specified file for normal bin counts does not exist!')
+    ensure(isfile(args.tumorbins), 'The specified file for tumor bin counts does not exist!')
+    ensure(isfile(args.normalbins), 'The specified file for normal bin counts does not exist!')
+    if args.phase == 'None':  # TODO
         args.phase = None
-    if args.phase is not None and not os.path.isfile(args.phase):
-        raise ValueError(sp.error("The specified file for phase does not exist!"))
-    if not 0.0 <= args.diploidbaf <= 0.5:
-        raise ValueError(sp.error("The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]"))
-    if args.totalcounts is not None and not os.path.isfile(args.totalcounts):
-        raise ValueError(sp.error("The specified file for total read counts does not exist!"))
-    if not 0.0 <= args.gamma <= 0.1:
-        raise ValueError(sp.error("The specified gamma must be a value in [0.0, 0.1]"))
-    if args.seed < 0:
-        raise ValueError(sp.error("Seed parameter must be positive!"))
+    ensure((args.phase is None) or (isfile(args.phase)), 'The specified file for phase does not exist!')
+    ensure(0.0 <= args.diploidbaf <= 0.5, 'The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]')
+    ensure((args.totalcounts is None) or (isfile(args.totalcounts)), 'The specified file for total read counts does not exist!')
+    ensure(0.0 <= args.gamma <= 0.1, 'The specified gamma must be a value in [0.0, 0.1]')
+    ensure(args.seed >= 0, 'Seed parameter must be positive!')
 
     size = 0
     args.blocklength = str(args.blocklength)
@@ -981,7 +961,7 @@ def parse_cluster_bins_args(args=None):
     parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
-    ensure(os.path.isfile(args.BBFILE), 'The specified BB file does not exist!')
+    ensure(isfile(args.BBFILE), 'The specified BB file does not exist!')
     ensure((args.diploidbaf is None) or (0.0 <= args.diploidbaf <= 0.5),
            'The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]')
     ensure(args.tolerancerdr >= 0, 'Tolerance-RDR parameter must be positive!')
@@ -1059,11 +1039,11 @@ def parse_plot_bins_args(args=None):
     parser.add_argument("-V", "--version", action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
-    if not os.path.isfile(args.INPUT):
+    if not isfile(args.INPUT):
         raise ValueError(sp.error("The specified BB file does not exist!"))
     if args.command is not None and args.command not in {"RD", "CRD", "BAF", "CBAF", "BB", "CBB", "CLUSTER"}:
         raise ValueError(sp.error("Unrecognized COMMAND!"))
-    if args.segfile is not None and not os.path.isfile(args.segfile):
+    if args.segfile is not None and not isfile(args.segfile):
         raise ValueError(sp.error("Specified seg-file does not exist!"))
     if args.colormap not in {"Set1", "Set2", "Set3", "Paired", "Accent", "Dark2", "tab10", "tab20", "husl", "hls",
                              "muted", "colorblind", "Pastel1", "Pastel2"}:
