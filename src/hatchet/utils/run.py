@@ -44,7 +44,8 @@ def main(args=None):
 
     # ----------------------------------------------------
 
-    if config.run.download_panel and not config.download_panel.refpaneldir:
+    if config.run.download_panel:
+        if not config.download_panel.refpaneldir:
             raise ValueError(error('The step "download_panel" requires that the variable "refpaneldir" indicates the directory in which to store the reference panel.'))
 
         download_panel(

@@ -114,6 +114,11 @@ def main(args=None):
             if ch not in chr2centro:
                 raise ValueError(error(f"Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument."))
 
+        # Use Tabix to index per-position coverage bed files for each sample
+        for name in names:
+            perpos_file = os.path.join(outdir, name + '.per-base.bed.gz')
+            subprocess.run([tabix, '-f', perpos_file])
+
         # form parameters for each worker
         params = [(outdir, names, ch,
                 chr2centro[ch][0], chr2centro[ch][1], args['baf_file'], tabix)

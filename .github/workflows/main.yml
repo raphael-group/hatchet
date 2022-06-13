@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ master, develop, abin* ]
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master, develop, abin* ]
 
 jobs:
   run_tests:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [3.7, 3.8]
+        python: [3.7, 3.8, 3.9]
 
     steps:
       - uses: actions/checkout@v2
@@ -69,32 +69,32 @@ jobs:
           (cd bcftools-1.7 && ./configure && make)
           echo "HATCHET_PATHS_BCFTOOLS=$(realpath bcftools-1.7)" >> $GITHUB_ENV
 
-      - name: Install picard
+      - name: Install tabix
         run: |
-          wget https://github.com/broadinstitute/picard/releases/download/2.26.2/picard.jar -O picard.jar
-          echo "echo '#!/bin/bash\njava -jar $(realpath picard.jar)" > picard
-          chmod +x picard
-          echo $(realpath picard) >> $GITHUB_PATH
-
-      - name: Install shapeit2
-        run: |
-          wget https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.v2.r904.glibcv2.17.linux.tar.gz -O shapeit.v2.r904.glibcv2.17.linux.tar.gz
-          tar -xf shapeit.v2.r904.glibcv2.17.linux.tar.gz
-          echo $(realpath shapeit.v2.904.3.10.0-693.11.6.el7.x86_64/bin/shapeit) >> $GITHUB_PATH
+          wget https://sourceforge.net/projects/samtools/files/tabix/tabix-0.2.6.tar.bz2/download -O tabix-0.2.6.tar.bz2
+          bzip2 -d tabix-0.2.6.tar.bz2
+          bzip2 -d tabix-0.2.6.tar.bz2
+          (cd tabix-0.2.6 && make)
+          echo "HATCHET_PATHS_TABIX=$(realpath tabix-0.2.6)" >> $GITHUB_ENV
+          echo "HATCHET_PATHS_BGZIP=$(realpath tabix-0.2.6)" >> $GITHUB_ENV
 
       - name: Install mosdepth
         run: |
           wget https://github.com/brentp/mosdepth/releases/download/v0.3.2/mosdepth -O mosdepth
           chmod 775 mosdepth
-          echo $(realpath mosdepth) >> $GITHUB_PATH
-        
-      - name: Install tabix
+          echo "HATCHET_PATHS_MOSDEPTH=$(pwd)" >> $GITHUB_ENV
+
+      - name: Install picard
         run: |
-          wget https://sourceforge.net/projects/samtools/files/tabix/tabix-0.2.6.tar.bz2/download -O tabix-0.2.6.tar.bz2
-          tar -xzf tabix-0.2.6.tar.bz2
-          (cd tabix-0.2.6.tar && make)
-          echo $(realpath tabix) >> $GITHUB_PATH
-    
+          wget https://github.com/broadinstitute/picard/releases/download/2.26.2/picard.jar -O picard.jar
+          echo "HATCHET_PATHS_PICARD=$(pwd)" >> $GITHUB_ENV
+
+      - name: Install shapeit2
+        run: |
+          wget https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.v2.r904.glibcv2.17.linux.tar.gz -O shapeit.v2.r904.glibcv2.17.linux.tar.gz
+          tar -xf shapeit.v2.r904.glibcv2.17.linux.tar.gz
+          echo "HATCHET_PATHS_SHAPEIT=$(realpath shapeit.v2.904.3.10.0-693.11.6.el7.x86_64/bin)" >> $GITHUB_ENV
+        
       - name: Download and index hg19.fa
         run: |
           wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
@@ -102,6 +102,12 @@ jobs:
           $HATCHET_PATHS_SAMTOOLS/samtools faidx hg19.fa
           $HATCHET_PATHS_SAMTOOLS/samtools dict hg19.fa > hg19.dict
           echo "HATCHET_PATHS_REFERENCE=$(realpath hg19.fa)" >> $GITHUB_ENV
+
+      - name: Download 1000GP reference panel
+        run: |
+          wget https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz
+          tar zxvf 1000GP_Phase3.tgz
+          echo "HATCHET_DOWNLOAD_PANEL_REFPANELDIR=$(realpath 1000GP_Phase3)" >> $GITHUB_ENV
 
       - name: Set Envvars
         run: |
