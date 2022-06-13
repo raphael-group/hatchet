@@ -17,6 +17,7 @@ from hatchet.utils.combine_counts import main as combine_counts
 
 this_dir = os.path.dirname(__file__)
 
+
 @pytest.fixture(scope='module')
 def bams():
     bam_directory = config.tests.bam_directory
@@ -28,6 +29,7 @@ def bams():
         pytest.skip('No tumor bams found in {}'.format(bam_directory))
 
     return normal_bam, tumor_bams
+
 
 @pytest.fixture(scope='module')
 def output_folder():

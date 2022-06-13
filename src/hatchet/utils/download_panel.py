@@ -11,7 +11,7 @@ from hatchet import config
 def main(args=None):
     log(msg="# log notes\n", level="STEP")
     args = ap.parse_download_panel_arguments(args)
-    logArgs(args, 80)
+    logArgs(args)
 
     os.makedirs(args["refpaneldir"], exist_ok=True)
 

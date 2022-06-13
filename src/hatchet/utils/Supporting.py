@@ -1,6 +1,7 @@
 import sys
 import os
 import os.path
+import subprocess
 import datetime
 import requests
 from urllib.parse import urlparse
@@ -93,7 +94,7 @@ def log(msg, level=None, lock=None, raise_exception=False, exception_class=Value
         raise exception_class(msg)
 
 
-def logArgs(args, width):
+def logArgs(args, width=40):
     text = '\n'
     for key in args:
         text += '\t{}: {}\n'.format(key, args[key])
@@ -112,6 +113,42 @@ def ensure(pred, msg, exception_class=ValueError):
 def close(msg):
     log(msg=msg, level='WARN')
     sys.exit(0)
+
+
+def run(commands, stdouterr_filepath=None, check_return_codes=True, error_msg=None, stdouterr_filepath_autoremove=True,
+        **kwargs):
+    singleton = isinstance(commands, str)
+    if singleton:
+        commands = [commands]
+    return_codes = []
+
+    # Very commonly used options in our code
+    if 'universal_newlines' not in kwargs:
+        kwargs['universal_newlines'] = True
+    if 'shell' not in kwargs:
+        kwargs['shell'] = True
+
+    f = open(stdouterr_filepath, 'w') if stdouterr_filepath is not None else None
+    for command in commands:
+        p = subprocess.run(command, stdout=f, stderr=f, **kwargs)
+        return_codes.append(p.returncode)
+    if f:
+        f.close()
+
+    if check_return_codes:
+        if error_msg is None:
+            error_msg = 'Command "{command}" did not run successfully.'
+        if stdouterr_filepath:
+            error_msg += f' Please check {stdouterr_filepath} for possible hints.'
+
+        for command, return_code in zip(commands, return_codes):
+            if return_code != 0:
+                error(error_msg.format(command=command), raise_exception=True)
+
+    if stdouterr_filepath and stdouterr_filepath_autoremove:
+        os.remove(stdouterr_filepath)
+
+    return return_codes[0] if singleton else return_codes
 
 
 def download(url, dirpath, overwrite=False, extract=True, sentinel_file=None, chunk_size=8192):
