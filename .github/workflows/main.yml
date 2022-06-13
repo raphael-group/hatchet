@@ -73,7 +73,7 @@ jobs:
         run: |
           wget https://sourceforge.net/projects/samtools/files/tabix/tabix-0.2.6.tar.bz2/download -O tabix-0.2.6.tar.bz2
           bzip2 -d tabix-0.2.6.tar.bz2
-          bzip2 -d tabix-0.2.6.tar.bz2
+          tar -xvf tabix-0.2.6.tar
           (cd tabix-0.2.6 && make)
           echo "HATCHET_PATHS_TABIX=$(realpath tabix-0.2.6)" >> $GITHUB_ENV
           echo "HATCHET_PATHS_BGZIP=$(realpath tabix-0.2.6)" >> $GITHUB_ENV
