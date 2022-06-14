@@ -1,16 +1,15 @@
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.patches import Rectangle
 import pandas as pd
-
-plt.rcParams['savefig.dpi'] = 300
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import matplotlib.colors as mcolors
 
 from hatchet.utils.ArgParsing import parse_plot_bins_1d2d_args
 from hatchet.utils import Supporting as sp
 
+plt.rcParams['savefig.dpi'] = 300
 plt.style.use('ggplot')
 sns.set_style('white')
 

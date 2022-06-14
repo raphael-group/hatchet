@@ -140,7 +140,7 @@ def main(args=None):
             / big_bb.loc[big_bb.SAMPLE == sample, 'NORMAL_READS']
         )
 
-    if not 'NORMAL_READS' in big_bb:
+    if 'NORMAL_READS' not in big_bb:
         sp.log('# NOTE: adding NORMAL_READS column to bb file', level='INFO')
         big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(
             np.uint32
@@ -232,8 +232,12 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
             low_memory=False,
             dtype={'CHR': object, 'POS': np.uint32},
         )
-        phases['FLIP'] = phases.PHASE.str.contains('1\|0').astype(np.int8)
-        phases['NOFLIP'] = phases.PHASE.str.contains('0\|1').astype(np.int8)
+        phases['FLIP'] = phases.PHASE.str.contains('1\|0').astype(
+            np.int8
+        )  # noqa: W605
+        phases['NOFLIP'] = phases.PHASE.str.contains('0\|1').astype(
+            np.int8
+        )  # noqa: W605
 
         # Drop entries without phasing output
         phases = phases[phases.FLIP + phases.NOFLIP > 0]
@@ -320,7 +324,6 @@ def adaptive_bins_arm(
     ends = []
 
     my_start = snp_thresholds[0]
-    prev_threshold = snp_thresholds[0]
 
     rdrs = []
     totals = []
@@ -363,7 +366,6 @@ def adaptive_bins_arm(
             bin_snp = np.zeros(n_samples - 1)
             my_start = ends[-1] + 1
 
-        prev_threshold = next_threshold
         i += 1
 
     # handle the case of 1 bin
@@ -647,12 +649,11 @@ def multisample_em(alts, refs, start, tol=10e-6):
     return theta, phases, log_likelihood
 
 
-def merge_phasing(df, all_phase_data):
+def merge_phasing(_, all_phase_data):
     """
     Merge phasing results across all samples:
     if a pair of SNPs is split in any sample, they won't be split.
     """
-    N = len(df)
 
     if len(all_phase_data) == 1:
         return all_phase_data[0]

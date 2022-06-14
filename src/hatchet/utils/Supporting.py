@@ -41,6 +41,27 @@ def argmin(d):
     return min(d, key=(lambda x: d[x]))
 
 
+def to_tuple(s, n=2, typ=int, error_message=None):
+    if error_message is None:
+        error_message = f'Unable to parse {s} into a tuple of type {typ}'
+        if n is not None:
+            error_message += f' of length {n}'
+
+    parsed = (
+        s.strip().replace(' ', '').replace('(', '').replace(')', '').split(',')
+    )
+
+    try:
+        if n is not None:
+            assert len(parsed) == n
+
+        parsed = [typ(p) for p in parsed]
+    except (AssertionError, ValueError):
+        raise
+    else:
+        return parsed
+
+
 def which(program):
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)

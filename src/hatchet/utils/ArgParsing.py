@@ -4,8 +4,15 @@ from os.path import isfile, isdir
 import argparse
 import subprocess
 
-import hatchet.utils.Supporting as sp
-from hatchet.utils.Supporting import ensure
+from hatchet.utils.Supporting import (
+    ensure,
+    log,
+    error,
+    which,
+    url_exists,
+    bcolors,
+    numericOrder,
+)
 from hatchet import config, __version__
 
 
@@ -98,7 +105,7 @@ def parse_plot_bins_1d2d_args(args=None):
             minbaf = float(tkns[0].strip())
             maxbaf = float(tkns[1].strip())
         except ValueError:
-            sp.error(
+            error(
                 '--baflim must be comma-separated float or integer values.',
                 raise_exception=True,
             )
@@ -112,7 +119,7 @@ def parse_plot_bins_1d2d_args(args=None):
             minrdr = float(tkns[0].strip())
             maxrdr = float(tkns[1].strip())
         except ValueError:
-            sp.error(
+            error(
                 '--rdrlim must be comma-separated float or integer values.',
                 raise_exception=True,
             )
@@ -199,7 +206,7 @@ def parse_plot_cn_1d2d_args(args=None):
             minbaf = float(tkns[0].strip())
             maxbaf = float(tkns[1].strip())
         except ValueError:
-            sp.error(
+            error(
                 '--baflim must be comma-separated float or integer values.',
                 raise_exception=True,
             )
@@ -212,7 +219,7 @@ def parse_plot_cn_1d2d_args(args=None):
             minfcn = float(tkns[0].strip())
             maxfcn = float(tkns[1].strip())
         except ValueError:
-            sp.error(
+            error(
                 '--fcnlim must be comma-separated float or integer values.',
                 raise_exception=True,
             )
@@ -353,7 +360,7 @@ def parse_cluster_bins_loc_args(args=None):
     ensure(args.seed >= 0, 'Seed parameter must be non-negative.')
 
     if args.exactK > 0:
-        sp.log(
+        log(
             msg=f'WARNING: using fixed K (K={args.exactK}) will bypass model selection.\n',
             level='WARN',
         )
@@ -366,7 +373,7 @@ def parse_cluster_bins_loc_args(args=None):
     )
 
     if args.maxK == args.minK:
-        sp.log(
+        log(
             msg=f'WARNING: minK = maxK = {args.minK}, so no model selection will be performed.\n',
             level='WARN',
         )
@@ -514,7 +521,7 @@ def parse_count_reads_args(args=None):
         required=False,
         action='store_true',
         default=config.count_reads.intermediates,
-        help=f'Produce intemediate counts files only and do not proceed to forming arrays (default: False)',
+        help='Produce intermediate counts files only and do not proceed to forming arrays (default: False)',
     )
 
     args = parser.parse_args(args)
@@ -538,7 +545,7 @@ def parse_count_reads_args(args=None):
     # In default mode, check the existence and compatibility of samtools and bcftools
     samtools = os.path.join(args.samtools, 'samtools')
     ensure(
-        sp.which(samtools) is not None,
+        which(samtools) is not None,
         'samtools has not been found or is not executable.',
     )
 
@@ -576,14 +583,14 @@ def parse_count_reads_args(args=None):
     mosdepth = os.path.join(args.mosdepth, 'mosdepth')
     tabix = os.path.join(args.tabix, 'tabix')
     ensure(
-        sp.which(mosdepth) is not None,
+        which(mosdepth) is not None,
         (
             'The mosdepth executable was not found or is not executable. Please install mosdepth (e.g., conda install ',
             '-c bioconda mosdepth) and/or supply the path to the executable.',
         ),
     )
     ensure(
-        sp.which(tabix) is not None,
+        which(tabix) is not None,
         (
             'The tabix executable was not found or is not executable. Please install tabix (e.g., conda install -c ',
             'bioconda tabix) and/or supply the path to the executable.',
@@ -615,7 +622,7 @@ def parse_combine_counts_args(args=None):
         '--array',
         type=str,
         required=True,
-        help=f'Directory containing array files (output from "count_reads" command)',
+        help='Directory containing array files (output from "count_reads" command)',
     )
     parser.add_argument(
         '-t',
@@ -719,9 +726,7 @@ def parse_combine_counts_args(args=None):
 
     if args.totalcounts is not None and not isfile(args.totalcounts):
         raise ValueError(
-            sp.error(
-                'The specified file for total read counts does not exist!'
-            )
+            error('The specified file for total read counts does not exist!')
         )
     ensure(
         (args.phase is None) or isfile(args.phase),
@@ -763,20 +768,20 @@ def parse_combine_counts_args(args=None):
             thresholds_arr = os.path.join(args.array, f'{ch}.thresholds.gz')
         if not os.path.exists(totals_arr):
             raise ValueError(
-                sp.error('Missing array file: {}'.format(totals_arr))
+                error('Missing array file: {}'.format(totals_arr))
             )
         if not os.path.exists(thresholds_arr):
             raise ValueError(
-                sp.error('Missing array file: {}'.format(thresholds_arr))
+                error('Missing array file: {}'.format(thresholds_arr))
             )
 
-    sp.log(msg=f'Identified {len(chromosomes)} chromosomes.\n', level='INFO')
+    log(msg=f'Identified {len(chromosomes)} chromosomes.\n', level='INFO')
 
     using_chr = [a.startswith('chr') for a in chromosomes]
     if any(using_chr):
         if not all(using_chr):
             raise ValueError(
-                sp.error(
+                error(
                     "Some starts files use 'chr' notation while others do not."
                 )
             )
@@ -950,20 +955,18 @@ def parse_genotype_snps_arguments(args=None):
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     normalbaf = args.normal
     if not isfile(os.path.abspath(normalbaf)):
-        raise ValueError(
-            sp.error('The specified normal BAM file does not exist')
-        )
+        raise ValueError(error('The specified normal BAM file does not exist'))
     normal = (os.path.abspath(normalbaf), 'Normal')
 
     # In default mode, check the existence and compatibility of samtools and bcftools
     samtools = os.path.join(args.samtools, 'samtools')
     bcftools = os.path.join(args.bcftools, 'bcftools')
     ensure(
-        sp.which(samtools) is not None,
+        which(samtools) is not None,
         'samtools has not been found or is not executable!',
     )
     ensure(
-        sp.which(bcftools) is not None,
+        which(bcftools) is not None,
         'bcftools has not been found or is not executable!',
     )
 
@@ -980,9 +983,9 @@ def parse_genotype_snps_arguments(args=None):
     if args.snps is not None and len(args.snps) < 2:
         args.snps = None
     if args.snps is not None and not (
-        isfile(args.snps) or sp.url_exists(args.snps)
+        isfile(args.snps) or url_exists(args.snps)
     ):
-        sp.error(
+        error(
             'The provided list of SNPs does not exist!', raise_exception=True
         )
 
@@ -999,7 +1002,7 @@ def parse_genotype_snps_arguments(args=None):
     ensure(args.maxcov >= 0, 'The maximum-coverage value must be positive')
 
     if args.verbose:
-        sp.log(
+        log(
             msg='stderr of samtools and bcftools will be collected in the following file "samtools.log"\n',
             level='WARN',
         )
@@ -1152,18 +1155,18 @@ def parse_phase_snps_arguments(args=None):
     # if args.refpanel != "1000GP_Phase3":
 
     bgzip = os.path.join(args.bgzip, 'bgzip')
-    if sp.which(bgzip) is None:
+    if which(bgzip) is None:
         raise ValueError(
-            sp.error(
+            error(
                 "The 'bgzip' executable was not found or is not executable. \
             Please install bgzip and/or supply the path to the executable."
             )
         )
 
     shapeit = os.path.join(args.shapeit, 'shapeit')
-    if sp.which(shapeit) is None:
+    if which(shapeit) is None:
         raise ValueError(
-            sp.error(
+            error(
                 "The 'shapeit' executable was not found or is not executable. \
             Please install shapeit (e.g., conda install -c dranew shapeit) and/or supply the path to the executable."
             )
@@ -1176,10 +1179,10 @@ def parse_phase_snps_arguments(args=None):
     picard_jar_path = os.path.join(picard_dir, 'picard.jar')
     if os.path.exists(picard_bin_path):
         ensure(
-            sp.which(picard_bin_path) is not None,
+            which(picard_bin_path) is not None,
             (
-                'The picard executable was not found or is not executable. Please install picard (e.g., conda install -c ',
-                'bioconda picard) and/or supply the path to the executable.',
+                'The picard executable was not found or is not executable. Please install picard (e.g., conda install ',
+                '-c bioconda picard) and/or supply the path to the executable.',
             ),
         )
         picard = f'{picard_bin_path} {picard_java_flags}'
@@ -1187,16 +1190,16 @@ def parse_phase_snps_arguments(args=None):
     elif os.path.exists(picard_jar_path):
         picard = f'java {picard_java_flags} -jar {picard_jar_path}'
     else:
-        sp.error(
+        error(
             'The picard executable was not found or is not executable. Please install picard (e.g., conda ',
             'install -c bioconda picard) and/or supply the path to the executable.',
             raise_exception=True,
         )
 
     bcftools = os.path.join(args.bcftools, 'bcftools')
-    if sp.which(bcftools) is None:
+    if which(bcftools) is None:
         raise ValueError(
-            sp.error('bcftools has not been found or is not executable!')
+            error('bcftools has not been found or is not executable!')
         )
 
     # Check that SNP files exist when given in input
@@ -1204,7 +1207,7 @@ def parse_phase_snps_arguments(args=None):
     for f in args.snps:
         if not isfile(f):
             raise ValueError(
-                sp.error('The specified SNP file {} does not exist!'.format(f))
+                error('The specified SNP file {} does not exist!'.format(f))
             )
         # use keys that correspond to chromosomes names used (below)
         snplists = {
@@ -1435,16 +1438,12 @@ def parse_count_alleles_arguments(args=None):
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     normalbaf = args.normal
     if not isfile(normalbaf):
-        raise ValueError(
-            sp.error('The specified normal BAM file does not exist')
-        )
+        raise ValueError(error('The specified normal BAM file does not exist'))
     tumors = args.tumors
     for tumor in tumors:
         if not isfile(tumor):
             raise ValueError(
-                sp.error(
-                    f'The specified tumor BAM file does not exist: {tumor}'
-                )
+                error(f'The specified tumor BAM file does not exist: {tumor}')
             )
     names = args.samples
     ensure(
@@ -1468,13 +1467,13 @@ def parse_count_alleles_arguments(args=None):
     # In default mode, check the existence and compatibility of samtools and bcftools
     samtools = os.path.join(args.samtools, 'samtools')
     bcftools = os.path.join(args.bcftools, 'bcftools')
-    if sp.which(samtools) is None:
+    if which(samtools) is None:
         raise ValueError(
-            sp.error('{}samtools has not been found or is not executable!{}')
+            error('{}samtools has not been found or is not executable!{}')
         )
-    elif sp.which(bcftools) is None:
+    elif which(bcftools) is None:
         raise ValueError(
-            sp.error('{}bcftools has not been found or is not executable!{}')
+            error('{}bcftools has not been found or is not executable!{}')
         )
 
     # Check that SNP, reference, and region files exist when given in input
@@ -1482,12 +1481,12 @@ def parse_count_alleles_arguments(args=None):
     for f in args.snps:
         if not isfile(f):
             raise ValueError(
-                sp.error('The specified SNP file {} does not exist!'.format(f))
+                error('The specified SNP file {} does not exist!'.format(f))
             )
         snplists = {os.path.basename(f).split('.')[0]: f for f in args.snps}
     if not isfile(args.reference):
         raise ValueError(
-            sp.error(
+            error(
                 'The provided file for human reference genome does not exist!'
             )
         )
@@ -1522,7 +1521,7 @@ def parse_count_alleles_arguments(args=None):
     ensure(args.snpquality >= 0, 'The QUAL value must be positive')
 
     if args.verbose:
-        sp.log(
+        log(
             msg='stderr of samtools and bcftools will be collected in the following file "samtools.log"\n',
             level='WARN',
         )
@@ -1714,14 +1713,16 @@ def parse_count_reads_fw_arguments(args=None):
             samples.add((tumors[i], names[i + 1]))
 
     # Check the region file
-    if args.regions is not None and not isfile(args.regions):
-        raise ValueError(sp.error('The specified region file does not exist'))
+    ensure(
+        args.regions is None or isfile(args.regions),
+        'The specified region file does not exist',
+    )
 
     # In default mode, check the existence and compatibility of samtools and bcftools
     samtools = os.path.join(args.samtools, 'samtools')
-    if sp.which(samtools) is None:
+    if which(samtools) is None:
         raise ValueError(
-            sp.error('samtools has not been found or is not executable!')
+            error('samtools has not been found or is not executable!')
         )
 
     # Check and parse the given size
@@ -1733,8 +1734,8 @@ def parse_count_reads_fw_arguments(args=None):
             size = int(args.size[:-2]) * 1000000
         else:
             size = int(args.size)
-    except:
-        sp.error(
+    except (IndexError, ValueError):
+        error(
             'Size must be a number, optionally ending with either "kb" or "Mb"!',
             raise_exception=True,
         )
@@ -1939,8 +1940,8 @@ def parse_combine_counts_fw_args(args=None):
             size = int(args.blocklength[:-2]) * 1000000
         else:
             size = int(args.blocklength)
-    except:
-        sp.error(
+    except (IndexError, ValueError):
+        error(
             'Size must be a number, optionally ending with either "kb" or "Mb"!',
             raise_exception=True,
         )
@@ -2151,36 +2152,34 @@ def parse_cluster_bins_args(args=None):
 
 
 def parse_plot_bins_args(args=None):
-    description = 'Generate plots for read-depth ratio (RD), B-allele frequency (BAF), and clusters for genomic bins in multiple samples using .bb, .cbb, .seg files.'
     parser = argparse.ArgumentParser(
         prog='hatchet plot-bins',
-        description=description,
+        description=(
+            'Generate plots for read-depth ratio (RD), B-allele frequency (BAF), and clusters for genomic ',
+            'bins in multiple samples using .bb, .cbb, .seg files.',
+        ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument('INPUT', help='Input BBC file with RDR and BAF')
+
+    b, e = bcolors.BOLD, bcolors.ENDC
     parser.add_argument(
         '-c',
         '--command',
         required=False,
         type=str,
         default=config.plot_bins.command,
-        help='The command determining the plots to generate (default: all)\n\n\t{}RD{}: Plot the read-depth ratio (RD) values of the genomes for each sample.\n\n\t{}CRD{}: Plot the read-depth ratio (CRD) values of the genomes for each sample colored by corresponding cluster.\n\n\t{}BAF{}: Plot the B-allele frequency (BAF) values of the genomes for each sample.\n\n\t{}CBAF{}: Plot BAF values for each sample colored by corresponding cluster.\n\n\t{}BB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples and their density.\n\n\t{}CBB{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples by coloring the bins depending on their cluster.\n\n\t{}CLUSTER{}: Plot jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each cluster in all samples where the size of the markers is proportional to the number of bins.'.format(
-            sp.bcolors.BOLD,
-            sp.bcolors.ENDC,
-            sp.bcolors.BOLD,
-            sp.bcolors.ENDC,
-            sp.bcolors.BOLD,
-            sp.bcolors.ENDC,
-            sp.bcolors.BOLD,
-            sp.bcolors.ENDC,
-            sp.bcolors.BOLD,
-            sp.bcolors.ENDC,
-            sp.bcolors.BOLD,
-            sp.bcolors.ENDC,
-            sp.bcolors.BOLD,
-            sp.bcolors.ENDC,
-            sp.bcolors.BOLD,
-            sp.bcolors.ENDC,
+        help=(
+            f'The command determining the plots to generate (default: all)\n\n\t{b}RD{e}: Plot the read-depth ratio ',
+            f'(RD) values of the genomes for each sample.\n\n\t{b}CRD{e}: Plot the read-depth ratio (CRD) values of ',
+            f'the genomes for each sample colored by corresponding cluster.\n\n\t{b}BAF{e}: Plot the B-allele ',
+            f'frequency (BAF) values of the genomes for each sample.\n\n\t{b}CBAF{e}: Plot BAF values for each ',
+            f'sample colored by corresponding cluster.\n\n\t{b}BB{e}: Plot jointly the values of read-depth ratio ',
+            f'(RD) and B-allele frequency (BAF) for each bin in all samples and their density.\n\n\t{b}CBB{e}: Plot ',
+            'jointly the values of read-depth ratio (RD) and B-allele frequency (BAF) for each bin in all samples ',
+            f'by coloring the bins depending on their cluster.\n\n\t{b}CLUSTER{e}: Plot jointly the values of '
+            f'read-depth ratio (RD) and B-allele frequency (BAF) for each cluster in all samples where the size of ',
+            'the markers is proportional to the number of bins.',
         ),
     )
     parser.add_argument(
@@ -2197,7 +2196,10 @@ def parse_plot_bins_args(args=None):
         required=False,
         type=str,
         default=config.plot_bins.colormap,
-        help='Colormap to use for the colors in the plots, the available colormaps are the following {Set1, Set2, Paired, Dark2, tab10, tab20}',
+        help=(
+            'Colormap to use for the colors in the plots, the available colormaps are the following '
+            '{Set1, Set2, Paired, Dark2, tab10, tab20}'
+        ),
     )
     parser.add_argument(
         '-tC',
@@ -2305,69 +2307,72 @@ def parse_plot_bins_args(args=None):
     )
     args = parser.parse_args(args)
 
-    if not isfile(args.INPUT):
-        raise ValueError(sp.error('The specified BB file does not exist!'))
-    if args.command is not None and args.command not in {
-        'RD',
-        'CRD',
-        'BAF',
-        'CBAF',
-        'BB',
-        'CBB',
-        'CLUSTER',
-    }:
-        raise ValueError(sp.error('Unrecognized COMMAND!'))
-    if args.segfile is not None and not isfile(args.segfile):
-        raise ValueError(sp.error('Specified seg-file does not exist!'))
-    if args.colormap not in {
-        'Set1',
-        'Set2',
-        'Set3',
-        'Paired',
-        'Accent',
-        'Dark2',
-        'tab10',
-        'tab20',
-        'husl',
-        'hls',
-        'muted',
-        'colorblind',
-        'Pastel1',
-        'Pastel2',
-    }:
-        raise ValueError(sp.error('Unrecognized colormap!'))
-    if args.resolution is not None and args.resolution < 1:
-        raise ValueError(sp.error('Resolution must be greater than 1!'))
-    if args.chrthreshold is not None and not (0 <= args.chrthreshold <= 22):
-        raise ValueError(
-            sp.error(
-                'The chromosome threshold must be a integer in \{0, ..., 22\}!'
-            )
-        )
-    if args.colwrap < 1:
-        raise ValueError(sp.error('Colwrap must be grater than 1!'))
-    if args.fontscale < 0:
-        raise ValueError(sp.error('Font scale must be positive!'))
-    if args.sizethreshold is not None and not (
-        0.0 <= args.sizethreshold <= 1.0
-    ):
-        raise ValueError(
-            sp.error('The size threshold must be a real value in [0, 1]!')
-        )
+    ensure(isfile(args.INPUT), 'The specified BB file does not exist!')
+    ensure(
+        args.command is None
+        or args.command
+        in (
+            'RD',
+            'CRD',
+            'BAF',
+            'CBAF',
+            'BB',
+            'CBB',
+            'CLUSTER',
+        ),
+        'Unrecognized COMMAND!',
+    )
+    ensure(
+        args.segfile is None or isfile(args.segfile),
+        'Specified seg-file does not exist!',
+    )
+
+    ensure(
+        args.colormap
+        in (
+            'Set1',
+            'Set2',
+            'Set3',
+            'Paired',
+            'Accent',
+            'Dark2',
+            'tab10',
+            'tab20',
+            'husl',
+            'hls',
+            'muted',
+            'colorblind',
+            'Pastel1',
+            'Pastel2',
+        ),
+        'Unrecognized colormap!',
+    )
+    ensure(
+        args.resolution is None or args.resolution >= 1,
+        'Resolution must be greater than 1!',
+    )
+    ensure(
+        args.chrthreshold is None or (0 <= args.chrthreshold <= 22),
+        'The chromosome threshold must be a integer in [0, 22]',
+    )
+    ensure(args.colwrap >= 1, 'Colwrap must be grater than 1!')
+    ensure(args.fontscale >= 0, 'Font scale must be positive!')
+    ensure(
+        args.sizethreshold is None or (0 <= args.sizethreshold <= 1.0),
+        'The size threshold must be a real value in [0, 1]!',
+    )
     if args.figsize is not None:
         try:
             parsed = args.figsize.strip().split(',')
             figsize = (float(parsed[0]), float(parsed[1]))
-        except:
-            raise ValueError(sp.error('Wrong format of figsize!'))
+        except IndexError:
+            error('Wrong format of figsize!', raise_exception=True)
     else:
         figsize = None
-    if not os.path.isdir(args.rundir):
-        raise ValueError(
-            sp.error(
-                'Running directory either does not exists or is not a directory!'
-            )
-        )
+    ensure(
+        isdir(args.rundir),
+        'Running directory either does not exists or is not a directory!',
+    )
 
     return {
         'input': args.INPUT,
@@ -2413,9 +2418,7 @@ def extractChromosomes(samtools, normal, tumors, reference=None):
             chrm.add('chr' + str(i))
         else:
             sys.stderr.write(
-                'WARNING: a chromosome named either {} or a variant of CHR{} cannot be found in the normal BAM file\n'.format(
-                    i, i
-                )
+                f'WARNING: a chromosome named either {i} or a variant of CHR{i} cannot be found in the normal BAM file\n'
             )
 
     for c in ['X', 'Y']:
@@ -2425,9 +2428,7 @@ def extractChromosomes(samtools, normal, tumors, reference=None):
             chrm.add('chr' + c)
         else:
             sys.stderr.write(
-                'WARNING: a chromosome named either {} or a variant of CHR{} cannot be found in the normal BAM file\n'.format(
-                    c, c
-                )
+                f'WARNING: a chromosome named either {c} or a variant of CHR{c} cannot be found in the normal BAM file\n'
             )
 
     if len(chrm) == 0 and len(no_chrm) == 0:
@@ -2462,10 +2463,13 @@ def extractChromosomes(samtools, normal, tumors, reference=None):
             )
         ensure(
             chromosomes <= ref,
-            'The given reference cannot be used because the chromosome names are inconsistent!\nChromosomes found in BAF files: {chromosomes}\nChromosomes with the same name found in reference genome: {ref}',
+            (
+                'The given reference cannot be used because the chromosome names are inconsistent!\nChromosomes found in ',
+                'BAF files: {chromosomes}\nChromosomes with the same name found in reference genome: {ref}',
+            ),
         )
 
-    return sorted(list(chromosomes), key=sp.numericOrder)
+    return sorted(list(chromosomes), key=numericOrder)
 
 
 def getSQNames(samtools, bamfile):
@@ -2502,10 +2506,8 @@ def parseRegions(region_file, chromosomes):
                 nofound.add(chro)
 
     for c in nofound:
-        sp.log(
-            msg='The chromosome {} present in the provided regions is non-autosome or is not present in the given BAM files\n'.format(
-                c
-            ),
+        log(
+            msg=f'The chromosome {c} present in the provided regions is non-autosome or is not present in the given BAM files\n',
             level='WARN',
         )
 
@@ -2519,7 +2521,7 @@ def parseRegions(region_file, chromosomes):
             a[0] <= a[1] <= b[0] <= b[1]
             for a, b in zip(res[key], res[key][1:])
         ):
-            sp.error(
+            error(
                 f'The regions provided for chromosome {key} are non-disjoint or a region start is greater than corresponding region end',
                 raise_exception=True,
             )

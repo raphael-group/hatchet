@@ -109,7 +109,7 @@ def segmentation(
     # TODO: The legacy C++ implementation interprets the 'coverage' column as an int
     df['COV'] = df['COV'].astype(int)
 
-    n_cluster, n_clone = len(cluster_ids), len(cA[0])
+    n_clone = len(cA[0])
     cA = pd.DataFrame(cA, index=cluster_ids, columns=range(n_clone))
     cB = pd.DataFrame(cB, index=cluster_ids, columns=range(n_clone))
     u = pd.DataFrame(u, index=range(n_clone), columns=sample_ids)
@@ -146,8 +146,6 @@ def segmentation(
         df['segment'] = 0
         # all column names with cnA|cnB information (normal + clones)
         cN_column_names = cN.columns.tolist()
-        # all columns names with mixture information (normal + clone)
-        u_column_names = u.columns.tolist()
         # create a new column with all cnA|cnB strings joined as a single column
         df['all_copy_numbers'] = df[cN_column_names].apply(
             lambda x: ','.join(x), axis=1

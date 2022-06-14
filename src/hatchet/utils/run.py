@@ -225,7 +225,7 @@ def main(args=None):
                 args = ['-p', f'{output}/phase/phased.vcf.gz'] + args
             else:
                 log(
-                    msg=f'NO PHASING FILE FOUND at [phasefile]. Not including phasing in binning process.\n',
+                    msg=f'NO PHASING FILE FOUND at {phasefile}. Not including phasing in binning process.\n',
                     level='INFO',
                 )
 
@@ -323,7 +323,6 @@ def main(args=None):
                 '0',
                 '--ymax',
                 '3',
-                #'--pdf'
             ]
         )
 

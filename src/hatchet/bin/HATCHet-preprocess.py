@@ -1,3 +1,4 @@
+import sys
 import os
 import argparse
 import subprocess as sp
@@ -5,7 +6,8 @@ import multiprocessing as mp
 import shlex
 import re
 
-from hatchet.utils.Supporting import *
+from hatchet.utils.Supporting import log
+import hatchet.utils as utils
 from hatchet import config, __version__
 
 
@@ -156,7 +158,7 @@ def parse_args():
             size = int(args.size[:-2]) * 1000000
         else:
             size = int(args.size)
-    except:
+    except (IndexError, ValueError):
         raise ValueError(
             'Size must be a number, optionally ending with either "kb" or "Mb"!'
         )

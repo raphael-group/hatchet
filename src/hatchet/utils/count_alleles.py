@@ -1,4 +1,5 @@
-import sys, os
+import sys
+import os
 import os.path
 import argparse
 import shlex
@@ -9,8 +10,7 @@ import tempfile
 
 import hatchet.utils.ProgressBar as pb
 import hatchet.utils.ArgParsing as ap
-from hatchet.utils.Supporting import *
-import hatchet.utils.Supporting as sp
+from hatchet.utils.Supporting import log, logArgs, error, close
 
 
 def main(args=None):
@@ -46,7 +46,7 @@ def main(args=None):
         counts=snps, gamma=args['gamma'], maxshift=args['maxshift']
     )
     if not hetSNPs:
-        sp.close(
+        close(
             'No heterozygous SNPs found in the selected regions of the normal!\n'
         )
 
@@ -108,7 +108,7 @@ def main(args=None):
             outdir=args['outputSnps'],
         )
         if not rcounts:
-            sp.close('The selected SNPs are not covered in the tumors!\n')
+            close('The selected SNPs are not covered in the tumors!\n')
         rcounts = {
             c: dict(map(lambda r: (int(r[2]), dict(r[3])), rcounts[c]))
             for c in rcounts
@@ -150,7 +150,6 @@ def main(args=None):
 
 
 def selectHetSNPs(counts, gamma, maxshift):
-    getma = lambda d: max(d.items(), key=(lambda x: x[1]))
     hetSNPs = {
         c: [
             (r[0], r[1], r[2], r[3][0], max(r[3][1:], key=(lambda x: x[1])))
@@ -381,7 +380,7 @@ class AlleleCounter(Process):
             codes = map(lambda p: p.wait(), [mpileup, query])
         if any(c != 0 for c in codes):
             raise ValueError(
-                sp.error(
+                error(
                     'Allele counting failed on {} of {}, please check errors in {}!'
                 ).format(chromosome, samplename, errname)
             )

@@ -1,9 +1,9 @@
-import multiprocessing as mp
-import os
-import subprocess as sp
-from shutil import which
 import sys
 import os
+from multiprocessing import Pool
+import subprocess as sp
+from shutil import which
+
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -64,7 +64,7 @@ def main(args=None):
             )
 
             n_workers_samtools = min(processes, len(bams) * len(chromosomes))
-            with mp.Pool(
+            with Pool(
                 n_workers_samtools
             ) as p:   # divide by 2 because each worker starts 2 processes
                 p.map(count_chromosome_wrapper, params)
@@ -98,7 +98,7 @@ def main(args=None):
                 )
                 for i in range(len(bams))
             ]
-            with mp.Pool(n_workers_mosdepth) as p:
+            with Pool(n_workers_mosdepth) as p:
                 p.map(mosdepth_wrapper, mosdepth_params)
 
             if len(check_counts_files(outdir, chromosomes, names)) > 0:
@@ -166,7 +166,7 @@ def main(args=None):
         ]
 
         # dispatch workers
-        with mp.Pool(n_workers) as p:
+        with Pool(n_workers) as p:
             p.map(run_chromosome_wrapper, params)
 
         np.savetxt(os.path.join(outdir, 'samples.txt'), names, fmt='%s')
@@ -209,7 +209,7 @@ def main(args=None):
                 )
                 for name in names
             }
-        except:
+        except KeyError:
             raise KeyError(
                 error(
                     'Either a chromosome or a sample has not been considered in the total counting!'
@@ -637,7 +637,7 @@ def expected_arrays(darray, chrs):
     expected = []
     # formArray (abin/<chr>.<total/thresholds> files))
 
-    fname = os.path.join(darray, f'samples.txt')
+    fname = os.path.join(darray, 'samples.txt')
     expected.append(fname)
 
     for ch in chrs:

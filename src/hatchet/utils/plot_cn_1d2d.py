@@ -1,24 +1,22 @@
 import sys
 import os
+from collections import Counter
+from importlib.resources import path
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.colors as mcolors
 from matplotlib import collections
 from matplotlib.patches import Rectangle
 from matplotlib import cm
-from collections import Counter
-import pandas as pd
-import subprocess as sp
-
-plt.rcParams['savefig.dpi'] = 300
-import matplotlib.colors as mcolors
 
 from hatchet.utils.ArgParsing import parse_plot_cn_1d2d_args
-from hatchet.utils import Supporting as sp
-from importlib.resources import path
+from hatchet.utils.Supporting import log, logArgs, error
 import hatchet.data
 from hatchet import config, __version__
 
+plt.rcParams['savefig.dpi'] = 300
 plt.style.use('ggplot')
 sns.set_style('whitegrid')
 
@@ -26,14 +24,13 @@ MAX_CLONES = 20
 
 
 def main(args=None):
-    sp.log('# Checking and parsing input arguments\n')
+    log('# Checking and parsing input arguments\n')
     args = parse_plot_cn_1d2d_args(args)
-    sp.logArgs(args, 80)
+    logArgs(args, 80)
 
     ### THESE VARIABLES ARE CURRENTLY DUMMIES ###
     # Consider exposing these as command-line arguments in the future
     title = None
-    reflect_baf = False
     resample_balanced = False
 
     generate_1D2D_plots(
@@ -69,7 +66,7 @@ def generate_1D2D_plots(
     if any(using_chr):
         if not all(using_chr):
             raise ValueError(
-                sp.error(
+                error(
                     "Some chromosomes use 'chr' notation while others do not."
                 )
             )
@@ -141,7 +138,7 @@ def generate_1D2D_plots(
                 ],
             )
 
-    sp.log('Plotting copy-number states in 2D\n', level='INFO')
+    log('Plotting copy-number states in 2D\n', level='INFO')
     if by_sample:
         plot_clusters(
             bbc,
@@ -162,9 +159,7 @@ def generate_1D2D_plots(
             fname=os.path.join(outdir, '2D-plot.png'),
         )
 
-    sp.log(
-        'Plotting copy-number segments in 1D along the genome\n', level='INFO'
-    )
+    log('Plotting copy-number segments in 1D along the genome\n', level='INFO')
     if by_sample:
         plot_genome(
             bbc,
@@ -189,7 +184,7 @@ def generate_1D2D_plots(
             fname=os.path.join(outdir, '1D-plot.png'),
         )
 
-    sp.log('Done\n', level='INFO')
+    log('Done\n', level='INFO')
 
 
 def limits_valid(lim):
@@ -390,13 +385,9 @@ def plot_genome(
             maxFCN = np.max(bbc_.RD * gamma)
 
         if limits_valid(baf_ylim):
-            minBAF, maxBAF = baf_ylim
+            minBAF, _ = baf_ylim
         else:
             minBAF = np.min(bbc_.BAF)
-            maxBAF = np.max(bbc_.BAF)
-
-        FCNrange = maxFCN - minFCN
-        BAFrange = maxBAF - minBAF
 
         chrkey = 'CHR' if 'CHR' in bbc_.columns else '#CHR'
 
@@ -407,9 +398,6 @@ def plot_genome(
             flag = bbc['#CHR'] == chromosome
             bbc = bbc[flag]
 
-            my_rows = np.where(flag)[0]
-
-            offset = bbc.END.max()
             midpoint = (
                 np.mean(np.array([bbc.START, bbc.END]), axis=0) + chr_start
             )

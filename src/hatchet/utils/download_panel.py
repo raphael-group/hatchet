@@ -4,8 +4,7 @@ import subprocess as pr
 import gzip
 
 import hatchet.utils.ArgParsing as ap
-from hatchet.utils.Supporting import *
-import hatchet.utils.Supporting as sp
+from hatchet.utils.Supporting import log, logArgs, error, download, checksum
 from hatchet import config
 
 
@@ -19,7 +18,7 @@ def main(args=None):
     # download reference panel, prepare files for liftover
     if args['refpanel'] == '1000GP_Phase3':
         # download 1000GP ref panel
-        sp.download(
+        download(
             url=config.urls.onekgp,
             dirpath=args['refpaneldir'],
             sentinel_file='1000GP_Phase3.sample',
@@ -52,20 +51,20 @@ def dwnld_chains(dirpath):
 
         with open(name, 'w') as new:
             with gzip.open(infile, 'rt') as f:
-                for l in f:
-                    if l.startswith('chain'):
-                        l = l.split()
+                for line in f:
+                    if line.startswith('chain'):
+                        line = line.split()
                         if not config.urls.refpanel_genome_chr_notation:
-                            l[refpanel_index] = l[refpanel_index].replace(
-                                'chr', ''
-                            )
+                            line[refpanel_index] = line[
+                                refpanel_index
+                            ].replace('chr', '')
                         if not sample_chr:
-                            l[sample_index] = l[sample_index].replace(
+                            line[sample_index] = line[sample_index].replace(
                                 'chr', ''
                             )
-                        new.write(' '.join(l) + '\n')
+                        new.write(' '.join(line) + '\n')
                     else:
-                        new.write(l)
+                        new.write(line)
         return name
 
     hg38tohg19 = download(
@@ -138,7 +137,7 @@ def dwnld_refpanel_genome(path):
             )
         if run.returncode != 0:
             raise ValueError(
-                sp.error(
+                error(
                     f'Samtools dict creation failed, please check errors in {errname}!'
                 )
             )

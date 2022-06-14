@@ -7,9 +7,8 @@ import subprocess as pr
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 from scipy.stats import beta
 
-import hatchet.utils.ArgParsing as ap
-from hatchet.utils.Supporting import *
-import hatchet.utils.Supporting as sp
+from hatchet.utils.ArgParsing import parse_genotype_snps_arguments
+from hatchet.utils.Supporting import log, logArgs, error
 import hatchet.utils.ProgressBar as pb
 
 
@@ -18,7 +17,7 @@ def main(args=None):
         msg='# Parsing the input arguments, checking the consistency of given files, and extracting required information\n',
         level='STEP',
     )
-    args = ap.parse_genotype_snps_arguments(args)
+    args = parse_genotype_snps_arguments(args)
     logArgs(args, 80)
 
     log(msg='# Inferring SNPs from the normal sample\n', level='STEP')
@@ -56,13 +55,13 @@ def main(args=None):
             stderr=pr.PIPE,
             universal_newlines=True,
         ).communicate()[0]
-        number = ''.join([l for l in number if l.isdigit()])
+        number = ''.join([_l for _l in number if _l.isdigit()])
         return int(number) if len(number) > 0 else 0
 
     number_snps = sum(count(f) for f in snps)
 
     if number_snps == 0:
-        raise ValueError(sp.error('No SNPs found in the normal!\n'))
+        raise ValueError(error('No SNPs found in the normal!\n'))
     else:
         log(
             msg='{} SNPs have been identified in total\n'.format(number_snps),
@@ -254,7 +253,7 @@ class Caller(Process):
                 codes = map(lambda p: p.wait(), [tgt, gzip])
             if any(c != 0 for c in codes):
                 raise ValueError(
-                    sp.error(
+                    error(
                         'SNP Calling failed on {} of {}, please check errors in {}!'
                     ).format(chromosome, samplename, errname)
                 )
@@ -289,7 +288,7 @@ class Caller(Process):
             codes = map(lambda p: p.wait(), [mpileup, call])
         if any(c != 0 for c in codes):
             raise ValueError(
-                sp.error(
+                error(
                     'SNP Calling failed on {} of {}, please check errors in {}!'
                 ).format(chromosome, samplename, errname)
             )

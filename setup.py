@@ -1,15 +1,3 @@
-# The first version of setuptools capable of dealing with a pyproject.toml
-# See https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
-
-# We *could* in addition, specify the first version of pip capable of recognizing `python_requires` (9.0.1)
-# See https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
-# But that fails under a conda environment (as does any approach that does `import pip`)
-# so this is best we can do for now.
-
-import pkg_resources
-
-pkg_resources.require(['setuptools >= 40.8.0'])
-
 import os
 import re
 import sys

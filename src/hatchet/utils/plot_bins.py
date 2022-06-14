@@ -1,7 +1,6 @@
-import matplotlib as mpl
-
-mpl.use('Agg')
-import sys, os, argparse
+import sys
+import os
+import argparse
 import math
 import itertools
 import numpy as np
@@ -10,6 +9,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 import pandas as pd
 from scipy.stats import beta
+import matplotlib as mpl
 import matplotlib.ticker as ticker
 from scipy.stats import gaussian_kde
 import matplotlib.colors as col
@@ -19,6 +19,7 @@ from collections import Counter
 
 from hatchet.utils.ArgParsing import parse_plot_bins_args
 
+mpl.use('Agg')
 plt.style.use('ggplot')
 sns.set_style('whitegrid')
 
@@ -261,7 +262,7 @@ def baf(bbc, args, out):
 
     with PdfPages(out) as pdf:
         sys.stderr.write(info('## Plotting for all samples..\n'))
-        g = sns.lmplot(
+        sns.lmplot(
             data=df,
             x=lx,
             y=ly,
@@ -422,24 +423,23 @@ def cluster_bins(bbc, clusters, args, out, clust_order, pal):
     ]
     df = pd.DataFrame(data)
 
-    # for the top clusters in clust_order (leftmost in list) that have an asigned color (not gray) in palette pal,
+    # for the top clusters in clust_order (leftmost in list) that have an assigned color (not gray) in palette pal,
     # get their index in pal, otherwise assign the rest of the clusters to the last color in the palette (gray)
-    l = []
+    color_index = []
     for i in df['Cluster']:
-        l.append(clust_order.index(i)) if clust_order.index(i) <= len(
-            pal
-        ) - 2 else l.append(len(pal) - 1)
-    df['Color'] = l
-    # reverse order so largest clusters with color plotted last and on top
+        if clust_order.index(i) <= len(pal) - 2:
+            color_index.append(clust_order.index(i))
+        else:
+            color_index.append(len(pal) - 1)
+    df['Color'] = color_index
+
+    # reverse order so the largest clusters with color are plotted last and on top
     order = [i for i in range(len(pal))]
     order.reverse()
     pal.reverse()
     figsize = args['figsize'] if args['figsize'] is not None else (10, 1.1)
     s = args['markersize'] if args['markersize'] > 0 else 7
 
-    # with PdfPages(out) as pdf:
-    #    for sample, group in df.groupby(g):
-    # sys.stderr.write(info("## Plotting for {}..\n".format(sample)))
     if args['colwrap'] > 1:
         g = sns.lmplot(
             data=df,
@@ -471,9 +471,7 @@ def cluster_bins(bbc, clusters, args, out, clust_order, pal):
             legend=False,
             row=g,
         )
-    # plt.title("{}".format(sample))
     coordinates(args, g)
-    # pdf.savefig(bbox_inches='tight')
     if args['pdf']:
         plt.savefig(out, bbox_inches='tight')
     else:
@@ -482,13 +480,8 @@ def cluster_bins(bbc, clusters, args, out, clust_order, pal):
 
 
 def clus(seg, args, out):
-    ly = 'Read-depth ratio (RDR)'
-    lx = '0.5 - B-allele frequency (BAF)'
-    g = 'Sample'
-    lh = 'Cluster'
     samples = set(seg[list(seg)[0]])
     figsize = args['figsize'] if args['figsize'] is not None else (16, 10)
-    s = args['markersize'] if args['markersize'] > 0 else 20
     mpl.rcParams['figure.figsize'] = (figsize[0], figsize[1])
     pal = cycle(sns.color_palette(args['cmap'], min(20, len(set(seg)))))
     col = {idx: next(pal) for idx in seg}
@@ -636,7 +629,7 @@ def select(bbc, clusters, args):
     ]                    # reverse order for later plotting, smaller selected clusters in front
     # add on the rest of the unselected clusters, but we'll know which ones to color based on the number of
     # colors in the palette pal
-    [clust_order.append(i) if not i in sel else next for i in alls]
+    [clust_order.append(i) if i not in sel else next for i in alls]
     # configure palette; subselecting colors if there are fewer selected clusters than colors
     if len(sel) <= len(
         sns.color_palette(args['cmap'])

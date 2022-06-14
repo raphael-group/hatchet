@@ -1,10 +1,10 @@
 import sys
-import math
-import numpy as np
-from collections import Counter
-import pandas as pd
 import os
+import math
+from collections import Counter
 import numpy as np
+import pandas as pd
+
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
 from scipy.special import logsumexp
@@ -154,7 +154,6 @@ def read_bb(bbfile, use_chr=True, compressed=False):
     populated_labels = False
 
     chr_labels = []
-    any_split = False
     for ch, df0 in bb.groupby(['#CHR']):
         df0 = df0.sort_values('START')
 
@@ -195,8 +194,6 @@ def read_bb(bbfile, use_chr=True, compressed=False):
 
             tracks.append(np.array(q_arrs))
             chr_labels.append(str(ch) + '_q')
-            any_split = True
-
         else:
             tracks.append(np.array(p_arrs))
             chr_labels.append(str(ch) + '_p')

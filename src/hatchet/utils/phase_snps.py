@@ -5,8 +5,7 @@ import shlex
 import shutil
 
 import hatchet.utils.ArgParsing as ap
-from hatchet.utils.Supporting import *
-import hatchet.utils.Supporting as sp
+from hatchet.utils.Supporting import log, logArgs, error, ensure, run
 from hatchet.utils import ProgressBar as pb
 from hatchet.utils.multiprocessing import Worker
 
@@ -23,14 +22,14 @@ def main(args=None):
     outdir = args['outdir']
 
     if args['refvers'] not in ('hg19', 'hg38'):
-        sp.error(
+        error(
             'The reference genome version of your samples is not "hg19" or "hg38".',
             raise_exception=True,
         )
 
     rpd = args['refpaneldir']
     if not os.path.exists(os.path.join(rpd, '1000GP_Phase3.sample')):
-        sp.error(
+        error(
             'Please download the 1000GP reference panel before proceeding',
             raise_exception=True,
         )
@@ -55,7 +54,7 @@ def main(args=None):
                 'hg19_hg38': os.path.join(rpd, 'hg19ToHg38.no_chr.chain'),
             }
 
-        sp.ensure(
+        ensure(
             os.path.isfile(chains['hg38_hg19'])
             and os.path.isfile(chains['hg19_hg38']),
             'The appropriate liftover chain files could not be located! Please run the download-panel '
@@ -73,7 +72,7 @@ def main(args=None):
     chromosomes = []
     for chro in args['chromosomes']:
         if chro.endswith('X') or chro.endswith('Y'):
-            sp.log(
+            log(
                 msg=f'Skipping chromosome {chro} (because it ends with X or Y)\n',
                 level='WARN',
             )
@@ -158,8 +157,8 @@ def print_log(path, chromosomes):
 
 def concat(vcfs, outdir, bcftools):
     infiles = ' '.join(vcfs)
-    outfile = os.path.join(outdir, f'phased.vcf.gz')
-    sp.run(
+    outfile = os.path.join(outdir, 'phased.vcf.gz')
+    run(
         f'{bcftools} concat --output-type z --output {outfile} {infiles}',
         stdouterr_filepath=os.path.join(outdir, 'concat.log'),
     )
@@ -304,7 +303,7 @@ class Phaser(Worker):
             codes = list(map(lambda p: p.wait(), [filt, norm]))
         if any(c != 0 for c in codes) or pic.returncode != 0:
             log(msg=cmd1, level='ERROR')
-            sp.error(
+            error(
                 f'Failed to liftover chromosomes with picard on {infile}.',
                 raise_exception=True,
             )
@@ -317,7 +316,7 @@ class Phaser(Worker):
         outfile = os.path.join(self.outdir, f'{chromosome}_{outname}.vcf.gz')
         errname = os.path.join(self.outdir, f'{chromosome}_bcftools.log')
 
-        sp.run(
+        run(
             f'{self.bcftools} annotate --rename-chrs {rename} --output-type z --output {outfile} {infile}',
             stdouterr_filepath=errname,
             error_msg=f'Failed to re-annotate chromosomes with bcftools on {infile}.',
@@ -333,7 +332,7 @@ class Phaser(Worker):
     def biallelic(self, infile, chromosome):
         # use bcftools to discard multi-allelic sites and indels
         outfile = os.path.join(self.outdir, f'{chromosome}_filtered.vcf.gz')
-        sp.run(
+        run(
             f'{self.bcftools} view --max-alleles 2 --exclude-types indels --output-type z --output-file {outfile} {infile}',
             stdouterr_filepath=os.path.join(
                 self.outdir, f'{chromosome}_bcftools.log'
@@ -382,10 +381,10 @@ class Phaser(Worker):
 
         cmd_index = f'{self.bcftools} index -f {self.outdir}/{chromosome}_phased.vcf.gz'
 
-        sp.run(
+        run(
             cmd_check, stdouterr_filepath=errname, check_return_codes=False
         )  # May return 1
-        sp.run(
+        run(
             [cmd_phase, cmd_convert, cmd_compress, cmd_index],
             stdouterr_filepath=errname,
             error_msg=f'Phasing failed on {infile}.',
@@ -394,7 +393,7 @@ class Phaser(Worker):
         return os.path.join(self.outdir, f'{chromosome}_phased.vcf.gz')
 
     def index(self, infile, chromosome):
-        sp.run(
+        run(
             f'{self.bcftools} index -f {infile}',
             stdouterr_filepath=os.path.join(
                 self.outdir, f'{chromosome}_bcftools.log'

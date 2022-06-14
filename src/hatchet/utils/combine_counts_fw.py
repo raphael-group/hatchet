@@ -75,7 +75,6 @@ def main(args=None):
         block=args['block'],
     )
 
-    names = list(samples).sort()
     sys.stdout.write(
         '#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n'
     )
@@ -276,7 +275,7 @@ def blocking(L, sample, phase, blocksize):
         return result
     que = deque(sorted(L, key=(lambda v: v[1])))
     omap = {}
-    blocks = {}
+
     for bk in range(min(o[1] for o in L), max(o[1] for o in L) + 1, blocksize):
         block = (sample, bk, 0, 0)
         while que and bk <= que[0][1] < bk + blocksize:

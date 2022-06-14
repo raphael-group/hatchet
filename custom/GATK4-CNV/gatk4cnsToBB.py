@@ -1,6 +1,5 @@
-#!/usr/bin/python3
-
-import os, sys
+import sys
+import os
 import argparse
 import math
 import numpy as np
@@ -84,7 +83,7 @@ def parse_args():
             size = int(args.binsize[:-2]) * 1000000
         else:
             size = int(args.binsize)
-    except:
+    except (IndexError, ValueError):
         raise ValueError(
             'Size must be a number, optionally ending with either "kb" or "Mb"!'
         )

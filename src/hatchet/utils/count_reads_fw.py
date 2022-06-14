@@ -5,7 +5,7 @@ import argparse
 import hatchet.utils.BAMBinning as bb
 import hatchet.utils.TotalCounting as tc
 import hatchet.utils.ArgParsing as ap
-from hatchet.utils.Supporting import *
+from hatchet.utils.Supporting import log, close, error
 
 
 def main(args=None):
@@ -143,7 +143,7 @@ def main(args=None):
             total_counts[args['normal'][1], chromosome]
             for chromosome in args['chromosomes']
         )
-    except:
+    except KeyError:
         raise KeyError(
             error(
                 'Either a chromosome or a sample has not been considered in the total counting!'
@@ -176,7 +176,7 @@ def knownRegions(refdict, chromosomes):
     if None in ends.values():
         log(
             msg='The following chromosomes have not been found in the dictionary of the reference genome: \n\t{}'.format(
-                ','.join([c for c in ends if ends[c] == None])
+                ','.join([c for c in ends if ends[c] is None])
             ),
             level='WARN',
         )

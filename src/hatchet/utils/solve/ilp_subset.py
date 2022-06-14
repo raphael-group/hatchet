@@ -783,7 +783,7 @@ class ILPSubsetSplit(ILPSubset):
     def create_model(self, pprint=False):
 
         m, n, k = self.m, self.n, self.k
-        f_a, f_b = self.f_a, self.f_b
+        f_a = self.f_a
         cn_max = self.cn_max
         ampdel = self.ampdel
         copy_numbers = self.copy_numbers

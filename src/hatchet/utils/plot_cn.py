@@ -1,16 +1,13 @@
-import os
 import sys
+import os
 import argparse
 import shutil
 import subprocess
 import shlex
-import sys, os
 import math
 import warnings
 import numpy as np
 import matplotlib as mpl
-
-mpl.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -24,8 +21,10 @@ from collections import deque
 import itertools
 from itertools import cycle
 
+from hatchet.utils.Supporting import to_tuple
 from hatchet import config, __version__
 
+mpl.use('Agg')
 plt.style.use('ggplot')
 sns.set_style('whitegrid')
 
@@ -158,7 +157,7 @@ def parsing_arguments(args=None):
         required=False,
         default=config.plot_cn.linkage,
         type=str,
-        help='Linkage method used for clustering (default: single, available \{single, complete, average, weighted, centroid, median, ward\} from SciPy)"',
+        help='Linkage method used for clustering (default: single, available (single, complete, average, weighted, centroid, median, ward) from SciPy)"',
     )
     parser.add_argument(
         '-V', '--version', action='version', version=f'%(prog)s {__version__}'
@@ -182,41 +181,16 @@ def parsing_arguments(args=None):
             )
         )
     if args.figsizeclones is not None:
-        try:
-            parsed = (
-                args.figsizeclones.strip()
-                .replace(' ', '')
-                .replace('(', '')
-                .replace(')', '')
-                .split(',')
-            )
-            figsizeclones = (int(parsed[0]), int(parsed[1]))
-        except:
-            raise ValueError(error('Wrong format of clonefigsize!'))
+        figsizeclones = to_tuple(
+            args.figsizeclones, 'Wrong format of figsizeclones!'
+        )
     if args.figsizecn is not None:
-        try:
-            parsed = (
-                args.figsizecn.strip()
-                .replace(' ', '')
-                .replace('(', '')
-                .replace(')', '')
-                .split(',')
-            )
-            figsizecn = (int(parsed[0]), int(parsed[1]))
-        except:
-            raise ValueError(error('Wrong format of figsizecn!'))
+        figsizecn = to_tuple(args.figsizecn, 'Wrong format of figsizecn!')
     if args.figsizegrid is not None:
-        try:
-            parsed = (
-                args.figsizegrid.strip()
-                .replace(' ', '')
-                .replace('(', '')
-                .replace(')', '')
-                .split(',')
-            )
-            figsizegrid = (int(parsed[0]), int(parsed[1]))
-        except:
-            raise ValueError(error('Wrong format of figsizegrid!'))
+        figsizegrid = to_tuple(
+            args.figsizegrid, 'Wrong format of figsizegrid!'
+        )
+
     if not os.path.isdir(args.rundir):
         raise ValueError(error('Running directory does not exist!'))
     if not 0.0 <= args.minu <= 1.0:
@@ -492,7 +466,7 @@ def profiles(tumor, clones, props, args, out):
     )
     style = {name: next(pal) for i, name in enumerate(tclones)}
 
-    fig = plt.figure(figsize=args['clonefigsize'])
+    plt.figure(figsize=args['clonefigsize'])
     pos = []
     x = 0
     for c in sorted(proj, key=sortchr):
@@ -546,7 +520,7 @@ def allelicprofiles(tumor, clones, props, args, out):
     )
     style = {name: next(pal) for i, name in enumerate(tclones)}
 
-    fig = plt.figure(figsize=args['clonefigsize'])
+    plt.figure(figsize=args['clonefigsize'])
 
     x = 0
     pos = []
@@ -1033,8 +1007,6 @@ def gridmixtures(tumor, base, clones, props, args, out):
         index=['Sample'],
         aggfunc='first',
     )
-    mapchr = cycle(['#525252', '#969696', '#cccccc'])
-    palchr = {c: next(mapchr) for c in sorted(tumor, key=sortchr)}
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
@@ -1378,10 +1350,6 @@ def intergridreducedprofiles(tumor, base, clones, props, args, out):
         index=['Patient clone'],
         aggfunc='first',
     )
-    mapchr = cycle(['#525252', '#969696', '#cccccc'])
-    palchr = {
-        c: next(mapchr) for c in sorted(tumor[list(tumor)[0]], key=sortchr)
-    }
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
@@ -1476,10 +1444,6 @@ def intergridsamplesclusters(tumor, base, clones, props, args, out):
         index=['Patient sample'],
         aggfunc='first',
     )
-    mapchr = cycle(['#525252', '#969696', '#cccccc'])
-    palchr = {
-        c: next(mapchr) for c in sorted(tumor[list(tumor)[0]], key=sortchr)
-    }
 
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
@@ -1635,7 +1599,6 @@ def intergridsubclonality(tumor, base, clones, props, args, out):
 
 def segmenting(tumor, clones, props):
     numpat = len(tumor)
-    joint = {}
     cbk = lambda c: set(b for pat in tumor for s in tumor[pat][c] for b in s)
     bk = {c: cbk(c) for c in set(c for pat in tumor for c in tumor[pat])}
     bk = {c: sorted(bk[c]) for c in bk}
@@ -1649,23 +1612,20 @@ def segmenting(tumor, clones, props):
             bk = deque(breakpoints[c])
             left = -1
             right = bk.popleft()
-            for (l, r) in sorted(d[c], key=(lambda x: x[0])):
-                while right != r:
+            for (_left, _right) in sorted(d[c], key=(lambda x: x[0])):
+                while right != _right:
                     left = right
                     right = bk.popleft()
-                    if l <= left and right <= r:
+                    if _left <= left and right <= _right:
                         counts[c][left, right] += 1
                         assert counts[c][left, right] <= numpat
-                        m[c][left, right] = (l, r)
+                        m[c][left, right] = (_left, _right)
 
     for pat in tumor:
         select(tumor[pat], maps[pat], counts, bk, numpat)
 
     taken = {
         c: set(b for b in counts[c] if counts[c][b] == numpat) for c in counts
-    }
-    discarded = {
-        c: set(b for b in counts[c] if counts[c][b] < numpat) for c in counts
     }
     tottaken = sum(
         1.0 for c in counts for b in counts[c] if counts[c][b] == numpat

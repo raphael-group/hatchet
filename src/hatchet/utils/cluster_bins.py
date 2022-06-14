@@ -63,7 +63,6 @@ def main(args=None):
         )
 
     clusterAssignments = reindex(clusterAssignments)
-    names = list(samples).sort()
 
     sp.log(msg='# Writing BBC output with resulting clusters\n', level='STEP')
     if args['outbins'] is None:
@@ -106,7 +105,7 @@ def main(args=None):
     }
     segments = segmentBins(bb=combo, clusters=clusters, samples=samples)
 
-    if args['diploidbaf'] != None:
+    if args['diploidbaf'] is not None:
         sp.log(
             msg='# Determining the largest cluster as diploid or tetraploid and rescaling all the clusters inside the threshold accordingly\n',
             level='STEP',
@@ -194,7 +193,7 @@ def getPoints(data, samples):
                 raise ValueError(
                     sp.error(
                         'Found a bin ({}, {}) in chromosome {} defined multiple times for the same sample!'.format(
-                            bi[1].bi[2], bi[0]
+                            bi[1], bi[2], bi[0]
                         )
                     )
                 )
@@ -204,7 +203,7 @@ def getPoints(data, samples):
             raise ValueError(
                 sp.error(
                     'Found a bin ({}, {}) in chromosome {} that is not covered in all the samples!'.format(
-                        bi[1].bi[2], bi[0]
+                        bi[1], bi[2], bi[0]
                     )
                 )
             )
@@ -328,7 +327,6 @@ def refineClustering(combo, assign, assignidx, samples, rdtol, baftol):
                 break
         if len(opts) > 0:
             f = first
-            s = sp.argmin(opts)
             return first, sp.argmin(opts)
         else:
             None

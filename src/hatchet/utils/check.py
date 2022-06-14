@@ -42,7 +42,7 @@ def _check_cmd(exe_path, exe_name, *args):
         )
         p.communicate()
         assert p.returncode == 0
-    except Exception as e:
+    except Exception:
         return False
     else:
         return True

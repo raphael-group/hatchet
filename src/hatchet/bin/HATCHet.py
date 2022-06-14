@@ -3,12 +3,12 @@ import sys
 import argparse
 import shutil
 import subprocess
-import multiprocessing as mp
 import shlex
 from collections import Counter
 
 import hatchet
 from hatchet import config, __version__
+from hatchet.utils.Supporting import ensure
 from hatchet.utils.solve import solve
 from hatchet.utils.solve.utils import segmentation
 
@@ -421,10 +421,9 @@ def parsing_arguments(args=None):
         raise ValueError(
             error('The max-iteration number must be a positive integer!')
         )
-    if args.mode is not None and (
-        args.mode != 0 and args.mode != 1 and args.mode != 2
-    ):
-        raise ValueError(error('The mode integer must be in \{0, 1, 2\}!'))
+    ensure(
+        args.mode in (None, 0, 1, 2), 'The mode integer must be in (0, 1, 2)!'
+    )
 
     if args.diploid and args.tetraploid:
         raise ValueError(
@@ -1200,7 +1199,6 @@ def parseClonalClusters(clonal, fseg, neutral, size, samples, v):
         2 * r + 2 * d - c * d
     )
     calcScalingFactor = lambda p, d: float(2.0 + 2.0 * p) / float(d)
-    calcFraction = lambda p, cn: float(2.0 * (1.0 - p) + sum(cn) * p)
 
     purity = {
         p: calcPurity(fseg[neutral][p]['rdr'], cn, fseg[second][p]['rdr'])
@@ -1410,7 +1408,7 @@ def select(diploid, tetraploid, v, rundir, g, limit):
             )
             sys.stderr.write(
                 info(
-                    '\n'.format(
+                    '\n'.join(
                         [
                             '## Diploid with {} clones - OBJ: {} - score: {}'.format(
                                 d[0], d[1], dscores[d[0]]
@@ -1432,7 +1430,7 @@ def select(diploid, tetraploid, v, rundir, g, limit):
             )
             sys.stderr.write(
                 info(
-                    '\n'.format(
+                    '\n'.join(
                         [
                             '## Tetraploid with {} clones - OBJ: {} - score: {}'.format(
                                 t[0], t[1], tscores[t[0]]
@@ -1586,7 +1584,7 @@ def selectDiploid(diploid, v, rundir, g, limit):
             )
             sys.stderr.write(
                 info(
-                    '\n'.format(
+                    '\n'.join(
                         [
                             '## Diploid with {} clones - OBJ: {} - score: {}'.format(
                                 d[0], d[1], dscores[d[0]]
@@ -1676,7 +1674,7 @@ def selectTetraploid(tetraploid, v, rundir, g, limit):
             )
             sys.stderr.write(
                 info(
-                    '\n'.format(
+                    '\n'.join(
                         [
                             '## Tetraploid with {} clones - OBJ: {} - score: {}'.format(
                                 t[0], t[1], tscores[t[0]]
