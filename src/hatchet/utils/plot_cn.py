@@ -182,13 +182,13 @@ def parsing_arguments(args=None):
         )
     if args.figsizeclones is not None:
         figsizeclones = to_tuple(
-            args.figsizeclones, 'Wrong format of figsizeclones!'
+            args.figsizeclones, error_message='Wrong format of figsizeclones!'
         )
     if args.figsizecn is not None:
-        figsizecn = to_tuple(args.figsizecn, 'Wrong format of figsizecn!')
+        figsizecn = to_tuple(args.figsizecn, error_message='Wrong format of figsizecn!')
     if args.figsizegrid is not None:
         figsizegrid = to_tuple(
-            args.figsizegrid, 'Wrong format of figsizegrid!'
+            args.figsizegrid, error_message='Wrong format of figsizegrid!'
         )
 
     if not os.path.isdir(args.rundir):
