@@ -62,7 +62,7 @@ def test_count_reads(_, bams, output_folder):
             'Tumor2',
             'Tumor3',
             '-j',
-            '12',
+            '1',
             '-b',
             os.path.join(this_dir, 'data', 'vl', 'baf', 'bulk.1bed'),
             '-O',

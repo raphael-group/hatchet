@@ -63,9 +63,7 @@ def main(args=None):
                 [readquality] * len(bams) * len(chromosomes),
             )
 
-            n_workers_samtools = min(
-                int(np.round(processes / 2)), len(bams) * len(chromosomes)
-            )
+            n_workers_samtools = min(processes, len(bams) * len(chromosomes))
             with mp.Pool(
                 n_workers_samtools
             ) as p:   # divide by 2 because each worker starts 2 processes
