@@ -96,7 +96,6 @@ jobs:
           echo "HATCHET_PATHS_SHAPEIT=$(realpath shapeit.v2.904.3.10.0-693.11.6.el7.x86_64/bin)" >> $GITHUB_ENV
 
       - name: Download and index hg19.fa
-        if: false
         working-directory: testdata
         run: |
           wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
@@ -106,7 +105,6 @@ jobs:
           echo "HATCHET_PATHS_REFERENCE=$(realpath hg19.fa)" >> $GITHUB_ENV
 
       - name: Download 1000GP reference panel
-        if: false
         working-directory: testdata
         run: |
           wget https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz
@@ -129,10 +127,13 @@ jobs:
         env:
           CXXFLAGS: -pthread
 
-      - name: Pytest
+      - name: HATCHet Check
         run: |
           hatchet check
-          pytest test/test_config.py
+
+      - name: Pytest
+        run: |
+          pytest tests
 
       # We may end up with files that have a ':' in their filenames,
       # due to the <chr>:start:end notation of chromosomes we process through SAMtools/BCFtools.
