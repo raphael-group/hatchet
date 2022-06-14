@@ -152,8 +152,7 @@ jobs:
       - name: Convert coverage
         run: |
           python -m coverage xml
-        with:
-          fail_ci_if_error: false
+        continue-on-error: true
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
