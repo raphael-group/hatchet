@@ -133,6 +133,7 @@ setup(
         'dev': [
             'pytest',
             'mock',
+            'coverage',
             'numpydoc',
             'sphinx',
             'sphinxcontrib-bibtex<2.0.0',
