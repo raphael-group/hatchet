@@ -315,7 +315,7 @@ def parsing_arguments(args=None):
             )
         )
 
-    if args.cnstates != None and args.cnstates <= 0:
+    if args.cnstates is not None and args.cnstates <= 0:
         raise ValueError(
             error(
                 'The maximum number of copy-number states should be default None or a positive non-zero integer!'
@@ -323,7 +323,7 @@ def parsing_arguments(args=None):
         )
     if args.diploidcmax == 0:
         args.diploidcmax = None
-    if args.diploidcmax != None and args.diploidcmax <= 0:
+    if args.diploidcmax is not None and args.diploidcmax <= 0:
         raise ValueError(
             error(
                 'The maximum diploid copy number a positive non-zero integer!'
@@ -331,7 +331,7 @@ def parsing_arguments(args=None):
         )
     if args.tetraploidcmax == 0:
         args.tetraploidcmax = None
-    if args.tetraploidcmax != None and args.tetraploidcmax <= 0:
+    if args.tetraploidcmax is not None and args.tetraploidcmax <= 0:
         raise ValueError(
             error(
                 'The maximum tetraploid copy number a positive non-zero integer!'
@@ -393,35 +393,35 @@ def parsing_arguments(args=None):
         raise ValueError(
             error('The number of jobs should be a positive non-zero integer')
         )
-    if args.randomseed != None and args.randomseed <= 0:
+    if args.randomseed is not None and args.randomseed <= 0:
         raise ValueError(
             error(
                 'The random seed should be a positive non-zero integer or default None!'
             )
         )
-    if args.timelimit != None and args.timelimit <= 0:
+    if args.timelimit is not None and args.timelimit <= 0:
         raise ValueError(
             error(
                 'The time limit should be a positive non-zero integer or default None!'
             )
         )
-    if args.memlimit != None and args.memlimit <= 0:
+    if args.memlimit is not None and args.memlimit <= 0:
         raise ValueError(
             error(
                 'The memory limit should be a positive non-zero integer or default None!'
             )
         )
-    if args.minprop != None and (args.minprop < 0 or args.minprop > 0.3):
+    if args.minprop is not None and (args.minprop < 0 or args.minprop > 0.3):
         raise ValueError(
             error(
                 'The minimum proportion of clones on each sample must be in [0, 0.3]'
             )
         )
-    if args.maxiterations != None and args.maxiterations < 0:
+    if args.maxiterations is not None and args.maxiterations < 0:
         raise ValueError(
             error('The max-iteration number must be a positive integer!')
         )
-    if args.mode != None and (
+    if args.mode is not None and (
         args.mode != 0 and args.mode != 1 and args.mode != 2
     ):
         raise ValueError(error('The mode integer must be in \{0, 1, 2\}!'))

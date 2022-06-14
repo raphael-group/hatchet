@@ -1,6 +1,6 @@
 import sys
 import os.path
-from os.path import isfile
+from os.path import isfile, isdir
 import argparse
 import subprocess
 
@@ -11,7 +11,8 @@ from hatchet import config, __version__
 
 def parse_plot_bins_1d2d_args(args=None):
     """
-    Parse command line arguments for auxiliary cluster plotting command (1D and 2D plot with matching colors and optional labeled centers)
+    Parse command line arguments for auxiliary cluster plotting command (1D and 2D plot with matching colors and
+    optional labeled centers)
     """
     description = ''
     parser = argparse.ArgumentParser(
@@ -45,14 +46,20 @@ def parse_plot_bins_1d2d_args(args=None):
         '--baflim',
         required=False,
         type=str,
-        help="Axis limits for mirrored BAF as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)",
+        help=(
+            "Axis limits for mirrored BAF as comma-separated values, e.g., '0,0.51' (default: None -- show full ",
+            'range of data)',
+        ),
         default=config.plot_bins_1d2d.baflim,
     )
     parser.add_argument(
         '--rdrlim',
         required=False,
         type=str,
-        help="Axis limits for read-depth ratio as comma-separated values, e.g., '0,3' (default: None -- show full range of data)",
+        help=(
+            "Axis limits for read-depth ratio as comma-separated values, e.g., '0,3' (default: None -- show full ",
+            'range of data)',
+        ),
         default=config.plot_bins_1d2d.fcnlim,
     )
     parser.add_argument(
@@ -151,14 +158,20 @@ def parse_plot_cn_1d2d_args(args=None):
         '--baflim',
         required=False,
         type=str,
-        help="Axis limits for mirrored BAF values to show as comma-separated values, e.g., '0,0.51' (default: None -- show full range of data)",
+        help=(
+            "Axis limits for mirrored BAF values to show as comma-separated values, e.g., '0,0.51' (default: None ",
+            '-- show full range of data)',
+        ),
         default=config.plot_cn_1d2d.baflim,
     )
     parser.add_argument(
         '--fcnlim',
         required=False,
         type=str,
-        help="Axis limits for fractional copy number values to show as comma-separated values, e.g., '0,3' (default: None -- show full range of data)",
+        help=(
+            "Axis limits for fractional copy number values to show as comma-separated values, e.g., '0,3' (default: ",
+            'None -- show full range of data)',
+        ),
         default=config.plot_cn_1d2d.fcnlim,
     )
     parser.add_argument(
@@ -223,7 +236,11 @@ def parse_cluster_bins_loc_args(args=None):
     Parse command line arguments
     Returns:
     """
-    description = 'Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout.'
+    description = (
+        'Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ',
+        'ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can ',
+        'be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout.',
+    )
     parser = argparse.ArgumentParser(
         prog='hatchet cluster-bins',
         description=description,
@@ -231,7 +248,10 @@ def parse_cluster_bins_loc_args(args=None):
     )
     parser.add_argument(
         'BBFILE',
-        help='A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)',
+        help=(
+            'A BB file containing a line for each bin in each sample and the corresponding values of read-depth ',
+            'ratio and B-allele frequency (BAF)',
+        ),
     )
     parser.add_argument(
         '-o',
@@ -255,7 +275,10 @@ def parse_cluster_bins_loc_args(args=None):
         type=float,
         required=False,
         default=config.cluster_bins_loc.diploidbaf,
-        help='Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the cluster inside this threshold accordingly (default: None, scaling is not performed)',
+        help=(
+            'Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the ',
+            'cluster inside this threshold accordingly (default: None, scaling is not performed)',
+        ),
     )
     parser.add_argument(
         '-e',
@@ -385,7 +408,12 @@ def parse_cluster_bins_loc_args(args=None):
 
 
 def parse_count_reads_args(args=None):
-    description = 'Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES.'
+    description = (
+        'Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of ',
+        'a normal sample and one or more BAM files of tumor samples. This program supports both data from ',
+        'whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted ',
+        'regions is required when considering WES.',
+    )
     parser = argparse.ArgumentParser(
         prog='hatchet count-reads', description=description
     )
@@ -432,7 +460,10 @@ def parse_count_reads_args(args=None):
         default=config.count_reads.samples,
         type=str,
         nargs='+',
-        help='Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)',
+        help=(
+            'Sample names for each BAM, given in the same order where the normal name is first (default: inferred ',
+            'from file names)',
+        ),
     )
     parser.add_argument(
         '-st',
@@ -472,7 +503,10 @@ def parse_count_reads_args(args=None):
         required=False,
         default=config.count_reads.readquality,
         type=int,
-        help=f'Minimum mapping quality for an aligned read to be considered (default: {config.count_reads.readquality})',
+        help=(
+            'Minimum mapping quality for an aligned read to be considered (default: ',
+            f'{config.count_reads.readquality})',
+        ),
     )
     parser.add_argument(
         '-i',
@@ -483,9 +517,6 @@ def parse_count_reads_args(args=None):
         help=f'Produce intemediate counts files only and do not proceed to forming arrays (default: False)',
     )
 
-    # TODO: support these arguments
-    # parser.add_argument("-r","--regions", required=False, default=config.count_reads.regions, type=str, help="BED file containing the a list of genomic regions to consider in the format \"CHR  START  END\", REQUIRED for WES data (default: none, consider entire genome)")
-    # parser.add_argument("-q", "--readquality", required=False, default=config.count_reads.readquality, type=int, help="Minimum mapping quality for an aligned read to be considered (default: 0)")
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
@@ -546,11 +577,17 @@ def parse_count_reads_args(args=None):
     tabix = os.path.join(args.tabix, 'tabix')
     ensure(
         sp.which(mosdepth) is not None,
-        'The mosdepth executable was not found or is not executable. Please install mosdepth (e.g., conda install -c bioconda mosdepth) and/or supply the path to the executable.',
+        (
+            'The mosdepth executable was not found or is not executable. Please install mosdepth (e.g., conda install ',
+            '-c bioconda mosdepth) and/or supply the path to the executable.',
+        ),
     )
     ensure(
-        sp.which(tabis) is not None,
-        'The tabix executable was not found or is not executable. Please install tabix (e.g., conda install -c bioconda tabix) and/or supply the path to the executable.',
+        sp.which(tabix) is not None,
+        (
+            'The tabix executable was not found or is not executable. Please install tabix (e.g., conda install -c ',
+            'bioconda tabix) and/or supply the path to the executable.',
+        ),
     )
 
     return {
@@ -585,7 +622,10 @@ def parse_combine_counts_args(args=None):
         '--totalcounts',
         required=True,
         type=str,
-        help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample',
+        help=(
+            'Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads ',
+            'extracted from each sample',
+        ),
     )
     parser.add_argument(
         '-b',
@@ -646,7 +686,10 @@ def parse_combine_counts_args(args=None):
         required=False,
         default=config.combine_counts.alpha,
         type=float,
-        help=f'Significance level for phase blocking adjacent SNPs. Higher means less trust in phasing. (default {config.combine_counts.alpha})',
+        help=(
+            'Significance level for phase blocking adjacent SNPs. Higher means less trust in phasing. ',
+            f'(default {config.combine_counts.alpha})',
+        ),
     )
     parser.add_argument(
         '--ss_em',
@@ -805,7 +848,10 @@ def parse_genotype_snps_arguments(args=None):
         required=False,
         default=config.paths.samtools,
         type=str,
-        help='Path to the directory to "samtools" executable, required in default mode (default: samtools is directly called as it is in user $PATH)',
+        help=(
+            'Path to the directory to "samtools" executable, required in default mode (default: samtools is ',
+            'directly called as it is in user $PATH)',
+        ),
     )
     parser.add_argument(
         '-bt',
@@ -813,7 +859,10 @@ def parse_genotype_snps_arguments(args=None):
         required=False,
         default=config.paths.bcftools,
         type=str,
-        help='Path to the directory of "bcftools" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)',
+        help=(
+            'Path to the directory of "bcftools" executable, required in default mode (default: bcftools is ',
+            'directly called as it is in user $PATH)',
+        ),
     )
     parser.add_argument(
         '-R',
@@ -821,7 +870,10 @@ def parse_genotype_snps_arguments(args=None):
         required=False,
         default=config.genotype_snps.snps,
         type=str,
-        help='List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal sample)',
+        help=(
+            'List of SNPs to consider in the normal sample (default: heterozygous SNPs are inferred from the normal ',
+            'sample)',
+        ),
     )
     parser.add_argument(
         '-j',
@@ -861,7 +913,10 @@ def parse_genotype_snps_arguments(args=None):
         required=False,
         default=config.genotype_snps.maxcov,
         type=int,
-        help='Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)',
+        help=(
+            'Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected ',
+            'average coverage to avoid aligning artefacts)',
+        ),
     )
     parser.add_argument(
         '-E',
@@ -903,32 +958,33 @@ def parse_genotype_snps_arguments(args=None):
     # In default mode, check the existence and compatibility of samtools and bcftools
     samtools = os.path.join(args.samtools, 'samtools')
     bcftools = os.path.join(args.bcftools, 'bcftools')
-    if sp.which(samtools) is None:
-        raise ValueError(
-            sp.error('{}samtools has not been found or is not executable!{}')
-        )
-    elif sp.which(bcftools) is None:
-        raise ValueError(
-            sp.error('{}bcftools has not been found or is not executable!{}')
-        )
+    ensure(
+        sp.which(samtools) is not None,
+        'samtools has not been found or is not executable!',
+    )
+    ensure(
+        sp.which(bcftools) is not None,
+        'bcftools has not been found or is not executable!',
+    )
 
     # Check that SNP, reference, and region files exist when given in input
-    if not isfile(args.reference):
-        raise ValueError(
-            sp.error(
-                'The provided file for human reference genome does not exist!'
-            )
-        )
-    if args.outputsnps != None and not os.path.isdir(args.outputsnps):
-        raise ValueError(
-            sp.error('The folder for output SNPs does not exist!')
-        )
-    if args.snps != None and len(args.snps) < 2:
+    ensure(
+        isfile(args.reference),
+        'The provided file for human reference genome does not exist!',
+    )
+    ensure(
+        (args.outputsnps is None) or (isdir(args.outputsnps)),
+        'The folder for output SNPs does not exist!',
+    )
+
+    if args.snps is not None and len(args.snps) < 2:
         args.snps = None
-    if args.snps != None and not (
+    if args.snps is not None and not (
         isfile(args.snps) or sp.url_exists(args.snps)
     ):
-        raise ValueError(sp.error('The provided list of SNPs does not exist!'))
+        sp.error(
+            'The provided list of SNPs does not exist!', raise_exception=True
+        )
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, [], args.reference)
@@ -985,16 +1041,17 @@ def parse_download_panel_arguments(args=None):
         default=config.download_panel.refpanel,
         required=False,
         type=str,
-        help='Reference Panel; specify "1000GP_Phase3" to automatically download and use the panel form the 1000 genomes project',
+        help=(
+            'Reference Panel; specify "1000GP_Phase3" to automatically download and use the panel form the 1000 ',
+            'genomes project',
+        ),
     )
     args = parser.parse_args(args)
 
-    if not args.refpaneldir:
-        sp.error(
-            ValueError(
-                'The command "download_panel" requires a path for the variable "refpaneldir".'
-            )
-        )
+    ensure(
+        args.refpaneldir is not None,
+        'The command "download_panel" requires a path for the variable "refpaneldir".',
+    )
 
     return {
         'refpanel': args.refpanel,
@@ -1118,30 +1175,28 @@ def parse_phase_snps_arguments(args=None):
     picard_bin_path = os.path.join(picard_dir, 'picard')
     picard_jar_path = os.path.join(picard_dir, 'picard.jar')
     if os.path.exists(picard_bin_path):
-        if sp.which(picard_bin_path) is None:
-            raise ValueError(
-                sp.error(
-                    "The 'picard' executable was not found or is not executable. \
-                Please install picard (e.g., conda install -c bioconda picard) and/or supply the path to the executable."
-                )
-            )
-
+        ensure(
+            sp.which(picard_bin_path) is not None,
+            (
+                'The picard executable was not found or is not executable. Please install picard (e.g., conda install -c ',
+                'bioconda picard) and/or supply the path to the executable.',
+            ),
+        )
         picard = f'{picard_bin_path} {picard_java_flags}'
 
     elif os.path.exists(picard_jar_path):
         picard = f'java {picard_java_flags} -jar {picard_jar_path}'
     else:
-        raise ValueError(
-            sp.error(
-                "The 'picard' executable was not found or is not executable. \
-            Please install picard (e.g., conda install -c bioconda picard) and/or supply the path to the executable."
-            )
+        sp.error(
+            'The picard executable was not found or is not executable. Please install picard (e.g., conda ',
+            'install -c bioconda picard) and/or supply the path to the executable.',
+            raise_exception=True,
         )
 
     bcftools = os.path.join(args.bcftools, 'bcftools')
     if sp.which(bcftools) is None:
         raise ValueError(
-            sp.error('{}bcftools has not been found or is not executable!{}')
+            sp.error('bcftools has not been found or is not executable!')
         )
 
     # Check that SNP files exist when given in input
@@ -1181,7 +1236,12 @@ def parse_phase_snps_arguments(args=None):
 
 
 def parse_count_alleles_arguments(args=None):
-    description = 'Count the A/B alleles from a matched-normal BAM file and multiple tumor BAM files in specified SNP positions or estimated heterozygous SNPs in the normal genome. This tool can be applied both to whole-genome sequencing (WGS) data or whole-exome sequencing (WES) data, but coding regions must be specified as a BED file in the case of WES.'
+    description = (
+        'Count the A/B alleles from a matched-normal BAM file and multiple tumor BAM files in specified ',
+        'SNP positions or estimated heterozygous SNPs in the normal genome. This tool can be applied both '
+        'to whole-genome sequencing (WGS) data or whole-exome sequencing (WES) data, but coding regions ',
+        'must be specified as a BED file in the case of WES.',
+    )
     parser = argparse.ArgumentParser(
         prog='hatchet count-alleles', description=description
     )
@@ -1230,7 +1290,10 @@ def parse_count_alleles_arguments(args=None):
         required=False,
         default=config.paths.samtools,
         type=str,
-        help='Path to the directory to "samtools" executable, required in default mode (default: samtools is directly called as it is in user $PATH)',
+        help=(
+            'Path to the directory to "samtools" executable, required in default mode (default: samtools is ',
+            'directly called as it is in user $PATH)',
+        ),
     )
     parser.add_argument(
         '-bt',
@@ -1238,7 +1301,10 @@ def parse_count_alleles_arguments(args=None):
         required=False,
         default=config.paths.bcftools,
         type=str,
-        help='Path to the directory of "bcftools" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)',
+        help=(
+            'Path to the directory of "bcftools" executable, required in default mode (default: bcftools is ',
+            'directly called as it is in user $PATH)',
+        ),
     )
     parser.add_argument(
         '-e',
@@ -1246,7 +1312,10 @@ def parse_count_alleles_arguments(args=None):
         required=False,
         default=config.count_alleles.regions,
         type=str,
-        help='BED file containing the a list of genomic regions to consider in the format "CHR  START  END", REQUIRED for WES data with coding regions (default: none, consider entire genome)',
+        help=(
+            'BED file containing the a list of genomic regions to consider in the format "CHR  START  END", ',
+            'REQUIRED for WES data with coding regions (default: none, consider entire genome)',
+        ),
     )
     parser.add_argument(
         '-j',
@@ -1294,7 +1363,10 @@ def parse_count_alleles_arguments(args=None):
         required=False,
         default=config.count_alleles.maxshift,
         type=float,
-        help='Maximum allowed absolute difference of BAF from 0.5 for selected heterozygous SNPs in the normal sample (default: 0.5)',
+        help=(
+            'Maximum allowed absolute difference of BAF from 0.5 for selected heterozygous SNPs in the normal ',
+            'sample (default: 0.5)',
+        ),
     )
     parser.add_argument(
         '-c',
@@ -1310,7 +1382,10 @@ def parse_count_alleles_arguments(args=None):
         required=False,
         default=config.count_alleles.maxcov,
         type=int,
-        help='Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected average coverage to avoid aligning artefacts)',
+        help=(
+            'Maximum coverage for SNPs to be considered (default: 1000, suggested: twice the values of expected ',
+            'average coverage to avoid aligning artefacts)',
+        ),
     )
     parser.add_argument(
         '-E',
@@ -1372,20 +1447,21 @@ def parse_count_alleles_arguments(args=None):
                 )
             )
     names = args.samples
-    if names != None and (len(tumors) + 1) != len(names):
-        raise ValueError(
-            sp.error(
-                'A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample'
-            )
-        )
-    normal = ()
+    ensure(
+        (names is None) or ((len(tumors) + 1) == len(names)),
+        (
+            'A sample name must be provided for each corresponding BAM: both for each normal sample and each ',
+            'tumor sample',
+        ),
+    )
+
     samples = set()
     if names is None:
-        normal = (normalbaf, os.path.splitext(os.path.basename(normalbaf))[0])
+        normal = normalbaf, os.path.splitext(os.path.basename(normalbaf))[0]
         for tumor in tumors:
             samples.add((tumor, os.path.splitext(os.path.basename(tumor))[0]))
     else:
-        normal = (normalbaf, names[0])
+        normal = normalbaf, names[0]
         for i in range(len(tumors)):
             samples.add((tumors[i], names[i + 1]))
 
@@ -1479,7 +1555,12 @@ def parse_count_alleles_arguments(args=None):
 
 
 def parse_count_reads_fw_arguments(args=None):
-    description = 'Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of a normal sample and one or more BAM files of tumor samples. This program supports both data from whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted regions is required when considering WES.'
+    description = (
+        'Count the mapped sequencing reads in bins of fixed and given length, uniformly for a BAM file of ',
+        'a normal sample and one or more BAM files of tumor samples. This program supports both data from ',
+        'whole-genome sequencing (WGS) and whole-exome sequencing (WES), but the a BED file with targeted ',
+        'regions is required when considering WES.',
+    )
     parser = argparse.ArgumentParser(
         prog='hatchet count-reads', description=description
     )
@@ -1512,7 +1593,10 @@ def parse_count_reads_fw_arguments(args=None):
         default=config.count_reads_fw.samples,
         type=str,
         nargs='+',
-        help='Sample names for each BAM, given in the same order where the normal name is first (default: inferred from file names)',
+        help=(
+            'Sample names for each BAM, given in the same order where the normal name is first (default: inferred ',
+            'from file names)',
+        ),
     )
     parser.add_argument(
         '-st',
@@ -1520,7 +1604,10 @@ def parse_count_reads_fw_arguments(args=None):
         required=False,
         default=config.paths.samtools,
         type=str,
-        help='Path to the directory to "samtools" executable, required in default mode (default: samtools is directly called as it is in user $PATH)',
+        help=(
+            'Path to the directory to "samtools" executable, required in default mode (default: samtools is '
+            'directly called as it is in user $PATH)'
+        ),
     )
     parser.add_argument(
         '-r',
@@ -1528,7 +1615,10 @@ def parse_count_reads_fw_arguments(args=None):
         required=False,
         default=config.count_reads_fw.regions,
         type=str,
-        help='BED file containing the a list of genomic regions to consider in the format "CHR  START  END", REQUIRED for WES data (default: none, consider entire genome)',
+        help=(
+            'BED file containing the a list of genomic regions to consider in the format "CHR  START  END", ',
+            'REQUIRED for WES data (default: none, consider entire genome)',
+        ),
     )
     parser.add_argument(
         '-g',
@@ -1536,7 +1626,10 @@ def parse_count_reads_fw_arguments(args=None):
         required=False,
         default=config.paths.reference,
         type=str,
-        help='Reference genome, note that reference must be indexed and the dictionary must exist in the same directory with the same name and .dict extension',
+        help=(
+            'Reference genome, note that reference must be indexed and the dictionary must exist in the same ',
+            'directory with the same name and .dict extension',
+        ),
     )
     parser.add_argument(
         '-j',
@@ -1552,7 +1645,10 @@ def parse_count_reads_fw_arguments(args=None):
         required=False,
         default=config.count_reads_fw.readquality,
         type=int,
-        help=f'Minimum mapping quality for an aligned read to be considered (default: {config.count_reads_fw.readquality})',
+        help=(
+            'Minimum mapping quality for an aligned read to be considered ',
+            f'(default: {config.count_reads_fw.readquality})',
+        ),
     )
     parser.add_argument(
         '-O',
@@ -1602,13 +1698,11 @@ def parse_count_reads_fw_arguments(args=None):
         )
 
     names = args.samples
-    if names is not None and (len(tumors) + 1) != len(names):
-        raise ValueError(
-            sp.error(
-                'A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample'
-            )
-        )
-    normal = ()
+    ensure(
+        names is None or (len(tumors) + 1) == len(names),
+        'A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample',
+    )
+
     samples = set()
     if names is None:
         normal = (normalbaf, os.path.splitext(os.path.basename(normalbaf))[0])
@@ -1640,30 +1734,32 @@ def parse_count_reads_fw_arguments(args=None):
         else:
             size = int(args.size)
     except:
-        raise ValueError(
-            sp.error(
-                'Size must be a number, optionally ending with either "kb" or "Mb"!'
-            )
+        sp.error(
+            'Size must be a number, optionally ending with either "kb" or "Mb"!',
+            raise_exception=True,
         )
 
     # Check that either region file or available reference name are available
-    if args.reference is None and args.regions is None:
-        raise ValueError(
-            sp.error(
-                'Please either provide a BED file of regions or specify a name of an available references for inferring maximum-chromosome lengths'
-            )
-        )
-    if args.reference is not None and not isfile(args.reference):
-        raise ValueError(
-            sp.error('The specified reference genome does not exist!')
-        )
+    ensure(
+        any((args.reference, args.regions)),
+        (
+            'Please either provide a BED file of regions or specify a name of an available references for inferring ',
+            'maximum-chromosome lengths',
+        ),
+    )
+    ensure(
+        args.reference is None or isfile(args.reference),
+        'The specified reference genome does not exist!',
+    )
+
     refdict = os.path.splitext(args.reference)[0] + '.dict'
-    if args.reference is not None and not isfile(refdict):
-        raise ValueError(
-            sp.error(
-                'The dictionary of the reference genome has not been found! Reference genome must be indexed and its dictionary must exist in the same directory with same name but extension .dict'
-            )
-        )
+    ensure(
+        args.reference is None or isfile(args.reference),
+        (
+            'The dictionary of the reference genome has not been found! Reference genome must be indexed and its ',
+            'dictionary must exist in the same directory with same name but extension .dict',
+        ),
+    )
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples)
@@ -1693,10 +1789,14 @@ def parse_count_reads_fw_arguments(args=None):
 
 
 def parse_combine_counts_fw_args(args=None):
-    description = 'Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout.'
     parser = argparse.ArgumentParser(
         prog='hatchet combine-counts',
-        description=description,
+        description=(
+            'Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ',
+            'ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts ',
+            'can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on ',
+            'stdout.',
+        ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
@@ -1734,7 +1834,10 @@ def parse_combine_counts_fw_args(args=None):
         type=float,
         required=False,
         default=0.1,
-        help='Maximum diploid-BAF shift used to select the bins whose BAF should be normalized by the normal when normalbafs is given (default: 0.1)',
+        help=(
+            'Maximum diploid-BAF shift used to select the bins whose BAF should be normalized by the normal when ',
+            'normalbafs is given (default: 0.1)',
+        ),
     )
     parser.add_argument(
         '-l',
@@ -1742,7 +1845,10 @@ def parse_combine_counts_fw_args(args=None):
         required=False,
         default=config.combine_counts.blocksize,
         type=str,
-        help='Size of the haplotype blocks, specified as a full number or using the notations either "kb" or "Mb" (default: 50kb)',
+        help=(
+            'Size of the haplotype blocks, specified as a full number or using the notations either "kb" or "Mb" ',
+            '(default: 50kb)',
+        ),
     )
     parser.add_argument(
         '-t',
@@ -1750,7 +1856,10 @@ def parse_combine_counts_fw_args(args=None):
         required=False,
         default=None,
         type=str,
-        help='Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads extracted from each sample (default: none)',
+        help=(
+            'Total read counts in the format "SAMPLE\tCOUNT" used to normalize by the different number of reads ',
+            'extracted from each sample (default: none)',
+        ),
     )
     parser.add_argument(
         '-g',
@@ -1758,7 +1867,10 @@ def parse_combine_counts_fw_args(args=None):
         type=float,
         required=False,
         default=0.05,
-        help='Confidence level used to determine if a bin is copy neutral with BAF of 0.5 in the BINOMIAL_TEST mode (default: 0.05)',
+        help=(
+            'Confidence level used to determine if a bin is copy neutral with BAF of 0.5 in the BINOMIAL_TEST mode ',
+            '(default: 0.05)',
+        ),
     )
     parser.add_argument(
         '-e',
@@ -1799,7 +1911,7 @@ def parse_combine_counts_fw_args(args=None):
         isfile(args.normalbins),
         'The specified file for normal bin counts does not exist!',
     )
-    if args.phase == 'None':  # TODO
+    if args.phase == 'None':  # TODO - why do we need this?
         args.phase = None
     ensure(
         (args.phase is None) or (isfile(args.phase)),
@@ -1819,7 +1931,6 @@ def parse_combine_counts_fw_args(args=None):
     )
     ensure(args.seed >= 0, 'Seed parameter must be positive!')
 
-    size = 0
     args.blocklength = str(args.blocklength)
     try:
         if args.blocklength[-2:] == 'kb':
@@ -1829,10 +1940,9 @@ def parse_combine_counts_fw_args(args=None):
         else:
             size = int(args.blocklength)
     except:
-        raise ValueError(
-            sp.error(
-                'Size must be a number, optionally ending with either "kb" or "Mb"!'
-            )
+        sp.error(
+            'Size must be a number, optionally ending with either "kb" or "Mb"!',
+            raise_exception=True,
         )
 
     return {
@@ -1851,15 +1961,22 @@ def parse_combine_counts_fw_args(args=None):
 
 
 def parse_cluster_bins_args(args=None):
-    description = 'Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on stdout.'
     parser = argparse.ArgumentParser(
         prog='hatchet cluster-bins',
-        description=description,
+        description=(
+            'Combine tumor bin counts, normal bin counts, and tumor allele counts to obtain the read-depth ',
+            'ratio and the mean B-allel frequency (BAF) of each bin. Optionally, the normal allele counts ',
+            'can be provided to add the BAF of each bin scaled by the normal BAF. The output is written on ',
+            'stdout.',
+        ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         'BBFILE',
-        help='A BB file containing a line for each bin in each sample and the corresponding values of read-depth ratio and B-allele frequency (BAF)',
+        help=(
+            'A BB file containing a line for each bin in each sample and the corresponding values of read-depth ',
+            'ratio and B-allele frequency (BAF)',
+        ),
     )
     parser.add_argument(
         '-o',
@@ -1883,7 +2000,10 @@ def parse_cluster_bins_args(args=None):
         type=float,
         required=False,
         default=config.cluster_bins.diploidbaf,
-        help='Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the cluster inside this threshold accordingly (default: None, scaling is not performed)',
+        help=(
+            'Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the ',
+            'cluster inside this threshold accordingly (default: None, scaling is not performed)',
+        ),
     )
     parser.add_argument(
         '-tR',
@@ -1891,7 +2011,10 @@ def parse_cluster_bins_args(args=None):
         type=float,
         required=False,
         default=config.cluster_bins.tolerancerdr,
-        help='Refine the clustering merging the clusters with this maximum difference in RDR values (default: None, gurobipy required)',
+        help=(
+            'Refine the clustering merging the clusters with this maximum difference in RDR values (default: None, ',
+            'gurobipy required)',
+        ),
     )
     parser.add_argument(
         '-tB',
@@ -1899,7 +2022,10 @@ def parse_cluster_bins_args(args=None):
         type=float,
         required=False,
         default=config.cluster_bins.tolerancebaf,
-        help='Refine the clustering merging the clusters with this maximum difference in BAF values (default: None, gurobipy required)',
+        help=(
+            'Refine the clustering merging the clusters with this maximum difference in BAF values (default: None, ',
+            'gurobipy required)',
+        ),
     )
     parser.add_argument(
         '-u',
@@ -1907,7 +2033,11 @@ def parse_cluster_bins_args(args=None):
         type=int,
         required=False,
         default=config.cluster_bins.bootclustering,
-        help='Number of points to add for bootstraping each bin to improve the clustering. Each point is generated by drawing its values from a normal distribution centered on the values of the bin. This can help the clustering when the input number of bins is low (default: 0)',
+        help=(
+            'Number of points to add for bootstraping each bin to improve the clustering. Each point is generated ',
+            'by drawing its values from a normal distribution centered on the values of the bin. This can help the ',
+            'clustering when the input number of bins is low (default: 0)',
+        ),
     )
     parser.add_argument(
         '-dR',
@@ -1947,7 +2077,10 @@ def parse_cluster_bins_args(args=None):
         type=float,
         required=False,
         default=config.cluster_bins.concentration,
-        help='Tuning parameter for clustering (concentration parameter for Dirichlet process prior). Higher favors more clusters, lower favors fewer clusters (default 0.02 = 1/K).',
+        help=(
+            'Tuning parameter for clustering (concentration parameter for Dirichlet process prior). Higher favors ',
+            'more clusters, lower favors fewer clusters (default 0.02 = 1/K).',
+        ),
     )
     parser.add_argument(
         '-R',
@@ -2299,11 +2432,7 @@ def extractChromosomes(samtools, normal, tumors, reference=None):
 
     if len(chrm) == 0 and len(no_chrm) == 0:
         raise ValueError('No chromosomes found in the normal BAM')
-    chromosomes = set()
-    if len(chrm) > len(no_chrm):
-        chromosomes = chrm
-    else:
-        chromosomes = no_chrm
+    chromosomes = chrm if len(chrm) > len(no_chrm) else no_chrm
 
     # Check that chromosomes with the same names are present in each tumor BAM contain
     for tumor in tumors:
@@ -2331,12 +2460,10 @@ def extractChromosomes(samtools, normal, tumors, reference=None):
             ref = set(
                 c[1:].strip().split()[0] for c in stdout.strip().split('\n')
             )
-        if not (chromosomes <= ref):
-            raise ValueError(
-                'The given reference cannot be used because the chromosome names are inconsistent!\nChromosomes found in BAF files: {}\nChromosomes with the same name found in reference genome: {}'.format(
-                    chromosomes, ref
-                )
-            )
+        ensure(
+            chromosomes <= ref,
+            'The given reference cannot be used because the chromosome names are inconsistent!\nChromosomes found in BAF files: {chromosomes}\nChromosomes with the same name found in reference genome: {ref}',
+        )
 
     return sorted(list(chromosomes), key=sp.numericOrder)
 
@@ -2383,25 +2510,18 @@ def parseRegions(region_file, chromosomes):
         )
 
     for key in res:
-        if len(res[key]) == 0:
-            raise ValueError(
-                sp.error(
-                    'The regions of chromosome {} could not be determined.'.format(
-                        key
-                    )
-                )
-            )
+        ensure(
+            len(res[key]) != 0,
+            f'The regions of chromosome {key} could not be determined.',
+        )
         res[key].sort(key=lambda x: x[0])
         if not all(
-            a[0] <= a[1] and a[1] <= b[0] and b[0] <= b[1]
+            a[0] <= a[1] <= b[0] <= b[1]
             for a, b in zip(res[key], res[key][1:])
         ):
-            raise ValueError(
-                sp.error(
-                    'The regions provided for chromosome {} are non-disjoint or a region start is greater than corresponding region end'.format(
-                        key
-                    )
-                )
+            sp.error(
+                f'The regions provided for chromosome {key} are non-disjoint or a region start is greater than corresponding region end',
+                raise_exception=True,
             )
 
     return res
