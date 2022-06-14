@@ -131,7 +131,8 @@ jobs:
 
       - name: Pytest
         run: |
-          pytest tests
+          hatchet check
+          pytest test/test_config.py
 
       # We may end up with files that have a ':' in their filenames,
       # due to the <chr>:start:end notation of chromosomes we process through SAMtools/BCFtools.
