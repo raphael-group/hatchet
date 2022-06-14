@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import matplotlib as mpl
 
 mpl.use('Agg')
@@ -19,7 +17,7 @@ from matplotlib.pyplot import cm
 from itertools import cycle
 from collections import Counter
 
-from .ArgParsing import parse_plot_bins_args
+from hatchet.utils.ArgParsing import parse_plot_bins_args
 
 plt.style.use('ggplot')
 sns.set_style('whitegrid')

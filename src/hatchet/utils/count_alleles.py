@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import sys, os
 import os.path
 import argparse
@@ -9,13 +7,10 @@ from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 from scipy.stats import beta
 import tempfile
 
-# from statsmodels.stats.proportion import *
-
-
-from . import ProgressBar as pb
-from . import ArgParsing as ap
-from .Supporting import *
-from . import Supporting as sp
+import hatchet.utils.ProgressBar as pb
+import hatchet.utils.ArgParsing as ap
+from hatchet.utils.Supporting import *
+import hatchet.utils.Supporting as sp
 
 
 def main(args=None):

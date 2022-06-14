@@ -13,9 +13,9 @@ import traceback
 from importlib.resources import path
 import hatchet.data
 
-from .ArgParsing import parse_count_reads_args
-from .Supporting import log, logArgs, error
-from . import TotalCounting as tc
+from hatchet.utils.ArgParsing import parse_count_reads_args
+from hatchet.utils.Supporting import log, logArgs, error
+import hatchet.utils.TotalCounting as tc
 
 
 def main(args=None):

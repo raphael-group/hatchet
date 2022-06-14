@@ -1,6 +1,6 @@
 import sys
 import datetime
-from . import Supporting as sp
+import hatchet.utils.Supporting as sp
 
 
 class ProgressBar:

@@ -80,9 +80,10 @@ def parse_plot_bins_1d2d_args(args=None):
     args = parser.parse_args(args)
 
     ensure(isfile(args.bbc), f'Input BBC file [{args.bbc}] not found.')
-
-    if args.seg is not None and not isfile(args.seg):
-        raise ValueError(sp.error(f'Input SEG file [{args.seg}] not found.'))
+    ensure(
+        (args.seg is None) or (isfile(args.seg)),
+        f'Input SEG file [{args.seg}] not found.',
+    )
 
     if args.baflim is not None:
         tkns = args.baflim.split(',')

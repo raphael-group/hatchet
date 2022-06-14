@@ -1,18 +1,14 @@
-#!/usr/bin/python3
-
 import sys
 import math
 import copy
 import gzip
+from collections import defaultdict, deque
 import numpy as np
 from scipy.stats import beta
 
-from . import ProgressBar as pb
-from . import Supporting as sp
-from .ArgParsing import parse_combine_counts_fw_args
-
-from collections import defaultdict
-from collections import deque
+import hatchet.utils.ProgressBar as pb
+import hatchet.utils.Supporting as sp
+from hatchet.utils.ArgParsing import parse_combine_counts_fw_args
 
 
 def main(args=None):

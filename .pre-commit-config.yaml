@@ -13,3 +13,8 @@ repos:
     rev: v0.9.0
     hooks:
     -   id: blue
+
+-   repo: https://github.com/MarcoGorelli/absolufy-imports
+    rev: v0.3.1
+    hooks:
+    -   id: absolufy-imports

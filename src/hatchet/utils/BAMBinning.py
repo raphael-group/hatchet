@@ -2,7 +2,7 @@ from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 from collections import deque
 import pysam
 
-from . import ProgressBar as pb
+import hatchet.utils.ProgressBar as pb
 
 
 def bin(

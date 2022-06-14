@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import sys
 import math
 import numpy as np
@@ -13,8 +11,8 @@ from scipy.special import logsumexp
 from scipy.spatial.distance import pdist, squareform
 from hmmlearn import hmm
 
-from .ArgParsing import parse_cluster_bins_loc_args
-from . import Supporting as sp
+from hatchet.utils.ArgParsing import parse_cluster_bins_loc_args
+import hatchet.utils.Supporting as sp
 
 
 def main(args=None):

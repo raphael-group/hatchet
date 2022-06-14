@@ -2,9 +2,10 @@ import os
 import os.path
 import subprocess as pr
 import gzip
-from . import ArgParsing as ap
-from .Supporting import *
-from . import Supporting as sp
+
+import hatchet.utils.ArgParsing as ap
+from hatchet.utils.Supporting import *
+import hatchet.utils.Supporting as sp
 from hatchet import config
 
 

@@ -1,6 +1,3 @@
-#!/usr/bin/python
-
-
 from math import floor
 from math import ceil
 

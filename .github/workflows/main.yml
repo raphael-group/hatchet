@@ -133,7 +133,7 @@ jobs:
 
       - name: Pytest
         run: |
-          pytest tests
+          pytest tests --cov=hatchet
 
       # We may end up with files that have a ':' in their filenames,
       # due to the <chr>:start:end notation of chromosomes we process through SAMtools/BCFtools.
@@ -152,6 +152,8 @@ jobs:
       - name: Convert coverage
         run: |
           python -m coverage xml
+        with:
+          fail_ci_if_error: false
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1

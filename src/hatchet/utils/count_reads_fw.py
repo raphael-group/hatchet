@@ -1,13 +1,11 @@
-#!/usr/bin/python3
-
 import sys
 import os.path
 import argparse
 
-from . import BAMBinning as bb
-from . import TotalCounting as tc
-from . import ArgParsing as ap
-from .Supporting import *
+import hatchet.utils.BAMBinning as bb
+import hatchet.utils.TotalCounting as tc
+import hatchet.utils.ArgParsing as ap
+from hatchet.utils.Supporting import *
 
 
 def main(args=None):

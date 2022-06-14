@@ -1,12 +1,10 @@
-#!/usr/bin/python3
-
 import sys
 import math
 import numpy as np
 from collections import Counter
 
-from .ArgParsing import parse_cluster_bins_args
-from . import Supporting as sp
+from hatchet.utils.ArgParsing import parse_cluster_bins_args
+import hatchet.utils.Supporting as sp
 
 
 def main(args=None):

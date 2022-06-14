@@ -9,10 +9,10 @@ import gzip
 import subprocess
 import traceback
 from importlib.resources import path
-import hatchet.data
 
-from .ArgParsing import parse_combine_counts_args
-from . import Supporting as sp
+import hatchet.data
+from hatchet.utils.ArgParsing import parse_combine_counts_args
+import hatchet.utils.Supporting as sp
 
 
 def main(args=None):
