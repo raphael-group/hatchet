@@ -132,6 +132,7 @@ setup(
     extras_require={
         'dev': [
             'pytest',
+            'pytest-cov',
             'mock',
             'coverage',
             'numpydoc',

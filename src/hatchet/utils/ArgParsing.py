@@ -91,17 +91,13 @@ def parse_plot_bins_1d2d_args(args=None):
             minbaf = float(tkns[0].strip())
             maxbaf = float(tkns[1].strip())
         except ValueError:
-            raise ValueError(
-                sp.error(
-                    '--baflim must be comma-separated float or integer values.'
-                )
+            sp.error(
+                '--baflim must be comma-separated float or integer values.',
+                raise_exception=True,
             )
-        if minbaf >= maxbaf:
-            raise ValueError(sp.error('Minimum BAF must be < maximum BAF.'))
-
+        ensure(minbaf < maxbaf, 'Minimum BAF must be < maximum BAF.')
     else:
-        minbaf = None
-        maxbaf = None
+        minbaf = maxbaf = None
 
     if args.rdrlim is not None:
         tkns = args.rdrlim.split(',')
@@ -109,16 +105,13 @@ def parse_plot_bins_1d2d_args(args=None):
             minrdr = float(tkns[0].strip())
             maxrdr = float(tkns[1].strip())
         except ValueError:
-            raise ValueError(
-                sp.error(
-                    '--rdrlim must be comma-separated float or integer values.'
-                )
+            sp.error(
+                '--rdrlim must be comma-separated float or integer values.',
+                raise_exception=True,
             )
-        if minrdr >= maxrdr:
-            raise ValueError(sp.error('Minimum RDR must be < maximum RDR.'))
+        ensure(minrdr < maxrdr, 'Minimum RDR must be < maximum RDR.')
     else:
-        minrdr = None
-        maxrdr = None
+        minrdr = maxrdr = None
 
     return {
         'bbc': args.bbc,
@@ -182,12 +175,10 @@ def parse_plot_cn_1d2d_args(args=None):
         help='Write each sample to a separate file rather than combining all into 2 file',
         default=config.plot_cn_1d2d.bysample,
     )
-    # parser.add_argument("-V","--refversion", required=False, type=str, help="Version of reference genome used in BAM files", default = config.plot_1d2d.refversion)
 
     args = parser.parse_args(args)
 
-    if not isfile(args.INPUT):
-        raise ValueError(sp.error(f'Input file [{args.INPUT}] not found.'))
+    ensure(isfile(args.INPUT), f'Input file [{args.INPUT}] not found.')
 
     if args.baflim is not None:
         tkns = args.baflim.split(',')
@@ -195,14 +186,12 @@ def parse_plot_cn_1d2d_args(args=None):
             minbaf = float(tkns[0].strip())
             maxbaf = float(tkns[1].strip())
         except ValueError:
-            raise ValueError(
-                sp.error(
-                    '--baflim must be comma-separated float or integer values.'
-                )
+            sp.error(
+                '--baflim must be comma-separated float or integer values.',
+                raise_exception=True,
             )
     else:
-        minbaf = None
-        maxbaf = None
+        minbaf = maxbaf = None
 
     if args.fcnlim is not None:
         tkns = args.fcnlim.split(',')
@@ -210,14 +199,12 @@ def parse_plot_cn_1d2d_args(args=None):
             minfcn = float(tkns[0].strip())
             maxfcn = float(tkns[1].strip())
         except ValueError:
-            raise ValueError(
-                sp.error(
-                    '--fcnlim must be comma-separated float or integer values.'
-                )
+            sp.error(
+                '--fcnlim must be comma-separated float or integer values.',
+                raise_exception=True,
             )
     else:
-        minfcn = None
-        maxfcn = None
+        minfcn = maxfcn = None
 
     return {
         'input': args.INPUT,
@@ -503,19 +490,15 @@ def parse_count_reads_args(args=None):
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     bams = [args.normal] + args.tumor
-    names = args.samples
     for bamfile in bams:
-        if not isfile(bamfile):
-            raise ValueError(
-                sp.error('The specified tumor BAM file does not exist')
-            )
+        ensure(isfile(bamfile), 'The specified tumor BAM file does not exist')
+
     names = args.samples
-    if names != None and len(bams) != len(names):
-        raise ValueError(
-            sp.error(
-                'A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample'
-            )
-        )
+    ensure(
+        (names is None) or (len(bams) == len(names)),
+        'A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample',
+    )
+
     if names is None:
         names = ['normal']
         for bamfile in bams[1:]:
@@ -523,10 +506,10 @@ def parse_count_reads_args(args=None):
 
     # In default mode, check the existence and compatibility of samtools and bcftools
     samtools = os.path.join(args.samtools, 'samtools')
-    if sp.which(samtools) is None:
-        raise ValueError(
-            sp.error('samtools has not been found or is not executable.')
-        )
+    ensure(
+        sp.which(samtools) is not None,
+        'samtools has not been found or is not executable.',
+    )
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(
@@ -536,12 +519,10 @@ def parse_count_reads_args(args=None):
     # Check that chr notation is consistent across chromosomes
     using_chr = [a.startswith('chr') for a in chromosomes]
     if any(using_chr):
-        if not all(using_chr):
-            raise ValueError(
-                sp.error(
-                    "Some chromosomes use 'chr' notation while others do not."
-                )
-            )
+        ensure(
+            all(using_chr),
+            'Some chromosomes use chr notation while others do not.',
+        )
         use_chr = True
     else:
         use_chr = False
@@ -563,20 +544,14 @@ def parse_count_reads_args(args=None):
 
     mosdepth = os.path.join(args.mosdepth, 'mosdepth')
     tabix = os.path.join(args.tabix, 'tabix')
-    if sp.which(mosdepth) is None:
-        raise ValueError(
-            sp.error(
-                "The 'mosdepth' executable was not found or is not executable. \
-            Please install mosdepth (e.g., conda install -c bioconda mosdepth) and/or supply the path to the executable."
-            )
-        )
-    if sp.which(tabix) is None:
-        raise ValueError(
-            sp.error(
-                "The 'tabix' executable was not found or is not executable. \
-            Please install tabix (e.g., conda install -c bioconda tabix) and/or supply the path to the executable."
-            )
-        )
+    ensure(
+        sp.which(mosdepth) is not None,
+        'The mosdepth executable was not found or is not executable. Please install mosdepth (e.g., conda install -c bioconda mosdepth) and/or supply the path to the executable.',
+    )
+    ensure(
+        sp.which(tabis) is not None,
+        'The tabix executable was not found or is not executable. Please install tabix (e.g., conda install -c bioconda tabix) and/or supply the path to the executable.',
+    )
 
     return {
         'bams': bams,
@@ -705,11 +680,10 @@ def parse_combine_counts_args(args=None):
                 'The specified file for total read counts does not exist!'
             )
         )
-    if args.phase is not None and not isfile(args.phase):
-        raise ValueError(
-            sp.error('The specified phasing file does not exist!')
-        )
-
+    ensure(
+        (args.phase is None) or isfile(args.phase),
+        'The specified phasing file does not exist!',
+    )
     ensure(
         args.max_blocksize > 0, 'The max_blocksize argument must be positive.'
     )
