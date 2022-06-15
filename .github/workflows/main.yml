@@ -51,7 +51,7 @@ jobs:
 
       - name: Flake8 checks
         run: |
-          flake8
+          flake8 --exclude gurobi902
 
       - name: Pre-commit checks
         run: |
