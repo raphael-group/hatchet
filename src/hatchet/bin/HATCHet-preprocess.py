@@ -12,14 +12,20 @@ from hatchet import config, __version__
 
 
 def parse_args():
-    description = "This command automatically runs the HATCHet's preprocessing pipeline, which is composed of three steps: (1) count-reads, (2) count-alleles, and (3) combine-counts."
+    description = (
+        "This command automatically runs the HATCHet's preprocessing pipeline, which is composed of "
+        'three steps: (1) count-reads, (2) count-alleles, and (3) combine-counts.'
+    )
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         '-t',
         '--tumor',
         required=True,
         type=str,
-        help='White-space separated list of input tumor BAM files, corresponding to multiple samples from the same patient (list must be within quotes)',
+        help=(
+            'White-space separated list of input tumor BAM files, corresponding to multiple samples from the same '
+            'patient (list must be within quotes)'
+        ),
     )
     parser.add_argument(
         '-n',
@@ -28,16 +34,17 @@ def parse_args():
         type=str,
         help='Matched-normal BAM file',
     )
-    parser.add_argument(
-        '-r', '--reference', type=str, required=True, help='Reference genome'
-    )
+    parser.add_argument('-r', '--reference', type=str, required=True, help='Reference genome')
     parser.add_argument(
         '-s',
         '--samplenames',
         required=False,
         type=str,
         default=config.preprocess.samplenames,
-        help='Tumor sample names in a white-space separated list in the same order as the corresponding BAM files (default: file names are used as names)',
+        help=(
+            'Tumor sample names in a white-space separated list in the same order as the corresponding BAM files '
+            '(default: file names are used as names)'
+        ),
     )
     parser.add_argument(
         '-b',
@@ -84,14 +91,20 @@ def parse_args():
         required=False,
         default=config.paths.bcftools,
         type=str,
-        help='Path to the directory to "bcftools" executable, required in default mode (default: bcftools is directly called as it is in user $PATH)',
+        help=(
+            'Path to the directory to "bcftools" executable, required in default mode (default: bcftools is '
+            'directly called as it is in user $PATH)'
+        ),
     )
     parser.add_argument(
         '--samtools',
         required=False,
         default=config.paths.samtools,
         type=str,
-        help='Path to the directory to "samtools" executable, required in default mode (default: samtools is directly called as it is in user $PATH)',
+        help=(
+            'Path to the directory to "samtools" executable, required in default mode (default: samtools is '
+            'directly called as it is in user $PATH)'
+        ),
     )
     parser.add_argument(
         '--seed',
@@ -108,17 +121,13 @@ def parse_args():
         default=config.preprocess.jobs,
         help='Number of parallele jobs to use (default: equal to number of available processors)',
     )
-    parser.add_argument(
-        '-V', '--version', action='version', version=f'%(prog)s {__version__}'
-    )
+    parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args()
 
     tumor = set(t for t in args.tumor.split())
     for t in tumor:
         if not os.path.isfile(t):
-            raise ValueError(
-                'The following BAM file does not exist: {}'.format(t)
-            )
+            raise ValueError('The following BAM file does not exist: {}'.format(t))
     if args.samplenames is None:
         names = set(os.path.splitext(os.path.basename(t))[0] for t in tumor)
         if len(names) != len(tumor):
@@ -127,22 +136,19 @@ def parse_args():
         names = set(t for t in args.samplenames.split())
         if len(names) != len(tumor):
             raise ValueError(
-                'A different number of samples names has been provided compared to the number of BAM files, remember to add the list within quotes!'
+                (
+                    'A different number of samples names has been provided compared to the number of BAM files, '
+                    'remember to add the list within quotes!'
+                )
             )
 
     tumor = set(os.path.abspath(t) for t in tumor)
     if not os.path.isdir(args.rundir):
-        raise ValueError(
-            'Running directory does not exists: {}'.format(args.rundir)
-        )
+        raise ValueError('Running directory does not exists: {}'.format(args.rundir))
     if not os.path.isfile(args.normal):
-        raise ValueError(
-            'Matched-normal BAM file does not exist: {}'.format(args.normal)
-        )
+        raise ValueError('Matched-normal BAM file does not exist: {}'.format(args.normal))
     if not os.path.isfile(args.reference):
-        raise ValueError(
-            'Reference genome file does not exist: {}'.format(args.reference)
-        )
+        raise ValueError('Reference genome file does not exist: {}'.format(args.reference))
     if args.seed and args.seed < 1:
         raise ValueError('The random seed  must be positive!')
     if args.minreads < 1:
@@ -159,9 +165,7 @@ def parse_args():
         else:
             size = int(args.size)
     except (IndexError, ValueError):
-        raise ValueError(
-            'Size must be a number, optionally ending with either "kb" or "Mb"!'
-        )
+        raise ValueError('Size must be a number, optionally ending with either "kb" or "Mb"!')
 
     if not args.jobs:
         args.jobs = mp.cpu_count()
@@ -189,10 +193,7 @@ def main():
     log('Parsing and checking arguments\n', level='PROGRESS')
     args = parse_args()
     log(
-        '\n'.join(
-            ['Arguments:'] + ['\t{} : {}'.format(a, args[a]) for a in args]
-        )
-        + '\n',
+        '\n'.join(['Arguments:'] + ['\t{} : {}'.format(a, args[a]) for a in args]) + '\n',
         level='INFO',
     )
 
@@ -203,9 +204,7 @@ def main():
         comp = os.path.join(utils, name)
         if not os.path.isfile(comp):
             raise ValueError(
-                "{} not found in utils directory of HATCHet's home i.e. {}, is anything been moved?".format(
-                    name, utils
-                )
+                "{} not found in utils directory of HATCHet's home i.e. {}, is anything been moved?".format(name, utils)
             )
         return comp
 

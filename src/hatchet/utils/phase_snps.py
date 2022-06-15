@@ -6,7 +6,6 @@ import shutil
 
 import hatchet.utils.ArgParsing as ap
 from hatchet.utils.Supporting import log, logArgs, error, ensure, run
-from hatchet.utils import ProgressBar as pb
 from hatchet.utils.multiprocessing import Worker
 
 
@@ -36,9 +35,12 @@ def main(args=None):
 
     panel = rpd
 
-    hg19_path = ''  # path to hg19, 1000GP in hg19 coords, potentially needed for liftover
-    chains = ''  # chain files for liftover, chains['hg38_hg19']=path, chains['hg19_hg38']=path
-    rename_files = ''  # file for renaming chrs with bcftools, rename_files[0] for removing 'chr, rename_files[1] for adding 'chr'
+    # path to hg19, 1000GP in hg19 coords, potentially needed for liftover
+    hg19_path = ''
+    # chain files for liftover, chains['hg38_hg19']=path, chains['hg19_hg38']=path
+    chains = ''
+    # file for renaming chrs with bcftools, rename_files[0] for removing 'chr, rename_files[1] for adding 'chr'
+    rename_files = ''
 
     if args['refvers'] == 'hg38':
         # Download reference panel genome and chain files
@@ -55,16 +57,13 @@ def main(args=None):
             }
 
         ensure(
-            os.path.isfile(chains['hg38_hg19'])
-            and os.path.isfile(chains['hg19_hg38']),
+            os.path.isfile(chains['hg38_hg19']) and os.path.isfile(chains['hg19_hg38']),
             'The appropriate liftover chain files could not be located! Please run the download-panel '
             'command that downloads these',
         )
 
     elif args['refvers'] == 'hg19' and args['chrnot']:
-        rename_files = [
-            os.path.join(rpd, f'rename_chrs{i}.txt') for i in range(1, 3)
-        ]
+        rename_files = [os.path.join(rpd, f'rename_chrs{i}.txt') for i in range(1, 3)]
 
     # liftover VCFs, phase, liftover again to original coordinates
     os.makedirs(outdir, exist_ok=True)
@@ -126,11 +125,7 @@ def cleanup(outdir):
         '_alignments.snp.strand',
         '_alignments.snp.strand.exclude',
     ]
-    [
-        f.append(os.path.join(outdir, f'{c}{e}'))
-        for c in range(1, 23)
-        for e in exts
-    ]
+    [f.append(os.path.join(outdir, f'{c}{e}')) for c in range(1, 23) for e in exts]
     [os.remove(i) for i in f if os.path.isfile(i)]
 
 
@@ -150,9 +145,7 @@ def print_log(path, chromosomes):
                 snps = int(l.split()[1])
             elif 'reference panel sites included' in l:
                 phased_snps = int(l.split()[1])
-        print(
-            c, phased_snps, snps, float(phased_snps / snps), file=out, sep='\t'
-        )
+        print(c, phased_snps, snps, float(phased_snps / snps), file=out, sep='\t')
 
 
 def concat(vcfs, outdir, bcftools):
@@ -211,9 +204,7 @@ class Phaser(Worker):
                 )
             else:
                 # just copy files, vcfs already appropriately formatted
-                vcf_toFilter = self.stage_vcfs(
-                    infile=vcf, chromosome=chromosome
-                )
+                vcf_toFilter = self.stage_vcfs(infile=vcf, chromosome=chromosome)
         else:
             # liftover
             vcf_toFilter = self.liftover(
@@ -227,12 +218,8 @@ class Phaser(Worker):
 
         # (2) FILTERING AND PHASING
         # filter out multi-allelic sites and indels
-        vcf_filtered = self.biallelic(
-            infile=vcf_toFilter, chromosome=chromosome
-        )
-        vcf_phased = self.run_shapeit(
-            infile=vcf_filtered, chromosome=chromosome
-        )  # phase
+        vcf_filtered = self.biallelic(infile=vcf_toFilter, chromosome=chromosome)
+        vcf_phased = self.run_shapeit(infile=vcf_filtered, chromosome=chromosome)  # phase
 
         # (3) POSTPROCESS
         if self.refvers == 'hg19':
@@ -246,9 +233,7 @@ class Phaser(Worker):
                 # re-index with bcftools after renaming
                 self.index(infile=vcf_to_concat, chromosome=chromosome)
             else:
-                vcf_to_concat = (
-                    vcf_phased  # do nothing; vcfs already in original format
-                )
+                vcf_to_concat = vcf_phased  # do nothing; vcfs already in original format
         else:
             vcf_to_concat = self.liftover(
                 infile=vcf_phased,
@@ -273,20 +258,19 @@ class Phaser(Worker):
         # --WARN_ON_MISSING_CONTIG true: throws out liftovers to contigs not present in target reference,
         # e.g. small contigs variably present among the assemblies
 
-        cmd1 = f'{self.picard} LiftoverVcf -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} --WARN_ON_MISSING_CONTIG true'
+        cmd1 = (
+            f'{self.picard} LiftoverVcf -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} '
+            '--WARN_ON_MISSING_CONTIG true'
+        )
         # need to change 'chr' notation depending on liftover direction
         c = chromosome if not ch else f'chr{chromosome}'
         # filter out mapping to other chromosomes/contigs!
-        cmd2 = (
-            f'{self.bcftools} filter --output-type z --regions {c} {tmpfile}'
-        )
+        cmd2 = f'{self.bcftools} filter --output-type z --regions {c} {tmpfile}'
         # remove duplicate sites from liftover
         cmd3 = f'{self.bcftools} norm --remove-duplicates --output {outfile}'
 
         with open(errname, 'w') as err:
-            pic = pr.run(
-                cmd1.split(), stdout=err, stderr=err, universal_newlines=True
-            )
+            pic = pr.run(cmd1.split(), stdout=err, stderr=err, universal_newlines=True)
             filt = pr.Popen(
                 shlex.split(cmd2),
                 stdout=pr.PIPE,
@@ -333,10 +317,11 @@ class Phaser(Worker):
         # use bcftools to discard multi-allelic sites and indels
         outfile = os.path.join(self.outdir, f'{chromosome}_filtered.vcf.gz')
         run(
-            f'{self.bcftools} view --max-alleles 2 --exclude-types indels --output-type z --output-file {outfile} {infile}',
-            stdouterr_filepath=os.path.join(
-                self.outdir, f'{chromosome}_bcftools.log'
+            (
+                f'{self.bcftools} view --max-alleles 2 --exclude-types indels --output-type z --output-file {outfile} '
+                f'{infile}'
             ),
+            stdouterr_filepath=os.path.join(self.outdir, f'{chromosome}_bcftools.log'),
             error_msg=f'Biallelic sites filtering failed on {infile}.',
         )
         return outfile
@@ -381,9 +366,7 @@ class Phaser(Worker):
 
         cmd_index = f'{self.bcftools} index -f {self.outdir}/{chromosome}_phased.vcf.gz'
 
-        run(
-            cmd_check, stdouterr_filepath=errname, check_return_codes=False
-        )  # May return 1
+        run(cmd_check, stdouterr_filepath=errname, check_return_codes=False)  # May return 1
         run(
             [cmd_phase, cmd_convert, cmd_compress, cmd_index],
             stdouterr_filepath=errname,
@@ -395,9 +378,7 @@ class Phaser(Worker):
     def index(self, infile, chromosome):
         run(
             f'{self.bcftools} index -f {infile}',
-            stdouterr_filepath=os.path.join(
-                self.outdir, f'{chromosome}_bcftools.log'
-            ),
+            stdouterr_filepath=os.path.join(self.outdir, f'{chromosome}_bcftools.log'),
             error_msg=f'Failed to index {infile} with bcftools.',
         )
 

@@ -12,9 +12,7 @@ class ConfigSection(object):
     def __init__(self, config, section_proxy):
         self.config = config
         self.name = section_proxy.name
-        self.d = (
-            {}
-        )  # key value dict where the value is typecast to int/float/str
+        self.d = {}  # key value dict where the value is typecast to int/float/str
 
         for k, v in section_proxy.items():
 
@@ -48,9 +46,7 @@ class ConfigSection(object):
     def __getattr__(self, item):
         if item not in ('config', 'name', 'd'):
             # If an environment variable exists with name <CONFIG_NAME>_<SECTION>_<ITEM>, use it
-            env_varname = '_'.join(
-                [str(x).upper() for x in [self.config.name, self.name, item]]
-            )
+            env_varname = '_'.join([str(x).upper() for x in [self.config.name, self.name, item]])
             env_var = os.getenv(env_varname)
             return env_var or self.d[item]
 

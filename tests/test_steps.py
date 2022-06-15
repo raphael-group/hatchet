@@ -31,18 +31,8 @@ def bams():
     bam_directory = config.tests.bam_directory
     normal_bam = os.path.join(bam_directory, 'normal.bam')
     if not os.path.exists(normal_bam):
-        pytest.skip(
-            'File not found: {}'.format(
-                os.path.join(bam_directory, 'normal.bam')
-            )
-        )
-    tumor_bams = sorted(
-        [
-            f
-            for f in glob.glob(bam_directory + '/*.bam')
-            if os.path.basename(f) != 'normal.bam'
-        ]
-    )
+        pytest.skip('File not found: {}'.format(os.path.join(bam_directory, 'normal.bam')))
+    tumor_bams = sorted([f for f in glob.glob(bam_directory + '/*.bam') if os.path.basename(f) != 'normal.bam'])
     if not tumor_bams:
         pytest.skip('No tumor bams found in {}'.format(bam_directory))
 
@@ -74,9 +64,7 @@ def output_folder():
     return out
 
 
-@pytest.mark.skipif(
-    not config.paths.reference, reason='paths.reference not set'
-)
+@pytest.mark.skipif(not config.paths.reference, reason='paths.reference not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
 @patch(
     'hatchet.utils.count_reads_fw.knownRegions',
@@ -121,9 +109,7 @@ def test_count_reads(_mock0, _mock1, bams, output_folder):
     assert_frame_equal(df1, df2)
 
 
-@pytest.mark.skipif(
-    not config.paths.reference, reason='paths.reference not set'
-)
+@pytest.mark.skipif(not config.paths.reference, reason='paths.reference not set')
 @patch(
     'hatchet.utils.ArgParsing.extractChromosomes',
     return_value=['chr22:30256931-32622323'],
@@ -152,21 +138,10 @@ def test_genotype_snps(_mock1, bams, output_folder):
         ]
     )
 
-    with gzip.open(
-        f'{output_folder}/snps/chr22:30256931-32622323.vcf.gz', 'rb'
-    ) as f:
+    with gzip.open(f'{output_folder}/snps/chr22:30256931-32622323.vcf.gz', 'rb') as f:
         # ignore commented lines since these may have timestamps and software version numbers etc.
-        lines = '\n'.join(
-            [
-                line
-                for line in f.read().decode('utf8').split('\n')
-                if not line.startswith('#')
-            ]
-        )
-        assert (
-            hashlib.md5(lines.encode('utf8')).hexdigest()
-            == '3d81c51d21c22334ce1fc069cb005328'
-        )
+        lines = '\n'.join([line for line in f.read().decode('utf8').split('\n') if not line.startswith('#')])
+        assert hashlib.md5(lines.encode('utf8')).hexdigest() == '3d81c51d21c22334ce1fc069cb005328'
 
 
 @patch(

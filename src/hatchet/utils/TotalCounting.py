@@ -1,5 +1,3 @@
-import os
-import sys
 import shlex
 import subprocess
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
@@ -33,8 +31,7 @@ def tcount(samtools, samples, chromosomes, num_workers, q, verbose=False):
 
     # Setting up the workers
     workers = [
-        TotalCounter(tasks, results, progress_bar, samtools, q, verbose)
-        for i in range(min(num_workers, jobs_count))
+        TotalCounter(tasks, results, progress_bar, samtools, q, verbose) for i in range(min(num_workers, jobs_count))
     ]
 
     # Add a poison pill for each worker
@@ -67,9 +64,7 @@ def tcount(samtools, samples, chromosomes, num_workers, q, verbose=False):
 
 
 class TotalCounter(Process):
-    def __init__(
-        self, task_queue, result_queue, progress_bar, samtools, q, verbose
-    ):
+    def __init__(self, task_queue, result_queue, progress_bar, samtools, q, verbose):
         Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -88,9 +83,7 @@ class TotalCounter(Process):
 
             self.progress_bar.progress(
                 advance=False,
-                msg='{} starts on {} for {}'.format(
-                    self.name, next_task[1], next_task[2]
-                ),
+                msg='{} starts on {} for {}'.format(self.name, next_task[1], next_task[2]),
             )
             count = self.binChr(
                 bamfile=next_task[0],
@@ -99,9 +92,7 @@ class TotalCounter(Process):
             )
             self.progress_bar.progress(
                 advance=True,
-                msg='{} ends on {} for {}'.format(
-                    self.name, next_task[1], next_task[2]
-                ),
+                msg='{} ends on {} for {}'.format(self.name, next_task[1], next_task[2]),
             )
             self.task_queue.task_done()
             self.result_queue.put(count)
@@ -111,12 +102,8 @@ class TotalCounter(Process):
         popen = subprocess.Popen
         pipe = subprocess.PIPE
         split = shlex.split
-        cmd = '{} view {} -c -q {} {}'.format(
-            self.samtools, bamfile, self.q, chromosome
-        )
-        stdout, stderr = popen(
-            split(cmd), stdout=pipe, stderr=pipe, universal_newlines=True
-        ).communicate()
+        cmd = '{} view {} -c -q {} {}'.format(self.samtools, bamfile, self.q, chromosome)
+        stdout, stderr = popen(split(cmd), stdout=pipe, stderr=pipe, universal_newlines=True).communicate()
         if stderr != '':
             self.progress_bar.progress(
                 advance=False,
@@ -129,4 +116,4 @@ class TotalCounter(Process):
                     sp.bcolors.ENDC,
                 ),
             )
-        return (samplename, chromosome, int(stdout.strip()))
+        return samplename, chromosome, int(stdout.strip())

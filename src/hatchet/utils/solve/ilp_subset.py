@@ -1,11 +1,9 @@
 import textwrap
 import math
 import numpy as np
-import pandas as pd
 from pyomo import environ as pe
 from pyomo.opt import SolverStatus, TerminationCondition
 
-from hatchet import config
 from hatchet.utils.solve.utils import Random
 
 
@@ -45,9 +43,7 @@ class ILPSubset:
         # Fixed values of cA/cB/u
         self._fixed_cA = [[np.nan for _ in range(n)] for _ in range(self.m)]
         self._fixed_cB = [[np.nan for _ in range(n)] for _ in range(self.m)]
-        self._fixed_u = [
-            [np.nan for _ in range(self.k)] for _ in range(self.n)
-        ]
+        self._fixed_u = [[np.nan for _ in range(self.k)] for _ in range(self.n)]
 
         self.warmstart = False  # set on hot_start()
         self.model = None  # initialized on create_model()
@@ -162,18 +158,10 @@ class ILPSubset:
                 ub = max(sum(copy_numbers.get(cluster_id, (0, 0))), cn_max)
 
                 for _n in range(n):
-                    self.cA[_m][_n] = pe.Var(
-                        bounds=(0, ub), domain=pe.Integers
-                    )
-                    model.add_component(
-                        f'cA_{_m + 1}_{_n + 1}', self.cA[_m][_n]
-                    )
-                    self.cB[_m][_n] = pe.Var(
-                        bounds=(0, ub), domain=pe.Integers
-                    )
-                    model.add_component(
-                        f'cB_{_m + 1}_{_n + 1}', self.cB[_m][_n]
-                    )
+                    self.cA[_m][_n] = pe.Var(bounds=(0, ub), domain=pe.Integers)
+                    model.add_component(f'cA_{_m + 1}_{_n + 1}', self.cA[_m][_n])
+                    self.cB[_m][_n] = pe.Var(bounds=(0, ub), domain=pe.Integers)
+                    model.add_component(f'cB_{_m + 1}_{_n + 1}', self.cB[_m][_n])
 
             if ampdel:
                 for _m in range(m):
@@ -190,16 +178,12 @@ class ILPSubset:
             for _b in range(_M):
                 for _m in range(m):
                     for _n in range(n):
-                        bitcA[(_b, _m, _n)] = pe.Var(
-                            bounds=(0, 1), domain=pe.Binary
-                        )
+                        bitcA[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                         model.add_component(
                             f'bitcA_{_b + 1}_{_m + 1}_{_n + 1}',
                             bitcA[(_b, _m, _n)],
                         )
-                        bitcB[(_b, _m, _n)] = pe.Var(
-                            bounds=(0, 1), domain=pe.Binary
-                        )
+                        bitcB[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                         model.add_component(
                             f'bitcB_{_b + 1}_{_m + 1}_{_n + 1}',
                             bitcB[(_b, _m, _n)],
@@ -218,16 +202,12 @@ class ILPSubset:
                 for _m in range(m):
                     for _n in range(n):
                         for _k in range(k):
-                            vA[(_b, _m, _n, _k)] = pe.Var(
-                                bounds=(0, 1), domain=pe.Reals
-                            )
+                            vA[(_b, _m, _n, _k)] = pe.Var(bounds=(0, 1), domain=pe.Reals)
                             model.add_component(
                                 f'vA_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}',
                                 vA[(_b, _m, _n, _k)],
                             )
-                            vB[(_b, _m, _n, _k)] = pe.Var(
-                                bounds=(0, 1), domain=pe.Reals
-                            )
+                            vB[(_b, _m, _n, _k)] = pe.Var(bounds=(0, 1), domain=pe.Reals)
                             model.add_component(
                                 f'vB_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}',
                                 vB[(_b, _m, _n, _k)],
@@ -246,12 +226,8 @@ class ILPSubset:
             for _m in range(self.m):
                 for _n in range(1, self.n):
                     for _d in range(d):
-                        z[(_m, _n, _d)] = pe.Var(
-                            bounds=(0, 1), domain=pe.Binary
-                        )
-                        model.add_component(
-                            f'z_{_m + 1}_{_n + 1}_{_d + 1}', z[(_m, _n, _d)]
-                        )
+                        z[(_m, _n, _d)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model.add_component(f'z_{_m + 1}_{_n + 1}_{_d + 1}', z[(_m, _n, _d)])
 
         # CONSTRAINTS
         model.constraints = pe.ConstraintList()
@@ -279,16 +255,9 @@ class ILPSubset:
                     for _n in range(n):
                         for _b in range(_M):
                             sum_a += vA[(_b, _m, _n, _k)] * math.pow(2, _b)
-                            model.constraints.add(
-                                vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)]
-                            )
-                            model.constraints.add(
-                                vA[(_b, _m, _n, _k)] <= self.u[_n][_k]
-                            )
-                            model.constraints.add(
-                                vA[(_b, _m, _n, _k)]
-                                >= bitcA[(_b, _m, _n)] + self.u[_n][_k] - 1
-                            )
+                            model.constraints.add(vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)])
+                            model.constraints.add(vA[(_b, _m, _n, _k)] <= self.u[_n][_k])
+                            model.constraints.add(vA[(_b, _m, _n, _k)] >= bitcA[(_b, _m, _n)] + self.u[_n][_k] - 1)
 
                     model.constraints.add(fA[(_m, _k)] == sum_a)
 
@@ -299,16 +268,9 @@ class ILPSubset:
                     for _n in range(n):
                         for _b in range(_M):
                             sum_b += vB[(_b, _m, _n, _k)] * math.pow(2, _b)
-                            model.constraints.add(
-                                vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)]
-                            )
-                            model.constraints.add(
-                                vB[(_b, _m, _n, _k)] <= self.u[_n][_k]
-                            )
-                            model.constraints.add(
-                                vB[(_b, _m, _n, _k)]
-                                >= bitcB[(_b, _m, _n)] + self.u[_n][_k] - 1
-                            )
+                            model.constraints.add(vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)])
+                            model.constraints.add(vB[(_b, _m, _n, _k)] <= self.u[_n][_k])
+                            model.constraints.add(vB[(_b, _m, _n, _k)] >= bitcB[(_b, _m, _n)] + self.u[_n][_k] - 1)
 
                     model.constraints.add(fB[(_m, _k)] == sum_b)
 
@@ -335,9 +297,7 @@ class ILPSubset:
 
                     model.constraints.add(self.cA[_m][_n] == sum_a)
                     model.constraints.add(self.cB[_m][_n] == sum_b)
-                    model.constraints.add(
-                        self.cA[_m][_n] + self.cB[_m][_n] <= ub
-                    )
+                    model.constraints.add(self.cA[_m][_n] + self.cB[_m][_n] <= ub)
 
         if mode_t == 'CARCH':
             # TODO: These loops can be collapsed once validation against C++ is complete
@@ -356,9 +316,7 @@ class ILPSubset:
                 # upper bound for solver
                 ub = max(sum(copy_numbers.get(cluster_id, (0, 0))), cn_max)
                 for _n in range(n):
-                    model.constraints.add(
-                        self.cA[_m][_n] + self.cB[_m][_n] <= ub
-                    )
+                    model.constraints.add(self.cA[_m][_n] + self.cB[_m][_n] <= ub)
 
         if mode_t in ('FULL', 'CARCH'):
             for _m in range(m):
@@ -370,20 +328,10 @@ class ILPSubset:
                     cluster_id = f_a.index[_m]
                     if cluster_id not in copy_numbers:
                         for _n in range(1, n):
-                            model.constraints.add(
-                                self.cA[_m][_n]
-                                <= cn_max * adA[_m] + _base - _base * adA[_m]
-                            )
-                            model.constraints.add(
-                                self.cA[_m][_n] >= _base * adA[_m]
-                            )
-                            model.constraints.add(
-                                self.cB[_m][_n]
-                                <= cn_max * adB[_m] + _base - _base * adB[_m]
-                            )
-                            model.constraints.add(
-                                self.cB[_m][_n] >= _base * adB[_m]
-                            )
+                            model.constraints.add(self.cA[_m][_n] <= cn_max * adA[_m] + _base - _base * adA[_m])
+                            model.constraints.add(self.cA[_m][_n] >= _base * adA[_m])
+                            model.constraints.add(self.cB[_m][_n] <= cn_max * adB[_m] + _base - _base * adB[_m])
+                            model.constraints.add(self.cB[_m][_n] >= _base * adB[_m])
 
         if mode_t == 'UARCH':
             # TODO: These loops can be collapsed once validation against C++ is complete
@@ -408,9 +356,7 @@ class ILPSubset:
             for _k in range(k):
                 for _n in range(1, n):
                     model.constraints.add(x[(_n, _k)] >= self.u[_n][_k])
-                    model.constraints.add(
-                        self.u[_n][_k] >= self.mu * x[(_n, _k)]
-                    )
+                    model.constraints.add(self.u[_n][_k] >= self.mu * x[(_n, _k)])
 
         # buildOptionalConstraints
         if (mode_t in ('FULL', 'CARCH')) and d > 0:
@@ -427,20 +373,16 @@ class ILPSubset:
                         for _i in range(1, self.n - 1):
                             for _j in range(1, self.n):
                                 model.constraints.add(
-                                    bitcA[(_M, _m, _i)] - bitcA[(_M, _m, _j)]
-                                    <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                                    bitcA[(_M, _m, _i)] - bitcA[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
                                 )
                                 model.constraints.add(
-                                    bitcA[(_M, _m, _j)] - bitcA[(_M, _m, _i)]
-                                    <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                                    bitcA[(_M, _m, _j)] - bitcA[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
                                 )
                                 model.constraints.add(
-                                    bitcB[(_M, _m, _i)] - bitcB[(_M, _m, _j)]
-                                    <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                                    bitcB[(_M, _m, _i)] - bitcB[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
                                 )
                                 model.constraints.add(
-                                    bitcB[(_M, _m, _j)] - bitcB[(_M, _m, _i)]
-                                    <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                                    bitcB[(_M, _m, _j)] - bitcB[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
                                 )
 
             for _m in range(self.m):
@@ -476,12 +418,8 @@ class ILPSubset:
             _sum2 = 0
             for _m in range(self.m):
                 _symCoeff = self.symmCoeff(_m)
-                _sum1 += (
-                    self.cA[_m][i] * _symCoeff + self.cB[_m][i] * _symCoeff
-                )
-                _sum2 += (
-                    self.cA[_m][i] * _symCoeff + self.cB[_m][i] * _symCoeff
-                )
+                _sum1 += self.cA[_m][i] * _symCoeff + self.cB[_m][i] * _symCoeff
+                _sum2 += self.cA[_m][i] * _symCoeff + self.cB[_m][i] * _symCoeff
             model.constraints.add(_sum1 <= _sum2)
 
     def fix_given_cn(self, model):
@@ -499,12 +437,8 @@ class ILPSubset:
             targetA = np.empty((self.m, self.d))
             targetB = np.empty_like(targetA)
             for _m in range(self.m):
-                targetA[_m, :] = np.random.choice(
-                    self.f_a.iloc[_m].values, self.d, replace=False
-                )
-                targetB[_m, :] = np.random.choice(
-                    self.f_b.iloc[_m].values, self.d, replace=False
-                )
+                targetA[_m, :] = np.random.choice(self.f_a.iloc[_m].values, self.d, replace=False)
+                targetB[_m, :] = np.random.choice(self.f_b.iloc[_m].values, self.d, replace=False)
             targetA = targetA.round()
             targetB = targetB.round()
         else:
@@ -571,9 +505,7 @@ class ILPSubset:
             rank[0] = -1
             for _m in range(m):
                 for _n in range(1, n):
-                    rank[_n] += hcA[_m][_n] * self.symmCoeff(_m) + hcB[_m][
-                        _n
-                    ] * self.symmCoeff(_m)
+                    rank[_n] += hcA[_m][_n] * self.symmCoeff(_m) + hcB[_m][_n] * self.symmCoeff(_m)
 
             return rank
 
@@ -619,14 +551,7 @@ class ILPSubset:
             # generate n_parts random positions from all available positions
             positions = np.random.choice(np.arange(n), n_parts, replace=False)
 
-            bubbles = (
-                np.sort(
-                    np.random.choice(
-                        np.arange(1, size_bubbles), n_parts - 1, replace=False
-                    )
-                )
-                / size_bubbles
-            )
+            bubbles = np.sort(np.random.choice(np.arange(1, size_bubbles), n_parts - 1, replace=False)) / size_bubbles
             _result = np.diff(bubbles, prepend=0, append=1)
 
             # set fractions at selected positions to successive difference between bubbles
@@ -644,12 +569,8 @@ class ILPSubset:
                 # Generate 2 random ints between [1, n] and take the max - biasing towards larger numbers
                 _n0 = np.random.randint(1, self.n + 1)
                 _n1 = np.random.randint(1, self.n + 1)
-                n_parts = min(
-                    max(_n0, _n1), size_bubbles
-                )  # no. of clones with non-zero proportion in the mix
-                v = _build_partition_vector(
-                    self.n, n_parts, size_bubbles, mu=self.mu
-                )
+                n_parts = min(max(_n0, _n1), size_bubbles)  # no. of clones with non-zero proportion in the mix
+                v = _build_partition_vector(self.n, n_parts, size_bubbles, mu=self.mu)
                 U[:, _k] = v
         return U
 
@@ -677,8 +598,7 @@ class ILPSubset:
             )
             or (
                 results.solver.status == SolverStatus.aborted
-                and results.solver.termination_condition
-                == TerminationCondition.maxTimeLimit
+                and results.solver.termination_condition == TerminationCondition.maxTimeLimit
             )
         ):
             pass
@@ -690,18 +610,9 @@ class ILPSubset:
 
         return (
             self.model.obj(),
-            [
-                [int(getattr(x, 'value', x)) for x in row]
-                for row in self.optimized_cA
-            ],
-            [
-                [int(getattr(x, 'value', x)) for x in row]
-                for row in self.optimized_cB
-            ],
-            [
-                [getattr(x, 'value', x) for x in row]
-                for row in self.optimized_u
-            ],
+            [[int(getattr(x, 'value', x)) for x in row] for row in self.optimized_cA],
+            [[int(getattr(x, 'value', x)) for x in row] for row in self.optimized_cB],
+            [[getattr(x, 'value', x) for x in row] for row in self.optimized_u],
             self.cluster_ids,
             self.sample_ids,
         )
@@ -758,9 +669,7 @@ class ILPSubsetSplit(ILPSubset):
         # Fixed values of cA/cB/u
         self._fixed_cA = [[np.nan for _ in range(n)] for _ in range(self.m)]
         self._fixed_cB = [[np.nan for _ in range(n)] for _ in range(self.m)]
-        self._fixed_u = [
-            [np.nan for _ in range(self.k)] for _ in range(self.n)
-        ]
+        self._fixed_u = [[np.nan for _ in range(self.k)] for _ in range(self.n)]
 
         self.warmstart = False  # set on hot_start()
         self.model = None  # initialized on create_model()
@@ -817,18 +726,10 @@ class ILPSubsetSplit(ILPSubset):
 
                 # Need an objective function term for each bin for absolute vlaue
                 for _i in range(len(self.binsA[cluster_id])):
-                    yA[(_m, _k, _i)] = pe.Var(
-                        bounds=(0, np.inf), domain=pe.Reals
-                    )
-                    model.add_component(
-                        f'yA_{_m + 1}_{_k + 1}_{_i + 1}', yA[(_m, _k, _i)]
-                    )
-                    yB[(_m, _k, _i)] = pe.Var(
-                        bounds=(0, np.inf), domain=pe.Reals
-                    )
-                    model.add_component(
-                        f'yB_{_m + 1}_{_k + 1}_{_i + 1}', yB[(_m, _k, _i)]
-                    )
+                    yA[(_m, _k, _i)] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                    model.add_component(f'yA_{_m + 1}_{_k + 1}_{_i + 1}', yA[(_m, _k, _i)])
+                    yB[(_m, _k, _i)] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                    model.add_component(f'yB_{_m + 1}_{_k + 1}_{_i + 1}', yB[(_m, _k, _i)])
 
         if mode_t in ('FULL', 'CARCH'):
             for _m in range(m):
@@ -839,18 +740,10 @@ class ILPSubsetSplit(ILPSubset):
                 ub = max(sum(copy_numbers.get(cluster_id, (0, 0))), cn_max)
 
                 for _n in range(n):
-                    self.cA[_m][_n] = pe.Var(
-                        bounds=(0, ub), domain=pe.Integers
-                    )
-                    model.add_component(
-                        f'cA_{_m + 1}_{_n + 1}', self.cA[_m][_n]
-                    )
-                    self.cB[_m][_n] = pe.Var(
-                        bounds=(0, ub), domain=pe.Integers
-                    )
-                    model.add_component(
-                        f'cB_{_m + 1}_{_n + 1}', self.cB[_m][_n]
-                    )
+                    self.cA[_m][_n] = pe.Var(bounds=(0, ub), domain=pe.Integers)
+                    model.add_component(f'cA_{_m + 1}_{_n + 1}', self.cA[_m][_n])
+                    self.cB[_m][_n] = pe.Var(bounds=(0, ub), domain=pe.Integers)
+                    model.add_component(f'cB_{_m + 1}_{_n + 1}', self.cB[_m][_n])
 
             if ampdel:
                 for _m in range(m):
@@ -867,16 +760,12 @@ class ILPSubsetSplit(ILPSubset):
             for _b in range(_M):
                 for _m in range(m):
                     for _n in range(n):
-                        bitcA[(_b, _m, _n)] = pe.Var(
-                            bounds=(0, 1), domain=pe.Binary
-                        )
+                        bitcA[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                         model.add_component(
                             f'bitcA_{_b + 1}_{_m + 1}_{_n + 1}',
                             bitcA[(_b, _m, _n)],
                         )
-                        bitcB[(_b, _m, _n)] = pe.Var(
-                            bounds=(0, 1), domain=pe.Binary
-                        )
+                        bitcB[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                         model.add_component(
                             f'bitcB_{_b + 1}_{_m + 1}_{_n + 1}',
                             bitcB[(_b, _m, _n)],
@@ -895,16 +784,12 @@ class ILPSubsetSplit(ILPSubset):
                 for _m in range(m):
                     for _n in range(n):
                         for _k in range(k):
-                            vA[(_b, _m, _n, _k)] = pe.Var(
-                                bounds=(0, 1), domain=pe.Reals
-                            )
+                            vA[(_b, _m, _n, _k)] = pe.Var(bounds=(0, 1), domain=pe.Reals)
                             model.add_component(
                                 f'vA_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}',
                                 vA[(_b, _m, _n, _k)],
                             )
-                            vB[(_b, _m, _n, _k)] = pe.Var(
-                                bounds=(0, 1), domain=pe.Reals
-                            )
+                            vB[(_b, _m, _n, _k)] = pe.Var(bounds=(0, 1), domain=pe.Reals)
                             model.add_component(
                                 f'vB_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}',
                                 vB[(_b, _m, _n, _k)],
@@ -923,12 +808,8 @@ class ILPSubsetSplit(ILPSubset):
             for _m in range(self.m):
                 for _n in range(1, self.n):
                     for _d in range(d):
-                        z[(_m, _n, _d)] = pe.Var(
-                            bounds=(0, 1), domain=pe.Binary
-                        )
-                        model.add_component(
-                            f'z_{_m + 1}_{_n + 1}_{_d + 1}', z[(_m, _n, _d)]
-                        )
+                        z[(_m, _n, _d)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model.add_component(f'z_{_m + 1}_{_n + 1}_{_d + 1}', z[(_m, _n, _d)])
 
         # CONSTRAINTS
         model.constraints = pe.ConstraintList()
@@ -962,16 +843,9 @@ class ILPSubsetSplit(ILPSubset):
                     for _n in range(n):
                         for _b in range(_M):
                             sum_a += vA[(_b, _m, _n, _k)] * math.pow(2, _b)
-                            model.constraints.add(
-                                vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)]
-                            )
-                            model.constraints.add(
-                                vA[(_b, _m, _n, _k)] <= self.u[_n][_k]
-                            )
-                            model.constraints.add(
-                                vA[(_b, _m, _n, _k)]
-                                >= bitcA[(_b, _m, _n)] + self.u[_n][_k] - 1
-                            )
+                            model.constraints.add(vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)])
+                            model.constraints.add(vA[(_b, _m, _n, _k)] <= self.u[_n][_k])
+                            model.constraints.add(vA[(_b, _m, _n, _k)] >= bitcA[(_b, _m, _n)] + self.u[_n][_k] - 1)
 
                     model.constraints.add(fA[(_m, _k)] == sum_a)
 
@@ -982,16 +856,9 @@ class ILPSubsetSplit(ILPSubset):
                     for _n in range(n):
                         for _b in range(_M):
                             sum_b += vB[(_b, _m, _n, _k)] * math.pow(2, _b)
-                            model.constraints.add(
-                                vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)]
-                            )
-                            model.constraints.add(
-                                vB[(_b, _m, _n, _k)] <= self.u[_n][_k]
-                            )
-                            model.constraints.add(
-                                vB[(_b, _m, _n, _k)]
-                                >= bitcB[(_b, _m, _n)] + self.u[_n][_k] - 1
-                            )
+                            model.constraints.add(vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)])
+                            model.constraints.add(vB[(_b, _m, _n, _k)] <= self.u[_n][_k])
+                            model.constraints.add(vB[(_b, _m, _n, _k)] >= bitcB[(_b, _m, _n)] + self.u[_n][_k] - 1)
 
                     model.constraints.add(fB[(_m, _k)] == sum_b)
 
@@ -1018,9 +885,7 @@ class ILPSubsetSplit(ILPSubset):
 
                     model.constraints.add(self.cA[_m][_n] == sum_a)
                     model.constraints.add(self.cB[_m][_n] == sum_b)
-                    model.constraints.add(
-                        self.cA[_m][_n] + self.cB[_m][_n] <= ub
-                    )
+                    model.constraints.add(self.cA[_m][_n] + self.cB[_m][_n] <= ub)
 
         if mode_t == 'CARCH':
             # TODO: These loops can be collapsed once validation against C++ is complete
@@ -1039,9 +904,7 @@ class ILPSubsetSplit(ILPSubset):
                 # upper bound for solver
                 ub = max(sum(copy_numbers.get(cluster_id, (0, 0))), cn_max)
                 for _n in range(n):
-                    model.constraints.add(
-                        self.cA[_m][_n] + self.cB[_m][_n] <= ub
-                    )
+                    model.constraints.add(self.cA[_m][_n] + self.cB[_m][_n] <= ub)
 
         if mode_t in ('FULL', 'CARCH'):
             for _m in range(m):
@@ -1053,20 +916,10 @@ class ILPSubsetSplit(ILPSubset):
                     cluster_id = f_a.index[_m]
                     if cluster_id not in copy_numbers:
                         for _n in range(1, n):
-                            model.constraints.add(
-                                self.cA[_m][_n]
-                                <= cn_max * adA[_m] + _base - _base * adA[_m]
-                            )
-                            model.constraints.add(
-                                self.cA[_m][_n] >= _base * adA[_m]
-                            )
-                            model.constraints.add(
-                                self.cB[_m][_n]
-                                <= cn_max * adB[_m] + _base - _base * adB[_m]
-                            )
-                            model.constraints.add(
-                                self.cB[_m][_n] >= _base * adB[_m]
-                            )
+                            model.constraints.add(self.cA[_m][_n] <= cn_max * adA[_m] + _base - _base * adA[_m])
+                            model.constraints.add(self.cA[_m][_n] >= _base * adA[_m])
+                            model.constraints.add(self.cB[_m][_n] <= cn_max * adB[_m] + _base - _base * adB[_m])
+                            model.constraints.add(self.cB[_m][_n] >= _base * adB[_m])
 
         if mode_t == 'UARCH':
             # TODO: These loops can be collapsed once validation against C++ is complete
@@ -1091,9 +944,7 @@ class ILPSubsetSplit(ILPSubset):
             for _k in range(k):
                 for _n in range(1, n):
                     model.constraints.add(x[(_n, _k)] >= self.u[_n][_k])
-                    model.constraints.add(
-                        self.u[_n][_k] >= self.mu * x[(_n, _k)]
-                    )
+                    model.constraints.add(self.u[_n][_k] >= self.mu * x[(_n, _k)])
 
         # buildOptionalConstraints
         if (mode_t in ('FULL', 'CARCH')) and d > 0:
@@ -1110,20 +961,16 @@ class ILPSubsetSplit(ILPSubset):
                         for _i in range(1, self.n - 1):
                             for _j in range(1, self.n):
                                 model.constraints.add(
-                                    bitcA[(_M, _m, _i)] - bitcA[(_M, _m, _j)]
-                                    <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                                    bitcA[(_M, _m, _i)] - bitcA[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
                                 )
                                 model.constraints.add(
-                                    bitcA[(_M, _m, _j)] - bitcA[(_M, _m, _i)]
-                                    <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                                    bitcA[(_M, _m, _j)] - bitcA[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
                                 )
                                 model.constraints.add(
-                                    bitcB[(_M, _m, _i)] - bitcB[(_M, _m, _j)]
-                                    <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                                    bitcB[(_M, _m, _i)] - bitcB[(_M, _m, _j)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
                                 )
                                 model.constraints.add(
-                                    bitcB[(_M, _m, _j)] - bitcB[(_M, _m, _i)]
-                                    <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                                    bitcB[(_M, _m, _j)] - bitcB[(_M, _m, _i)] <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
                                 )
 
             for _m in range(self.m):
@@ -1148,9 +995,7 @@ class ILPSubsetSplit(ILPSubset):
 
             for _k in range(k):
                 for _i in range(n_bins):
-                    obj += (
-                        yA[(_m, _k, _i)] + yB[(_m, _k, _i)]
-                    ) * self.lengths[cluster_id][_i]
+                    obj += (yA[(_m, _k, _i)] + yB[(_m, _k, _i)]) * self.lengths[cluster_id][_i]
 
         model.obj = pe.Objective(expr=obj, sense=pe.minimize)
         self.model = model

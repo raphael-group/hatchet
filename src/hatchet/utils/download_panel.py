@@ -55,13 +55,9 @@ def dwnld_chains(dirpath):
                     if line.startswith('chain'):
                         line = line.split()
                         if not config.urls.refpanel_genome_chr_notation:
-                            line[refpanel_index] = line[
-                                refpanel_index
-                            ].replace('chr', '')
+                            line[refpanel_index] = line[refpanel_index].replace('chr', '')
                         if not sample_chr:
-                            line[sample_index] = line[sample_index].replace(
-                                'chr', ''
-                            )
+                            line[sample_index] = line[sample_index].replace('chr', '')
                         new.write(' '.join(line) + '\n')
                     else:
                         new.write(line)
@@ -98,16 +94,10 @@ def dwnld_refpanel_genome(path):
 
         # If the genome reference file used in other parts of HATCHet matches the one we want, use it
         reference_file = config.paths.reference
-        if (
-            os.path.isfile(reference_file)
-            and checksum(reference_file)
-            == config.urls.refpanel_genome_checksum
-        ):
+        if os.path.isfile(reference_file) and checksum(reference_file) == config.urls.refpanel_genome_checksum:
             out = reference_file
         else:
-            out = download(
-                config.urls.refpanel_genome, dirpath=path, extract=False
-            )
+            out = download(config.urls.refpanel_genome, dirpath=path, extract=False)
 
         _open, _mode = open, 'r'
         if out.endswith('gz'):
@@ -136,11 +126,7 @@ def dwnld_refpanel_genome(path):
                 universal_newlines=True,
             )
         if run.returncode != 0:
-            raise ValueError(
-                error(
-                    f'Samtools dict creation failed, please check errors in {errname}!'
-                )
-            )
+            raise ValueError(error(f'Samtools dict creation failed, please check errors in {errname}!'))
         else:
             os.remove(errname)
     return newref
@@ -152,9 +138,7 @@ def mk_rename_file(path):
     for i, n in enumerate(names):
         with open(n, 'w') as f:
             for j in range(1, 23):
-                f.write(f'chr{j} {j}\n') if i == 0 else f.write(
-                    f'{j} chr{j}\n'
-                )
+                f.write(f'chr{j} {j}\n') if i == 0 else f.write(f'{j} chr{j}\n')
     return names
 
 

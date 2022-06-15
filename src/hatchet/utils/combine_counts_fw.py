@@ -1,10 +1,8 @@
 import sys
 import math
-import copy
 import gzip
 from collections import defaultdict, deque
 import numpy as np
-from scipy.stats import beta
 
 import hatchet.utils.ProgressBar as pb
 import hatchet.utils.Supporting as sp
@@ -29,11 +27,7 @@ def main(args=None):
     )
     tumorbafs, chromosomes2, samples2 = readBAFs(tumor=args['tumorbafs'])
     if samples1 != samples2:
-        raise ValueError(
-            sp.error(
-                'The names of tumor samples are different in bin counts and allele counts!'
-            )
-        )
+        raise ValueError(sp.error('The names of tumor samples are different in bin counts and allele counts!'))
     else:
         samples = samples1
     if args['phase'] is not None:
@@ -51,9 +45,7 @@ def main(args=None):
             msg='# Reading and checking the total read count files\n',
             level='STEP',
         )
-        totalcounts = readTotalCounts(
-            filename=args['totalcounts'], samples=samples, normal=normal
-        )
+        totalcounts = readTotalCounts(filename=args['totalcounts'], samples=samples, normal=normal)
 
     sp.log(
         msg='# Combine the bin and allele counts to obtain BAF and RD for each bin\n',
@@ -75,14 +67,10 @@ def main(args=None):
         block=args['block'],
     )
 
-    sys.stdout.write(
-        '#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n'
-    )
+    sys.stdout.write('#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n')
     nonzerobaf = lambda rk: all(sample[4] + sample[5] > 0 for sample in rk)
     result = {key: result[key] for key in result if nonzerobaf(result[key])}
-    for key in sorted(
-        result, key=(lambda x: (sp.numericOrder(x[0]), int(x[1]), int(x[2])))
-    ):
+    for key in sorted(result, key=(lambda x: (sp.numericOrder(x[0]), int(x[1]), int(x[2])))):
         for sample in sorted(result[key]):
             sys.stdout.write(
                 '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
@@ -116,13 +104,9 @@ def combine(
     block=None,
 ):
     res = {}
-    ctumorbafs = {
-        c: sorted(tumorbafs[c], key=(lambda x: x[1])) for c in tumorbafs
-    }
+    ctumorbafs = {c: sorted(tumorbafs[c], key=(lambda x: x[1])) for c in tumorbafs}
     if not disable:
-        progress_bar = pb.ProgressBar(
-            total=len(tumorbins), length=40, verbose=verbose
-        )
+        progress_bar = pb.ProgressBar(total=len(tumorbins), length=40, verbose=verbose)
     for bi in sorted(
         tumorbins,
         key=(lambda x: (sp.numericOrder(x[0]), int(x[1]), int(x[2]))),
@@ -145,41 +129,24 @@ def combine(
                     break
 
             # Partition the overlapping SNPs by samples
-            tpartition = {
-                sample: [x for x in tumorover if x[0] == sample]
-                for sample in samples
-            }
+            tpartition = {sample: [x for x in tumorover if x[0] == sample] for sample in samples}
 
             # Check the bin to be covered in each sample and non-zero count in normal
-            if (
-                sum(len(tpartition[key]) != 0 for key in tpartition)
-                == len(samples)
-                and normal_count != 0
-            ):
+            if sum(len(tpartition[key]) != 0 for key in tpartition) == len(samples) and normal_count != 0:
                 # Compute ratios
-                ratios = {
-                    sample: float(tumor_counts[sample]) / float(normal_count)
-                    for sample in samples
-                }
+                ratios = {sample: float(tumor_counts[sample]) / float(normal_count) for sample in samples}
 
                 # Compute normalizing factor by total number of reads if provided
                 if totalcounts is not None:
                     totalfactor = {
-                        sample: float(totalcounts[normal])
-                        / float(totalcounts[sample])
-                        for sample in samples
+                        sample: float(totalcounts[normal]) / float(totalcounts[sample]) for sample in samples
                     }
-                    ratios = {
-                        sample: float(ratios[sample])
-                        * float(totalfactor[sample])
-                        for sample in samples
-                    }
+                    ratios = {sample: float(ratios[sample]) * float(totalfactor[sample]) for sample in samples}
 
                 # Compute number of SNPs covering each bin and the average coverage
                 snps = {sample: len(tpartition[sample]) for sample in samples}
                 cov = {
-                    sample: float(sum(x[2] + x[3] for x in tpartition[sample]))
-                    / float(len(tpartition[sample]))
+                    sample: float(sum(x[2] + x[3] for x in tpartition[sample])) / float(len(tpartition[sample]))
                     for sample in samples
                 }
 
@@ -215,24 +182,24 @@ def combine(
             else:
                 if verbose and normal_count != 0:
                     sp.log(
-                        msg='The bin ({}, {}) in chromosomes "{}" has been discarded because there are no covering SNPs in each tumor or normal sample\n'.format(
-                            bi[1], bi[2], bi[0]
+                        msg=(
+                            f'The bin ({bi[1]}, {bi[2]}) in chromosomes "{bi[0]}" has been discarded because there '
+                            'are no covering SNPs in each tumor or normal sample\n'
                         ),
                         level='WARN',
                     )
                 elif verbose and normal_count == 0:
                     sp.log(
-                        msg='The bin ({}, {}) in chromosomes "{}" has been discarded because normal read count is zero\n'.format(
-                            bi[1], bi[2], bi[0]
+                        msg=(
+                            f'The bin ({bi[1]}, {bi[2]}) in chromosomes "{bi[0]}" has been discarded because normal '
+                            'read count is zero\n'
                         ),
                         level='WARN',
                     )
         if not disable:
             progress_bar.progress(
                 advance=True,
-                msg='Combine bin ({}, {}) in chromosome {}'.format(
-                    bi[1], bi[2], bi[0]
-                ),
+                msg='Combine bin ({}, {}) in chromosome {}'.format(bi[1], bi[2], bi[0]),
             )
     return res
 
@@ -241,21 +208,11 @@ def computeBAFs(partition, samples, diploidbaf, phase=None, block=0):
     if phase is None:
         tpartition = partition
     else:
-        select = lambda L, s: blocking(
-            list(filter(lambda o: o[1] in phase, L)), s, phase, block
-        )
-        tpartition = {
-            sample: select(partition[sample], sample) for sample in samples
-        }
+        select = lambda L, s: blocking(list(filter(lambda o: o[1] in phase, L)), s, phase, block)
+        tpartition = {sample: select(partition[sample], sample) for sample in samples}
 
-    alphas = {
-        sample: sum(int(min(x[2], x[3])) for x in tpartition[sample])
-        for sample in samples
-    }
-    betas = {
-        sample: sum(int(max(x[2], x[3])) for x in tpartition[sample])
-        for sample in samples
-    }
+    alphas = {sample: sum(int(min(x[2], x[3])) for x in tpartition[sample]) for sample in samples}
+    betas = {sample: sum(int(max(x[2], x[3])) for x in tpartition[sample]) for sample in samples}
     mirrorbaf = {
         sample: (float(alphas[sample]) / float(alphas[sample] + betas[sample]))
         if (alphas[sample] + betas[sample]) > 0
@@ -263,10 +220,7 @@ def computeBAFs(partition, samples, diploidbaf, phase=None, block=0):
         for sample in samples
     }
 
-    return [
-        (sample, alphas[sample], betas[sample], mirrorbaf[sample])
-        for sample in samples
-    ]
+    return [(sample, alphas[sample], betas[sample], mirrorbaf[sample]) for sample in samples]
 
 
 def blocking(L, sample, phase, blocksize):
@@ -312,17 +266,11 @@ def readBINs(normalbins, tumorbins):
                     int(parsed[4]),
                 )
             else:
-                raise ValueError(
-                    sp.error(
-                        'Found multiple lines for the same interval in the normal bin counts!'
-                    )
-                )
+                raise ValueError(sp.error('Found multiple lines for the same interval in the normal bin counts!'))
 
     # Check normal bin counts
     if len(normal) > 1:
-        raise ValueError(
-            sp.error('Found multiple samples in normal bin counts!')
-        )
+        raise ValueError(sp.error('Found multiple samples in normal bin counts!'))
     prev_r = -1
     prev_c = -1
     for key in sorted(
@@ -333,16 +281,15 @@ def readBINs(normalbins, tumorbins):
         if l > r and prev_c == key[0]:
             raise ValueError(
                 sp.error(
-                    'Found an interval with START {} greater than END {} in normal bin counts!'.format(
-                        key[1], key[2]
-                    )
+                    'Found an interval with START {} greater than END {} in normal bin counts!'.format(key[1], key[2])
                 )
             )
         if l < prev_r and prev_c == key[0]:
             raise ValueError(
                 sp.error(
-                    'Found overlapping intervals one ending with {} and the next starting with {} in normal bin counts!'.format(
-                        prev_r, key[1]
+                    (
+                        f'Found overlapping intervals one ending with {prev_r} and the next starting with {key[1]} in '
+                        'normal bin counts!'
                     )
                 )
             )
@@ -356,14 +303,10 @@ def readBINs(normalbins, tumorbins):
             tumor_chr.add(parsed[0])
             samples.add(parsed[3])
             try:
-                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])].add(
-                    (parsed[3], int(parsed[4]))
-                )
+                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])].add((parsed[3], int(parsed[4])))
             except KeyError:
                 tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])] = set()
-                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])].add(
-                    (parsed[3], int(parsed[4]))
-                )
+                tumorBINs[parsed[0], int(parsed[1]), int(parsed[2])].add((parsed[3], int(parsed[4])))
 
     # Check tumor bin counts
     prev_r = -1
@@ -375,24 +318,19 @@ def readBINs(normalbins, tumorbins):
     ):
         l, r = int(key[1]), int(key[2])
         if len(tumorBINs[key]) != num_samples:
-            raise ValueError(
-                sp.error(
-                    'Found multiple lines for the same interval in the tumor bin counts!'
-                )
-            )
+            raise ValueError(sp.error('Found multiple lines for the same interval in the tumor bin counts!'))
         if l > r and prev_c == key[0]:
             raise ValueError(
                 sp.error(
-                    'Found an interval with START {} greater than END {} in tumor bin counts!'.format(
-                        key[1], key[2]
-                    )
+                    'Found an interval with START {} greater than END {} in tumor bin counts!'.format(key[1], key[2])
                 )
             )
         if l < prev_r and prev_c == key[0]:
             raise ValueError(
                 sp.error(
-                    'Found overlapping intervals one ending with {} and the next starting with {} in tumor bin counts!'.format(
-                        prev_r, key[1]
+                    (
+                        f'Found overlapping intervals one ending with {prev_r} and the next starting with {key[1]} in '
+                        'tumor bin counts!'
                     )
                 )
             )
@@ -400,15 +338,9 @@ def readBINs(normalbins, tumorbins):
         prev_c = key[0]
 
     if normal_chr != tumor_chr:
-        raise ValueError(
-            sp.error(
-                'The chromosomes in normal and tumor bin counts are different!'
-            )
-        )
+        raise ValueError(sp.error('The chromosomes in normal and tumor bin counts are different!'))
     if set(normalBINs) != set(tumorBINs):
-        raise ValueError(
-            sp.error('The bins of the normal and tumor samples are different!')
-        )
+        raise ValueError(sp.error('The bins of the normal and tumor samples are different!'))
 
     chromosomes = sorted(list(normal_chr), key=sp.numericOrder)
 
@@ -431,11 +363,7 @@ def readBAFs(tumor):
             alt = int(parsed[4])
             tumor_chr.add(chromosome)
             samples.add(sample)
-            baf = (
-                float(min(ref, alt)) / float(ref + alt)
-                if ref + alt > 0
-                else 0.5
-            )
+            baf = float(min(ref, alt)) / float(ref + alt) if ref + alt > 0 else 0.5
             try:
                 tumorBAFs[chromosome].append((sample, pos, ref, alt, baf))
             except KeyError:
@@ -444,14 +372,8 @@ def readBAFs(tumor):
     # Check tumor bafs
     for key in tumorBAFs:
         tumorBAFs[key].sort(key=(lambda x: x[1]))
-        if len(tumorBAFs[key]) > len(
-            set((x[0], x[1]) for x in tumorBAFs[key])
-        ):
-            raise ValueError(
-                sp.error(
-                    'A position is present multiple times in the tumor samples!'
-                )
-            )
+        if len(tumorBAFs[key]) > len(set((x[0], x[1]) for x in tumorBAFs[key])):
+            raise ValueError(sp.error('A position is present multiple times in the tumor samples!'))
 
     chromosomes = sorted(list(tumor_chr), key=sp.numericOrder)
 
@@ -461,9 +383,7 @@ def readBAFs(tumor):
 def readPhase(f):
     phased = defaultdict(lambda: dict())
     if not f.endswith('.gz'):
-        raise ValueError(
-            'Please make sure your phased VCF file is compressed with gzip with a .gz suffix'
-        )
+        raise ValueError('Please make sure your phased VCF file is compressed with gzip with a .gz suffix')
     with gzip.open(f, 'rt') as i:
         for l in i:
             p = l.strip().split()
@@ -472,9 +392,7 @@ def readPhase(f):
                 onezero = '1|0' in l
                 if zeroone or onezero:
                     if zeroone and onezero:
-                        raise ValueError(
-                            'Found a record in phased positions which contains both phases 0|1 and 1|0!'
-                        )
+                        raise ValueError('Found a record in phased positions which contains both phases 0|1 and 1|0!')
                     if p[0] in phased[p[0]]:
                         raise ValueError('Found a duplicate phased position!')
                     phased[p[0]][int(p[1])] = '0|1' if zeroone else '1|0'
@@ -487,23 +405,13 @@ def splitBAF(baf, scale):
     SUM = float(scale)
 
     roundings = []
-    roundings.append(
-        (int(math.floor(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM)))
-    )
-    roundings.append(
-        (int(math.floor(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM)))
-    )
-    roundings.append(
-        (int(math.ceil(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM)))
-    )
-    roundings.append(
-        (int(math.ceil(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM)))
-    )
+    roundings.append((int(math.floor(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM))))
+    roundings.append((int(math.floor(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM))))
+    roundings.append((int(math.ceil(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM))))
+    roundings.append((int(math.ceil(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM))))
     roundings = [(int(min(a, b)), int(max(a, b))) for (a, b) in roundings]
 
-    estimations = [
-        float(a) / float(a + b) if a + b > 0 else 1.0 for (a, b) in roundings
-    ]
+    estimations = [float(a) / float(a + b) if a + b > 0 else 1.0 for (a, b) in roundings]
     diff = [abs(est - BAF) for est in estimations]
     best = np.argmin(diff)
     return roundings[best][0], roundings[best][1]
@@ -517,34 +425,18 @@ def readTotalCounts(filename, samples, normal):
         for line in f:
             parsed = line.strip().split()
             if parsed[0] in found:
-                raise ValueError(
-                    sp.error(
-                        'Found multiple total read counts for the same sample {}!'.format(
-                            parsed[0]
-                        )
-                    )
-                )
+                raise ValueError(sp.error('Found multiple total read counts for the same sample {}!'.format(parsed[0])))
             if parsed[0] == normal:
                 normalfound = True
             else:
                 found.add(parsed[0])
             counts[parsed[0]] = int(parsed[1])
     if samples < found:
-        raise ValueError(
-            sp.error(
-                'Found total read counts for samples that are not present in the input!'
-            )
-        )
+        raise ValueError(sp.error('Found total read counts for samples that are not present in the input!'))
     elif found < samples:
-        raise ValueError(
-            sp.error(
-                'Missing total read counts for some samples present in the input!'
-            )
-        )
+        raise ValueError(sp.error('Missing total read counts for some samples present in the input!'))
     elif not normalfound:
-        raise ValueError(
-            sp.error('Missing total read counts for normal sample!')
-        )
+        raise ValueError(sp.error('Missing total read counts for normal sample!'))
     else:
         return counts
 

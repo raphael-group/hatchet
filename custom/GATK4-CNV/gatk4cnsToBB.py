@@ -9,19 +9,28 @@ from hatchet import __version__
 
 
 def parse_args():
-    description = 'This method takes in input multiple samples from the same patient, where each sample is a segmented CNV file produced by GATK4 CNV pipeline, and produces a BB input file for HATCHet.'
+    description = (
+        'This method takes in input multiple samples from the same patient, where each sample is a '
+        'segmented CNV file produced by GATK4 CNV pipeline, and produces a BB input file for HATCHet.'
+    )
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         'INPUT',
         type=str,
-        help="A white-space-separated list between apices where each element is a segmented CNV file produced by GATK4 CNV pipeline. The file format is describe in the HATCHet's repository.",
+        help=(
+            'A white-space-separated list between apices where each element is a segmented CNV file produced by '
+            "GATK4 CNV pipeline. The file format is describe in the HATCHet's repository."
+        ),
     )
     parser.add_argument(
         '--samples',
         type=str,
         required=False,
         default=None,
-        help='A white-space-separated list containing the name of sample in the same order as given (default: filenames are used).',
+        help=(
+            'A white-space-separated list containing the name of sample in the same order as given (default: '
+            'filenames are used).'
+        ),
     )
     parser.add_argument(
         '-b',
@@ -55,9 +64,7 @@ def parse_args():
         default=None,
         help='Starting seed for random number generator (default: not specified).',
     )
-    parser.add_argument(
-        '-V', '--version', action='version', version=f'%(prog)s {__version__}'
-    )
+    parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args()
 
     samples = args.INPUT.strip().split()
@@ -68,9 +75,7 @@ def parse_args():
     if args.samples:
         names = args.samples.strip().split()
         if len(names) != len(samples):
-            raise ValueError(
-                'ERROR: a sample name must be specified for every given sample!'
-            )
+            raise ValueError('ERROR: a sample name must be specified for every given sample!')
         samples = {n: s for n, s in zip(names, samples)}
     else:
         samples = {n: s for n, s in zip(samples, samples)}
@@ -84,19 +89,13 @@ def parse_args():
         else:
             size = int(args.binsize)
     except (IndexError, ValueError):
-        raise ValueError(
-            'Size must be a number, optionally ending with either "kb" or "Mb"!'
-        )
+        raise ValueError('Size must be a number, optionally ending with either "kb" or "Mb"!')
 
     if args.devRDR < 0.0:
-        raise ValueError(
-            'ERROR: deviation of RDR must be grater or equal than 0.0!'
-        )
+        raise ValueError('ERROR: deviation of RDR must be grater or equal than 0.0!')
 
     if args.devBAF < 0.0:
-        raise ValueError(
-            'ERROR: deviation of BAF must be grater or equal than 0.0!'
-        )
+        raise ValueError('ERROR: deviation of BAF must be grater or equal than 0.0!')
 
     if args.seed:
         np.random.seed(args.seed)
@@ -120,9 +119,7 @@ def main():
     segs = jsegmentation(segs)
 
     log('Binning the segments across all samples')
-    bins = binning(
-        segs, size=args['binsize'], drdr=args['devrdr'], dbaf=args['devbaf']
-    )
+    bins = binning(segs, size=args['binsize'], drdr=args['devrdr'], dbaf=args['devbaf'])
 
     log('Writing the corresponding BB file')
     print(
@@ -171,38 +168,26 @@ def read_segs(samples):
                     if p[0] != 'CONTIG':
                         h = p[0]
                         seg = (int(p[1]), int(p[2]))
-                        if p[6].upper() not in ['NAN', 'NONE'] and p[
-                            9
-                        ].upper() not in ['NAN', 'NONE']:
+                        if p[6].upper() not in ['NAN', 'NONE'] and p[9].upper() not in ['NAN', 'NONE']:
                             rdr = math.pow(2.0, float(p[6]))
                             if rdr < 0.0:
                                 raise ValueError(
-                                    'ERROR: the log of RDR expected to be positive but value {} found!'.format(
-                                        rdr
-                                    )
+                                    'ERROR: the log of RDR expected to be positive but value {} found!'.format(rdr)
                                 )
                             baf = float(p[9])
                             if not 0.0 <= baf <= 0.5:
                                 raise ValueError(
-                                    'ERROR: BAF expected to be in [0, 0.5] but value {} found!'.format(
-                                        baf
-                                    )
+                                    'ERROR: BAF expected to be in [0, 0.5] but value {} found!'.format(baf)
                                 )
                             if h not in d:
                                 d[h] = {}
-                            assert (
-                                seg not in d[h]
-                            ), 'ERROR: Found a duplicate segment {}:{}-{}'.format(
+                            assert seg not in d[h], 'ERROR: Found a duplicate segment {}:{}-{}'.format(
                                 h, seg[0], seg[1]
                             )
-                            check = lambda b: (b[0] <= b[1] <= seg[0]) or (
-                                seg[1] <= b[0] <= b[1]
-                            )
+                            check = lambda b: (b[0] <= b[1] <= seg[0]) or (seg[1] <= b[0] <= b[1])
                             assert False not in set(
                                 check(b) for b in d[h]
-                            ), 'ERROR: found overlapping segment {}:{}-{}'.format(
-                                h, seg[0], seg[1]
-                            )
+                            ), 'ERROR: found overlapping segment {}:{}-{}'.format(h, seg[0], seg[1])
                             d[h][seg] = {'RDR': rdr, 'BAF': baf}
         return d
 
@@ -212,10 +197,7 @@ def read_segs(samples):
 def jsegmentation(segs):
     chrs = set(c for p in segs for c in segs[p])
     bk = lambda p, c: set(k for s in segs[p][c] for k in s)
-    bks = {
-        c: sorted(set(k for p in segs if c in segs[p] for k in bk(p, c)))
-        for c in chrs
-    }
+    bks = {c: sorted(set(k for p in segs if c in segs[p] for k in bk(p, c))) for c in chrs}
     counts = {c: {s: 0 for s in zip(bks[c][:-1], bks[c][1:])} for c in bks}
     bmap = {p: {c: {s: None for s in counts[c]} for c in counts} for p in segs}
 
@@ -232,24 +214,14 @@ def jsegmentation(segs):
                         counts[c][left, right] += 1
                         bmap[p][c][left, right] = (l, r)
 
-    tak = {
-        c: set(s for s in counts[c] if counts[c][s] == len(segs))
-        for c in counts
-    }
+    tak = {c: set(s for s in counts[c] if counts[c][s] == len(segs)) for c in counts}
     tak = {c: tak[c] for c in tak if len(tak[c]) > 0}
 
     tot = float(sum(s[1] - s[0] for c in counts for s in counts[c]))
     cov = sum(s[1] - s[0] for c in tak for s in tak[c])
-    log(
-        '##Coverage from joint segmentation is {0:.2f}%'.format(
-            float(100.0 * cov) / tot
-        )
-    )
+    log('##Coverage from joint segmentation is {0:.2f}%'.format(float(100.0 * cov) / tot))
 
-    res = {
-        p: {c: {s: segs[p][c][bmap[p][c][s]] for s in tak[c]} for c in tak}
-        for p in segs
-    }
+    res = {p: {c: {s: segs[p][c][bmap[p][c][s]] for s in tak[c]} for c in tak} for p in segs}
 
     chrs = set(c for p in res for c in res[p])
     pos = {c: set(s for p in res for s in res[p][c]) for c in chrs}
@@ -272,10 +244,7 @@ def jsegmentation(segs):
         for p in join:
             join[p][c][l, r] = val[p]
 
-    assert False not in set(
-        cov == sum(s[1] - s[0] for c in join[p] for s in join[p][c])
-        for p in res
-    )
+    assert False not in set(cov == sum(s[1] - s[0] for c in join[p] for s in join[p][c]) for p in res)
 
     return join
 
@@ -283,15 +252,9 @@ def jsegmentation(segs):
 def binning(segs, size, drdr, dbaf):
     tg = list(segs.keys())[0]
     chrs = segs[tg].keys()
-    pos = {
-        c: sorted([s for s in segs[tg][c]], key=(lambda x: x[0])) for c in chrs
-    }
+    pos = {c: sorted([s for s in segs[tg][c]], key=(lambda x: x[0])) for c in chrs}
     norm = np.random.normal
-    BAF = (
-        lambda x: min(x, 1.0 - x)
-        if 0.0 <= x <= 1.0
-        else (BAF(1.0) if x > 1.0 else BAF(-x))
-    )
+    BAF = lambda x: min(x, 1.0 - x) if 0.0 <= x <= 1.0 else (BAF(1.0) if x > 1.0 else BAF(-x))
     gen = lambda d: {
         'RDR': norm(d['RDR'], drdr),
         'BAF': BAF(norm(d['BAF'], dbaf)),
@@ -301,11 +264,7 @@ def binning(segs, size, drdr, dbaf):
     for c in chrs:
         bins[c] = {}
         for s in pos[c]:
-            assert (
-                s[1] - s[0] > 0
-            ), 'ERROR: START and END cannot be equal: {}:{}-{}'.format(
-                c, s[0], s[1]
-            )
+            assert s[1] - s[0] > 0, 'ERROR: START and END cannot be equal: {}:{}-{}'.format(c, s[0], s[1])
             part = list(range(s[0], s[1], size))
             part = part + [s[1]] if part[-1] != s[1] else part
             for b in zip(part[:-1], part[1:]):
@@ -320,23 +279,13 @@ def splitBAF(baf, scale):
     SUM = float(scale)
 
     roundings = []
-    roundings.append(
-        (int(math.floor(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM)))
-    )
-    roundings.append(
-        (int(math.floor(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM)))
-    )
-    roundings.append(
-        (int(math.ceil(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM)))
-    )
-    roundings.append(
-        (int(math.ceil(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM)))
-    )
+    roundings.append((int(math.floor(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM))))
+    roundings.append((int(math.floor(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM))))
+    roundings.append((int(math.ceil(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM))))
+    roundings.append((int(math.ceil(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM))))
     roundings = [(int(min(a, b)), int(max(a, b))) for (a, b) in roundings]
 
-    estimations = [
-        float(a) / float(a + b) if a + b > 0 else 1.0 for (a, b) in roundings
-    ]
+    estimations = [float(a) / float(a + b) if a + b > 0 else 1.0 for (a, b) in roundings]
     diff = [abs(est - BAF) for est in estimations]
     best = np.argmin(diff)
 

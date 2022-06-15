@@ -24,9 +24,7 @@ class Worker:
         _u = u
         _cA, _cB = cA, cB  # first hot-start values
 
-        while (_iters < max_iters) and (
-            _convergence_iters < max_convergence_iters
-        ):
+        while (_iters < max_iters) and (_convergence_iters < max_convergence_iters):
 
             carch = copy(self.ilp)
             carch.fix_u(_u)
@@ -129,11 +127,7 @@ class CoordinateDescent:
             raise RuntimeError('Not a single feasible solution found!')
 
         best = min(result)
-        return (
-            (best,)
-            + result[best]
-            + (self.ilp.cluster_ids, self.ilp.sample_ids)
-        )
+        return (best,) + result[best] + (self.ilp.cluster_ids, self.ilp.sample_ids)
 
 
 class CoordinateDescentSplit(CoordinateDescent):

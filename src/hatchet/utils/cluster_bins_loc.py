@@ -1,6 +1,3 @@
-import sys
-import os
-import math
 from collections import Counter
 import numpy as np
 import pandas as pd
@@ -47,13 +44,7 @@ def main(args=None):
             msg='# Clustering bins by RD and BAF across tumor samples using locality\n',
             level='STEP',
         )
-        (
-            best_score,
-            best_model,
-            best_labels,
-            best_K,
-            results,
-        ) = hmm_model_select(
+        (best_score, best_model, best_labels, best_K, results,) = hmm_model_select(
             tracks,
             minK=minK,
             maxK=maxK,
@@ -68,9 +59,7 @@ def main(args=None):
     bb['CLUSTER'] = np.repeat(best_labels, len(sample_labels))
 
     sp.log(msg='# Checking consistency of results\n', level='STEP')
-    pivot_check = bb.pivot(
-        index=['#CHR', 'START', 'END'], columns='SAMPLE', values='CLUSTER'
-    )
+    pivot_check = bb.pivot(index=['#CHR', 'START', 'END'], columns='SAMPLE', values='CLUSTER')
     # Verify that the array lengths and order match the bins in the BB file
     chr_idx = 0
     bin_indices = pivot_check.index.to_numpy()
@@ -85,11 +74,7 @@ def main(args=None):
 
         start_idx = i
         i += 1
-        while (
-            i < len(bin_indices)
-            and bin_indices[i][0] == start_row[0]
-            and bin_indices[i][1] == prev_end
-        ):
+        while i < len(bin_indices) and bin_indices[i][0] == start_row[0] and bin_indices[i][1] == prev_end:
             prev_end = bin_indices[i][2]
             i += 1
 
@@ -164,15 +149,11 @@ def read_bb(bbfile, use_chr=True, compressed=False):
             if not populated_labels:
                 sample_labels.append(sample)
 
-            gaps = np.where(
-                df.START.to_numpy()[1:] - df.END.to_numpy()[:-1] > 0
-            )[0]
+            gaps = np.where(df.START.to_numpy()[1:] - df.END.to_numpy()[:-1] > 0)[0]
             # print(ch, gaps)
 
             if len(gaps) > 0:
-                assert (
-                    len(gaps) == 1
-                ), 'Found a chromosome with >1 gaps between bins'
+                assert len(gaps) == 1, 'Found a chromosome with >1 gaps between bins'
                 gap = gaps[0] + 1
 
                 df_p = df.iloc[:gap]
@@ -288,12 +269,8 @@ def hmm_model_select(
 
 
 class DiagGHMM(hmm.GaussianHMM):
-    def _accumulate_sufficient_statistics(
-        self, stats, obs, framelogprob, posteriors, fwdlattice, bwdlattice
-    ):
-        super()._accumulate_sufficient_statistics(
-            stats, obs, framelogprob, posteriors, fwdlattice, bwdlattice
-        )
+    def _accumulate_sufficient_statistics(self, stats, obs, framelogprob, posteriors, fwdlattice, bwdlattice):
+        super()._accumulate_sufficient_statistics(stats, obs, framelogprob, posteriors, fwdlattice, bwdlattice)
 
         if 't' in self.params:
             # for each ij, recover sum_t xi_ij from the inferred transition matrix

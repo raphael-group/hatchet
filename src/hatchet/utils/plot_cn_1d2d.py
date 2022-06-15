@@ -1,7 +1,5 @@
-import sys
 import os
 from collections import Counter
-from importlib.resources import path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,12 +7,9 @@ import seaborn as sns
 import matplotlib.colors as mcolors
 from matplotlib import collections
 from matplotlib.patches import Rectangle
-from matplotlib import cm
 
 from hatchet.utils.ArgParsing import parse_plot_cn_1d2d_args
 from hatchet.utils.Supporting import log, logArgs, error
-import hatchet.data
-from hatchet import config, __version__
 
 plt.rcParams['savefig.dpi'] = 300
 plt.style.use('ggplot')
@@ -65,11 +60,7 @@ def generate_1D2D_plots(
     using_chr = [str(a).startswith('chr') for a in bbc['#CHR'].unique()]
     if any(using_chr):
         if not all(using_chr):
-            raise ValueError(
-                error(
-                    "Some chromosomes use 'chr' notation while others do not."
-                )
-            )
+            raise ValueError(error("Some chromosomes use 'chr' notation while others do not."))
         use_chr = True
     else:
         use_chr = False
@@ -83,17 +74,8 @@ def generate_1D2D_plots(
     for i in range(22):
         chr_ends.append(chr_ends[-1] + chrlengths[f'chr{i + 1}'])
 
-    n_clones = max(
-        [i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc.columns]
-    )
-    _, mapping = reindex(
-        [
-            k
-            for k, _ in bbc.groupby(
-                [f'cn_clone{i + 1}' for i in range(n_clones)]
-            )
-        ]
-    )
+    n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc.columns])
+    _, mapping = reindex([k for k, _ in bbc.groupby([f'cn_clone{i + 1}' for i in range(n_clones)])])
 
     ss_bbc = bbc[bbc.SAMPLE == bbc.iloc[0].SAMPLE]
     break_idx = np.where(
@@ -114,10 +96,7 @@ def generate_1D2D_plots(
         # Reflect BAF about 0.5 w.p. 0.5 for clusters where all clones are balanced
         bbc = bbc.copy()
         pt = pd.concat(
-            [
-                bbc[f'cn_clone{i}'].str.split('|', expand=True)
-                for i in range(1, n_clones + 1)
-            ],
+            [bbc[f'cn_clone{i}'].str.split('|', expand=True) for i in range(1, n_clones + 1)],
             axis=1,
         )
 
@@ -127,9 +106,7 @@ def generate_1D2D_plots(
             balanced_indices = balanced_indices.all(axis=1)
 
             np.random.seed(0)
-            flips = np.random.randint(
-                2, size=np.count_nonzero(balanced_indices)
-            )
+            flips = np.random.randint(2, size=np.count_nonzero(balanced_indices))
             bbc.loc[balanced_indices, 'BAF'] = np.choose(
                 flips,
                 [
@@ -188,12 +165,7 @@ def generate_1D2D_plots(
 
 
 def limits_valid(lim):
-    return (
-        lim is not None
-        and len(lim) == 2
-        and lim[0] is not None
-        and lim[1] is not None
-    )
+    return lim is not None and len(lim) == 2 and lim[0] is not None and lim[1] is not None
 
 
 def recompose_state(l):
@@ -236,26 +208,16 @@ def compute_gamma(bbc):
     bbc = bbc.reset_index(drop=True)
     n_clones = int((len(bbc.columns) - 13) / 2)
     bbc['fractional_cn'] = sum(
-        [
-            bbc.iloc[:, 11 + 2 * i].map(cn2total) * bbc.iloc[:, 12 + 2 * i]
-            for i in range(n_clones + 1)
-        ]
+        [bbc.iloc[:, 11 + 2 * i].map(cn2total) * bbc.iloc[:, 12 + 2 * i] for i in range(n_clones + 1)]
     )
-    largest_clone = np.argmax(
-        [bbc['u_clone{}'.format(i + 1)][0] for i in range(n_clones)]
-    )
+    largest_clone = np.argmax([bbc['u_clone{}'.format(i + 1)][0] for i in range(n_clones)])
     dominant_cns = Counter(bbc['cn_clone{}'.format(largest_clone + 1)])
     balanced_options = set(['1|1', '2|2', '3|3', '4|4'])
     largest_balanced = max(balanced_options, key=lambda x: dominant_cns[x])
     balanced_idx = [
         i
         for i in range(len(bbc))
-        if all(
-            [
-                bbc['cn_clone{}'.format(j + 1)][i] == largest_balanced
-                for j in range(n_clones)
-            ]
-        )
+        if all([bbc['cn_clone{}'.format(j + 1)][i] == largest_balanced for j in range(n_clones)])
         and bbc.loc[i, 'RD'] > 0
     ]
     if len(balanced_idx) == 0:
@@ -264,19 +226,12 @@ def compute_gamma(bbc):
         balanced_idx = [
             i
             for i in range(len(bbc))
-            if all(
-                [
-                    bbc['cn_clone{}'.format(j + 1)][i] == largest_balanced
-                    for j in range(n_clones)
-                ]
-            )
+            if all([bbc['cn_clone{}'.format(j + 1)][i] == largest_balanced for j in range(n_clones)])
             and bbc.loc[i, 'RD'] > 0
         ]
 
     # print("Computing gamma using {} balanced bins across all {} clones".format(len(balanced_idx), n_clones))
-    return n_clones, np.mean(
-        bbc.iloc[balanced_idx].fractional_cn / bbc.iloc[balanced_idx].RD
-    )
+    return n_clones, np.mean(bbc.iloc[balanced_idx].fractional_cn / bbc.iloc[balanced_idx].RD)
 
 
 def cn2evs(cns, props):
@@ -311,9 +266,7 @@ def plot_genome(
     big_bbc = big_bbc.copy()
     np.random.seed(0)
     flips = np.random.randint(2, size=len(big_bbc))
-    big_bbc.loc[:, 'BAF'] = np.choose(
-        flips, [big_bbc.loc[:, 'BAF'], 1 - big_bbc.loc[:, 'BAF']]
-    )
+    big_bbc.loc[:, 'BAF'] = np.choose(flips, [big_bbc.loc[:, 'BAF'], 1 - big_bbc.loc[:, 'BAF']])
 
     colors1 = plt.cm.tab20b(np.arange(20))
     colors2 = plt.cm.tab20c(np.arange(20))
@@ -367,12 +320,8 @@ def plot_genome(
             # WARNING: THIS WILL PUT CHROMOSOMES OUT OF ORDER IF USING 'chr' NOTATION
             chromosomes = sorted(bbc_['#CHR'].unique())
 
-        n_clones = max(
-            [i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc_.columns]
-        )
-        props = np.array(
-            [bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]
-        ).round(6)
+        n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc_.columns])
+        props = np.array([bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]).round(6)
         n_clones2, gamma = compute_gamma(bbc_)
         assert n_clones2 == n_clones
 
@@ -398,9 +347,7 @@ def plot_genome(
             flag = bbc['#CHR'] == chromosome
             bbc = bbc[flag]
 
-            midpoint = (
-                np.mean(np.array([bbc.START, bbc.END]), axis=0) + chr_start
-            )
+            midpoint = np.mean(np.array([bbc.START, bbc.END]), axis=0) + chr_start
 
             # Add black bars indicating
             fcn_lines = []
@@ -409,9 +356,7 @@ def plot_genome(
             for _, r in bbc.iterrows():
                 x0 = r.START + chr_start
                 x1 = r.END + chr_start
-                state = [(1, 1)] + [
-                    str2state(r[f'cn_clone{i + 1}']) for i in range(n_clones)
-                ]
+                state = [(1, 1)] + [str2state(r[f'cn_clone{i + 1}']) for i in range(n_clones)]
                 y_fcn, y_baf = cn2evs(state, props)
                 fcn_lines.append([(x0, y_fcn), (x1, y_fcn)])
                 baf_lines.append([(x0, y_baf), (x1, y_baf)])
@@ -419,13 +364,9 @@ def plot_genome(
 
                 colors.append((0, 0, 0, 1))
 
-            lc_fcn = collections.LineCollection(
-                fcn_lines, linewidth=2, colors=colors
-            )
+            lc_fcn = collections.LineCollection(fcn_lines, linewidth=2, colors=colors)
             axes[idx * 2 + 0].add_collection(lc_fcn)
-            lc_baf = collections.LineCollection(
-                baf_lines, linewidth=2, colors=colors
-            )
+            lc_baf = collections.LineCollection(baf_lines, linewidth=2, colors=colors)
             axes[idx * 2 + 1].add_collection(lc_baf)
 
             if show_centromeres:
@@ -454,18 +395,11 @@ def plot_genome(
                 my_colors = [cmap(mapping[r]) for r in bbc.cn_clone1]
             else:
                 my_colors = [
-                    cmap(mapping[tuple(r)])
-                    for _, r in bbc[
-                        [f'cn_clone{i + 1}' for i in range(n_clones)]
-                    ].iterrows()
+                    cmap(mapping[tuple(r)]) for _, r in bbc[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
                 ]
 
-            axes[idx * 2 + 0].scatter(
-                midpoint, bbc.RD * gamma, s=markersize, alpha=1, c=my_colors
-            )
-            axes[idx * 2 + 1].scatter(
-                midpoint, bbc.BAF, s=markersize, alpha=1, c=my_colors
-            )
+            axes[idx * 2 + 0].scatter(midpoint, bbc.RD * gamma, s=markersize, alpha=1, c=my_colors)
+            axes[idx * 2 + 1].scatter(midpoint, bbc.BAF, s=markersize, alpha=1, c=my_colors)
 
         if show_centromeres:
             axes[idx * 2 + 0].grid(False)
@@ -548,9 +482,7 @@ def plot_clusters(
     if save_samples:
         fig, axs = plt.subplots(figsize=figsize)
     else:
-        fig, axs = plt.subplots(
-            len(samples), figsize=(figsize[0], int(len(samples) * figsize[1]))
-        )
+        fig, axs = plt.subplots(len(samples), figsize=(figsize[0], int(len(samples) * figsize[1])))
 
     n_states = len(mapping)
     mapping = mapping.copy()
@@ -576,12 +508,8 @@ def plot_clusters(
         bbc_ = bbc[bbc.SAMPLE == sample]
         bbc_ = bbc_.reset_index(drop=True)
 
-        n_clones = max(
-            [i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc_.columns]
-        )
-        props = np.array(
-            [bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]
-        ).round(6)
+        n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc_.columns])
+        props = np.array([bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]).round(6)
         n_clones2, gamma = compute_gamma(bbc_)
         assert n_clones2 == n_clones, (n_clones2, n_clones)
 
@@ -589,10 +517,7 @@ def plot_clusters(
             my_colors = [cmap(mapping[r]) for r in bbc_.cn_clone1]
         else:
             my_colors = [
-                cmap(mapping[tuple(r)])
-                for _, r in bbc_[
-                    [f'cn_clone{i + 1}' for i in range(n_clones)]
-                ].iterrows()
+                cmap(mapping[tuple(r)]) for _, r in bbc_[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
             ]
 
         my_ax.scatter(bbc_.BAF, bbc_.RD * gamma, c=my_colors, s=1)
@@ -600,9 +525,7 @@ def plot_clusters(
         exs = []
         eys = []
         cs = []
-        for k, _ in bbc_.groupby(
-            [f'cn_clone{i + 1}' for i in range(n_clones)]
-        ):
+        for k, _ in bbc_.groupby([f'cn_clone{i + 1}' for i in range(n_clones)]):
             if type(k) == str:
                 state = [(1, 1), str2state(k)]
             else:
@@ -632,15 +555,9 @@ def plot_clusters(
             if i == 0:
                 legendstr.append('Normal: {:.3f}'.format(bbc_.u_normal[0]))
             else:
-                legendstr.append(
-                    'Clone {}: {:.3f}'.format(
-                        i, bbc_['u_clone{}'.format(i)][0]
-                    )
-                )
+                legendstr.append('Clone {}: {:.3f}'.format(i, bbc_['u_clone{}'.format(i)][0]))
 
-        handles = [
-            Rectangle((0, 0), 1, 1, fc='white', ec='white', lw=0, alpha=0)
-        ]
+        handles = [Rectangle((0, 0), 1, 1, fc='white', ec='white', lw=0, alpha=0)]
         my_ax.legend(
             handles,
             ['\n'.join(legendstr)],

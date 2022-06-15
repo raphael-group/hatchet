@@ -1,11 +1,8 @@
-import sys
 import os
 import os.path
-import argparse
 import shlex
 import subprocess as pr
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
-from scipy.stats import beta
 
 from hatchet.utils.ArgParsing import parse_genotype_snps_arguments
 from hatchet.utils.Supporting import log, logArgs, error
@@ -14,7 +11,10 @@ import hatchet.utils.ProgressBar as pb
 
 def main(args=None):
     log(
-        msg='# Parsing the input arguments, checking the consistency of given files, and extracting required information\n',
+        msg=(
+            '# Parsing the input arguments, checking the consistency of given files, and extracting required ',
+            'information\n',
+        ),
         level='STEP',
     )
     args = parse_genotype_snps_arguments(args)
@@ -70,9 +70,7 @@ def main(args=None):
 
     log(msg='# SNP Calling is concluded\n', level='STEP')
     log(
-        msg='## Called SNPs have been written per chromosome in:\n{}\n'.format(
-            '\n'.join(snps)
-        ),
+        msg='## Called SNPs have been written per chromosome in:\n{}\n'.format('\n'.join(snps)),
         level='INFO',
     )
 
@@ -202,9 +200,7 @@ class Caller(Process):
 
             self.progress_bar.progress(
                 advance=False,
-                msg='{} starts on {} for {})'.format(
-                    self.name, next_task[1], next_task[2]
-                ),
+                msg='{} starts on {} for {})'.format(self.name, next_task[1], next_task[2]),
             )
             snps = self.callSNPs(
                 bamfile=next_task[0],
@@ -213,29 +209,21 @@ class Caller(Process):
             )
             self.progress_bar.progress(
                 advance=True,
-                msg='{} ends on {} for {})'.format(
-                    self.name, next_task[1], next_task[2]
-                ),
+                msg='{} ends on {} for {})'.format(self.name, next_task[1], next_task[2]),
             )
             self.task_queue.task_done()
             self.result_queue.put(snps)
         return
 
     def callSNPs(self, bamfile, samplename, chromosome):
-        errname = os.path.join(
-            self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome)
-        )
+        errname = os.path.join(self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome))
 
         outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
 
         if self.snplist is not None:
-            cmd_tgt = "{} query -f '%CHROM\t%POS\n' -r {} {}".format(
-                self.bcftools, chromosome, self.snplist
-            )
+            cmd_tgt = "{} query -f '%CHROM\t%POS\n' -r {} {}".format(self.bcftools, chromosome, self.snplist)
             cmd_gzip = 'gzip -9 -'
-            tgtfile = os.path.join(
-                self.outdir, 'target_{}.pos.gz'.format(chromosome)
-            )
+            tgtfile = os.path.join(self.outdir, 'target_{}.pos.gz'.format(chromosome))
             with open(tgtfile, 'w') as tout, open(errname, 'w') as err:
                 tgt = pr.Popen(
                     shlex.split(cmd_tgt),
@@ -253,9 +241,9 @@ class Caller(Process):
                 codes = map(lambda p: p.wait(), [tgt, gzip])
             if any(c != 0 for c in codes):
                 raise ValueError(
-                    error(
-                        'SNP Calling failed on {} of {}, please check errors in {}!'
-                    ).format(chromosome, samplename, errname)
+                    error('SNP Calling failed on {} of {}, please check errors in {}!').format(
+                        chromosome, samplename, errname
+                    )
                 )
             else:
                 os.remove(errname)
@@ -288,9 +276,9 @@ class Caller(Process):
             codes = map(lambda p: p.wait(), [mpileup, call])
         if any(c != 0 for c in codes):
             raise ValueError(
-                error(
-                    'SNP Calling failed on {} of {}, please check errors in {}!'
-                ).format(chromosome, samplename, errname)
+                error('SNP Calling failed on {} of {}, please check errors in {}!').format(
+                    chromosome, samplename, errname
+                )
             )
         else:
             os.remove(errname)

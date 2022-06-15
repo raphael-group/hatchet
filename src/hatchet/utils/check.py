@@ -52,14 +52,10 @@ def _check_cmd(exe_path, exe_name, *args):
 # Others, like below, need special handling because they have no simple invocations that return 0
 def _check_tabix():
     with tempfile.TemporaryDirectory() as tempdirname:
-        with importlib.resources.path(
-            hatchet.data, 'sample.sorted.gff.gz'
-        ) as gz_path:
+        with importlib.resources.path(hatchet.data, 'sample.sorted.gff.gz') as gz_path:
             _temp_gz_path = os.path.join(tempdirname, 'sample.sorted.gff.gz')
             shutil.copy(gz_path, _temp_gz_path)
-            return _check_cmd(
-                config.paths.tabix, 'tabix', '-p', 'gff', _temp_gz_path, '-f'
-            )
+            return _check_cmd(config.paths.tabix, 'tabix', '-p', 'gff', _temp_gz_path, '-f')
 
 
 def _check_picard():
@@ -80,9 +76,7 @@ def _check_picard():
         )
 
     with tempfile.TemporaryDirectory() as tempdirname:
-        with importlib.resources.path(
-            hatchet.data, 'sample.sorted.bam'
-        ) as bam_path:
+        with importlib.resources.path(hatchet.data, 'sample.sorted.bam') as bam_path:
             return _check_cmd(
                 exe_path,
                 exe_name,
@@ -104,7 +98,7 @@ def _check_python_import(which):
         return True
 
 
-# <HATCHet_command> => [(<dependency_name>, <success_message>, <failure_message>, <boolean_func>, <func_args>..), ..] mapping
+# <HATCHet_command> => [(<dependency_name>, <success_message>, <failure_message>, <boolean_func>, <func_args>..), ..]
 CHECKS = {
     'count-reads': [
         (
@@ -162,15 +156,11 @@ CHECKS = {
 def main(hatchet_cmds=None):
     all_ok = True
     hatchet_cmds = hatchet_cmds or CHECKS.keys()
-    print(
-        '======================\nRunning HATCHet checks\n======================'
-    )
+    print('======================\nRunning HATCHet checks\n======================')
     for hatchet_cmd in hatchet_cmds:
         if hatchet_cmd in CHECKS:
             checks = CHECKS[hatchet_cmd]
-            print(
-                f'----------------------\nCommand: {hatchet_cmd}\n----------------------'
-            )
+            print(f'----------------------\nCommand: {hatchet_cmd}\n----------------------')
             for check in checks:
                 cmd_name, success_msg, err_msg, func, args = (
                     check[0],

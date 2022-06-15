@@ -1,4 +1,3 @@
-import warnings
 from collections import OrderedDict
 import numpy as np
 import pandas as pd
@@ -30,9 +29,7 @@ class Random:
 
 
 def parse_clonal(clonal):
-    copy_numbers = (
-        OrderedDict()
-    )  # dict from cluster_id => (cn_a, cn_b) 2-tuple
+    copy_numbers = OrderedDict()  # dict from cluster_id => (cn_a, cn_b) 2-tuple
     clonal_parts = clonal.split(',')
     n_clonal_parts = len(clonal_parts)
 
@@ -44,7 +41,10 @@ def parse_clonal(clonal):
             _first_cn_a, _first_cn_b = list(copy_numbers.values())[0]
             if _first_cn_a + _first_cn_b == cn_a + cn_b:
                 raise ValueError(
-                    'When >= 2 clonal copy numbers are given, the first two must be different in the two segmental clusters'
+                    (
+                        'When >= 2 clonal copy numbers are given, the first two must be different in the two segmental '
+                        'clusters'
+                    )
                 )
 
         cn_total = cn_a + cn_b
@@ -54,9 +54,7 @@ def parse_clonal(clonal):
             # This is suppressed by default, which is what we do here for now.
             pass
         if cluster_id in copy_numbers:
-            raise ValueError(
-                'Already encountered cluster_id =', str(cluster_id)
-            )
+            raise ValueError('Already encountered cluster_id =', str(cluster_id))
         copy_numbers[cluster_id] = cn_a, cn_b
 
     return copy_numbers
@@ -73,22 +71,14 @@ def scale_rdr(rdr, copy_numbers, purity_tol=0.05):
         # Note the reversed assignment order to conform to C++ behavior - check with Simone!
         cluster_id_2, cluster_id_1 = tuple(copy_numbers.keys())[:2]  # TODO
         rdr_1, rdr_2 = rdr.loc[cluster_id_1], rdr.loc[cluster_id_2]
-        cn_sum_1, cn_sum_2 = sum(copy_numbers[cluster_id_1]), sum(
-            copy_numbers[cluster_id_2]
-        )
-        purity = (
-            2
-            * (rdr_1 - rdr_2)
-            / ((2 - cn_sum_2) * rdr_1 - (2 - cn_sum_1) * rdr_2)
-        )
+        cn_sum_1, cn_sum_2 = sum(copy_numbers[cluster_id_1]), sum(copy_numbers[cluster_id_2])
+        purity = 2 * (rdr_1 - rdr_2) / ((2 - cn_sum_2) * rdr_1 - (2 - cn_sum_1) * rdr_2)
 
         purity[(1 <= purity) & (purity <= 1 + purity_tol)] = 1
         purity[(-purity_tol <= purity) & (purity <= 0)] = 0
 
         scale = (2 - (2 - cn_sum_1) * purity) / rdr_1
-        assert np.all(
-            (0 <= purity) & (purity <= 1) & (scale >= 0)
-        ), 'scaling failed'
+        assert np.all((0 <= purity) & (purity <= 1) & (scale >= 0)), 'scaling failed'
 
     return scale
 
@@ -131,9 +121,7 @@ def segmentation(
     df = df.reset_index(drop=True)
 
     # last 2*n_clone columns names = [cn_normal, u_normal, cn_clone1, u_clone1, cn_clone2, ...]
-    extra_columns = [
-        col for sublist in zip(cN.columns, u.columns) for col in sublist
-    ]
+    extra_columns = [col for sublist in zip(cN.columns, u.columns) for col in sublist]
     all_columns = df.columns.values[: -2 * n_clone].tolist() + extra_columns
 
     if bbc_out_file is not None:
@@ -147,9 +135,7 @@ def segmentation(
         # all column names with cnA|cnB information (normal + clones)
         cN_column_names = cN.columns.tolist()
         # create a new column with all cnA|cnB strings joined as a single column
-        df['all_copy_numbers'] = df[cN_column_names].apply(
-            lambda x: ','.join(x), axis=1
-        )
+        df['all_copy_numbers'] = df[cN_column_names].apply(lambda x: ','.join(x), axis=1)
 
         _first_sample_name = df['SAMPLE'].iloc[0]
 
@@ -164,10 +150,7 @@ def segmentation(
                     # any of the copy-numbers changed from the previous row OR
                     # the START changed from the END in the previous row
                     (df['#CHR'] != df['#CHR'].shift())
-                    | (
-                        df['all_copy_numbers']
-                        != df['all_copy_numbers'].shift()
-                    )
+                    | (df['all_copy_numbers'] != df['all_copy_numbers'].shift())
                     | (df['START'] != df['END'].shift())
                 )
             ).cumsum(),

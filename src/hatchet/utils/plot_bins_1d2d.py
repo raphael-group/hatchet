@@ -49,9 +49,7 @@ def main(args=None):
 
     sp.log(' Starting plotting\n', level='STEP')
 
-    display = (
-        False  # setting display=True produces plots when run interactively
-    )
+    display = False  # setting display=True produces plots when run interactively
     plot_2d(
         bbc=bbc,
         seg=seg,
@@ -154,11 +152,7 @@ def plot_1d(
     using_chr = [str(a).startswith('chr') for a in bbc['#CHR'].unique()]
     if any(using_chr):
         if not all(using_chr):
-            raise ValueError(
-                sp.error(
-                    "Some chromosomes use 'chr' notation while others do not."
-                )
-            )
+            raise ValueError(sp.error("Some chromosomes use 'chr' notation while others do not."))
         use_chr = True
     else:
         use_chr = False
@@ -173,9 +167,7 @@ def plot_1d(
 
     np.random.seed(0)
     flips = np.random.randint(2, size=len(bbc))
-    bbc.loc[:, 'BAF'] = np.choose(
-        flips, [bbc.loc[:, 'BAF'], 1 - bbc.loc[:, 'BAF']]
-    )
+    bbc.loc[:, 'BAF'] = np.choose(flips, [bbc.loc[:, 'BAF'], 1 - bbc.loc[:, 'BAF']])
 
     # NOTE: this implementation assumes that the only gaps between bins are centromeres
     # If this is not the case in the future this needs to be updated
@@ -253,12 +245,7 @@ def plot_track(
     1) bb contains data for a single sample
     2) chromosomes are specified using "chr" notation
     """
-    xs = [
-        int(r['START'])
-        + chr_ends[int(r['#CHR'][3:]) - 1]
-        + 0.5 * (r['END'] - r['START'])
-        for _, r in bb.iterrows()
-    ]
+    xs = [int(r['START']) + chr_ends[int(r['#CHR'][3:]) - 1] + 0.5 * (r['END'] - r['START']) for _, r in bb.iterrows()]
     ys = bb[yval]
 
     markersize = int(max(1, 4 - np.floor(len(bb) / 500)))
@@ -268,9 +255,7 @@ def plot_track(
 
     if color_field is not None:
         # TODO: throw specific value error if "color_field" is not a column in "bb"
-        plt.scatter(
-            xs, ys, s=markersize, c=bb[color_field], alpha=alpha, cmap=mymap
-        )
+        plt.scatter(xs, ys, s=markersize, c=bb[color_field], alpha=alpha, cmap=mymap)
     else:
         plt.scatter(xs, ys, s=markersize, alpha=alpha)
 
@@ -285,9 +270,7 @@ def plot_track(
         miny = np.min(ys)
         maxy = np.max(ys)
 
-    plt.vlines(
-        x=chr_ends[1:-1], ymin=miny, ymax=maxy, colors='k', linewidth=0.5
-    )
+    plt.vlines(x=chr_ends[1:-1], ymin=miny, ymax=maxy, colors='k', linewidth=0.5)
     if yval == 'BAF':
         plt.hlines(
             y=0.5,

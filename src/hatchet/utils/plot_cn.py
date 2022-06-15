@@ -1,24 +1,16 @@
 import sys
 import os
 import argparse
-import shutil
-import subprocess
-import shlex
-import math
 import warnings
 import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import matplotlib.colors as col
-from matplotlib.pyplot import cm
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.colors import ListedColormap
 from matplotlib.colors import LinearSegmentedColormap
 from collections import Counter
 from collections import deque
-import itertools
 from itertools import cycle
 
 from hatchet.utils.Supporting import to_tuple
@@ -40,9 +32,7 @@ def parsing_arguments(args=None):
         description=description,
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument(
-        'INPUT', help='One or more space-separated files in CN_BBC format'
-    )
+    parser.add_argument('INPUT', help='One or more space-separated files in CN_BBC format')
     parser.add_argument(
         '-n',
         '--patientnames',
@@ -157,48 +147,33 @@ def parsing_arguments(args=None):
         required=False,
         default=config.plot_cn.linkage,
         type=str,
-        help='Linkage method used for clustering (default: single, available (single, complete, average, weighted, centroid, median, ward) from SciPy)"',
+        help=(
+            'Linkage method used for clustering (default: single, available (single, complete, average, weighted, '
+            'centroid, median, ward) from SciPy)"'
+        ),
     )
-    parser.add_argument(
-        '-V', '--version', action='version', version=f'%(prog)s {__version__}'
-    )
+    parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
     if len(args.INPUT.split()) == 0:
         raise ValueError(error('Please specify at least one sample as input!'))
     if args.patientnames is None:
-        patientnames = {
-            fil: os.path.basename(fil) for fil in args.INPUT.split()
-        }
+        patientnames = {fil: os.path.basename(fil) for fil in args.INPUT.split()}
     else:
-        patientnames = {
-            f: n for f, n in zip(args.INPUT.split(), args.patientnames.split())
-        }
+        patientnames = {f: n for f, n in zip(args.INPUT.split(), args.patientnames.split())}
     if len(args.INPUT.split()) != len(set(patientnames.values())):
-        raise ValueError(
-            error(
-                'Multiple patients have the same name but they should unique!'
-            )
-        )
+        raise ValueError(error('Multiple patients have the same name but they should unique!'))
     if args.figsizeclones is not None:
-        figsizeclones = to_tuple(
-            args.figsizeclones, error_message='Wrong format of figsizeclones!'
-        )
+        figsizeclones = to_tuple(args.figsizeclones, error_message='Wrong format of figsizeclones!')
     if args.figsizecn is not None:
         figsizecn = to_tuple(args.figsizecn, error_message='Wrong format of figsizecn!')
     if args.figsizegrid is not None:
-        figsizegrid = to_tuple(
-            args.figsizegrid, error_message='Wrong format of figsizegrid!'
-        )
+        figsizegrid = to_tuple(args.figsizegrid, error_message='Wrong format of figsizegrid!')
 
     if not os.path.isdir(args.rundir):
         raise ValueError(error('Running directory does not exist!'))
     if not 0.0 <= args.minu <= 1.0:
-        raise ValueError(
-            error(
-                'The minimum proportion for subclonal CNAs must be in [0, 1]!'
-            )
-        )
+        raise ValueError(error('The minimum proportion for subclonal CNAs must be in [0, 1]!'))
     if args.baseCN is not None and args.baseCN < 2:
         raise ValueError(error('Base CN must be greater or equal than 2!'))
     if args.resolutionclones is not None and args.resolutionclones < 1:
@@ -254,33 +229,17 @@ def parsing_arguments(args=None):
 def main(args=None):
     sys.stderr.write(log('# Checking and parsing input arguments\n'))
     args = parsing_arguments(args)
-    sys.stdout.write(
-        info(
-            '\n'.join(['## {}:\t{}'.format(key, args[key]) for key in args])
-            + '\n'
-        )
-    )
+    sys.stdout.write(info('\n'.join(['## {}:\t{}'.format(key, args[key]) for key in args]) + '\n'))
 
     sys.stderr.write(log('# Read BBC.UCN files\n'))
     tumors, clones, props = readUCN(args['input'], args['names'])
 
-    sys.stderr.write(
-        log(
-            '# Compute purity and tumor ploidy of each sample from each patient\n'
-        )
-    )
+    sys.stderr.write(log('# Compute purity and tumor ploidy of each sample from each patient\n'))
     infbase = pp(tumors, clones, props, args)
 
     if args['base'] is None:
-        sys.stderr.write(
-            log('# The estimated basic copy number for each patient is\n')
-        )
-        sys.stderr.write(
-            info(
-                '\n'.join(['## {}: {}'.format(b, infbase[b]) for b in infbase])
-                + '\n'
-            )
-        )
+        sys.stderr.write(log('# The estimated basic copy number for each patient is\n'))
+        sys.stderr.write(info('\n'.join(['## {}: {}'.format(b, infbase[b]) for b in infbase]) + '\n'))
         base = infbase
     else:
         base = {pat: args['base'] for pat in tumors}
@@ -305,28 +264,16 @@ def pp(tumor, clones, props, args):
         sys.stderr.write(info('## PATIENT: {}\n'.format(patient)))
         counter = []
         for sample in props[patient]:
-            purity = sum(
-                float(props[patient][sample][i])
-                for i in props[patient][sample]
-                if i != 'normal'
-            )
+            purity = sum(float(props[patient][sample][i]) for i in props[patient][sample] if i != 'normal')
             scaled = {
-                i: (props[patient][sample][i] / purity)
-                if purity > 0.0
-                else 0.0
+                i: (props[patient][sample][i] / purity) if purity > 0.0 else 0.0
                 for i in props[patient][sample]
                 if i != 'normal'
             }
-            length = sum(
-                float(s[1] - s[0])
-                for c in tumor[patient]
-                for s in tumor[patient][c]
-            )
+            length = sum(float(s[1] - s[0]) for c in tumor[patient] for s in tumor[patient][c])
             ploidy = (
                 sum(
-                    float(sum(tumor[patient][c][s][i]))
-                    * float(s[1] - s[0])
-                    * scaled[i]
+                    float(sum(tumor[patient][c][s][i])) * float(s[1] - s[0]) * scaled[i]
                     for c in tumor[patient]
                     for s in tumor[patient][c]
                     for i in scaled
@@ -353,84 +300,42 @@ def pp(tumor, clones, props, args):
 def single(tumor, clones, props, base, args):
     out = 'intratumor-clones-totalcn.pdf'
     sys.stderr.write(
-        log(
-            '# Plotting total copy-number clone profiles in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
+        log('# Plotting total copy-number clone profiles in {}\n'.format(os.path.join(args['rundir'], out)))
     )
     profiles(tumor, clones, props, args, out)
 
     out = 'intratumor-clones-allelecn.pdf'
     sys.stderr.write(
-        log(
-            '# Plotting allele-specific copy-number clone profiles in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
+        log('# Plotting allele-specific copy-number clone profiles in {}\n'.format(os.path.join(args['rundir'], out)))
     )
     allelicprofiles(tumor, clones, props, args, out)
 
     out = 'intratumor-copynumber-totalcn.pdf'
-    sys.stderr.write(
-        log(
-            '# Plotting total copy-number proportions in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
-    )
+    sys.stderr.write(log('# Plotting total copy-number proportions in {}\n'.format(os.path.join(args['rundir'], out))))
     cnproportions(tumor, base, clones, props, args, out)
 
     out = 'intratumor-copynumber-allelecn.pdf'
     sys.stderr.write(
-        log(
-            '# Plotting allele-specific copy-number proportions in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
+        log('# Plotting allele-specific copy-number proportions in {}\n'.format(os.path.join(args['rundir'], out)))
     )
     allelicproportions(tumor, int(float(base) / 2), clones, props, args, out)
 
     out = 'intratumor-profiles.pdf'
-    sys.stderr.write(
-        log(
-            '# Plotting clone profiles in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
-    )
+    sys.stderr.write(log('# Plotting clone profiles in {}\n'.format(os.path.join(args['rundir'], out))))
     gridprofiles(tumor, base, clones, props, args, out)
 
     out = 'intratumor-profilesreduced.pdf'
-    sys.stderr.write(
-        log(
-            '# Plotting reduced-clone profiles in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
-    )
+    sys.stderr.write(log('# Plotting reduced-clone profiles in {}\n'.format(os.path.join(args['rundir'], out))))
     gridprofilesreduced(tumor, base, clones, props, args, out)
 
     # Run tumor mixture analyses if we have a multiple tumor samples (keys in props)
     if len(props) > 1:
         out = 'intratumor-mixtures.pdf'
-        sys.stderr.write(
-            log(
-                '# Plotting reduced mixtures in {}\n'.format(
-                    os.path.join(args['rundir'], out)
-                )
-            )
-        )
+        sys.stderr.write(log('# Plotting reduced mixtures in {}\n'.format(os.path.join(args['rundir'], out))))
         gridmixtures(tumor, base, clones, props, args, out)
 
         out = 'intratumor-subclonality.pdf'
-        sys.stderr.write(
-            log(
-                '# Plotting reduced mixtures in {}\n'.format(
-                    os.path.join(args['rundir'], out)
-                )
-            )
-        )
+        sys.stderr.write(log('# Plotting reduced mixtures in {}\n'.format(os.path.join(args['rundir'], out))))
         subclonal(tumor, base, clones, props, args, out)
 
 
@@ -440,14 +345,8 @@ def profiles(tumor, clones, props, args, out):
     tclones = [i for i in clones if i != 'normal']
     shift = 0.1
     if len(tclones) % 2 == 0:
-        available = [-shift / 2] + [
-            -shift / 2 - shift * (i + 1)
-            for i in range(int(len(tclones) / 2) - 1)
-        ]
-        available += [shift / 2] + [
-            shift / 2 + shift * (i + 1)
-            for i in range(int(len(tclones) / 2) - 1)
-        ]
+        available = [-shift / 2] + [-shift / 2 - shift * (i + 1) for i in range(int(len(tclones) / 2) - 1)]
+        available += [shift / 2] + [shift / 2 + shift * (i + 1) for i in range(int(len(tclones) / 2) - 1)]
         available = iter(sorted(available))
         level = {clone: next(available) for clone in tclones}
     else:
@@ -494,14 +393,8 @@ def allelicprofiles(tumor, clones, props, args, out):
     tclones = [i for i in clones if i != 'normal']
     shift = 0.1
     if len(tclones) % 2 == 0:
-        available = [-shift / 2] + [
-            -shift / 2 - shift * (i + 1)
-            for i in range(int(len(tclones) / 2) - 1)
-        ]
-        available += [shift / 2] + [
-            shift / 2 + shift * (i + 1)
-            for i in range(int(len(tclones) / 2) - 1)
-        ]
+        available = [-shift / 2] + [-shift / 2 - shift * (i + 1) for i in range(int(len(tclones) / 2) - 1)]
+        available += [shift / 2] + [shift / 2 + shift * (i + 1) for i in range(int(len(tclones) / 2) - 1)]
         available = iter(sorted(available))
         level = {clone: next(available) for clone in tclones}
     else:
@@ -567,29 +460,15 @@ def allelicprofiles(tumor, clones, props, args, out):
 def cnproportions(tumor, base, clones, props, args, out):
     with PdfPages(os.path.join(args['rundir'], out)) as pdf:
         for sample in props:
-            sys.stderr.write(
-                info('## Plotting for sample {}...\n'.format(sample))
-            )
+            sys.stderr.write(info('## Plotting for sample {}...\n'.format(sample)))
             proj = join(tumor, clones, args['cnres'])
-            sumu = lambda cns, cn: sum(
-                float(props[sample][i]) for i in cns if cns[i] == cn
-            )
+            sumu = lambda cns, cn: sum(float(props[sample][i]) for i in cns if cns[i] == cn)
             merge = {
-                c: {
-                    s: {
-                        sum(cn): sumu(proj[c][s], cn)
-                        for cn in set(proj[c][s].values())
-                    }
-                    for s in proj[c]
-                }
+                c: {s: {sum(cn): sumu(proj[c][s], cn) for cn in set(proj[c][s].values())} for s in proj[c]}
                 for c in proj
             }
 
-            pos = [
-                (c, s)
-                for c in sorted(merge, key=sortchr)
-                for s in sorted(merge[c], key=(lambda x: x[0]))
-            ]
+            pos = [(c, s) for c in sorted(merge, key=sortchr) for s in sorted(merge[c], key=(lambda x: x[0]))]
             cns = sorted(
                 set(cn for c in merge for s in merge[c] for cn in merge[c][s]),
                 reverse=True,
@@ -597,19 +476,11 @@ def cnproportions(tumor, base, clones, props, args, out):
             pal2 = iter(sns.color_palette('coolwarm', 1))
             style = {base: next(pal2)}
             # palA = iter(sns.color_palette("Reds", len([cn for cn in cns if cn > base])))
-            palA = iter(
-                sns.color_palette(
-                    'YlOrRd_r', len([cn for cn in cns if cn > base])
-                )
-            )
+            palA = iter(sns.color_palette('YlOrRd_r', len([cn for cn in cns if cn > base])))
             for x in [cn for cn in cns if cn > base]:
                 style[x] = next(palA)
             # palD = iter(sns.color_palette("Blues", len([cn for cn in cns if cn < base])))
-            palD = iter(
-                sns.color_palette(
-                    'YlGnBu', len([cn for cn in cns if cn < base])
-                )
-            )
+            palD = iter(sns.color_palette('YlGnBu', len([cn for cn in cns if cn < base])))
             for x in [cn for cn in cns if cn < base]:
                 style[x] = next(palD)
             level = {s: 1.0 for s in pos}
@@ -617,11 +488,7 @@ def cnproportions(tumor, base, clones, props, args, out):
             fig = plt.figure(figsize=args['propsfigsize'])
 
             for cn in cns:
-                g = (
-                    lambda s: merge[s[0]][s[1]][cn]
-                    if cn in merge[s[0]][s[1]]
-                    else 0.0
-                )
+                g = lambda s: merge[s[0]][s[1]][cn] if cn in merge[s[0]][s[1]] else 0.0
                 minv = lambda v: v if v > 0.02 else 0.0
                 df = pd.DataFrame(
                     [
@@ -641,11 +508,7 @@ def cnproportions(tumor, base, clones, props, args, out):
                 )
                 level = {s: level[s] - g(s) for s in pos}
 
-            ticks = [
-                (x, s[0])
-                for x, s in enumerate(pos)
-                if x == 0 or pos[x - 1][0] != pos[x][0]
-            ]
+            ticks = [(x, s[0]) for x, s in enumerate(pos) if x == 0 or pos[x - 1][0] != pos[x][0]]
             plt.xticks([x[0] for x in ticks], [x[1] for x in ticks])
             plt.legend(
                 loc='center left',
@@ -662,62 +525,28 @@ def cnproportions(tumor, base, clones, props, args, out):
 def allelicproportions(tumor, base, clones, props, args, out):
     with PdfPages(os.path.join(args['rundir'], out)) as pdf:
         for sample in props:
-            sys.stderr.write(
-                info('## Plotting for sample {}...\n'.format(sample))
-            )
+            sys.stderr.write(info('## Plotting for sample {}...\n'.format(sample)))
             proj = join(
                 tumor,
                 [i for i in clones if props[sample][i] > 0.0],
                 args['cnres'],
             )
-            sumu = lambda cns, cn: sum(
-                float(props[sample][i]) for i in cns if cns[i][0] == cn[0]
-            )
+            sumu = lambda cns, cn: sum(float(props[sample][i]) for i in cns if cns[i][0] == cn[0])
             mergeA = {
-                c: {
-                    s: {
-                        cn[0]: sumu(proj[c][s], cn)
-                        for cn in set(proj[c][s].values())
-                    }
-                    for s in proj[c]
-                }
-                for c in proj
+                c: {s: {cn[0]: sumu(proj[c][s], cn) for cn in set(proj[c][s].values())} for s in proj[c]} for c in proj
             }
-            sumu = lambda cns, cn: sum(
-                float(props[sample][i]) for i in cns if cns[i][1] == cn[1]
-            )
+            sumu = lambda cns, cn: sum(float(props[sample][i]) for i in cns if cns[i][1] == cn[1])
             mergeB = {
-                c: {
-                    s: {
-                        cn[1]: sumu(proj[c][s], cn)
-                        for cn in set(proj[c][s].values())
-                    }
-                    for s in proj[c]
-                }
-                for c in proj
+                c: {s: {cn[1]: sumu(proj[c][s], cn) for cn in set(proj[c][s].values())} for s in proj[c]} for c in proj
             }
 
-            pos = [
-                (c, s)
-                for c in sorted(mergeA, key=sortchr)
-                for s in sorted(mergeA[c], key=(lambda x: x[0]))
-            ]
+            pos = [(c, s) for c in sorted(mergeA, key=sortchr) for s in sorted(mergeA[c], key=(lambda x: x[0]))]
             cnsA = sorted(
-                set(
-                    cn
-                    for c in mergeA
-                    for s in mergeA[c]
-                    for cn in mergeA[c][s]
-                ),
+                set(cn for c in mergeA for s in mergeA[c] for cn in mergeA[c][s]),
                 reverse=True,
             )
             cnsB = sorted(
-                set(
-                    cn
-                    for c in mergeB
-                    for s in mergeB[c]
-                    for cn in mergeB[c][s]
-                ),
+                set(cn for c in mergeB for s in mergeB[c] for cn in mergeB[c][s]),
                 reverse=True,
             )
             cns = sorted(set(cnsA) | set(cnsB))
@@ -725,19 +554,11 @@ def allelicproportions(tumor, base, clones, props, args, out):
             pal2 = iter(sns.color_palette('coolwarm', 1))
             style = {base: next(pal2)}
             # palA = iter(sns.color_palette("Reds", len([cn for cn in cns if cn > base])))
-            palA = iter(
-                sns.color_palette(
-                    'YlOrRd', len([cn for cn in cns if cn > base])
-                )
-            )
+            palA = iter(sns.color_palette('YlOrRd', len([cn for cn in cns if cn > base])))
             for x in [cn for cn in cns if cn > base]:
                 style[x] = next(palA)
             # palD = iter(sns.color_palette("Blues", len([cn for cn in cns if cn < base])))
-            palD = iter(
-                sns.color_palette(
-                    'YlGnBu', len([cn for cn in cns if cn < base])
-                )
-            )
+            palD = iter(sns.color_palette('YlGnBu', len([cn for cn in cns if cn < base])))
             for x in [cn for cn in cns if cn < base]:
                 style[x] = next(palD)
 
@@ -747,11 +568,7 @@ def allelicproportions(tumor, base, clones, props, args, out):
 
             level = {s: 1.0 for s in pos}
             for cn in cns:
-                g = (
-                    lambda s: mergeA[s[0]][s[1]][cn]
-                    if cn in mergeA[s[0]][s[1]]
-                    else 0.0
-                )
+                g = lambda s: mergeA[s[0]][s[1]][cn] if cn in mergeA[s[0]][s[1]] else 0.0
                 minv = lambda v: v if v > 0.02 else 0.0
                 df = pd.DataFrame(
                     [
@@ -775,11 +592,7 @@ def allelicproportions(tumor, base, clones, props, args, out):
 
             level = {s: -1.0 for s in pos}
             for cn in cns:
-                g = (
-                    lambda s: mergeB[s[0]][s[1]][cn]
-                    if cn in mergeB[s[0]][s[1]]
-                    else 0.0
-                )
+                g = lambda s: mergeB[s[0]][s[1]][cn] if cn in mergeB[s[0]][s[1]] else 0.0
                 minv = lambda v: v if v < 0.02 else 0.0
                 df = pd.DataFrame(
                     [
@@ -799,11 +612,7 @@ def allelicproportions(tumor, base, clones, props, args, out):
                 )
                 level = {s: level[s] + g(s) for s in pos}
 
-            ticks = [
-                (x, s[0])
-                for x, s in enumerate(pos)
-                if x == 0 or pos[x - 1][0] != pos[x][0]
-            ]
+            ticks = [(x, s[0]) for x, s in enumerate(pos) if x == 0 or pos[x - 1][0] != pos[x][0]]
             plt.xticks([x[0] for x in ticks], [x[1] for x in ticks])
             plt.legend(
                 loc='center left',
@@ -819,11 +628,7 @@ def allelicproportions(tumor, base, clones, props, args, out):
 
 def gridprofiles(tumor, base, clones, props, args, out):
     proj = join(tumor, clones, args['clusterres'])
-    pos = [
-        (c, s)
-        for c in sorted(proj, key=sortchr)
-        for s in sorted(proj[c], key=(lambda x: x[0]))
-    ]
+    pos = [(c, s) for c in sorted(proj, key=sortchr) for s in sorted(proj[c], key=(lambda x: x[0]))]
     pal_sample = sns.color_palette('YlGn', 10)
     palette = cycle(['#525252', '#969696', '#cccccc'])
     chr_colors = {c: next(palette) for c in sorted(tumor, key=sortchr)}
@@ -842,10 +647,7 @@ def gridprofiles(tumor, base, clones, props, args, out):
             elif cn < base:
                 de.add(cn)
             col_colors[x] = chr_colors[s[0]]
-            row_colors[c] = {
-                sam: pal_sample[min(9, int(round(props[sam][c] * 10)))]
-                for sam in props
-            }
+            row_colors[c] = {sam: pal_sample[min(9, int(round(props[sam][c] * 10)))] for sam in props}
     if len(am) == 0:
         am.add(base)
     if len(de) == 0:
@@ -872,14 +674,11 @@ def gridprofiles(tumor, base, clones, props, args, out):
     para['method'] = args['linkage']
     para['metric'] = cndistance
     para['figsize'] = args['clusterfigsize']
-    para['col_colors'] = pd.DataFrame(
-        [{'index': s, 'chromosomes': col_colors[s]} for s in table.columns]
-    ).set_index('index')
+    para['col_colors'] = pd.DataFrame([{'index': s, 'chromosomes': col_colors[s]} for s in table.columns]).set_index(
+        'index'
+    )
     para['row_colors'] = pd.DataFrame(
-        [
-            dict(list({'index': row}.items()) + list(row_colors[row].items()))
-            for row in table.index
-        ]
+        [dict(list({'index': row}.items()) + list(row_colors[row].items())) for row in table.index]
     ).set_index('index')
     g = sns.clustermap(**para)
 
@@ -891,11 +690,7 @@ def gridprofiles(tumor, base, clones, props, args, out):
 def gridprofilesreduced(tumor, base, clones, props, args, out):
     proj = join(tumor, clones, args['clusterres'])
     red = reduction(proj, base)
-    pos = [
-        (c, s)
-        for c in sorted(red, key=sortchr)
-        for s in sorted(red[c], key=(lambda x: x[0]))
-    ]
+    pos = [(c, s) for c in sorted(red, key=sortchr) for s in sorted(red[c], key=(lambda x: x[0]))]
     pal_sample = sns.color_palette('YlGn', 10)
     palette = cycle(['#525252', '#969696', '#cccccc'])
     chr_colors = {c: next(palette) for c in sorted(tumor, key=sortchr)}
@@ -905,14 +700,9 @@ def gridprofilesreduced(tumor, base, clones, props, args, out):
     data = []
     for c in sorted([i for i in clones]):
         for x, s in enumerate(pos):
-            data.append(
-                {'Clone': c, 'Genome': x, 'Amp-Del': red[s[0]][s[1]][c]}
-            )
+            data.append({'Clone': c, 'Genome': x, 'Amp-Del': red[s[0]][s[1]][c]})
             col_colors[x] = chr_colors[s[0]]
-            row_colors[c] = {
-                sam: pal_sample[min(9, int(round(props[sam][c] * 10)))]
-                for sam in props
-            }
+            row_colors[c] = {sam: pal_sample[min(9, int(round(props[sam][c] * 10)))] for sam in props}
 
     df = pd.DataFrame(data)
     table = pd.pivot_table(
@@ -939,14 +729,11 @@ def gridprofilesreduced(tumor, base, clones, props, args, out):
     para['method'] = args['linkage']
     para['metric'] = cndistance
     para['figsize'] = args['clusterfigsize']
-    para['col_colors'] = pd.DataFrame(
-        [{'index': s, 'chromosomes': col_colors[s]} for s in table.columns]
-    ).set_index('index')
+    para['col_colors'] = pd.DataFrame([{'index': s, 'chromosomes': col_colors[s]} for s in table.columns]).set_index(
+        'index'
+    )
     para['row_colors'] = pd.DataFrame(
-        [
-            dict(list({'index': row}.items()) + list(row_colors[row].items()))
-            for row in table.index
-        ]
+        [dict(list({'index': row}.items()) + list(row_colors[row].items())) for row in table.index]
     ).set_index('index')
     g = sns.clustermap(**para)
 
@@ -958,11 +745,7 @@ def gridprofilesreduced(tumor, base, clones, props, args, out):
 def gridmixtures(tumor, base, clones, props, args, out):
     projp = join(tumor, clones, args['clusterres'])
     redp = reduction(projp, base)
-    pos = [
-        (c, s)
-        for c in sorted(redp, key=sortchr)
-        for s in sorted(redp[c], key=(lambda x: x[0]))
-    ]
+    pos = [(c, s) for c in sorted(redp, key=sortchr) for s in sorted(redp[c], key=(lambda x: x[0]))]
     pal_clone = sns.color_palette('YlGn', 10)
     palette = cycle(['#525252', '#969696', '#cccccc'])
     chr_colors = {c: next(palette) for c in sorted(tumor, key=sortchr)}
@@ -971,33 +754,16 @@ def gridmixtures(tumor, base, clones, props, args, out):
 
     data = []
     for p in props:
-        sumu = lambda cns, cn: sum(
-            float(props[p][i]) for i in cns if cns[i] == cn
-        )
-        mergep = {
-            c: {
-                s: {
-                    cn: sumu(redp[c][s], cn) for cn in set(redp[c][s].values())
-                }
-                for s in redp[c]
-            }
-            for c in redp
-        }
+        sumu = lambda cns, cn: sum(float(props[p][i]) for i in cns if cns[i] == cn)
+        mergep = {c: {s: {cn: sumu(redp[c][s], cn) for cn in set(redp[c][s].values())} for s in redp[c]} for c in redp}
         assert False not in set(
-            0.99 <= sum(mergep[c][s][cn] for cn in mergep[c][s]) <= 1.01
-            for c in mergep
-            for s in mergep[c]
+            0.99 <= sum(mergep[c][s][cn] for cn in mergep[c][s]) <= 1.01 for c in mergep for s in mergep[c]
         )
         for x, s in enumerate(pos):
-            value = sum(
-                mergep[s[0]][s[1]][cn] * cn for cn in mergep[s[0]][s[1]]
-            )
+            value = sum(mergep[s[0]][s[1]][cn] * cn for cn in mergep[s[0]][s[1]])
             data.append({'Sample': p, 'Genome': x, 'value': value})
             col_colors[x] = chr_colors[s[0]]
-            row_colors[p] = {
-                i: pal_clone[min(9, int(round(props[p][i] * 10)))]
-                for i in clones
-            }
+            row_colors[p] = {i: pal_clone[min(9, int(round(props[p][i] * 10)))] for i in clones}
 
     df = pd.DataFrame(data)
     table = pd.pivot_table(
@@ -1025,13 +791,7 @@ def gridmixtures(tumor, base, clones, props, args, out):
             [{'index': s, 'chromosomes': col_colors[s]} for s in table.columns]
         ).set_index('index')
         para['row_colors'] = pd.DataFrame(
-            [
-                dict(
-                    list({'index': row}.items())
-                    + list(row_colors[row].items())
-                )
-                for row in table.index
-            ]
+            [dict(list({'index': row}.items()) + list(row_colors[row].items())) for row in table.index]
         ).set_index('index')
         g = sns.clustermap(**para)
 
@@ -1044,11 +804,7 @@ def subclonal(tumor, base, clones, props, args, out):
     assert base in {2, 4}
     abase = 1 if base == 2 else 2
     proj = join(tumor, clones, args['clusterres'])
-    pos = [
-        (c, s)
-        for c in sorted(proj, key=sortchr)
-        for s in sorted(proj[c], key=(lambda x: x[0]))
-    ]
+    pos = [(c, s) for c in sorted(proj, key=sortchr) for s in sorted(proj[c], key=(lambda x: x[0]))]
     pal_clone = sns.color_palette('YlGn', 10)
     palette = cycle(['#525252', '#969696', '#cccccc'])
     chr_colors = {c: next(palette) for c in sorted(tumor, key=sortchr)}
@@ -1058,30 +814,20 @@ def subclonal(tumor, base, clones, props, args, out):
     data = []
     for p in props:
         for x, s in enumerate(pos):
-            cns = set(
-                proj[s[0]][s[1]][i] for i in proj[s[0]][s[1]] if i != 'normal'
-            )
+            cns = set(proj[s[0]][s[1]][i] for i in proj[s[0]][s[1]] if i != 'normal')
             merge = {
-                cn: sum(
-                    props[p][i]
-                    for i in proj[s[0]][s[1]]
-                    if proj[s[0]][s[1]][i] == cn and i != 'normal'
-                )
+                cn: sum(props[p][i] for i in proj[s[0]][s[1]] if proj[s[0]][s[1]][i] == cn and i != 'normal')
                 for cn in cns
             }
             cns = set(cn for cn in cns if merge[cn] >= args['minu'])
             if cns == {(abase, abase)}:
                 value = 0
-            elif False not in set(
-                n[0] >= abase and n[1] >= abase for n in cns
-            ):
+            elif False not in set(n[0] >= abase and n[1] >= abase for n in cns):
                 if len(cns) == 1:
                     value = 2
                 else:
                     value = 1
-            elif False not in set(
-                n[0] <= abase and n[1] <= abase for n in cns
-            ):
+            elif False not in set(n[0] <= abase and n[1] <= abase for n in cns):
                 if len(cns) == 1:
                     value = -2
                 else:
@@ -1093,10 +839,7 @@ def subclonal(tumor, base, clones, props, args, out):
                     value = 3
             data.append({'Sample': p, 'Genome': x, 'value': value})
             col_colors[x] = chr_colors[s[0]]
-            row_colors[p] = {
-                i: pal_clone[min(9, int(round(props[p][i] * 10)))]
-                for i in clones
-            }
+            row_colors[p] = {i: pal_clone[min(9, int(round(props[p][i] * 10)))] for i in clones}
 
     df = pd.DataFrame(data)
     table = pd.pivot_table(
@@ -1146,13 +889,7 @@ def subclonal(tumor, base, clones, props, args, out):
             [{'index': s, 'chromosomes': col_colors[s]} for s in table.columns]
         ).set_index('index')
         para['row_colors'] = pd.DataFrame(
-            [
-                dict(
-                    list({'index': row}.items())
-                    + list(row_colors[row].items())
-                )
-                for row in table.index
-            ]
+            [dict(list({'index': row}.items()) + list(row_colors[row].items())) for row in table.index]
         ).set_index('index')
         g = sns.clustermap(**para)
         cax = plt.gcf().axes[-1]
@@ -1164,19 +901,9 @@ def subclonal(tumor, base, clones, props, args, out):
 
 
 def reduction(proj, base):
-    classify = (
-        lambda c, i: 0 if c == base or i == 'normal' else 1 if c > base else -1
-    )
-    reduction = {
-        c: {
-            s: {i: classify(sum(proj[c][s][i]), i) for i in proj[c][s]}
-            for s in proj[c]
-        }
-        for c in proj
-    }
-    assert False not in set(
-        reduction[c][s]['normal'] == 0 for c in proj for s in proj[c]
-    )
+    classify = lambda c, i: 0 if c == base or i == 'normal' else 1 if c > base else -1
+    reduction = {c: {s: {i: classify(sum(proj[c][s][i]), i) for i in proj[c][s]} for s in proj[c]} for c in proj}
+    assert False not in set(reduction[c][s]['normal'] == 0 for c in proj for s in proj[c])
     return reduction
 
 
@@ -1187,12 +914,8 @@ def join(tumor, clones, resolution):
         proj[c] = {}
         while bins:
             tmp = bins[:resolution]
-            counts = {
-                i: dict(Counter([tumor[c][s][i] for s in tmp])) for i in clones
-            }
-            proj[c][tmp[0][0], tmp[-1][1]] = {
-                i: max(counts[i], key=(lambda x: counts[i][x])) for i in clones
-            }
+            counts = {i: dict(Counter([tumor[c][s][i] for s in tmp])) for i in clones}
+            proj[c][tmp[0][0], tmp[-1][1]] = {i: max(counts[i], key=(lambda x: counts[i][x])) for i in clones}
             bins = bins[resolution:]
     return proj
 
@@ -1202,60 +925,32 @@ def multiple(tumor, clones, props, base, args):
     tumor = segmenting(tumor, clones, props)
 
     out = 'intertumors-profilesfull.pdf'
-    sys.stderr.write(
-        log(
-            '# Plotting inter-tumors clone profiles in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
-    )
+    sys.stderr.write(log('# Plotting inter-tumors clone profiles in {}\n'.format(os.path.join(args['rundir'], out))))
     intergridfullprofiles(tumor, base, clones, props, args, out)
 
     out = 'intertumors-profilesreduced.pdf'
     sys.stderr.write(
-        log(
-            '# Plotting inter-tumors reduced-clone profiles in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
+        log('# Plotting inter-tumors reduced-clone profiles in {}\n'.format(os.path.join(args['rundir'], out)))
     )
     intergridreducedprofiles(tumor, base, clones, props, args, out)
 
     out = 'intertumors-mixtures.pdf'
-    sys.stderr.write(
-        log(
-            '# Plotting inter-tumors mixtures in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
-    )
+    sys.stderr.write(log('# Plotting inter-tumors mixtures in {}\n'.format(os.path.join(args['rundir'], out))))
     intergridsamplesclusters(tumor, base, clones, props, args, out)
 
     out = 'intertumors-subclonality.pdf'
-    sys.stderr.write(
-        log(
-            '# Plotting inter-tumors subclonality in {}\n'.format(
-                os.path.join(args['rundir'], out)
-            )
-        )
-    )
+    sys.stderr.write(log('# Plotting inter-tumors subclonality in {}\n'.format(os.path.join(args['rundir'], out))))
     intergridsubclonality(tumor, base, clones, props, args, out)
 
 
 def intergridfullprofiles(tumor, base, clones, props, args, out):
     proj = interjoin(tumor, clones, args['clusterres'])
     t = list(proj)[0]
-    pos = [
-        (c, s)
-        for c in sorted(proj[t], key=sortchr)
-        for s in sorted(proj[t][c], key=(lambda x: x[0]))
-    ]
+    pos = [(c, s) for c in sorted(proj[t], key=sortchr) for s in sorted(proj[t][c], key=(lambda x: x[0]))]
     palette = cycle(sns.color_palette('Pastel1', min(10, len(list(tumor)))))
     pat_colors = {pat: next(palette) for pat in tumor}
     palette = cycle(['#525252', '#969696', '#cccccc'])
-    chr_colors = {
-        c: next(palette) for c in sorted(tumor[list(tumor)[0]], key=sortchr)
-    }
+    chr_colors = {c: next(palette) for c in sorted(tumor[list(tumor)[0]], key=sortchr)}
     col_colors = {}
     row_colors = {}
 
@@ -1314,17 +1009,11 @@ def intergridreducedprofiles(tumor, base, clones, props, args, out):
     proj = interjoin(tumor, clones, args['clusterres'])
     red = interreduction(proj, base)
     t = list(red)[0]
-    pos = [
-        (c, s)
-        for c in sorted(red[t], key=sortchr)
-        for s in sorted(red[t][c], key=(lambda x: x[0]))
-    ]
+    pos = [(c, s) for c in sorted(red[t], key=sortchr) for s in sorted(red[t][c], key=(lambda x: x[0]))]
     palette = cycle(sns.color_palette('Pastel1', min(9, len(list(tumor)))))
     pat_colors = {pat: next(palette) for pat in tumor}
     palette = cycle(['#525252', '#969696', '#cccccc'])
-    chr_colors = {
-        c: next(palette) for c in sorted(tumor[list(tumor)[0]], key=sortchr)
-    }
+    chr_colors = {c: next(palette) for c in sorted(tumor[list(tumor)[0]], key=sortchr)}
     col_colors = {}
     row_colors = {}
 
@@ -1385,47 +1074,29 @@ def intergridsamplesclusters(tumor, base, clones, props, args, out):
     proj = interjoin(tumor, clones, args['clusterres'])
     red = interreduction(proj, base)
     t = list(red)[0]
-    pos = [
-        (c, s)
-        for c in sorted(red[t], key=sortchr)
-        for s in sorted(red[t][c], key=(lambda x: x[0]))
-    ]
+    pos = [(c, s) for c in sorted(red[t], key=sortchr) for s in sorted(red[t][c], key=(lambda x: x[0]))]
     palette = cycle(sns.color_palette('Pastel1', min(9, len(list(tumor)))))
     pat_colors = {pat: next(palette) for pat in tumor}
     palette = cycle(['#525252', '#969696', '#cccccc'])
-    chr_colors = {
-        c: next(palette) for c in sorted(tumor[list(tumor)[0]], key=sortchr)
-    }
+    chr_colors = {c: next(palette) for c in sorted(tumor[list(tumor)[0]], key=sortchr)}
     col_colors = {}
     row_colors = {}
 
     for pat in tumor:
         for p in props[pat]:
             sumu = lambda cns, cn: sum(
-                float(props[pat][p][i]) if i in props[pat][p] else 0.0
-                for i in cns
-                if cns[i] == cn
+                float(props[pat][p][i]) if i in props[pat][p] else 0.0 for i in cns if cns[i] == cn
             )
             mergep = {
-                c: {
-                    s: {
-                        cn: sumu(red[pat][c][s], cn)
-                        for cn in set(red[pat][c][s].values())
-                    }
-                    for s in red[pat][c]
-                }
+                c: {s: {cn: sumu(red[pat][c][s], cn) for cn in set(red[pat][c][s].values())} for s in red[pat][c]}
                 for c in red[pat]
             }
             assert False not in set(
-                0.99 <= sum(mergep[c][s][cn] for cn in mergep[c][s]) <= 1.01
-                for c in mergep
-                for s in mergep[c]
+                0.99 <= sum(mergep[c][s][cn] for cn in mergep[c][s]) <= 1.01 for c in mergep for s in mergep[c]
             )
 
             for x, s in enumerate(pos):
-                value = sum(
-                    mergep[s[0]][s[1]][cn] * cn for cn in mergep[s[0]][s[1]]
-                )
+                value = sum(mergep[s[0]][s[1]][cn] * cn for cn in mergep[s[0]][s[1]])
                 data.append(
                     {
                         'Patient sample': '{}-{}'.format(pat, p),
@@ -1474,17 +1145,11 @@ def intergridsubclonality(tumor, base, clones, props, args, out):
     data = []
     proj = interjoin(tumor, clones, args['clusterres'])
     t = list(proj)[0]
-    pos = [
-        (c, s)
-        for c in sorted(proj[t], key=sortchr)
-        for s in sorted(proj[t][c], key=(lambda x: x[0]))
-    ]
+    pos = [(c, s) for c in sorted(proj[t], key=sortchr) for s in sorted(proj[t][c], key=(lambda x: x[0]))]
     palette = cycle(sns.color_palette('Pastel1', min(9, len(list(tumor)))))
     pat_colors = {pat: next(palette) for pat in tumor}
     palette = cycle(['#525252', '#969696', '#cccccc'])
-    chr_colors = {
-        c: next(palette) for c in sorted(tumor[list(tumor)[0]], key=sortchr)
-    }
+    chr_colors = {c: next(palette) for c in sorted(tumor[list(tumor)[0]], key=sortchr)}
     col_colors = {}
     row_colors = {}
 
@@ -1493,11 +1158,7 @@ def intergridsubclonality(tumor, base, clones, props, args, out):
         abase = 1 if base[pat] == 2 else 2
         for p in props[pat]:
             for x, s in enumerate(pos):
-                cns = set(
-                    proj[pat][s[0]][s[1]][i]
-                    for i in proj[pat][s[0]][s[1]]
-                    if i != 'normal'
-                )
+                cns = set(proj[pat][s[0]][s[1]][i] for i in proj[pat][s[0]][s[1]] if i != 'normal')
                 merge = {
                     cn: sum(
                         props[pat][p][i]
@@ -1509,16 +1170,12 @@ def intergridsubclonality(tumor, base, clones, props, args, out):
                 cns = set(cn for cn in cns if merge[cn] >= args['minu'])
                 if cns == {(abase, abase)}:
                     value = 0
-                elif False not in set(
-                    n[0] >= abase and n[1] >= abase for n in cns
-                ):
+                elif False not in set(n[0] >= abase and n[1] >= abase for n in cns):
                     if len(cns) == 1:
                         value = 2
                     else:
                         value = 1
-                elif False not in set(
-                    n[0] <= abase and n[1] <= abase for n in cns
-                ):
+                elif False not in set(n[0] <= abase and n[1] <= abase for n in cns):
                     if len(cns) == 1:
                         value = -2
                     else:
@@ -1603,9 +1260,7 @@ def segmenting(tumor, clones, props):
     bk = {c: cbk(c) for c in set(c for pat in tumor for c in tumor[pat])}
     bk = {c: sorted(bk[c]) for c in bk}
     counts = {c: {b: 0 for b in zip(bk[c][:-1], bk[c][1:])} for c in bk}
-    maps = {
-        pat: {c: {b: None for b in counts[c]} for c in counts} for pat in tumor
-    }
+    maps = {pat: {c: {b: None for b in counts[c]} for c in counts} for pat in tumor}
 
     def select(d, m, counts, breakpoints, numpat):
         for c in d:
@@ -1624,56 +1279,25 @@ def segmenting(tumor, clones, props):
     for pat in tumor:
         select(tumor[pat], maps[pat], counts, bk, numpat)
 
-    taken = {
-        c: set(b for b in counts[c] if counts[c][b] == numpat) for c in counts
-    }
-    tottaken = sum(
-        1.0 for c in counts for b in counts[c] if counts[c][b] == numpat
-    )
+    taken = {c: set(b for b in counts[c] if counts[c][b] == numpat) for c in counts}
+    tottaken = sum(1.0 for c in counts for b in counts[c] if counts[c][b] == numpat)
     tot = sum(1.0 for c in counts for b in counts[c])
-    sys.stderr.write(
-        info(
-            '## Proportion of common bins kept: {}%\n'.format(
-                (tottaken / tot * 100) if tot > 0 else 1
-            )
-        )
-    )
+    sys.stderr.write(info('## Proportion of common bins kept: {}%\n'.format((tottaken / tot * 100) if tot > 0 else 1)))
 
-    return {
-        pat: {
-            c: {b: tumor[pat][c][maps[pat][c][b]] for b in taken[c]}
-            for c in taken
-        }
-        for pat in tumor
-    }
+    return {pat: {c: {b: tumor[pat][c][maps[pat][c][b]] for b in taken[c]} for c in taken} for pat in tumor}
 
 
 def interreduction(proj, base):
-    classify = (
-        lambda c, pat, i: 0
-        if c == base[pat] or i == 'normal'
-        else 1
-        if c > base[pat]
-        else -1
-    )
+    classify = lambda c, pat, i: 0 if c == base[pat] or i == 'normal' else 1 if c > base[pat] else -1
     reduction = {
         pat: {
-            c: {
-                s: {
-                    i: classify(sum(proj[pat][c][s][i]), pat, i)
-                    for i in proj[pat][c][s]
-                }
-                for s in proj[pat][c]
-            }
+            c: {s: {i: classify(sum(proj[pat][c][s][i]), pat, i) for i in proj[pat][c][s]} for s in proj[pat][c]}
             for c in proj[pat]
         }
         for pat in proj
     }
     assert False not in set(
-        reduction[pat][c][s]['normal'] == 0
-        for pat in proj
-        for c in proj[pat]
-        for s in proj[pat][c]
+        reduction[pat][c][s]['normal'] == 0 for pat in proj for c in proj[pat] for s in proj[pat][c]
     )
     return reduction
 
@@ -1687,13 +1311,9 @@ def interjoin(tumor, clones, resolution):
             proj[pat][c] = {}
             while bins:
                 tmp = bins[:resolution]
-                counts = {
-                    i: dict(Counter([tumor[pat][c][s][i] for s in tmp]))
-                    for i in clones[pat]
-                }
+                counts = {i: dict(Counter([tumor[pat][c][s][i] for s in tmp])) for i in clones[pat]}
                 proj[pat][c][tmp[0][0], tmp[-1][1]] = {
-                    i: max(counts[i], key=(lambda x: counts[i][x]))
-                    for i in clones[pat]
+                    i: max(counts[i], key=(lambda x: counts[i][x])) for i in clones[pat]
                 }
                 bins = bins[resolution:]
     return proj
@@ -1709,9 +1329,7 @@ def cndistance(u, v):
 
 
 def similarity(u, v):
-    a = float(
-        sum(u[i] == v[i] and u[i] != 0.0 and v[i] != 0 for i in range(len(u)))
-    )
+    a = float(sum(u[i] == v[i] and u[i] != 0.0 and v[i] != 0 for i in range(len(u))))
     b = float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
     return (a / b) if b > 0 else 0
 
@@ -1719,14 +1337,7 @@ def similarity(u, v):
 def similaritysample(u, v):
     bothamp = lambda x, y: x > 0.0 and y > 0.0
     bothdel = lambda x, y: x < 0.0 and y < 0.0
-    a = float(
-        sum(
-            (bothamp(u[i], v[i]) or bothdel(u[i], v[i]))
-            and u[i] != 0
-            and v[i] != 0
-            for i in range(len(u))
-        )
-    )
+    a = float(sum((bothamp(u[i], v[i]) or bothdel(u[i], v[i])) and u[i] != 0 and v[i] != 0 for i in range(len(u))))
     b = float(sum(u[i] != 0 or v[i] != 0 for i in range(len(u))))
     return (a / b) if b > 0 else 0
 
@@ -1737,9 +1348,7 @@ def readUCN(inputs, patnames):
     clones = {}
     props = {}
     for fil in inputs:
-        sys.stderr.write(
-            info('## Reading {} as {}...\n'.format(fil, patnames[fil]))
-        )
+        sys.stderr.write(info('## Reading {} as {}...\n'.format(fil, patnames[fil])))
         with open(fil, 'r') as f:
             patient = patnames[fil]
             tumors[patient] = {}
@@ -1749,19 +1358,9 @@ def readUCN(inputs, patnames):
             for line in f:
                 if len(clones[patient]) == 0:
                     assert line[0] == '#'
-                    clones[patient] = [
-                        f.split('_')[1]
-                        for i, f in enumerate(line.strip().split()[11:])
-                        if i % 2 == 0
-                    ]
+                    clones[patient] = [f.split('_')[1] for i, f in enumerate(line.strip().split()[11:]) if i % 2 == 0]
                     if 'normal' not in clones[patient]:
-                        raise ValueError(
-                            error(
-                                'normal is not present as a clone in {}'.format(
-                                    patient
-                                )
-                            )
-                        )
+                        raise ValueError(error('normal is not present as a clone in {}'.format(patient)))
                 else:
                     if len(line) > 1 and line[0] != '#':
                         parsed = line.strip().split()
@@ -1773,35 +1372,21 @@ def readUCN(inputs, patnames):
                         start = int(parsed[1])
                         end = int(parsed[2])
                         pair = lambda l: [
-                            (tuple(map(int, e.split('|'))), float(l[i + 1]))
-                            for i, e in enumerate(l)
-                            if i % 2 == 0
+                            (tuple(map(int, e.split('|'))), float(l[i + 1])) for i, e in enumerate(l) if i % 2 == 0
                         ]
-                        read = {
-                            clones[patient][i]: e[0]
-                            for i, e in enumerate(pair(parsed[11:]))
-                        }
+                        read = {clones[patient][i]: e[0] for i, e in enumerate(pair(parsed[11:]))}
                         if (start, end) not in tumors[patient][chro]:
                             tumors[patient][chro][start, end] = read
                         else:
                             for i in read:
                                 read[i] == tumors[patient][chro][start, end][i]
-                        check = {
-                            clones[patient][i]: e[1]
-                            for i, e in enumerate(pair(parsed[11:]))
-                        }
+                        check = {clones[patient][i]: e[1] for i, e in enumerate(pair(parsed[11:]))}
                         if sample in props[patient]:
                             for i in clones[patient]:
                                 assert check[i] == props[patient][sample][i]
                         else:
-                            props[patient][sample] = {
-                                i: check[i] for i in clones[patient]
-                            }
-                        assert (
-                            0.999
-                            <= sum(check[i] for i in clones[patient])
-                            <= 1.001
-                        )
+                            props[patient][sample] = {i: check[i] for i in clones[patient]}
+                        assert 0.999 <= sum(check[i] for i in clones[patient]) <= 1.001
 
     return tumors, clones, props
 
@@ -1817,9 +1402,7 @@ def addchrplt(pos):
             val = s[0]
     corners.append((prev, x, val))
     ticks = [(int(float(o[1] + o[0] + 1) / 2.0), o[2]) for o in corners]
-    plt.xticks(
-        [x[0] for x in ticks], [x[1] for x in ticks], rotation=45, ha='center'
-    )
+    plt.xticks([x[0] for x in ticks], [x[1] for x in ticks], rotation=45, ha='center')
     plt.yticks(rotation=0)
 
 
@@ -1834,9 +1417,7 @@ def addchr(g, pos, color=None):
     ax = g.ax_heatmap
     ticks = []
     for o in corners:
-        ax.set_xticks(
-            np.append(ax.get_xticks(), int(float(o[1] + o[0] + 1) / 2.0))
-        )
+        ax.set_xticks(np.append(ax.get_xticks(), int(float(o[1] + o[0] + 1) / 2.0)))
         ticks.append(pos[o[0]][0])
     ax.set_xticklabels(ticks, rotation=45, ha='center')
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0)

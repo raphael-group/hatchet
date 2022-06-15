@@ -1,14 +1,12 @@
-import pytest
-import sys
 import os
 import glob
-from io import StringIO
 from mock import patch
 import shutil
 import pandas as pd
 from pandas.testing import assert_frame_equal
 from numpy.testing import assert_array_equal
 import numpy as np
+import pytest
 
 from hatchet import config
 from hatchet.utils.count_reads import main as count_reads
@@ -24,13 +22,7 @@ def bams():
     normal_bam = os.path.join(bam_directory, 'normal.bam')
     if not os.path.exists(normal_bam):
         pytest.skip('File not found: {}/{}'.format(bam_directory, normal_bam))
-    tumor_bams = sorted(
-        [
-            f
-            for f in glob.glob(bam_directory + '/*.bam')
-            if os.path.basename(f) != 'normal.bam'
-        ]
-    )
+    tumor_bams = sorted([f for f in glob.glob(bam_directory + '/*.bam') if os.path.basename(f) != 'normal.bam'])
     if not tumor_bams:
         pytest.skip('No tumor bams found in {}'.format(bam_directory))
 
@@ -72,42 +64,23 @@ def test_count_reads(_, bams, output_folder):
         ]
     )
 
-    arr1 = np.loadtxt(
-        os.path.join(output_folder, 'rdr', 'chr22.thresholds.gz')
-    )
+    arr1 = np.loadtxt(os.path.join(output_folder, 'rdr', 'chr22.thresholds.gz'))
     arr2 = np.loadtxt(os.path.join(output_folder, 'rdr', 'chr22.total.gz'))
-    arr3 = [
-        l for l in open(os.path.join(output_folder, 'rdr', 'samples.txt'), 'r')
-    ]
+    arr3 = [l for l in open(os.path.join(output_folder, 'rdr', 'samples.txt'), 'r')]
     arr4 = pd.read_table(os.path.join(output_folder, 'rdr', 'total.tsv'))
 
-    truth1 = np.loadtxt(
-        os.path.join(this_dir, 'data', 'vl', 'rdr', 'chr22.thresholds.gz')
-    )
-    truth2 = np.loadtxt(
-        os.path.join(this_dir, 'data', 'vl', 'rdr', 'chr22.total.gz')
-    )
-    truth3 = [
-        l
-        for l in open(
-            os.path.join(this_dir, 'data', 'vl', 'rdr', 'samples.txt'), 'r'
-        )
-    ]
-    truth4 = pd.read_table(
-        os.path.join(this_dir, 'data', 'vl', 'rdr', 'total.tsv')
-    )
+    truth1 = np.loadtxt(os.path.join(this_dir, 'data', 'vl', 'rdr', 'chr22.thresholds.gz'))
+    truth2 = np.loadtxt(os.path.join(this_dir, 'data', 'vl', 'rdr', 'chr22.total.gz'))
+    truth3 = [l for l in open(os.path.join(this_dir, 'data', 'vl', 'rdr', 'samples.txt'), 'r')]
+    truth4 = pd.read_table(os.path.join(this_dir, 'data', 'vl', 'rdr', 'total.tsv'))
 
     assert_array_equal(arr1, truth1)
     assert_array_equal(arr2, truth2)
-    assert len(arr3) == len(truth3) and all(
-        [arr3[i] == truth3[i] for i in range(len(truth3))]
-    )
+    assert len(arr3) == len(truth3) and all([arr3[i] == truth3[i] for i in range(len(truth3))])
     assert_frame_equal(arr4, truth4)
 
 
-@pytest.mark.skipif(
-    not config.paths.reference, reason='paths.reference not set'
-)
+@pytest.mark.skipif(not config.paths.reference, reason='paths.reference not set')
 @patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
 def test_combine_counts(_, output_folder):
     # Test without phasing
@@ -127,12 +100,8 @@ def test_combine_counts(_, output_folder):
             'hg19',
         ]
     )
-    df1 = pd.read_csv(
-        os.path.join(output_folder, 'bb', 'bulk_nophase.bb'), sep='\t'
-    )
-    df2 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'vl', 'bb', 'bulk_nophase.bb'), sep='\t'
-    )
+    df1 = pd.read_csv(os.path.join(output_folder, 'bb', 'bulk_nophase.bb'), sep='\t')
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bb', 'bulk_nophase.bb'), sep='\t')
     assert_frame_equal(df1, df2)
 
     # Test with phasing
@@ -155,9 +124,7 @@ def test_combine_counts(_, output_folder):
         ]
     )
 
-    df3 = pd.read_csv(
-        os.path.join(output_folder, 'bb', 'bulk_yesphase.bb'), sep='\t'
-    )
+    df3 = pd.read_csv(os.path.join(output_folder, 'bb', 'bulk_yesphase.bb'), sep='\t')
     df4 = pd.read_csv(
         os.path.join(this_dir, 'data', 'vl', 'bb', 'bulk_yesphase.bb'),
         sep='\t',
@@ -186,19 +153,11 @@ def test_cluster_bins_loc(output_folder):
         ]
     )
 
-    seg1 = pd.read_csv(
-        os.path.join(output_folder, 'bbc', 'bulk.seg'), sep='\t'
-    )
-    bbc1 = pd.read_csv(
-        os.path.join(output_folder, 'bbc', 'bulk.bbc'), sep='\t'
-    )
+    seg1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk.seg'), sep='\t')
+    bbc1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk.bbc'), sep='\t')
 
-    seg2 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk.seg'), sep='\t'
-    )
-    bbc2 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk.bbc'), sep='\t'
-    )
+    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk.seg'), sep='\t')
+    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk.bbc'), sep='\t')
     assert_frame_equal(seg1, seg2)
     assert_frame_equal(bbc1, bbc2)
 
@@ -222,18 +181,10 @@ def test_cluster_bins_loc_singleton(output_folder):
         ]
     )
 
-    seg1 = pd.read_csv(
-        os.path.join(output_folder, 'bbc', 'bulk_onecl.seg'), sep='\t'
-    )
-    bbc1 = pd.read_csv(
-        os.path.join(output_folder, 'bbc', 'bulk_onecl.bbc'), sep='\t'
-    )
+    seg1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk_onecl.seg'), sep='\t')
+    bbc1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk_onecl.bbc'), sep='\t')
 
-    seg2 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk_onecl.seg'), sep='\t'
-    )
-    bbc2 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk_onecl.bbc'), sep='\t'
-    )
+    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk_onecl.seg'), sep='\t')
+    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk_onecl.bbc'), sep='\t')
     assert_frame_equal(seg1, seg2)
     assert_frame_equal(bbc1, bbc2)

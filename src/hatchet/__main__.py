@@ -7,26 +7,26 @@ import sys
 import warnings
 import hatchet
 
-from hatchet.utils.count_reads import main as count_reads
-from hatchet.utils.count_reads_fw import main as count_reads_fw
-from hatchet.utils.genotype_snps import main as genotype_snps
-from hatchet.utils.count_alleles import main as count_alleles
-from hatchet.utils.combine_counts import main as combine_counts
-from hatchet.utils.combine_counts_fw import main as combine_counts_fw
-from hatchet.utils.cluster_bins import main as cluster_bins
-from hatchet.utils.cluster_bins_loc import main as cluster_bins_loc
+from hatchet.utils.count_reads import main as count_reads  # noqa: F401
+from hatchet.utils.count_reads_fw import main as count_reads_fw  # noqa: F401
+from hatchet.utils.genotype_snps import main as genotype_snps  # noqa: F401
+from hatchet.utils.count_alleles import main as count_alleles  # noqa: F401
+from hatchet.utils.combine_counts import main as combine_counts  # noqa: F401
+from hatchet.utils.combine_counts_fw import main as combine_counts_fw  # noqa: F401
+from hatchet.utils.cluster_bins import main as cluster_bins  # noqa: F401
+from hatchet.utils.cluster_bins_loc import main as cluster_bins_loc  # noqa: F401
 
-from hatchet.utils.plot_bins import main as plot_bins
-from hatchet.utils.plot_bins_1d2d import main as plot_bins_1d2d
-from hatchet.bin.HATCHet import main as compute_cn
-from hatchet.utils.plot_cn import main as plot_cn
-from hatchet.utils.plot_cn_1d2d import main as plot_cn_1d2d
+from hatchet.utils.plot_bins import main as plot_bins  # noqa: F401
+from hatchet.utils.plot_bins_1d2d import main as plot_bins_1d2d  # noqa: F401
+from hatchet.bin.HATCHet import main as compute_cn  # noqa: F401
+from hatchet.utils.plot_cn import main as plot_cn  # noqa: F401
+from hatchet.utils.plot_cn_1d2d import main as plot_cn_1d2d  # noqa: F401
 
-from hatchet.utils.run import main as run
-from hatchet.utils.download_panel import main as download_panel
-from hatchet.utils.phase_snps import main as phase_snps
+from hatchet.utils.run import main as run  # noqa: F401
+from hatchet.utils.download_panel import main as download_panel  # noqa: F401
+from hatchet.utils.phase_snps import main as phase_snps  # noqa: F401
 
-from hatchet.utils.check import main as check
+from hatchet.utils.check import main as check  # noqa: F401
 
 commands = (
     'count-reads',

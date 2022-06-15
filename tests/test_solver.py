@@ -21,18 +21,11 @@ def output_folder():
     return out
 
 
-@pytest.mark.skipif(
-    os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found'
-)
+@pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
 def test_solve_binary():
     cmd = [SOLVE, os.path.join(DATA_FOLDER, 'bulk')]
     # -M 1 for ILP solve mode
-    cmd.extend(
-        [
-            _x
-            for _x in '-f -e 6 -p 400 -u 0.03 -r 6700 -M 1 -v 2 -c 5:1:1 -n 2'.split()
-        ]
-    )
+    cmd.extend([_x for _x in '-f -e 6 -p 400 -u 0.03 -r 6700 -M 1 -v 2 -c 5:1:1 -n 2'.split()])
 
     print(' '.join(cmd))
 
@@ -46,9 +39,7 @@ def test_solve_binary():
     assert p.returncode == 0
 
 
-@pytest.mark.skipif(
-    os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found'
-)
+@pytest.mark.skipif(os.getenv('GRB_LICENSE_FILE') is None, reason='No license for Gurobi found')
 def test_solve_command_cpp(output_folder):
     old_value = config.compute_cn.solver
     config.compute_cn.solver = 'cpp'
@@ -84,9 +75,7 @@ def test_solve_command_cpp(output_folder):
     )
 
     df1 = pd.read_csv(os.path.join(output_folder, 'best.bbc.ucn'), sep='\t')
-    df2 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'fl', 'best.bbc.ucn'), sep='\t'
-    )
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'fl', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
     config.compute_cn.solver = old_value
@@ -131,9 +120,7 @@ def test_solve_command_gurobipy(output_folder):
     )
 
     df1 = pd.read_csv(os.path.join(output_folder, 'best.bbc.ucn'), sep='\t')
-    df2 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'fl', 'best.bbc.ucn'), sep='\t'
-    )
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'fl', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
     config.compute_cn.solver = old_value
@@ -178,17 +165,13 @@ def test_solve_command_gurobi(output_folder):
     )
 
     df1 = pd.read_csv(os.path.join(output_folder, 'best.bbc.ucn'), sep='\t')
-    df2 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'fl', 'best.bbc.ucn'), sep='\t'
-    )
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'fl', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
     config.compute_cn.solver = old_value
 
 
-@pytest.mark.skipif(
-    not solver_available('cbc'), reason='cbc solver not available for pyomo'
-)
+@pytest.mark.skipif(not solver_available('cbc'), reason='cbc solver not available for pyomo')
 def test_solve_command_cbc(output_folder):
     old_value = config.compute_cn.solver
     config.compute_cn.solver = 'cbc'
@@ -224,9 +207,7 @@ def test_solve_command_cbc(output_folder):
     )
 
     df1 = pd.read_csv(os.path.join(output_folder, 'best.bbc.ucn'), sep='\t')
-    df2 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'fl', 'best.bbc.ucn'), sep='\t'
-    )
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'fl', 'best.bbc.ucn'), sep='\t')
     assert_frame_equal(df1, df2)
 
     config.compute_cn.solver = old_value

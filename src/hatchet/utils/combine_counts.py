@@ -1,14 +1,12 @@
 from multiprocessing import Pool
 import os
-from datetime import datetime
+import subprocess
+import traceback
+from importlib.resources import path
 import numpy as np
 import pandas as pd
 from scipy.stats import binom, norm
 from scipy.special import logsumexp
-import gzip
-import subprocess
-import traceback
-from importlib.resources import path
 
 import hatchet.data
 from hatchet.utils.ArgParsing import parse_combine_counts_args
@@ -37,9 +35,7 @@ def main(args=None):
     n_workers = min(len(chromosomes), threads)
 
     # Read in centromere locations table
-    with path(
-        hatchet.data, f'{args["ref_version"]}.centromeres.txt'
-    ) as centromeres:
+    with path(hatchet.data, f'{args["ref_version"]}.centromeres.txt') as centromeres:
         centromeres = pd.read_table(
             centromeres,
             header=None,
@@ -66,9 +62,7 @@ def main(args=None):
     for ch in chromosomes:
         if ch not in chr2centro:
             raise ValueError(
-                sp.error(
-                    f'Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument.'
-                )
+                sp.error(f'Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument.')
             )
 
     isX = {ch: ch.endswith('X') for ch in chromosomes}
@@ -117,9 +111,7 @@ def main(args=None):
 
     # For each sample, correct read counts to account for differences in coverage (as in HATCHet)
     # (i.e., multiply read counts by total-reads-normal/total-reads-sample)
-    rc = pd.read_table(
-        args['totalcounts'], header=None, names=['SAMPLE', '#READS']
-    )
+    rc = pd.read_table(args['totalcounts'], header=None, names=['SAMPLE', '#READS'])
     normal_name = all_names[0]
     nreads_normal = rc[rc.SAMPLE == normal_name].iloc[0]['#READS']
     for sample in rc.SAMPLE.unique():
@@ -130,35 +122,22 @@ def main(args=None):
         my_bb = big_bb[big_bb.SAMPLE == sample]
 
         # Correct the tumor reads propotionally to the total reads in corresponding samples
-        big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] = (
-            my_bb.TOTAL_READS * correction
-        ).astype(np.int64)
+        big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] = (my_bb.TOTAL_READS * correction).astype(np.int64)
 
         # Recompute RDR according to the corrected tumor reads
         big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = (
-            big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS']
-            / big_bb.loc[big_bb.SAMPLE == sample, 'NORMAL_READS']
+            big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] / big_bb.loc[big_bb.SAMPLE == sample, 'NORMAL_READS']
         )
 
     if 'NORMAL_READS' not in big_bb:
         sp.log('# NOTE: adding NORMAL_READS column to bb file', level='INFO')
-        big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(
-            np.uint32
-        )
+        big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(np.uint32)
 
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     big_bb.END = big_bb.END + 1
 
-    autosomes = set(
-        [
-            ch
-            for ch in big_bb['#CHR']
-            if not (ch.endswith('X') or ch.endswith('Y'))
-        ]
-    )
-    big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(
-        outfile, index=False, sep='\t'
-    )
+    autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
+    big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index=False, sep='\t')
 
     big_bb.to_csv(outfile + '.withXY', index=False, sep='\t')
 
@@ -172,9 +151,7 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
     """
     Read and validate SNP data for this patient (TSV table output from HATCHet deBAF.py).
     """
-    all_names = all_names[
-        1:
-    ]   # remove normal sample -- not looking for SNP counts from normal
+    all_names = all_names[1:]   # remove normal sample -- not looking for SNP counts from normal
 
     # Read in HATCHet BAF table
     all_snps = pd.read_table(
@@ -195,17 +172,13 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
 
     if len(snps) == 0:
         raise ValueError(
-            sp.error(
-                f'Chromosome {ch} not found in SNPs file (chromosomes in file: {all_snps.CHR.unique()})'
-            )
+            sp.error(f'Chromosome {ch} not found in SNPs file (chromosomes in file: {all_snps.CHR.unique()})')
         )
 
     n_samples = len(all_names)
     if n_samples != len(snps.SAMPLE.unique()):
         raise ValueError(
-            sp.error(
-                f'Expected {n_samples} samples, found {len(snps.SAMPLE.unique())} samples in SNPs file.'
-            )
+            sp.error(f'Expected {n_samples} samples, found {len(snps.SAMPLE.unique())} samples in SNPs file.')
         )
 
     if set(all_names) != set(snps.SAMPLE.unique()):
@@ -232,12 +205,8 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
             low_memory=False,
             dtype={'CHR': object, 'POS': np.uint32},
         )
-        phases['FLIP'] = phases.PHASE.str.contains('1\|0').astype(
-            np.int8
-        )  # noqa: W605
-        phases['NOFLIP'] = phases.PHASE.str.contains('0\|1').astype(
-            np.int8
-        )  # noqa: W605
+        phases['FLIP'] = phases.PHASE.str.contains('1\|0').astype(np.int8)  # noqa: W605
+        phases['NOFLIP'] = phases.PHASE.str.contains('0\|1').astype(np.int8)  # noqa: W605
 
         # Drop entries without phasing output
         phases = phases[phases.FLIP + phases.NOFLIP > 0]
@@ -263,9 +232,7 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
     check_pivot = snpsv.pivot(index='POS', columns='SAMPLE', values='TOTAL')
     assert np.array_equal(check_pivot, snp_counts), 'SNP file reading failed'
     assert not np.any(check_pivot.isna()), 'SNP file reading failed'
-    assert np.array_equal(
-        all_names, list(snp_counts.columns)
-    )   # make sure that sample order is the same
+    assert np.array_equal(all_names, list(snp_counts.columns))   # make sure that sample order is the same
 
     return np.array(snp_counts.index), np.array(snp_counts), snpsv
 
@@ -284,13 +251,15 @@ def adaptive_bins_arm(
         snp_thresholds: length <n> array of 1-based genomic positions of candidate bin thresholds
 
         total_counts: <n> x <2d> np.ndarray
-            entry [i, 2j] contains the number of reads starting in [snp_thresholds[i], snp_thresholds[i + 1]) in sample j (only the first n-1 positions are populated)
-            entry [i, 2j + 1] contains the number of reads covering position snp_thresholds[i] in sample j
-
+            entry [i, 2j] contains the number of reads starting in [snp_thresholds[i], snp_thresholds[i + 1]) in sample
+            j (only the first n-1 positions are populated) entry [i, 2j + 1] contains the number of reads covering
+            position snp_thresholds[i] in sample j
 
         snp_positions: length <m> list of 1-based genomic positions of SNPs
-            NOTE: this function requires that m = n-1 for convenience of programming (could be relaxed in a different implementation)
-        snp_counts: <m> x <d> np.ndarray containing the number of overlapping reads at each of the <n - 1> snp positions in <d> samples
+            NOTE: this function requires that m = n-1 for convenience of programming (could be relaxed in a different
+            implementation)
+        snp_counts: <m> x <d> np.ndarray containing the number of overlapping reads at each of the <n - 1> snp
+            positions in <d> samples
 
         min_snp_reads: the minimum number of SNP-covering reads required in each bin and each sample
         min_total_reads: the minimum number of total reads required in each bin and each sample
@@ -309,13 +278,9 @@ def adaptive_bins_arm(
     n_samples = int(total_counts.shape[1] / 2)
 
     # number of reads that start between snp_thresholds[i] and snp_thresholds[i + 1]
-    even_index = np.array(
-        [i * 2 for i in range(int(n_samples))], dtype=np.int8
-    )
+    even_index = np.array([i * 2 for i in range(int(n_samples))], dtype=np.int8)
     # number of reads overlapping position snp_thresholds[i]
-    odd_index = np.array(
-        [i * 2 + 1 for i in range(int(n_samples))], dtype=np.int8
-    )
+    odd_index = np.array([i * 2 + 1 for i in range(int(n_samples))], dtype=np.int8)
 
     bin_total = np.zeros(n_samples)
     bin_snp = np.zeros(n_samples - 1)
@@ -346,9 +311,7 @@ def adaptive_bins_arm(
         # adding total reads
         bin_total += total_counts[i - 1, even_index]
 
-        if np.all(bin_snp >= min_snp_reads) and np.all(
-            bin_total - total_counts[i, odd_index] >= min_total_reads
-        ):
+        if np.all(bin_snp >= min_snp_reads) and np.all(bin_total - total_counts[i, odd_index] >= min_total_reads):
 
             # end this bin
             starts.append(my_start)
@@ -378,23 +341,15 @@ def adaptive_bins_arm(
         starts.append(snp_thresholds[0])
         ends.append(snp_thresholds[-1])
 
-        bin_total = (
-            np.sum(total_counts[:, even_index], axis=0)
-            - total_counts[-1, odd_index]
-        )
+        bin_total = np.sum(total_counts[:, even_index], axis=0) - total_counts[-1, odd_index]
         totals.append(bin_total)
         rdrs.append(bin_total[1:] / bin_total[0])
 
     # add whatever excess at the end to the last bin
     if ends[-1] < snp_thresholds[-1]:
         # combine the last complete bin with the remainder
-        last_start_idx = np.where(
-            (snp_thresholds == starts[-1] - 1) | (snp_thresholds == starts[-1])
-        )[0][0]
-        bin_total = (
-            np.sum(total_counts[last_start_idx:, even_index], axis=0)
-            - total_counts[-1, odd_index]
-        )
+        last_start_idx = np.where((snp_thresholds == starts[-1] - 1) | (snp_thresholds == starts[-1]))[0][0]
+        bin_total = np.sum(total_counts[last_start_idx:, even_index], axis=0) - total_counts[-1, odd_index]
         totals[-1] = bin_total
         rdrs[-1] = bin_total[1:] / bin_total[0]
         ends[-1] = snp_thresholds[-1]
@@ -408,9 +363,7 @@ def EM(totals_in, alts_in, start, tol=1e-6):
     """
     totals = np.array(totals_in)
     alts = np.array(alts_in)
-    assert (
-        totals.size == alts.size and 0 < start < 1 and np.all(totals >= alts)
-    )
+    assert totals.size == alts.size and 0 < start < 1 and np.all(totals >= alts)
     if np.all(np.logical_or(totals == alts, alts == 0)):
         return 0.0, np.ones(len(totals_in)) * 0.5, 0.0
     else:
@@ -421,34 +374,24 @@ def EM(totals_in, alts_in, start, tol=1e-6):
 
             # E-step
             assert 0 + tol < baf < 1 - tol, (baf, totals, alts, start)
-            M = (totals - 2.0 * alts) * np.log(baf) + (
-                2.0 * alts - totals
-            ) * np.log(1.0 - baf)
+            M = (totals - 2.0 * alts) * np.log(baf) + (2.0 * alts - totals) * np.log(1.0 - baf)
             M = np.exp(np.clip(a=M, a_min=-100, a_max=100))
             phases = np.reciprocal(1 + M)
 
             # M-step
-            baf = float(
-                np.sum(totals * (1 - phases) + alts * (2.0 * phases - 1))
-            ) / float(np.sum(totals))
+            baf = float(np.sum(totals * (1 - phases) + alts * (2.0 * phases - 1))) / float(np.sum(totals))
 
         assert 0 + tol < baf < 1 - tol, (baf, totals, alts, start)
         lpmf = binom.logpmf
         log_likelihood = float(
-            np.sum(
-                phases * lpmf(k=alts, n=totals, p=baf)
-                + (1 - phases) * lpmf(k=alts, n=totals, p=1 - baf)
-            )
+            np.sum(phases * lpmf(k=alts, n=totals, p=baf) + (1 - phases) * lpmf(k=alts, n=totals, p=1 - baf))
         )
         return baf, phases, log_likelihood
 
 
 def apply_EM(totals_in, alts_in):
     baf, phases, logl = max(
-        (
-            EM(totals_in, alts_in, start=st)
-            for st in np.linspace(0.01, 0.49, 50)
-        ),
+        (EM(totals_in, alts_in, start=st) for st in np.linspace(0.01, 0.49, 50)),
         key=(lambda x: x[2]),
     )
     refs = totals_in - alts_in
@@ -460,22 +403,14 @@ def apply_EM(totals_in, alts_in):
     )
 
 
-def compute_baf_wrapper(
-    bin_snps, blocksize, max_snps_per_block, test_alpha, multisample
-):
+def compute_baf_wrapper(bin_snps, blocksize, max_snps_per_block, test_alpha, multisample):
     if multisample:
-        return compute_baf_task_multi(
-            bin_snps, blocksize, max_snps_per_block, test_alpha
-        )
+        return compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha)
     else:
-        return compute_baf_task_single(
-            bin_snps, blocksize, max_snps_per_block, test_alpha
-        )
+        return compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha)
 
 
-def compute_baf_task_single(
-    bin_snps, blocksize, max_snps_per_block, test_alpha
-):
+def compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha):
     """
     Estimates the BAF for the bin containing exactly <bin_snps> SNPs.
     <bin_snps> is a dataframe with at least ALT and REF columns containing read counts.
@@ -506,13 +441,9 @@ def compute_baf_task_single(
         n_snps = len(my_snps)
 
         if phasing:
-            my_snps = collapse_blocks(
-                my_snps, *phase_data, bin_snps.iloc[0].CHR
-            )
+            my_snps = collapse_blocks(my_snps, *phase_data, bin_snps.iloc[0].CHR)
 
-        baf, alpha, beta = apply_EM(
-            totals_in=my_snps.TOTAL, alts_in=my_snps.ALT
-        )
+        baf, alpha, beta = apply_EM(totals_in=my_snps.TOTAL, alts_in=my_snps.ALT)
 
         cov = np.sum(alpha + beta) / n_snps
 
@@ -520,9 +451,7 @@ def compute_baf_task_single(
     return result
 
 
-def compute_baf_task_multi(
-    bin_snps, blocksize, max_snps_per_block, test_alpha
-):
+def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
     """
     Estimates the BAF for the bin containing exactly <bin_snps> SNPs.
     <bin_snps> is a dataframe with at least ALT and REF columns containing read counts.
@@ -549,28 +478,16 @@ def compute_baf_task_multi(
 
         bin_snps = collapse_blocks(bin_snps, *phase_data, bin_snps.iloc[0].CHR)
 
-        alts = bin_snps.pivot(
-            index='SAMPLE', columns='START', values='ALT'
-        ).to_numpy()
-        refs = bin_snps.pivot(
-            index='SAMPLE', columns='START', values='REF'
-        ).to_numpy()
-        n_snps = (
-            bin_snps['#SNPS'].sum() / len(bin_snps.SAMPLE.unique())
-        ).astype(np.uint32)
+        alts = bin_snps.pivot(index='SAMPLE', columns='START', values='ALT').to_numpy()
+        refs = bin_snps.pivot(index='SAMPLE', columns='START', values='REF').to_numpy()
+        n_snps = (bin_snps['#SNPS'].sum() / len(bin_snps.SAMPLE.unique())).astype(np.uint32)
 
     else:
-        alts = bin_snps.pivot(
-            index='SAMPLE', columns='POS', values='ALT'
-        ).to_numpy()
-        refs = bin_snps.pivot(
-            index='SAMPLE', columns='POS', values='REF'
-        ).to_numpy()
+        alts = bin_snps.pivot(index='SAMPLE', columns='POS', values='ALT').to_numpy()
+        refs = bin_snps.pivot(index='SAMPLE', columns='POS', values='REF').to_numpy()
         n_snps = alts.shape[1]
 
-    runs = {
-        b: multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)
-    }
+    runs = {b: multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)}
     bafs, phases, ll = max(runs.values(), key=lambda x: x[-1])
 
     # Need hard phasing to assign ref/alt reads to alpha/beta
@@ -632,12 +549,8 @@ def multisample_em(alts, refs, start, tol=10e-6):
 
     # Force BAF <= 0.5 and flip phases accordingly
     theta = np.minimum(theta, 1 - theta)
-    t1 = np.sum(
-        (refs.T * np.log(theta)).T + (alts.T * np.log(1 - theta)).T, axis=0
-    )
-    t2 = np.sum(
-        (refs.T * np.log(1 - theta)).T + (alts.T * np.log(theta)).T, axis=0
-    )
+    t1 = np.sum((refs.T * np.log(theta)).T + (alts.T * np.log(1 - theta)).T, axis=0)
+    t2 = np.sum((refs.T * np.log(1 - theta)).T + (alts.T * np.log(theta)).T, axis=0)
     phases = np.exp(t1 - logsumexp([t1, t2], axis=0))
 
     t1 = np.sum(np.log(theta) * (phases * refs).T, axis=0)
@@ -745,9 +658,7 @@ def consecutive(data, stepsize=1):
     return np.split(data, np.where(np.diff(data) != stepsize)[0] + 1)
 
 
-def phase_blocks_sequential(
-    df, blocksize=50e3, max_snps_per_block=10, alpha=0
-):
+def phase_blocks_sequential(df, blocksize=50e3, max_snps_per_block=10, alpha=0):
     if len(df) == 0:
         return []
 
@@ -830,9 +741,7 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
         while i < len(df0):
             if i in singletons or i in orphans:
                 r = df0.iloc[i]
-                rows.append(
-                    [ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1]
-                )
+                rows.append([ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1])
                 i += 1
             else:
                 block = blocks[j]
@@ -843,14 +752,8 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
                 my_snps = df0.iloc[block]
                 start = my_snps.POS.min()
                 end = my_snps.POS.max()
-                alt = np.sum(
-                    my_snps.FLIP * my_snps.REF
-                    + (1 - my_snps.FLIP) * my_snps.ALT
-                ).astype(np.uint64)
-                ref = np.sum(
-                    my_snps.FLIP * my_snps.ALT
-                    + (1 - my_snps.FLIP) * my_snps.REF
-                ).astype(np.uint64)
+                alt = np.sum(my_snps.FLIP * my_snps.REF + (1 - my_snps.FLIP) * my_snps.ALT).astype(np.uint64)
+                ref = np.sum(my_snps.FLIP * my_snps.ALT + (1 - my_snps.FLIP) * my_snps.REF).astype(np.uint64)
                 total = np.sum(my_snps.TOTAL)
                 n_snps = len(my_snps)
                 rows.append([ch, start, end, sample, alt, ref, total, n_snps])
@@ -882,9 +785,7 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
     """
 
     rows = []
-    sample_names = sample_names[
-        1:
-    ]   # ignore the normal sample (first in the list)
+    sample_names = sample_names[1:]   # ignore the normal sample (first in the list)
     for i in range(len(bins[0])):
         start = bins[0][i]
         end = bins[1][i]
@@ -899,11 +800,7 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
                 dfs[i].POS.min(),
                 dfs[i].POS.max(),
             )
-            snpcounts_from_df = (
-                dfs[i]
-                .pivot(index='POS', columns='SAMPLE', values='TOTAL')
-                .sum(axis=0)
-            )
+            snpcounts_from_df = dfs[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0)
 
         for j in range(len(sample_names)):
             sample = sample_names[j]
@@ -956,9 +853,7 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
 def get_chr_end(stem, chromosome):
     fname = os.path.join(stem, chromosome + '.thresholds.gz')
     zcat = subprocess.Popen(('zcat', fname), stdout=subprocess.PIPE)
-    tail = subprocess.Popen(
-        ('tail', '-1'), stdin=zcat.stdout, stdout=subprocess.PIPE
-    )
+    tail = subprocess.Popen(('tail', '-1'), stdin=zcat.stdout, stdout=subprocess.PIPE)
     last_start = int(tail.stdout.read().decode('utf-8').strip())
 
     return last_start
@@ -997,9 +892,7 @@ def run_chromosome(
             msg=f'Loading intermediate files for chromosome {chromosome}\n',
             level='INFO',
         )
-        total_counts = np.loadtxt(
-            os.path.join(arraystem, f'{chromosome}.total'), dtype=np.uint32
-        )
+        total_counts = np.loadtxt(os.path.join(arraystem, f'{chromosome}.total'), dtype=np.uint32)
         complete_thresholds = np.loadtxt(
             os.path.join(arraystem, f'{chromosome}.thresholds'),
             dtype=np.uint32,
@@ -1015,12 +908,8 @@ def run_chromosome(
 
             # TODO: do this procedure only for XY individuals
             ### construct dummy SNP positions and all-0 snpcounts array for binning
-            before_centromere = complete_thresholds[
-                complete_thresholds <= centromere_start
-            ]
-            after_centromere = complete_thresholds[
-                complete_thresholds >= centromere_end
-            ]
+            before_centromere = complete_thresholds[complete_thresholds <= centromere_start]
+            after_centromere = complete_thresholds[complete_thresholds >= centromere_end]
             positions_p = np.mean(
                 np.vstack([before_centromere[:-1], before_centromere[1:]]),
                 axis=0,
@@ -1030,45 +919,32 @@ def run_chromosome(
                 axis=0,
             ).astype(np.uint64)
             positions = np.concatenate([positions_p, positions_q])
-            snp_counts = np.zeros(
-                (len(positions), len(all_names) - 1), dtype=np.int8
-            )
+            snp_counts = np.zeros((len(positions), len(all_names) - 1), dtype=np.int8)
             snpsv = None
 
         else:
             # sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
             # Load SNP positions and counts for this chromosome
-            positions, snp_counts, snpsv = read_snps(
-                baffile, chromosome, all_names, phasefile=phasefile
-            )
+            positions, snp_counts, snpsv = read_snps(baffile, chromosome, all_names, phasefile=phasefile)
 
         sp.log(msg=f'Binning p arm of chromosome {chromosome}\n', level='INFO')
         if len(np.where(positions <= centromere_start)[0]) > 0:
             # There may not be a SNP between the centromere end and the next SNP threshold
             # Goal for p arm is to END at the FIRST threshold that is AFTER the LAST SNP BEFORE the centromere
-            last_snp_before_centromere = positions[
-                np.where(positions < centromere_start)[0][-1]
-            ]
+            last_snp_before_centromere = positions[np.where(positions < centromere_start)[0][-1]]
             last_threshold_before_centromere = complete_thresholds[
-                np.where(complete_thresholds > last_snp_before_centromere)[0][
-                    0
-                ]
+                np.where(complete_thresholds > last_snp_before_centromere)[0][0]
             ]
 
-            p_idx = np.where(
-                complete_thresholds <= last_threshold_before_centromere
-            )[0]
+            p_idx = np.where(complete_thresholds <= last_threshold_before_centromere)[0]
             p_thresholds = complete_thresholds[p_idx]
             p_counts = total_counts[p_idx]
 
-            p_snp_idx = np.where(
-                positions <= last_threshold_before_centromere
-            )[0]
+            p_snp_idx = np.where(positions <= last_threshold_before_centromere)[0]
             p_positions = positions[p_snp_idx]
             p_snpcounts = snp_counts[p_snp_idx]
 
             # Identify bins
-            # print(datetime.now(), "### Binning p arm ###")
             bins_p = adaptive_bins_arm(
                 snp_thresholds=p_thresholds,
                 total_counts=p_counts,
@@ -1088,22 +964,12 @@ def run_chromosome(
                 dfs_p = None
                 bafs_p = None
             else:
-                dfs_p = [
-                    snpsv[
-                        (snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])
-                    ]
-                    for i in range(len(starts_p))
-                ]
+                dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])] for i in range(len(starts_p))]
 
                 if len(dfs_p) > 1:
                     for i in range(len(dfs_p)):
                         assert np.all(
-                            dfs_p[i]
-                            .pivot(
-                                index='POS', columns='SAMPLE', values='TOTAL'
-                            )
-                            .sum(axis=0)
-                            >= min_snp_reads
+                            dfs_p[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0) >= min_snp_reads
                         ), i
 
                 bafs_p = [
@@ -1119,9 +985,7 @@ def run_chromosome(
 
             bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
         else:
-            sp.log(
-                msg=f'No SNPs found in p arm for {chromosome}\n', level='INFO'
-            )
+            sp.log(msg=f'No SNPs found in p arm for {chromosome}\n', level='INFO')
             bb_p = None
 
         sp.log(msg=f'Binning q arm of chromosome {chromosome}\n', level='INFO')
@@ -1129,28 +993,19 @@ def run_chromosome(
         if len(np.where(positions >= centromere_end)[0]) > 0:
             # There may not be a SNP between the centromere end and the next SNP threshold
             # Goal for q arm is to start at the latest threshold that is before the first SNP after the centromere
-            first_snp_after_centromere = positions[
-                np.where(positions > centromere_end)[0][0]
-            ]
+            first_snp_after_centromere = positions[np.where(positions > centromere_end)[0][0]]
             first_threshold_after_centromere = complete_thresholds[
-                np.where(complete_thresholds < first_snp_after_centromere)[0][
-                    -1
-                ]
+                np.where(complete_thresholds < first_snp_after_centromere)[0][-1]
             ]
 
-            q_idx = np.where(
-                complete_thresholds >= first_threshold_after_centromere
-            )[0]
+            q_idx = np.where(complete_thresholds >= first_threshold_after_centromere)[0]
             q_thresholds = complete_thresholds[q_idx]
             q_counts = total_counts[q_idx]
 
-            q_snp_idx = np.where(
-                positions >= first_threshold_after_centromere
-            )[0]
+            q_snp_idx = np.where(positions >= first_threshold_after_centromere)[0]
             q_positions = positions[q_snp_idx]
             q_snpcounts = snp_counts[q_snp_idx]
 
-            # print(datetime.now(), "### Binning q arm ###")
             bins_q = adaptive_bins_arm(
                 snp_thresholds=q_thresholds,
                 total_counts=q_counts,
@@ -1168,22 +1023,12 @@ def run_chromosome(
                 bafs_q = None
             else:
                 # Partition SNPs for BAF inference
-                dfs_q = [
-                    snpsv[
-                        (snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])
-                    ]
-                    for i in range(len(starts_q))
-                ]
+                dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])] for i in range(len(starts_q))]
 
                 if len(dfs_q) > 1:
                     for i in range(len(dfs_q)):
                         assert np.all(
-                            dfs_q[i]
-                            .pivot(
-                                index='POS', columns='SAMPLE', values='TOTAL'
-                            )
-                            .sum(axis=0)
-                            >= min_snp_reads
+                            dfs_q[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0) >= min_snp_reads
                         ), i
 
                 # Infer BAF
@@ -1200,17 +1045,11 @@ def run_chromosome(
 
             bb_q = merge_data(bins_q, dfs_q, bafs_q, all_names, chromosome)
         else:
-            sp.log(
-                msg=f'No SNPs found in q arm for {chromosome}\n', level='INFO'
-            )
+            sp.log(msg=f'No SNPs found in q arm for {chromosome}\n', level='INFO')
             bb_q = None
 
         if bb_p is None and bb_q is None:
-            raise ValueError(
-                sp.error(
-                    f'No SNPs found on either arm of chromosome {chromosome}!'
-                )
-            )
+            raise ValueError(sp.error(f'No SNPs found on either arm of chromosome {chromosome}!'))
 
         bb = pd.concat([bb_p, bb_q])
         bb.to_csv(outfile, index=False, sep='\t')

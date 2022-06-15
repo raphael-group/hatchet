@@ -1,6 +1,5 @@
 import sys
 import os.path
-import argparse
 
 import hatchet.utils.BAMBinning as bb
 import hatchet.utils.TotalCounting as tc
@@ -51,15 +50,9 @@ def main(args=None):
         msg='# Writing the read counts for bins of normal sample\n',
         level='STEP',
     )
-    handle = (
-        open(args['outputNormal'], 'w')
-        if args['outputNormal'] is not None
-        else sys.stdout
-    )
+    handle = open(args['outputNormal'], 'w') if args['outputNormal'] is not None else sys.stdout
     for c in args['chromosomes']:
-        for (samplename, chromosome, start, stop, n_reads) in normal_bins[
-            args['normal'][1], c
-        ]:
+        for (samplename, chromosome, start, stop, n_reads) in normal_bins[args['normal'][1], c]:
             handle.write(
                 '\t'.join(
                     [
@@ -93,16 +86,10 @@ def main(args=None):
         msg='# Writing the read counts for bins of tumor samples\n',
         level='STEP',
     )
-    handle = (
-        open(args['outputTumors'], 'w')
-        if args['outputTumors'] is not None
-        else sys.stdout
-    )
+    handle = open(args['outputTumors'], 'w') if args['outputTumors'] is not None else sys.stdout
     for sample in sorted(args['samples']):
         for c in args['chromosomes']:
-            for (samplename, chromosome, start, stop, n_reads) in tumor_bins[
-                sample[1], c
-            ]:
+            for (samplename, chromosome, start, stop, n_reads) in tumor_bins[sample[1], c]:
                 handle.write(
                     '\t'.join(
                         [
@@ -133,27 +120,17 @@ def main(args=None):
 
     try:
         total = {
-            sample[1]: sum(
-                total_counts[sample[1], chromosome]
-                for chromosome in args['chromosomes']
-            )
+            sample[1]: sum(total_counts[sample[1], chromosome] for chromosome in args['chromosomes'])
             for sample in args['samples']
         }
         total[args['normal'][1]] = sum(
-            total_counts[args['normal'][1], chromosome]
-            for chromosome in args['chromosomes']
+            total_counts[args['normal'][1], chromosome] for chromosome in args['chromosomes']
         )
     except KeyError:
-        raise KeyError(
-            error(
-                'Either a chromosome or a sample has not been considered in the total counting!'
-            )
-        )
+        raise KeyError(error('Either a chromosome or a sample has not been considered in the total counting!'))
 
     log(
-        msg='# Writing the total read counts for all samples in {}\n'.format(
-            args['outputTotal']
-        ),
+        msg='# Writing the total read counts for all samples in {}\n'.format(args['outputTotal']),
         level='STEP',
     )
     with open(args['outputTotal'], 'w') as f:
@@ -175,9 +152,9 @@ def knownRegions(refdict, chromosomes):
                     ends[c] = end
     if None in ends.values():
         log(
-            msg='The following chromosomes have not been found in the dictionary of the reference genome: \n\t{}'.format(
-                ','.join([c for c in ends if ends[c] is None])
-            ),
+            msg=(
+                'The following chromosomes have not been found in the dictionary of the reference genome: ' '\n\t{}'
+            ).format(','.join([c for c in ends if ends[c] is None])),
             level='WARN',
         )
 
@@ -185,9 +162,7 @@ def knownRegions(refdict, chromosomes):
     for c in chromosomes:
         if ends[c] is None:
             raise ValueError(
-                'Length of chromosome {} could not be determined. Are you using the correct reference genome?'.format(
-                    c
-                )
+                f'Length of chromosome {c} could not be determined. Are you using the correct reference genome?'
             )
         res[c] = [(0, ends[c])]
 

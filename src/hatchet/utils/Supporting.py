@@ -23,9 +23,7 @@ def numericOrder(text):
         return int(digits(text))
     else:
         if not (text.endswith('X') or text.endswith('Y')):
-            raise ValueError(
-                f'Found chromosome ID that is not numeric or X/Y: {text}'
-            )
+            raise ValueError(f'Found chromosome ID that is not numeric or X/Y: {text}')
         return ascii_uppercase.index(text[-1])
 
 
@@ -47,9 +45,7 @@ def to_tuple(s, n=2, typ=int, error_message=None):
         if n is not None:
             error_message += f' of length {n}'
 
-    parsed = (
-        s.strip().replace(' ', '').replace('(', '').replace(')', '').split(',')
-    )
+    parsed = s.strip().replace(' ', '').replace('(', '').replace(')', '').split(',')
 
     try:
         if n is not None:
@@ -99,10 +95,7 @@ class bcolors:
 
 # format strings with 'timestamp' and 'msg' as placeholders
 MSG_FORMAT_STRINGS = {
-    'STEP': bcolors.BOLD
-    + bcolors.HEADER
-    + '[{timestamp}]{msg}'
-    + bcolors.ENDC,
+    'STEP': bcolors.BOLD + bcolors.HEADER + '[{timestamp}]{msg}' + bcolors.ENDC,
     'INFO': bcolors.OKGREEN + '{msg}' + bcolors.ENDC,
     'WARN': bcolors.WARNING + '{msg}' + bcolors.ENDC,
     'PROGRESS': bcolors.BBLUE + '{msg}' + bcolors.ENDC,
@@ -149,9 +142,7 @@ def error(msg, raise_exception=False, exception_class=ValueError):
 
 def ensure(pred, msg, exception_class=ValueError):
     if not pred:
-        return error(
-            msg, raise_exception=True, exception_class=exception_class
-        )
+        return error(msg, raise_exception=True, exception_class=exception_class)
 
 
 def close(msg):
@@ -178,11 +169,7 @@ def run(
     if 'shell' not in kwargs:
         kwargs['shell'] = True
 
-    f = (
-        open(stdouterr_filepath, 'w')
-        if stdouterr_filepath is not None
-        else None
-    )
+    f = open(stdouterr_filepath, 'w') if stdouterr_filepath is not None else None
     for command in commands:
         p = subprocess.run(command, stdout=f, stderr=f, **kwargs)
         return_codes.append(p.returncode)
@@ -193,9 +180,7 @@ def run(
         if error_msg is None:
             error_msg = 'Command "{command}" did not run successfully.'
         if stdouterr_filepath:
-            error_msg += (
-                f' Please check {stdouterr_filepath} for possible hints.'
-            )
+            error_msg += f' Please check {stdouterr_filepath} for possible hints.'
 
         for command, return_code in zip(commands, return_codes):
             if return_code != 0:
@@ -218,9 +203,7 @@ def download(
     out_basename = os.path.basename(urlparse(url).path)
     out_filepath = os.path.join(dirpath, out_basename)
 
-    if sentinel_file is None or not os.path.exists(
-        os.path.join(dirpath, sentinel_file)
-    ):
+    if sentinel_file is None or not os.path.exists(os.path.join(dirpath, sentinel_file)):
         if overwrite or not os.path.exists(out_filepath):
             with requests.get(url, stream=True) as r:
                 r.raise_for_status()
@@ -228,9 +211,7 @@ def download(
                     for chunk in r.iter_content(chunk_size=chunk_size):
                         f.write(chunk)
 
-        if (
-            out_basename.endswith('.tar.gz') or out_basename.endswith('.tgz')
-        ) and extract:
+        if (out_basename.endswith('.tar.gz') or out_basename.endswith('.tgz')) and extract:
             t = tarfile.open(out_filepath)
             t.extractall(dirpath)
             t.close()

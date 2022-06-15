@@ -13,9 +13,7 @@ DATA_FOLDER = os.path.join(this_dir, 'data')
 
 
 def main(args=None):
-    log(
-        msg=f'# The solver you are currently using is {config.compute_cn.solver}\n'
-    )
+    log(msg=f'# The solver you are currently using is {config.compute_cn.solver}\n')
 
     with tempfile.TemporaryDirectory() as tempdirname:
         with path(hatchet.data, 'sample.bbc') as bbc_path:
@@ -50,9 +48,7 @@ def main(args=None):
                 ]
             )
 
-    log(
-        msg=f'# Your current solver {config.compute_cn.solver} seems to be working correctly\n'
-    )
+    log(msg=f'# Your current solver {config.compute_cn.solver} seems to be working correctly\n')
     return True
 
 

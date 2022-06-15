@@ -6,16 +6,13 @@ from multiprocessing import (
     JoinableQueue,
     Lock,
     Value,
-    Pipe,
     cpu_count,
 )
 from hatchet.utils import ProgressBar as pb
 
 
 class TaskHandler(Process):
-    def __init__(
-        self, handler_id, worker, task_queue, result_queue, progress_bar
-    ):
+    def __init__(self, handler_id, worker, task_queue, result_queue, progress_bar):
         Process.__init__(self)
         self.handler_id = handler_id
         self.worker = worker
@@ -83,10 +80,7 @@ class Worker:
             task_queue.put(None)
 
         result_queue = Queue()
-        handlers = [
-            TaskHandler(i, self, task_queue, result_queue, progress_bar)
-            for i in range(n_instances)
-        ]
+        handlers = [TaskHandler(i, self, task_queue, result_queue, progress_bar) for i in range(n_instances)]
 
         for h in handlers:
             h.start()
@@ -95,16 +89,10 @@ class Worker:
 
         try:
             _results = []
-            for handler_id, handler_result in [
-                result_queue.get() for _ in range(n_work)
-            ]:
+            for handler_id, handler_result in [result_queue.get() for _ in range(n_work)]:
                 if isinstance(handler_result, Exception):
-                    error_string = ''.join(
-                        getattr(handler_result, 'error', [])
-                    )
-                    raise handler_result.__class__(
-                        f'HANDLER {handler_id} FAILED\n\n{error_string}'
-                    )
+                    error_string = ''.join(getattr(handler_result, 'error', []))
+                    raise handler_result.__class__(f'HANDLER {handler_id} FAILED\n\n{error_string}')
                 else:
                     _results.append(handler_result)
             sorted_results = sorted(_results)

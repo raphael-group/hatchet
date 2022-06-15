@@ -25,9 +25,7 @@ from hatchet.utils.Supporting import log, error
 
 def main(args=None):
 
-    parser = argparse.ArgumentParser(
-        prog='hatchet run', description='Run HATCHet pipeline'
-    )
+    parser = argparse.ArgumentParser(prog='hatchet run', description='Run HATCHet pipeline')
     parser.add_argument('inifile', help='.ini file for run configuration')
     args = parser.parse_args(args)
 
@@ -50,7 +48,10 @@ def main(args=None):
         if not config.download_panel.refpaneldir:
             raise ValueError(
                 error(
-                    'The step "download_panel" requires that the variable "refpaneldir" indicates the directory in which to store the reference panel.'
+                    (
+                        'The step "download_panel" requires that the variable "refpaneldir" indicates the directory in '
+                        'which to store the reference panel.'
+                    )
                 )
             )
 
@@ -94,7 +95,10 @@ def main(args=None):
                 config.genotype_snps.chr_notation,
             ) not in snps_mapping:
                 raise RuntimeError(
-                    f'Please specify valid values of reference_version and chr_notation. Valid pairs include: {snps_mapping.keys()}'
+                    (
+                        'Please specify valid values of reference_version and chr_notation. '
+                        f'Valid pairs include: {snps_mapping.keys()}'
+                    )
                 )
             else:
                 snps = snps_mapping[
@@ -123,14 +127,20 @@ def main(args=None):
         if len(glob.glob(f'{output}/snps/*.vcf.gz')) == 0:
             raise ValueError(
                 error(
-                    "No SNP files were found for phasing. Are there any .vcf.gz files in the 'snps' subdirectory of the output folder? Try running 'genotype_snps'."
+                    (
+                        'No SNP files were found for phasing. Are there any .vcf.gz files in the snps subdirectory of '
+                        'the output folder? Try running genotype_snps.'
+                    )
                 )
             )
 
         if not config.download_panel.refpaneldir:
             raise ValueError(
                 error(
-                    'The step "phase_snps" requires that the config variable "download_panel.refpaneldir" indicates the directory where the reference panel is located.'
+                    (
+                        'The step "phase_snps" requires that the config variable "download_panel.refpaneldir" '
+                        'indicates the directory where the reference panel is located.'
+                    )
                 )
             )
 
@@ -344,10 +354,7 @@ def main(args=None):
 
     if config.run.compute_cn:
         os.makedirs(f'{output}/results', exist_ok=True)
-        hatchet_main(
-            args=['-x', f'{output}/results', '-i', f'{output}/bbc/bulk']
-            + extra_args
-        )
+        hatchet_main(args=['-x', f'{output}/results', '-i', f'{output}/bbc/bulk'] + extra_args)
 
     # ----------------------------------------------------
 

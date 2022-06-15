@@ -38,9 +38,7 @@ class ProgressBar:
         if advance:
             with self.counter.get_lock():
                 self.counter.value += 1
-        percent = ('{0:.' + str(self.decimals) + 'f}').format(
-            100 * (self.counter.value / float(self.total))
-        )
+        percent = ('{0:.' + str(self.decimals) + 'f}').format(100 * (self.counter.value / float(self.total)))
         filledLength = int(self.length * self.counter.value // self.total)
         bar = self.fill * filledLength + '-' * (self.length - filledLength)
         rewind = '\x1b[2K\r'
@@ -56,20 +54,9 @@ class ProgressBar:
         )
         msg = '[{:%Y-%b-%d %H:%M:%S}]'.format(datetime.datetime.now()) + msg
         if not self.verbose:
-            toprint = (
-                rewind
-                + result
-                + ' %s[%s]%s' % (sp.bcolors.BBLUE, msg, sp.bcolors.ENDC)
-            )
+            toprint = rewind + result + ' %s[%s]%s' % (sp.bcolors.BBLUE, msg, sp.bcolors.ENDC)
         else:
-            toprint = (
-                rewind
-                + sp.bcolors.BBLUE
-                + msg
-                + sp.bcolors.ENDC
-                + '\n'
-                + result
-            )
+            toprint = rewind + sp.bcolors.BBLUE + msg + sp.bcolors.ENDC + '\n' + result
         with self.lock:
             write(toprint)
             flush()
@@ -82,9 +69,7 @@ class ProgressBar:
         write = sys.stderr.write
         if advance:
             self.counter += 1
-        percent = ('{0:.' + str(self.decimals) + 'f}').format(
-            100 * (self.counter / float(self.total))
-        )
+        percent = ('{0:.' + str(self.decimals) + 'f}').format(100 * (self.counter / float(self.total)))
         filledLength = int(self.length * self.counter // self.total)
         bar = self.fill * filledLength + '-' * (self.length - filledLength)
         rewind = '\x1b[2K\r'

@@ -39,9 +39,7 @@ def bin(
 
     # Setting up the workers
     workers = [
-        Binner(
-            tasks, results, progress_bar, samtools, q, size, regions, verbose
-        )
+        Binner(tasks, results, progress_bar, samtools, q, size, regions, verbose)
         for i in range(min(num_workers, jobs_count))
     ]
 
@@ -106,9 +104,7 @@ class Binner(Process):
 
             self.progress_bar.progress(
                 advance=False,
-                msg='{} starts on {} for {})'.format(
-                    self.name, next_task[1], next_task[2]
-                ),
+                msg='{} starts on {} for {})'.format(self.name, next_task[1], next_task[2]),
             )
             bins = self.binChr(
                 bamfile=next_task[0],
@@ -117,9 +113,7 @@ class Binner(Process):
             )
             self.progress_bar.progress(
                 advance=True,
-                msg='{} ends on {} for {})'.format(
-                    self.name, next_task[1], next_task[2]
-                ),
+                msg='{} ends on {} for {})'.format(self.name, next_task[1], next_task[2]),
             )
             self.task_queue.task_done()
             self.result_queue.put(bins)
@@ -146,8 +140,6 @@ class Binner(Process):
                         stop=stop,
                         read_callback=read_callback,
                     )
-                bins.append(
-                    (samplename, chromosome, max(start, 1), stop, str(n_reads))
-                )
+                bins.append((samplename, chromosome, max(start, 1), stop, str(n_reads)))
                 start += self.size
         return list(bins)

@@ -1,7 +1,6 @@
 import sys
 import os
 import os.path
-import argparse
 import shlex
 import subprocess as pr
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
@@ -15,7 +14,10 @@ from hatchet.utils.Supporting import log, logArgs, error, close
 
 def main(args=None):
     log(
-        msg='# Parsing the input arguments, checking the consistency of given files, and extracting required information\n',
+        msg=(
+            '# Parsing the input arguments, checking the consistency of given files, and extracting required '
+            'information\n'
+        ),
         level='STEP',
     )
     args = ap.parse_count_alleles_arguments(args)
@@ -42,25 +44,20 @@ def main(args=None):
     )
 
     log(msg='# Selecting heterozygous SNPs\n', level='STEP')
-    hetSNPs = selectHetSNPs(
-        counts=snps, gamma=args['gamma'], maxshift=args['maxshift']
-    )
+    hetSNPs = selectHetSNPs(counts=snps, gamma=args['gamma'], maxshift=args['maxshift'])
     if not hetSNPs:
-        close(
-            'No heterozygous SNPs found in the selected regions of the normal!\n'
-        )
+        close('No heterozygous SNPs found in the selected regions of the normal!\n')
 
     log(
         msg='# Writing the list of selected SNPs, covered and heterozygous in the normal sample\n',
         level='STEP',
     )
-    # put lists of SNPs in uniquely named temporary dir to prevent concurrent hatchet runs from overwriting eachothers temp files
+    # put lists of SNPs in uniquely named temporary dir to prevent concurrent hatchet runs from overwriting
+    # each others temp files
     with tempfile.TemporaryDirectory(dir=args['outputSnps']) as tmpdirname:
         hetsnpsfiles = {}
         for chro in args['chromosomes']:
-            hetsnpsfiles[chro] = os.path.join(
-                tmpdirname, 'TMP_{}.tsv'.format(chro)
-            )
+            hetsnpsfiles[chro] = os.path.join(tmpdirname, 'TMP_{}.tsv'.format(chro))
             with open(hetsnpsfiles[chro], 'w') as f:
                 if (args['normal'][1], chro) in hetSNPs:
                     for snp in sorted(hetSNPs[args['normal'][1], chro]):
@@ -70,11 +67,7 @@ def main(args=None):
             msg='# Writing the allele counts of the normal sample for selected SNPs\n',
             level='STEP',
         )
-        handle = (
-            open(args['outputNormal'], 'w')
-            if args['outputNormal'] is not None
-            else sys.stdout
-        )
+        handle = open(args['outputNormal'], 'w') if args['outputNormal'] is not None else sys.stdout
         for chro in args['chromosomes']:
             if (args['normal'][1], chro) in hetSNPs:
                 for snp in sorted(hetSNPs[args['normal'][1], chro]):
@@ -109,68 +102,39 @@ def main(args=None):
         )
         if not rcounts:
             close('The selected SNPs are not covered in the tumors!\n')
-        rcounts = {
-            c: dict(map(lambda r: (int(r[2]), dict(r[3])), rcounts[c]))
-            for c in rcounts
-        }
+        rcounts = {c: dict(map(lambda r: (int(r[2]), dict(r[3])), rcounts[c])) for c in rcounts}
         het = lambda chro: hetSNPs[args['normal'][1], chro]
         form = lambda REF, ALT, T: (
             (REF, T[REF] if REF in T else 0),
             (ALT, T[ALT] if ALT in T else 0),
         )
         counts = {
-            c: {
-                o: form(het(c[1])[o][0][0], het(c[1])[o][1][0], rcounts[c][o])
-                for o in rcounts[c]
-            }
-            for c in rcounts
+            c: {o: form(het(c[1])[o][0][0], het(c[1])[o][1][0], rcounts[c][o]) for o in rcounts[c]} for c in rcounts
         }
 
     log(
         msg='# Writing the allele counts of tumor samples for selected SNPs\n',
         level='STEP',
     )
-    handle = (
-        open(args['outputTumors'], 'w')
-        if args['outputTumors'] is not None
-        else sys.stdout
-    )
+    handle = open(args['outputTumors'], 'w') if args['outputTumors'] is not None else sys.stdout
     for sample in args['samples']:
         for chro in args['chromosomes']:
             if (sample[1], chro) in counts:
                 for snp in counts[sample[1], chro]:
                     count = counts[sample[1], chro][snp]
-                    handle.write(
-                        '{}\t{}\t{}\t{}\t{}\n'.format(
-                            chro, snp, sample[1], count[0][1], count[1][1]
-                        )
-                    )
+                    handle.write('{}\t{}\t{}\t{}\t{}\n'.format(chro, snp, sample[1], count[0][1], count[1][1]))
     if handle is not sys.stdout:
         handle.close()
 
 
 def selectHetSNPs(counts, gamma, maxshift):
     hetSNPs = {
-        c: [
-            (r[0], r[1], r[2], r[3][0], max(r[3][1:], key=(lambda x: x[1])))
-            for r in counts[c]
-            if len(r[3]) >= 2
-        ]
+        c: [(r[0], r[1], r[2], r[3][0], max(r[3][1:], key=(lambda x: x[1]))) for r in counts[c] if len(r[3]) >= 2]
         for c in counts
     }
-    check = lambda r: isHet(r[3][1], r[4][1], gamma) and checkShift(
-        r[3][1], r[4][1], maxshift
-    )
-    hetSNPs = {
-        c: list(filter(check, hetSNPs[c]))
-        for c in hetSNPs
-        if len(hetSNPs[c]) > 0
-    }
-    return {
-        c: {int(r[2]): (r[3], r[4]) for r in reversed(hetSNPs[c])}
-        for c in hetSNPs
-        if len(hetSNPs[c]) > 0
-    }
+    check = lambda r: isHet(r[3][1], r[4][1], gamma) and checkShift(r[3][1], r[4][1], maxshift)
+    hetSNPs = {c: list(filter(check, hetSNPs[c])) for c in hetSNPs if len(hetSNPs[c]) > 0}
+    return {c: {int(r[2]): (r[3], r[4]) for r in reversed(hetSNPs[c])} for c in hetSNPs if len(hetSNPs[c]) > 0}
 
 
 def isHet(countA, countB, gamma):
@@ -190,9 +154,7 @@ def isHet(countA, countB, gamma):
 
 
 def checkShift(countA, countB, maxshift):
-    return (
-        0.5 - (float(min(countA, countB)) / float(countA + countB))
-    ) <= maxshift
+    return (0.5 - (float(min(countA, countB)) / float(countA + countB))) <= maxshift
 
 
 def counting(
@@ -324,9 +286,7 @@ class AlleleCounter(Process):
 
             self.progress_bar.progress(
                 advance=False,
-                msg='{} starts on {} for {}'.format(
-                    self.name, next_task[1], next_task[2]
-                ),
+                msg='{} starts on {} for {}'.format(self.name, next_task[1], next_task[2]),
             )
             snps = self.countAlleles(
                 bamfile=next_task[0],
@@ -335,9 +295,7 @@ class AlleleCounter(Process):
             )
             self.progress_bar.progress(
                 advance=True,
-                msg='{} ends on {} for {}'.format(
-                    self.name, next_task[1], next_task[2]
-                ),
+                msg='{} ends on {} for {}'.format(self.name, next_task[1], next_task[2]),
             )
             self.task_queue.task_done()
             self.result_queue.put(snps)
@@ -358,9 +316,7 @@ class AlleleCounter(Process):
         )
         if self.E:
             cmd_mpileup += ' -E'
-        errname = os.path.join(
-            self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome)
-        )
+        errname = os.path.join(self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome))
 
         with open(errname, 'w') as err:
             mpileup = pr.Popen(
@@ -380,9 +336,9 @@ class AlleleCounter(Process):
             codes = map(lambda p: p.wait(), [mpileup, query])
         if any(c != 0 for c in codes):
             raise ValueError(
-                error(
-                    'Allele counting failed on {} of {}, please check errors in {}!'
-                ).format(chromosome, samplename, errname)
+                error('Allele counting failed on {} of {}, please check errors in {}!').format(
+                    chromosome, samplename, errname
+                )
             )
         else:
             os.remove(errname)
@@ -399,11 +355,7 @@ class AlleleCounter(Process):
             p[1],
             mkcounts(p[2].split(','), p[3].split(',')),
         )
-        return [
-            form(line.strip().split())
-            for line in stdout.strip().split('\n')
-            if line != ''
-        ]
+        return [form(line.strip().split()) for line in stdout.strip().split('\n') if line != '']
 
 
 if __name__ == '__main__':
