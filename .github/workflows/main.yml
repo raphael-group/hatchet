@@ -65,10 +65,12 @@ jobs:
         run: |
           pip3 install zenodo-get
           python3 -m zenodo_get 10.5281/zenodo.4046906 --output-dir=testdata
+          echo "HATCHET_TESTS_BAM_DIRECTORY=$(realpath testdata)" >> $GITHUB_ENV
 
       - name: Install coinor-cbc
         run: |
           sudo apt install coinor-cbc
+          echo "HATCHET_COMPUTE_CN_SOLVER=cbc" >> $GITHUB_ENV
 
       - name: Install SAMtools
         run: |
@@ -112,6 +114,7 @@ jobs:
 
       - name: Download and index hg19.fa
         working-directory: testdata
+        if: steps.cache-test-data.outputs.cache-hit != 'true'
         run: |
           wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
           gunzip hg19.fa.gz
@@ -121,15 +124,11 @@ jobs:
 
       - name: Download 1000GP reference panel
         working-directory: testdata
+        if: steps.cache-test-data.outputs.cache-hit != 'true'
         run: |
           wget https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz
           tar zxvf 1000GP_Phase3.tgz --wildcards *chr22* *sample
           echo "HATCHET_DOWNLOAD_PANEL_REFPANELDIR=$(realpath 1000GP_Phase3)" >> $GITHUB_ENV
-
-      - name: Set Envvars
-        run: |
-          echo "HATCHET_TESTS_BAM_DIRECTORY=$(realpath testdata)" >> $GITHUB_ENV
-          echo "HATCHET_COMPUTE_CN_SOLVER=cbc" >> $GITHUB_ENV
 
       - name: HATCHet Check
         run: |
