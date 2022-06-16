@@ -36,7 +36,7 @@ Each of these are explained further below.
 
 ```shell
 reference = "/path/to/reference.fa"
-reference_version = ""    
+reference_version = ""
 chr_notation = True
 ```
 
@@ -87,7 +87,7 @@ Also, an increasing in the minimum threshold allow to improve the quality of the
 ## [count-alleles](doc_count_alleles.html)
 <a name="count-alleles"></a>
 
-```shell                               
+```shell
 python3 -m hatchet count-alleles -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} \
                           -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP}*.vcf.gz \
                           -O ${BAF}normal.1bed -o ${BAF}tumor.1bed |& tee ${BAF}bafs.log
@@ -100,7 +100,7 @@ Minimum and maximum thresholds for the read counts of germline SNPs are again sp
 Several simple parameters are also specified including: number of parallel threads, output filenames, and the log filename of this step.
 
 
-## [count-reads](doc_count_reads.html)  
+## [count-reads](doc_count_reads.html)
 <a name="count-reads"></a>
 
 ```shell

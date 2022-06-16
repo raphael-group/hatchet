@@ -47,7 +47,7 @@ FIND_PATH(GUROBI_INCLUDE_DIR
           DOC "Gurobi include directory")
 
 FIND_LIBRARY(GUROBI_CPP_LIB
-             NAMES gurobi_c++ 
+             NAMES gurobi_c++
              PATHS /usr/local/gurobi751/linux64/lib/ /Library/gurobi751/mac64/lib/ ${GUROBI_HOME}/linux64/lib/ ${GUROBI_HOME}/mac64/lib/ ${GUROBI_HOME}/lib/
              DOC "Gurobi C++ Libraries")
 

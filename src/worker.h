@@ -29,25 +29,25 @@ public:
            const DoubleMatrix& M0,
            const int seedIndex,
            const VERBOSITY_t v);
-    
+
     /// Solve for given seed M0
     double solve();
-    
+
     const IntMatrix getCA() const
     {
         return _allCA.back();
     }
-    
+
     const IntMatrix getCB() const
     {
         return _allCB.back();
     }
-    
+
     const DoubleMatrix getU() const
     {
         return _allU.back();
     }
-    
+
 private:
     ///
     const DoubleMatrix& _FA;
@@ -99,9 +99,8 @@ private:
     const int _seedIndex;
     ///
     const VERBOSITY_t _v;
-    
+
 };
 
 
 #endif //_WORKER_H_
-

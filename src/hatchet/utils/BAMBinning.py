@@ -2,14 +2,29 @@ from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 from collections import deque
 import pysam
 
-from . import ProgressBar as pb
+import hatchet.utils.ProgressBar as pb
 
 
-def bin(samtools, samples, chromosomes, num_workers, q, size, regions, verbose=False):
+def bin(
+    samtools,
+    samples,
+    chromosomes,
+    num_workers,
+    q,
+    size,
+    regions,
+    verbose=False,
+):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
     counter = Value('i', 0)
-    progress_bar = pb.ProgressBar(total=len(samples)*len(chromosomes), length=40, lock=err_lock, counter=counter, verbose=verbose)
+    progress_bar = pb.ProgressBar(
+        total=len(samples) * len(chromosomes),
+        length=40,
+        lock=err_lock,
+        counter=counter,
+        verbose=verbose,
+    )
 
     # Establish communication queues
     tasks = JoinableQueue()
@@ -23,7 +38,10 @@ def bin(samtools, samples, chromosomes, num_workers, q, size, regions, verbose=F
             jobs_count += 1
 
     # Setting up the workers
-    workers = [Binner(tasks, results, progress_bar, samtools, q, size, regions, verbose) for i in range(min(num_workers, jobs_count))]
+    workers = [
+        Binner(tasks, results, progress_bar, samtools, q, size, regions, verbose)
+        for i in range(min(num_workers, jobs_count))
+    ]
 
     # Add a poison pill for each worker
     for i in range(len(workers)):
@@ -55,8 +73,17 @@ def bin(samtools, samples, chromosomes, num_workers, q, size, regions, verbose=F
 
 
 class Binner(Process):
-
-    def __init__(self, task_queue, result_queue, progress_bar, samtools, q, size, regions, verbose):
+    def __init__(
+        self,
+        task_queue,
+        result_queue,
+        progress_bar,
+        samtools,
+        q,
+        size,
+        regions,
+        verbose,
+    ):
         Process.__init__(self)
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -75,9 +102,19 @@ class Binner(Process):
                 self.task_queue.task_done()
                 break
 
-            self.progress_bar.progress(advance=False, msg="{} starts on {} for {})".format(self.name, next_task[1], next_task[2]))
-            bins = self.binChr(bamfile=next_task[0], samplename=next_task[1], chromosome=next_task[2])
-            self.progress_bar.progress(advance=True, msg="{} ends on {} for {})".format(self.name, next_task[1], next_task[2]))
+            self.progress_bar.progress(
+                advance=False,
+                msg='{} starts on {} for {})'.format(self.name, next_task[1], next_task[2]),
+            )
+            bins = self.binChr(
+                bamfile=next_task[0],
+                samplename=next_task[1],
+                chromosome=next_task[2],
+            )
+            self.progress_bar.progress(
+                advance=True,
+                msg='{} ends on {} for {})'.format(self.name, next_task[1], next_task[2]),
+            )
             self.task_queue.task_done()
             self.result_queue.put(bins)
         return
@@ -90,9 +127,19 @@ class Binner(Process):
             while start < end:
                 stop = min(start + self.size, end)
                 if start > 0:
-                    n_reads = sam.count(chromosome, start=start-1, stop=stop, read_callback=read_callback)
+                    n_reads = sam.count(
+                        chromosome,
+                        start=start - 1,
+                        stop=stop,
+                        read_callback=read_callback,
+                    )
                 else:
-                    n_reads = sam.count(chromosome, start=0, stop=stop, read_callback=read_callback)
+                    n_reads = sam.count(
+                        chromosome,
+                        start=0,
+                        stop=stop,
+                        read_callback=read_callback,
+                    )
                 bins.append((samplename, chromosome, max(start, 1), stop, str(n_reads)))
                 start += self.size
         return list(bins)

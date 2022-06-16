@@ -8,6 +8,7 @@ class ConfigSection(object):
     that tries to infer the types of values, and makes them available as attributes
     Currently int/float/str are supported.
     """
+
     def __init__(self, config, section_proxy):
         self.config = config
         self.name = section_proxy.name

@@ -73,4 +73,3 @@ combine-counts has some main parameters; the main values of these parameters all
 
 ## Example usage
 `hatchet combine-counts -b baf/bulk.1bed -o abin/bulk.bb -j 24 -V hg19 -A array -t array/total.tsv -V hg19`
-

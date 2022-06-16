@@ -56,10 +56,10 @@ double Worker::solve()
     unsigned int iter_convergence = 0;
     unsigned int iter = 0;
     bool first = true;
-    
+
     std::pair<IntMatrix, IntMatrix> hotstart;
     hotstart = IlpSubset::firstHotStart(_FA, _FB, _m, _k, _n, _cmax, _d, _base, _ampdel, _cn);
-    
+
     while((iter_convergence < _iterConvergence) && (iter < _maxIter))
     {
         g_mutex.lock();
@@ -71,13 +71,13 @@ double Worker::solve()
         carch.hotStart(hotstart.first, hotstart.second);
         bool status = carch.solve(_timeLimit, _memoryLimit, _nrThreads);
         assert(status);
-        
+
         _allObjC.push_back(carch.getObjs()[0]);
         _allCA.push_back(carch.getACNs()[0]);
         _allCB.push_back(carch.getBCNs()[0]);
         hotstart = std::make_pair(_allCA.back(), _allCB.back());
         //assert(first || _allObjC.back() - TOL <= carch.getObjs()[0]);
-        
+
         if(_v >= VERBOSITY_t::VERBOSE)
         {
             std::lock_guard<std::mutex> lock(g_output_mutex);
@@ -86,16 +86,16 @@ double Worker::solve()
             snprintf(buf, 2014, "%d\t%d\t%s\t%f\t%f\t%f", _seedIndex, iter, "C", _allObjC.back(), carch.gap(), carch.runtime());
             coordinate_out << buf << std::endl;
         }
-        
+
         g_mutex.lock();
         IlpSubset uarch(_n, _m, _k, _cmax, _d, _mu, _base, _ampdel, _cn, _FA, _FB, _bins, _v);
         g_mutex.unlock();
-        
+
         uarch.fixC(_allCA.back(), _allCB.back());
         uarch.init();
         status = uarch.solve(_timeLimit, _memoryLimit, _nrThreads);
         assert(status);
-        
+
         _allObjU.push_back(uarch.getObjs()[0]);
         _allU.push_back(uarch.getUs()[0]);
         //assert(first || _allObjU.back() - TOL <= carch.getObjs()[0]);
@@ -106,7 +106,7 @@ double Worker::solve()
         } else {
             iter_convergence = 0;
         }
-        
+
         if(_v >= VERBOSITY_t::VERBOSE)
         {
             std::lock_guard<std::mutex> lock(g_output_mutex);
@@ -115,11 +115,10 @@ double Worker::solve()
             snprintf(buf, 2014, "%d\t%d\t%s\t%f\t%f\t%f", _seedIndex, iter, "U", _allObjU.back(), 0.0, uarch.runtime());
             coordinate_out << buf << std::endl;
         }
-        
+
         first = false;
         ++iter;
     }
     assert(iter_convergence >= _iterConvergence | iter == _maxIter);
     return _allObjU.back();
 }
-

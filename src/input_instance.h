@@ -6,69 +6,69 @@
 
 class InputInstance
 {
-    
+
 public:
     InputInstance();
-    
+
     friend std::ostream& operator<<(std::ostream& out, const InputInstance& instance);
     friend std::istream& operator>>(std::istream& in, InputInstance& instance);
-    
+
     int m() const
     {
         return _m;
     }
-    
+
     int k() const
     {
         return _k;
     }
-    
+
     const DoubleMatrix& R() const
     {
         return _R;
     }
-    
+
     const DoubleMatrix& B() const
     {
         return _B;
     }
-    
+
     const DoubleArray& w() const
     {
         return _w;
     }
-    
+
     const std::set<std::string>& clusters() const
     {
         return _clusters;
     }
-    
+
     const std::map<std::string, int>& clusterToIdx() const
     {
         return _clusterToIdx;
     }
-    
+
     const std::map<int, std::string>& idxToCluster() const
     {
         return _idxToCluster;
     }
-    
+
     const std::set<std::string>& samples() const
     {
         return _samples;
     }
-    
+
     const std::map<std::string, int>& sampleToIdx() const
     {
         return _sampleToIdx;
     }
-    
+
     const std::map<int, std::string>& idxToSample() const
     {
         return _idxToSample;
     }
 
-    
+
 private:
     /// Number of segmental clusters
     int _m;

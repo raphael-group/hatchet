@@ -7,12 +7,12 @@
 class ArgParse
 {
 public:
-    
+
     ArgParse(int argc, char** argv);
-    
+
     std::string help();
     std::string toString();
-    
+
     void setClonalCluster(const CNAssignCluster& inferred);
 
     std::string input() const
@@ -34,22 +34,22 @@ public:
     {
         return _n;
     }
-    
+
     int d() const
     {
         return _d;
     }
-    
+
     int cmax() const
     {
         return _e;
     }
-    
+
     int j() const
     {
         return _j;
     }
-    
+
     int nrSeeds() const
     {
         return _p;
@@ -59,69 +59,69 @@ public:
     {
         return _u;
     }
-    
+
     int m() const
     {
         return _m;
     }
-    
+
     int s() const
     {
         return _s;
     }
-    
+
     int maxiter() const
     {
         return _i;
     }
-    
+
     int rnd() const
     {
         return _r;
     }
-    
+
     CNAssignCluster cn() const
     {
         return _cn;
     }
-    
+
     CNAssignCluster scalingCN() const
     {
         return _scalingcn;
     }
-    
+
     SOLVE_t M() const
     {
         return _M;
     }
-    
+
     VERBOSITY_t v() const
     {
         return _v;
     }
-    
+
     const std::string o() const
     {
         return _o;
     }
-    
+
     double diploidThreshold() const
     {
         return _t;
     }
-    
+
     int base() const
     {
         return _base;
     }
-    
+
     double forceAMPDEL() const
     {
         return _f;
     }
-    
+
 private:
-    
+
     /// Number of arguments
     int _argc;
     /// Arguments
@@ -171,14 +171,14 @@ private:
     int _base;
     ///
     bool _f;
-    
+
     /// Set of total arguments
     std::set<std::string> _args;
     /// Map of boolean to record the presence of required arguments
     std::map<std::string, bool> _required;
     /// Map of boolean to record the present of optional arguments
     std::map<std::string, bool> _optional;
-    
+
     void parse();
     void parseOptional(const std::string &arg, const std::string &value);
     void parseClonalCopyNumbers(const std::string &value);
