@@ -88,14 +88,14 @@ class Worker:
         task_queue.join()
 
         try:
-            _results = []
+            _results = {}
             for handler_id, handler_result in [result_queue.get() for _ in range(n_work)]:
                 if isinstance(handler_result, Exception):
                     error_string = ''.join(getattr(handler_result, 'error', []))
                     raise handler_result.__class__(f'HANDLER {handler_id} FAILED\n\n{error_string}')
                 else:
-                    _results.append(handler_result)
-            sorted_results = sorted(_results)
+                    _results[handler_id] = handler_result
+            sorted_results = [_results[k] for k in sorted(_results.keys())]
 
         finally:
             task_queue.close()
