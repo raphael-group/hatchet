@@ -49,10 +49,6 @@ jobs:
         env:
           CXXFLAGS: -pthread
 
-      - name: Flake8 checks
-        run: |
-          flake8 --exclude gurobi902
-
       - name: Pre-commit checks
         run: |
           pre-commit run --all-files

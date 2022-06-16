@@ -105,7 +105,6 @@ setup(
     ],
     extras_require={
         'dev': [
-            'flake8',
             'pre-commit',
             'pytest',
             'pytest-cov',
