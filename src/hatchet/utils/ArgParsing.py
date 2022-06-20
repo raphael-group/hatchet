@@ -1147,23 +1147,15 @@ def parse_phase_snps_arguments(args=None):
     picard_java_flags = config.phase_snps.picard_java_flags
     picard_bin_path = os.path.join(picard_dir, 'picard')
     picard_jar_path = os.path.join(picard_dir, 'picard.jar')
-    if os.path.exists(picard_bin_path):
-        ensure(
-            which(picard_bin_path) is not None,
-            (
-                'The picard executable was not found or is not executable. Please install picard (e.g., conda install '
-                '-c bioconda picard) and/or supply the path to the executable.'
-            ),
-        )
+    if which(picard_bin_path) is not None:
         picard = f'{picard_bin_path} {picard_java_flags}'
-
     elif os.path.exists(picard_jar_path):
         picard = f'java {picard_java_flags} -jar {picard_jar_path}'
     else:
         error(
             (
                 'The picard executable was not found or is not executable. Please install picard (e.g., conda '
-                'install -c bioconda picard) and/or supply the path to the executable.'
+                'install -c bioconda picard) and/or supply the path to the picard executable or jar file.'
             ),
             raise_exception=True,
         )
