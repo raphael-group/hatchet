@@ -156,7 +156,40 @@ def read_bb(bbfile, use_chr = True, compressed = False):
         
     return tracks, bb.sort_values(by = ['#CHR', 'START', 'SAMPLE']), sample_labels, chr_labels
 
-def hmm_model_select(tracks, minK = 20, maxK = 50, tau = 10e-6, tmat = 'diag', decode_alg = 'viterbi', covar = 'diag', seed = 0):
+def hmm_model_select(tracks, minK = 20, maxK = 50, tau = 10e-6, tmat = 'diag', decode_alg = 'map', covar = 'diag', seed = 0):
+    """
+        Fits an HMM with Gaussian emissions to copy-number bins while performing model selection over the number K of hidden states (i.e., clusters).
+
+        Args:
+            tracks: list of length L where each element is an ndarray with shape (n_i, d) in which each row represents the d-dimensional vector of values for a bin
+                Conventionally, each element of <tracks> corresponds to a chromosome arm.
+                This function assumes that 
+                    a) dimensions 1...d are independent
+                    b) each element of <tracks> is an independent sample from the HMM (i.e., an independent string)
+            minK: minimum number K of hidden states
+            maxK: maximum number K of hidden states
+            tau: initial value for off-diagonal elements of transition matrix
+            tmat: format of transition matrix
+                fixed: fix off-diagonal elements=tau
+                diag (default): initialize with off-diagonal elements=tau and learn tau in Baum-Welch
+                free: initialize with off-diagonal elements=tau and allow elements to vary freely
+            decode_alg: method used to infer hidden state labels after model fitting
+                viterbi - Viterbi algorithm, i.e., maximum-likelihood sequence of hidden states 
+                map (default) - maximum a posteriori estimate, i.e., maximize the posterior probability of each hidden state
+            covar: format of Gaussian covariance matrix, implemented in hmmlearn.hmm.GaussianHMM class. From their docs:
+                ”spherical” — each state uses a single variance value that applies to all features.
+                ”diag” (default) — each state uses a diagonal covariance matrix.
+                ”full” — each state uses a full (i.e. unrestricted) covariance matrix.
+                ”tied” — all states use the same full covariance matrix.
+
+        Returns: 5-tuple of:
+            best_score: silhouette score of best-scoring model
+            best_model: HMM object of best-scoring model
+            best_labels: MAP labels produced by best-scoring model
+            best_K: number of hidden states in best-scoring model
+            results: dictionary of K:(LL of MAP estimates, silhouette score, labels) for all K tested
+    """
+
     assert tmat in ['fixed', 'diag', 'free']
     assert decode_alg in ['map', 'viterbi']
     
@@ -283,10 +316,10 @@ def form_seg(bbc, balanced_threshold):
         rd = df.RD.mean()
         nsnps = df['#SNPS'].sum()
         cov = df.COV.mean()
-        a = np.sum(np.minimum(df.ALPHA, df.BETA))
-        b = np.sum(np.maximum(df.ALPHA, df.BETA))
-        baf = a / (a + b)
-        baf = baf if (0.5 - baf) > balanced_threshold else 0.5
+        a = np.sum(df.ALPHA)
+        b = np.sum(df.BETA)
+        baf = b / (a + b)
+        baf = baf if np.abs(baf - 0.5) > balanced_threshold else 0.5
         segments.append([key, sample, nbins, rd, nsnps, cov, a, b, baf])
     seg = pd.DataFrame(segments, columns = ['#ID', 'SAMPLE', '#BINS', 'RD', '#SNPS', 'COV', 'ALPHA', 'BETA', 'BAF'])
     return seg
