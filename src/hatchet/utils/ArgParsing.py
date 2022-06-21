@@ -1154,8 +1154,9 @@ def parse_phase_snps_arguments(args=None):
     else:
         error(
             (
-                'The picard executable was not found or is not executable. Please install picard (e.g., conda '
-                'install -c bioconda picard) and/or supply the path to the picard executable or jar file.'
+                'Neither picard nor picard.jar were found in the given location. Please install picard'
+                '(e.g., conda install -c bioconda picard) and/or supply the path to the executable'
+                ' or JAR file.'
             ),
             raise_exception=True,
         )
@@ -1163,6 +1164,19 @@ def parse_phase_snps_arguments(args=None):
     bcftools = os.path.join(args.bcftools, 'bcftools')
     if which(bcftools) is None:
         raise ValueError(error('bcftools has not been found or is not executable!'))
+
+    if args.refversion not in ('hg19', 'hg38'):
+        error(
+            'The reference genome version of your samples is not "hg19" or "hg38".',
+            raise_exception=True,
+        )
+
+    rpd = args.refpaneldir
+    if not os.path.exists(os.path.join(rpd, '1000GP_Phase3', '1000GP_Phase3.sample')):
+        error(
+            'Please download the 1000GP reference panel before proceeding',
+            raise_exception=True,
+        )
 
     # Check that SNP files exist when given in input
     snplists = {}

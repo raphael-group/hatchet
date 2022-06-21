@@ -20,20 +20,8 @@ def main(args=None):
     bgzip = args['bgzip']
     outdir = args['outdir']
 
-    if args['refvers'] not in ('hg19', 'hg38'):
-        error(
-            'The reference genome version of your samples is not "hg19" or "hg38".',
-            raise_exception=True,
-        )
-
     rpd = args['refpaneldir']
-    if not os.path.exists(os.path.join(rpd, '1000GP_Phase3.sample')):
-        error(
-            'Please download the 1000GP reference panel before proceeding',
-            raise_exception=True,
-        )
-
-    panel = rpd
+    panel = os.path.join(rpd, '1000GP_Phase3')
 
     # path to hg19, 1000GP in hg19 coords, potentially needed for liftover
     hg19_path = ''
