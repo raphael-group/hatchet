@@ -478,17 +478,17 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
 
         bin_snps = collapse_blocks(bin_snps, *phase_data, bin_snps.iloc[0].CHR)
 
-        alts = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'ALT').to_numpy()
-        refs = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'REF').to_numpy()
+        alts = bin_snps.pivot(index='SAMPLE', columns='START', values='ALT').to_numpy()
+        refs = bin_snps.pivot(index='SAMPLE', columns='START', values='REF').to_numpy()
         n_snps = (bin_snps['#SNPS'].sum() / len(bin_snps.SAMPLE.unique())).astype(np.uint32)
 
     else:
-        alts = bin_snps.pivot(index = 'POS', columns = 'START', values = 'ALT').to_numpy()
-        refs = bin_snps.pivot(index = 'POS', columns = 'START', values = 'REF').to_numpy()
+        alts = bin_snps.pivot(index='POS', columns='START', values='ALT').to_numpy()
+        refs = bin_snps.pivot(index='POS', columns='START', values='REF').to_numpy()
         n_snps = alts.shape[1]
 
-    runs = {b:multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)}
-    bafs, phases, ll = max(runs.values(), key = lambda x: x[-1])
+    runs = {b: multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)}
+    bafs, phases, ll = max(runs.values(), key=lambda x: x[-1])
 
     # Need hard phasing to assign ref/alt reads to alpha/beta
     phases = np.round(phases).astype(np.int8)
