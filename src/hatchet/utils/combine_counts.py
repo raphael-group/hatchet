@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from scipy.stats import binom, norm
-from scipy.special import logsumexp, softmax
+from scipy.special import softmax
 import gzip
 import subprocess
 import traceback
@@ -130,7 +130,7 @@ def read_snps(baf_file, ch, all_names, phasefile = None):
     all_names = all_names[1:] # remove normal sample -- not looking for SNP counts from normal
 
     # Read in HATCHet BAF table
-    all_snps = pd.read_table(baf_file, names = ['CHR', 'POS', 'SAMPLE', 'ALT', 'REF'], 
+    all_snps = pd.read_table(baf_file, names = ['CHR', 'POS', 'SAMPLE', 'REF', 'ALT'], 
                              dtype = {'CHR':object, 'POS':np.uint32, 'SAMPLE':object, 
                                       'ALT':np.uint32, 'REF':np.uint32})
     
@@ -425,10 +425,14 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
         phase_data = merge_phasing(bin_snps, all_phase_data)
         
         bin_snps = collapse_blocks(bin_snps, *phase_data, bin_snps.iloc[0].CHR)
-    
-    alts = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'ALT').to_numpy()
-    refs = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'REF').to_numpy()
-    
+
+        alts = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'ALT').to_numpy()
+        refs = bin_snps.pivot(index = 'SAMPLE', columns = 'START', values = 'REF').to_numpy()
+        
+    else:
+        alts = bin_snps.pivot(index = 'POS', columns = 'START', values = 'ALT').to_numpy()
+        refs = bin_snps.pivot(index = 'POS', columns = 'START', values = 'REF').to_numpy()
+
     runs = {b:multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)}
     bafs, phases, ll = max(runs.values(), key = lambda x: x[-1])
     
@@ -805,7 +809,7 @@ def run_chromosome(baffile, all_names, chromosome, outfile, centromere_start, ce
                
             # Infer BAF
             if xy:
-                # TODO: compute BAFs for XX
+                # TODO: compute BAFs for XY
                 dfs_p = None
                 bafs_p = None
             else:
