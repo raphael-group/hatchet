@@ -1,7 +1,7 @@
 # cluster-bins
 
 This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample.
-cluster-bins uses a non-parametric Gaussian mixture model (GMM) (scikit-learn implementation) for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see Main parameters below).
+cluster-bins uses a non-parametric Gaussian mixture model (GMM) (scikit-learn implementation) for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see [Main Parameters](#main-parameters) below).
 
 ## Input
 
