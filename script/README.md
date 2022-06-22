@@ -52,7 +52,7 @@ After the run finishes, go to the `snps` subdirectory within the output director
 `hatchet.ini`. Here you will find a collection of VCF files, one for each chromosome. These must then be phased (e.g.
 using the [Michigan Imputation Server](https://imputationserver.sph.umich.edu/index.html#!)), and the location of the
 phased VCF file specified in `hatchet.ini` as the `phase` variable under the `combine_counts` section. If you use the
-Michigan imputation server: 
+Michigan imputation server:
 
 1. You may have to use `bcftools annotate` to convert between chromosome names (e.g. chr20 -> 20)
 2. Results are always returned in hg19 coordinates, so you may need to convert coordinates back to hg38 using e.g.

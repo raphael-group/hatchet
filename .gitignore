@@ -1,15 +1,8 @@
-######## STUFF I ADDED BETWEEN POUND SIGNS
-script/*
-src/hatchet.egg-info/
-src/hatchet/solve
-########
-
 # Temp
 *~
 *.ucn*
-!tests/data/best.bbc.ucn
-!tests/data/best_abin.bbc.ucn
-!tests/data/best_abin_ph.bbc.ucn
+!tests/data/fl/best.bbc.ucn
+!tests/data/fl/results/best.bbc.ucn
 
 # Build directory
 build/

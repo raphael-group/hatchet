@@ -30,4 +30,3 @@ download-panel produces various files for phasing germline SNPs, and performing 
 | hg19ToHg38.no_chr.chain | Chain file for liftover, going form hg19 to hg38, where hg38 chromosomes are named without "chr" prefix |
 | rename_chrs1.txt | File for renaming chromosomes with bcftools, removing the "chr" prefix |
 | rename_chrs2.txt | File for renaming chromosomes with bcftools, adding the "chr" prefix |
-

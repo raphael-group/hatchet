@@ -28,7 +28,7 @@ public:
                       const int timeLimit,
                       const int memoryLimit,
                       const VERBOSITY_t v);
-    
+
 public:
     /// Run the method
     void run();
@@ -37,17 +37,17 @@ public:
     {
         return _objs[_best];
     }
-    
+
     IntMatrix getACN() const
     {
         return _CAs[_best];
     }
-    
+
     IntMatrix getBCN() const
     {
         return _CBs[_best];
     }
-    
+
     DoubleMatrix getU() const
     {
         return _Us[_best];
@@ -92,7 +92,7 @@ private:
     const int _timeLimit;
     /// Memory limit (MB)
     const int _memoryLimit;
-    
+
     /// Dirichlet parameter for generating initial M
     int _sizeBubbles;
     /// All initial seeds
@@ -104,7 +104,7 @@ private:
     /// Mutex
     std::mutex _mutexTasks;
     /// Mutex
-    std::mutex _mutexResults;    
+    std::mutex _mutexResults;
     ///
     DoubleArray _objs;
     ///
@@ -117,7 +117,7 @@ private:
     int _best;
     ///
     const VERBOSITY_t _v;
-    
+
     /// Construct random M
     DoubleMatrix buildRandomU();
     /// Construct random vector summing up to 1
@@ -129,4 +129,3 @@ private:
 };
 
 #endif // _COORDINATE_H_
-

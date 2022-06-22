@@ -69,12 +69,12 @@ ArgParse::ArgParse(int argc, char** argv)
     _optional["-f"] = false;
 
     parse();
-    
+
     if(!_optional.at("-o"))
     {
         _o = base_name(_input);
     }
-    
+
     if(2 * _base > _e && _e != -1)
     {
         throw "Maximum copy number cannot be lower than " + std::to_string(2 * _base) + "!";
@@ -177,7 +177,7 @@ void ArgParse::parse()
             } else {
                 _input = arg;
                 (*_required.find("input")).second = true;
-                
+
                 std::string seg = arg + ".seg";
                 std::ifstream inputSEG(seg.c_str());
                 if(!inputSEG.good())
@@ -187,7 +187,7 @@ void ArgParse::parse()
                     _inputSEG = seg;
                 }
                 inputSEG.close();
-                
+
                 std::string bbc = arg + ".bbc";
                 std::ifstream inputBBC(bbc.c_str());
                 if(!inputBBC.good())
@@ -200,7 +200,7 @@ void ArgParse::parse()
             }
         }
     }
-    
+
     if(_h)
     {
         std::cout << help();
@@ -447,7 +447,7 @@ void ArgParse::parseClonalCopyNumbers(const std::string &value)
     if (tokens.size() == 1)
     {
         _base = 1;
-        
+
         std::vector<std::string> parsed = split(tokens[0], ':');
         if(parsed.size() != 3 || !checkInt(parsed[1]) || !checkInt(parsed[2]))
         {
@@ -455,7 +455,7 @@ void ArgParse::parseClonalCopyNumbers(const std::string &value)
         } else {
             int A = std::stoi(parsed[1]);
             int B = std::stoi(parsed[2]);
-            
+
             if (A + B != 2) {
                 throw "When only one clonal copy number is given, it must be for a diploid cluster with copy number equal to 2 in the format \"ID:1:1\" or \"ID:2:0\"!";
             } else {
@@ -466,7 +466,7 @@ void ArgParse::parseClonalCopyNumbers(const std::string &value)
         }
     } else if (tokens.size() >= 2) {
         _base = 2;
-        
+
         for(auto const& token : tokens)
         {
             std::vector<std::string> parsed = split(token, ':');
@@ -476,14 +476,14 @@ void ArgParse::parseClonalCopyNumbers(const std::string &value)
             } else {
                 int A = std::stoi(parsed[1]);
                 int B = std::stoi(parsed[2]);
-                
+
                 if (_cn.count(parsed[0]) == 0)
                 {
                     _cn.emplace(parsed[0], CNState(A, B));
                 } else {
                     throw "In WGD mode, the first two clonal cluster must refer to two different clusters!";
                 }
-                
+
                 if(_cn.size() == 1)
                 {
                     _scalingcn.emplace(parsed[0], CNState(A, B));
@@ -493,17 +493,17 @@ void ArgParse::parseClonalCopyNumbers(const std::string &value)
                 }
             }
         }
-        
+
         auto it = _scalingcn.begin();
         CNState state1 = it->second;
         std::advance(it, 1);
         CNState state2 = it->second;
-        
+
         if((state1.first + state1.second) == (state2.first + state2.second))
         {
             throw "When two clonal copy numbers are given, they first two must be different in the two segmental clusters!";
         }
-        
+
         for(auto const& ccluster : _cn)
         {
             if(ccluster.second.first + ccluster.second.second == 2)
@@ -512,7 +512,7 @@ void ArgParse::parseClonalCopyNumbers(const std::string &value)
                 break;
             }
         }
-        
+
     } else {
         throw "Please specify only two clonal copy numbers for two clusters!";
     }
@@ -523,4 +523,3 @@ bool ArgParse::checkInt(const std::string &s)
 {
     return s.find_first_not_of( "0123456789" ) == std::string::npos;
 }
-

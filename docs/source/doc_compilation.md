@@ -31,4 +31,3 @@ $ cmake .. \
         -DGUROBI_INCLUDE_DIR=/to/gurobiXXX/YY/include \
         -DGUROBI_LIB=/to/gurobiXXX/YY/lib/libgurobiZZ.QQ
 ```
-
