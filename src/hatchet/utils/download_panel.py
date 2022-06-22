@@ -21,7 +21,7 @@ def main(args=None):
         download(
             url=config.urls.onekgp,
             dirpath=args['refpaneldir'],
-            sentinel_file='1000GP_Phase3.sample',
+            sentinel_file=os.path.join('1000GP_Phase3', '1000GP_Phase3.sample'),
         )
     else:
         error(
