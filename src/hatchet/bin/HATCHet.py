@@ -452,10 +452,10 @@ def main(args=None):
         v=args['v'],
     )
 
-    sys.stderr.write(log('# Finding the neutral diploid/tetraploid cluster\n'))
-    neutral = findNeutralCluster(seg=fseg, size=size, td=args['td'], samples=samples, v=args['v'])
-
     if not args['diploid'] and not args['tetraploid']:
+        sys.stderr.write(log('# Finding the neutral diploid/tetraploid cluster\n'))
+        neutral = findNeutralCluster(seg=fseg, size=size, td=args['td'], samples=samples, v=args['v'])
+
         sys.stderr.write(log('# Running diploid\n'))
         diploidObjs = runningDiploid(neutral=neutral, args=args)
 
@@ -521,7 +521,24 @@ def main(args=None):
 
     elif args['diploid']:
         sys.stderr.write(log('# Running diploid\n'))
-        diploidObjs = runningDiploid(neutral=neutral, args=args)
+
+        if args['clonal'] is not None:
+            sys.stderr.write(log('# Using the first given clonal cluster for diploid scaling\n'))
+            clonal = args['clonal']
+            first_clonal = clonal.split(',')[0]
+            tkns = first_clonal.split(':')
+            assert (
+                int(tkns[1]) == 1 and int(tkns[2]) == 1
+            ), 'First clonal cluster must be the diploid cluster used for scaling'
+
+            neutral = None
+        else:
+            sys.stderr.write(log('# Finding the neutral diploid cluster\n'))
+            neutral = findNeutralCluster(seg=fseg, size=size, td=args['td'], samples=samples, v=args['v'])
+
+            clonal = None
+
+        diploidObjs = runningDiploid(neutral=neutral, args=args, clonal=clonal)
 
         sys.stderr.write(log('# Selecting best diploid solution\n'))
         selectDiploid(
@@ -759,9 +776,13 @@ def findNeutralCluster(seg, size, td, samples, v):
     return neutral
 
 
-def runningDiploid(neutral, args):
+def runningDiploid(neutral, args, clonal=None):
     results = []
-    args['c'] = '{}:1:1'.format(neutral)
+    if clonal is not None:
+        args['c'] = clonal
+    else:
+        args['c'] = '{}:1:1'.format(neutral)
+
     args['e'] = args['eD']
     basecmd = makeBaseCMD(args, args['eD']) + ' -c ' + args['c']
 
@@ -971,11 +992,11 @@ def parseClonalClusters(clonal, fseg, neutral, size, samples, v):
     if len(given) < 2:
         raise RuntimeError(error('At least two clonal clusters must be provided!'))
 
-    for e in given:
+    for i, e in enumerate(given):
         p = e.split(':')
         if len(p) != 3:
             raise RuntimeError(error('Wrong format of clonal clusters!'))
-        if p[0] not in set(fseg):
+        if i < 2 and p[0] not in set(fseg):   # check only the first 2 clusters, used for scaling
             raise RuntimeError(error('A specified clonal cluster does not exist or is not selected! {}'.format(p[0])))
 
     tmp = given[0].split(':')
