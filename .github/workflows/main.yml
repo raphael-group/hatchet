@@ -128,7 +128,7 @@ jobs:
         run: |
           wget https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz
           tar zxvf 1000GP_Phase3.tgz --wildcards *chr22* *sample
-          echo "HATCHET_DOWNLOAD_PANEL_REFPANELDIR=$(realpath 1000GP_Phase3)" >> $GITHUB_ENV
+          echo "HATCHET_DOWNLOAD_PANEL_REFPANELDIR=$(pwd)" >> $GITHUB_ENV
 
       - name: HATCHet Check
         run: |
