@@ -58,7 +58,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: testdata
-          key: hatchetcache01
+          key: hatchetcache02
 
       - name: Download Testing Data
         if: steps.cache-test-data.outputs.cache-hit != 'true'
@@ -122,11 +122,14 @@ jobs:
           $HATCHET_PATHS_SAMTOOLS/samtools dict hg19.fa > hg19.dict
           echo "HATCHET_PATHS_REFERENCE=$(realpath hg19.fa)" >> $GITHUB_ENV
 
+      # Instead of downloading the entire 1000GP_Phase3 panel (huge) using
+      # wget https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz
+      # we download equivalent data only for chr22, from zenodo
       - name: Download 1000GP reference panel
         working-directory: testdata
         if: steps.cache-test-data.outputs.cache-hit != 'true'
         run: |
-          wget https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz
+          python3 -m zenodo_get 10.5281/zenodo.6709541
           tar zxvf 1000GP_Phase3.tgz --wildcards *chr22* *sample
           echo "HATCHET_DOWNLOAD_PANEL_REFPANELDIR=$(pwd)" >> $GITHUB_ENV
 
