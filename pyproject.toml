@@ -37,7 +37,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pre-commit",
-    "pytest",
+    "pytest>=6",
     "pytest-cov",
     "mock",
     "coverage",
@@ -65,3 +65,10 @@ include = ["hatchet*"]
 [tool.setuptools.package-data]
 hatchet = ["hatchet.ini"]
 "hatchet.data" = ["*"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-rA"
+testpaths = [
+    "tests"
+]
