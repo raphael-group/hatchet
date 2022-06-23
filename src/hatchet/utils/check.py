@@ -62,11 +62,12 @@ def _check_picard():
     picard_dir = config.paths.picard
     picard_java_flags = config.phase_snps.picard_java_flags
     picard_bin_path = os.path.join(picard_dir, 'picard')
-    if os.path.exists(picard_bin_path):
+    picard_jar_path = os.path.join(picard_dir, 'picard.jar')
+    if shutil.which(picard_bin_path) is not None:
         exe_path = f'{picard_dir}'
         exe_name = 'picard'
         args_pre = (picard_java_flags,)
-    else:
+    elif os.path.exists(picard_jar_path):
         exe_path = ''  # Assume java is on PATH
         exe_name = 'java'
         args_pre = (
@@ -74,6 +75,8 @@ def _check_picard():
             '-jar',
             os.path.join(picard_dir, 'picard.jar'),
         )
+    else:
+        return False
 
     with tempfile.TemporaryDirectory() as tempdirname:
         with importlib.resources.path(hatchet.data, 'sample.sorted.bam') as bam_path:
@@ -125,9 +128,10 @@ CHECKS = {
         (
             'picard',
             '',
-            'Please install picard.jar and ensure that its location is specified in hatchet.ini as '
-            'config.paths.picard, or its location specified using the environment variable HATCHET_PATHS_PICARD. '
-            'Also make sure "java" is on your path',
+            'Please install picard and ensure that the location of the picard executable is on PATH, or'
+            'specified (either in hatchet.ini or using the environment variable HATCHET_PATHS_PICARD).'
+            'If you have picard.jar installed instead, you can alternatively specify its location'
+            'instead (as long as "java" is on your PATH).',
             _check_picard,
         ),
         (
