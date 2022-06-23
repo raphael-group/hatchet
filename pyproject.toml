@@ -1,3 +1,67 @@
 [build-system]
-requires = ["setuptools>=42", "wheel", "cmake>=2.8"]
+requires = ["setuptools>=61.0", "wheel", "cmake>=2.8"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "hatchet"
+version = "1.0.0"
+authors = [
+  { name="Simone Zaccaria", email="s.zaccaria@ucl.ac.uk" },
+  { name="Ben Raphael", email="braphael@cs.princeton.edu" },
+  { name="Matt Myers", email="mm63@cs.princeton.edu" },
+  { name="Brian Arnold", email="brianjohnarnold@gmail.com" },
+  { name="Vineet Bansal", email="vineetb@princeton.edu" }
+]
+description = "A package to infer allele and clone-specific copy-number aberrations (CNAs)."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+    "biopython",
+    "hmmlearn",
+    "matplotlib",
+    "pandas",
+    "psutil",
+    "pyomo",
+    "pysam",
+    "requests",
+    "seaborn",
+    "scikit-learn",
+    "scipy"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "mock",
+    "coverage",
+    "numpydoc",
+    "sphinx",
+    "sphinxcontrib-bibtex<2.0.0",
+    "sphinx-rtd-theme",
+    "recommonmark",
+    "sphinx-markdown-tables",
+]
+
+[project.scripts]
+hatchet = "hatchet.__main__:main"
+
+[project.urls]
+"Homepage" = "https://github.com/raphael-group/hatchet"
+
+[tool.setuptools]
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["hatchet*"]
+
+[tool.setuptools.package-data]
+hatchet = ["hatchet.ini"]
+"hatchet.data" = ["*"]

@@ -70,52 +70,6 @@ class CMakeBuild(build_ext):
 
 
 setup(
-    name='hatchet',
-    packages=[
-        'hatchet',
-        'hatchet.utils',
-        'hatchet.utils.solve',
-        'hatchet.bin',
-        'hatchet.data',
-    ],
-    version='0.4.14',
-    package_dir={'': 'src'},
-    package_data={'hatchet': ['hatchet.ini'], 'hatchet.data': ['*']},
     ext_modules=[] if os.environ.get('HATCHET_BUILD_NOEXT', '0') == '1' else [CMakeExtension('hatchet.solve')],
     cmdclass=dict(build_ext=CMakeBuild),
-    zip_safe=False,
-    python_requires='>=3.7',
-    entry_points={
-        'console_scripts': [
-            'hatchet = hatchet.__main__:main',
-        ],
-    },
-    install_requires=[
-        'biopython',
-        'hmmlearn',
-        'matplotlib',
-        'pandas',
-        'psutil',
-        'pyomo',
-        'pysam',
-        'requests',
-        'seaborn',
-        'scikit-learn',
-        'scipy',
-    ],
-    extras_require={
-        'dev': [
-            'pre-commit',
-            'pytest',
-            'pytest-cov',
-            'mock',
-            'coverage',
-            'numpydoc',
-            'sphinx',
-            'sphinxcontrib-bibtex<2.0.0',
-            'sphinx-rtd-theme',
-            'recommonmark',
-            'sphinx-markdown-tables',
-        ]
-    },
 )
