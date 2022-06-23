@@ -53,18 +53,22 @@ Each step `<step>` of HATCHet can be run with the following command within a HAT
 hatchet <step>
 ```
 
+**Note**: This version of HATCHet uses variable-width bins to ensure that each bin has comparable B-allele frequency (BAF) signal from heterogeneous germline SNPs. To run the older versions of HATCHet with fixed-width bins, use [*count-reads-fw*](doc_count_reads_fw.html) (formerly binBAM) instead of *count-reads* and [*combine-counts-fw*](doc_combine_counts_fw.html) (formerly comBBo) instead of *combine-counts*.
+
 *Older versions of HATCHet used different names for these steps. The `Old Name` column lists those names.*
 
 | Order | Step | Old Name | Description |
 |-------|------|----------|-------------|
-| (1)   | [*count-reads*](doc_count_reads.html)       | binBAM   | This step splits the human reference genome into bins, i.e. fixed-size small genomic regions, and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample. |
-| (2)   | [*count-alleles*](doc_count_alleles.html)   | deBAF    | This step calls heterozygous germline SNPs from the matched-normal sample and counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample. |
-| (3)   | [*combine-counts*](doc_combine_counts.html) | comBBo   | This step combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin. |
-| (4)   | [*cluster-bins*](doc_cluster_bins.html)     | cluBB    | This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample. |
+| (1)   | [*count-alleles*](doc_count_alleles.html)   | deBAF    | This step calls heterozygous germline SNPs from the matched-normal sample and counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample. |
+| (2)   | [*count-reads*](doc_count_reads.html)       | N/A   | This step splits the human reference genome into very small regions (representing candidate bins) according to germline SNP positions, and counts the number of total reads aligned to each region in each of the tumor samples and in the matched normal sample. |
+| (3)   | [*combine-counts*](doc_combine_counts.html) | N/A   | This step constructs genomic bins with variable sizes, and combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin. |
+| (4)   | [*cluster-bins*](doc_cluster_bins.html)\*     | cluBB    | This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample. |
 | (5)   | [*plot-bins*](doc_plot_bins.html)           | BBot     | This step produces informative plots concerning the computed RDRs, BAFs, and clusters. The information produced by this step are important to validate the compute clusters of genomic regions. |
 | (6)   | [*compute-cn*](doc_compute_cn.html)         | hatchet  | This step computes allele-specific fractional copy numbers, solves a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions, and deploys a model-selection criterion select the number of clone by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication. |
 | (7)   | [*plot-cn*](doc_plot_cn.html)               | BBeval   | This step analyzes the inferred copy-number states and clone proportions and produces informative plots jointly considering all samples from the same patient. In addition, this step can also combine results obtained for different patients and perform integrative analysis. |
 | (8)   | [*check*](doc_check.html)     | check-solver           | This step runs the `compute_cn` and other steps on a set of small data files pre-packaged with HATCHet, and is a quick way to verify if your solver and other 3rd party dependencies are working correctly. |
+
+\*Users can alternatively run [*cluster-bins-loc*](doc_cluster_bins_loc.html) to use an early version of our new locality-based clustering. This module has the same input and output files as the standard *cluster-bins*.
 
 ## Recommendations and quality control
 <a name="recommendations"></a>

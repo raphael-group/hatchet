@@ -1,6 +1,6 @@
 # Running HATCHet in the cloud
 
-HATCHet is a Docerizable application and comes with a Dockerfile for easy deployment. We have also made HATCHet 
+HATCHet is a Docerizable application and comes with a Dockerfile for easy deployment. We have also made HATCHet
 available as a publicly accessible Docker image at the [Google Cloud Container Registry](https://cloud.google.com/container-registry).
 This facilitates running HATCHet in the cloud without worrying about downloading large BAM files, and without having to
 build and install HATCHet locally.

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ master, develop, abin* ]
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master, develop, abin* ]
 
 jobs:
   run_tests:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [3.7, 3.8]
+        python: [3.7, 3.8, 3.9]
 
     steps:
       - uses: actions/checkout@v2
@@ -23,23 +23,6 @@ jobs:
         run: |
           pip3 install wheel --upgrade
           pip3 install setuptools --upgrade
-
-      - name: Cache Testing Data
-        id: cache-test-data
-        uses: actions/cache@v2
-        with:
-          path: testdata
-          key: testdata
-
-      - name: Download Testing Data
-        if: steps.cache-test-data.outputs.cache-hit != 'true'
-        run: |
-          pip3 install zenodo-get
-          python3 -m zenodo_get 10.5281/zenodo.4046906 --output-dir=testdata
-
-      - name: Install coinor-cbc
-        run: |
-          sudo apt install coinor-cbc
 
       - name: Install Gurobi
         run: |
@@ -55,6 +38,40 @@ jobs:
           echo "GRB_LICENSE_FILE=${GUROBI_HOME}/gurobi.lic" >> $GITHUB_ENV
         continue-on-error: true
 
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install HATCHet with dev dependencies
+        run: |
+          python -m pip install .[dev]
+        env:
+          CXXFLAGS: -pthread
+
+      - name: Pre-commit checks
+        run: |
+          pre-commit run --all-files
+
+      - name: Cache Testing Data
+        id: cache-test-data
+        uses: actions/cache@v2
+        with:
+          path: testdata
+          key: hatchetcache01
+
+      - name: Download Testing Data
+        if: steps.cache-test-data.outputs.cache-hit != 'true'
+        run: |
+          pip3 install zenodo-get
+          python3 -m zenodo_get 10.5281/zenodo.4046906 --output-dir=testdata
+          echo "HATCHET_TESTS_BAM_DIRECTORY=$(realpath testdata)" >> $GITHUB_ENV
+
+      - name: Install coinor-cbc
+        run: |
+          sudo apt install coinor-cbc
+          echo "HATCHET_COMPUTE_CN_SOLVER=cbc" >> $GITHUB_ENV
+
       - name: Install SAMtools
         run: |
           wget https://sourceforge.net/projects/samtools/files/samtools/1.7/samtools-1.7.tar.bz2/download -O samtools-1.7.tar.bz2
@@ -69,7 +86,35 @@ jobs:
           (cd bcftools-1.7 && ./configure && make)
           echo "HATCHET_PATHS_BCFTOOLS=$(realpath bcftools-1.7)" >> $GITHUB_ENV
 
+      - name: Install tabix
+        run: |
+          wget https://sourceforge.net/projects/samtools/files/tabix/tabix-0.2.6.tar.bz2/download -O tabix-0.2.6.tar.bz2
+          bzip2 -d tabix-0.2.6.tar.bz2
+          tar -xvf tabix-0.2.6.tar
+          (cd tabix-0.2.6 && make)
+          echo "HATCHET_PATHS_TABIX=$(realpath tabix-0.2.6)" >> $GITHUB_ENV
+          echo "HATCHET_PATHS_BGZIP=$(realpath tabix-0.2.6)" >> $GITHUB_ENV
+
+      - name: Install mosdepth
+        run: |
+          wget https://github.com/brentp/mosdepth/releases/download/v0.3.2/mosdepth -O mosdepth
+          chmod 775 mosdepth
+          echo "HATCHET_PATHS_MOSDEPTH=$(pwd)" >> $GITHUB_ENV
+
+      - name: Install picard
+        run: |
+          wget https://github.com/broadinstitute/picard/releases/download/2.26.2/picard.jar -O picard.jar
+          echo "HATCHET_PATHS_PICARD=$(pwd)" >> $GITHUB_ENV
+
+      - name: Install shapeit2
+        run: |
+          wget https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.v2.r904.glibcv2.17.linux.tar.gz -O shapeit.v2.r904.glibcv2.17.linux.tar.gz
+          tar -xf shapeit.v2.r904.glibcv2.17.linux.tar.gz
+          echo "HATCHET_PATHS_SHAPEIT=$(realpath shapeit.v2.904.3.10.0-693.11.6.el7.x86_64/bin)" >> $GITHUB_ENV
+
       - name: Download and index hg19.fa
+        working-directory: testdata
+        if: steps.cache-test-data.outputs.cache-hit != 'true'
         run: |
           wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
           gunzip hg19.fa.gz
@@ -77,26 +122,21 @@ jobs:
           $HATCHET_PATHS_SAMTOOLS/samtools dict hg19.fa > hg19.dict
           echo "HATCHET_PATHS_REFERENCE=$(realpath hg19.fa)" >> $GITHUB_ENV
 
-      - name: Set Envvars
+      - name: Download 1000GP reference panel
+        working-directory: testdata
+        if: steps.cache-test-data.outputs.cache-hit != 'true'
         run: |
-          echo "HATCHET_TESTS_BAM_DIRECTORY=$(realpath testdata)" >> $GITHUB_ENV
-          echo "HATCHET_COMPUTE_CN_SOLVER=cbc" >> $GITHUB_ENV
+          wget https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.tgz
+          tar zxvf 1000GP_Phase3.tgz --wildcards *chr22* *sample
+          echo "HATCHET_DOWNLOAD_PANEL_REFPANELDIR=$(pwd)" >> $GITHUB_ENV
 
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install Tox and any other packages
+      - name: HATCHet Check
         run: |
-          python -m pip install coverage tox tox-gh-actions
+          hatchet check
 
-      - name: Test with tox
+      - name: Pytest
         run: |
-          tox
-        env:
-          PLATFORM: ${{ matrix.python }}
-          CXXFLAGS: -pthread
+          pytest tests --cov=hatchet
 
       # We may end up with files that have a ':' in their filenames,
       # due to the <chr>:start:end notation of chromosomes we process through SAMtools/BCFtools.
@@ -105,7 +145,7 @@ jobs:
         run: |
           sudo apt install rename
           find tests/out -name "*:*" -exec rename 's|:|-|g' {} \;
- 
+
       - name: Save Pytest Output Data
         uses: actions/upload-artifact@v2
         with:
@@ -115,6 +155,7 @@ jobs:
       - name: Convert coverage
         run: |
           python -m coverage xml
+        continue-on-error: true
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
@@ -131,7 +172,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          lfs: true 
+          lfs: true
 
       - name: Upgrade setuptools
         run: |

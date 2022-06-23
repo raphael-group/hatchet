@@ -1,16 +1,16 @@
 # Tutorial
 
 This tutorial illustrates how to use the complete pipeline through the `hatchet run` command, along with the configuration [hatchet.ini](hatchet.ini) file that stores all the variables the user needs to specify.
+
 The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:
 1. [Preliminaries](#preliminaries)
-2. [Setting up running directory](#rundir)
-3. [count-reads](#count-reads)
-4. [count-alleles](#count-alleles)
-5. [combine-counts](#combine-counts)
-6. [cluster-bins](#cluster-bins)
-7. [plot-bins](#plot-bins)
-8. [compute-cn](#compute-cn)
-9. [plot-cn](#plot-cn)
+2. [count-reads](#count-reads)
+3. [count-alleles](#count-alleles)
+4. [combine-counts](#combine-counts)
+5. [cluster-bins](#cluster-bins)
+6. [plot-bins](#plot-bins)
+7. [compute-cn](#compute-cn)
+8. [plot-cn](#plot-cn)
 
 We suggest you make a copy of the configuration file, place it into the designated running directory, and follow the tutorial.
 
@@ -36,7 +36,7 @@ Each of these are explained further below.
 
 ```shell
 reference = "/path/to/reference.fa"
-reference_version = ""    
+reference_version = ""
 chr_notation = True
 ```
 
@@ -70,22 +70,6 @@ The `size` variable indicates the size or genomic length of bins used to calcula
 
 ***
 
-## count-reads
-<a name="count-reads"></a>
-
-```shell
-python3 -m hatchet count-reads -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BIN} \
-                           -g ${REF} -j ${J} -O ${RDR}normal.1bed -o ${RDR}tumor.1bed \
-                           -t ${RDR}total.tsv |& tee ${RDR}bins.log
-```
-
-`count-reads` computes the read counts in genomic bins of the reference genome from the matched-normal sample `${NORMAL}` and from all tumor samples `${BAMS}` with names `${ALLNAMES}`.
-The size of genomic bins depend on the size of the CNAs that user aims to infer and on the noise in the data.
-More specifically, shorter genomic bins allow to infer more refined CNAs, while larger genomic bins allow to better estimate the values of read-depth ratio (RDR) and B-allele frequency (BAF) for every bin.
-The standard size 50kb typically represents a good compromise in whole-genome sequencing (WGS) data, while larger size (e.g. `200kb` or `250kb`) are better suited for whole-exome sequencing (WES) where we expect a sparser distribution of germline SNPs.
-The reference genome `${REF}` is provided and `${REF}` must have a sequence dictionary file in the same folder, i.e. a file/dictionary with the same name but with a `.dict` extenion; this is used to know the length of the sequenced chromosomes.
-Other simple parameters are also specified including number of parallel threads, output filenames, and the log filename of this step.
-
 ## genotype-snps
 <a name="genotype-snps"></a>
 
@@ -100,10 +84,10 @@ GATK best practices suggest that the maximum should be at least twice the expect
 Observe that WES generally requires higher thresholds (e.g. 100 and 3000).
 Also, an increasing in the minimum threshold allow to improve the quality of the estimated BAF (computed in the next step), while a decreasing  it allows us to consider more SNPs.
 
-## count-alleles
+## [count-alleles](doc_count_alleles.html)
 <a name="count-alleles"></a>
 
-```shell                               
+```shell
 python3 -m hatchet count-alleles -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -r ${REF} \
                           -j ${J} -c ${MINREADS} -C ${MAXREADS} -L ${SNP}*.vcf.gz \
                           -O ${BAF}normal.1bed -o ${BAF}tumor.1bed |& tee ${BAF}bafs.log
@@ -115,18 +99,33 @@ Minimum and maximum thresholds for the read counts of germline SNPs are again sp
 
 Several simple parameters are also specified including: number of parallel threads, output filenames, and the log filename of this step.
 
-## combine-counts
+
+## [count-reads](doc_count_reads.html)
+<a name="count-reads"></a>
+
+```shell
+python3 -m hatchet count-reads -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BAF}tumor.1bed \
+                              -j ${J} -O ${RDR}normal.1bed -O {RDR} -V {REF_VERSION} |& tee ${RDR}bins.log
+```
+
+`count-reads` identifies candidate bin thresholds using the SNPs identified by `count_alleles` (in `${BAF}tumor.1bed `), and counts the number of reads in each tumor sample `${BAMS}` as well as in the normal sample `{$NORMAL}` that fall within each interval as well as the number of reads overlapping each threshold. It uses the centromere locations corresponding the the reference genome version `${REF_VERSION}` (hg19 or hg38) to avoid constructing bins that overlap centromeres. This step produces a gzip-compressed file for each chromosome and each sample in the `${RDR}` directory, as well as an ordered list `${RDR}samples.txt` of sample labels. It also counts the total reads in each of the BAM files and writes it to `${RDR}total.tsv`.
+Other simple parameters are also specified including number of parallel threads, output filenames, and the log filename of this step.
+
+
+## [combine-counts](doc_combine_counts.html)
 <a name="combine-counts"></a>
 
 ```shell
-python3 -m hatchet combine-counts -c ${RDR}normal.1bed -C ${RDR}tumor.1bed -B ${BAF}tumor.1bed \
-                          -t ${RDR}total.tsv -p ${PHASE} -l ${BLOCK} -e ${RANDOM} > ${BB}bulk.bb
+python3 -m hatchet combine-counts -A ${RDR} -t ${RDR}total.tsv -b {BAF}tumor.1bed -o #{BB}bulk.bb \
+                          --msr ${msr} --mtr ${mtr} -j ${J} \
+                          -p ${PHASE} -s ${max_blocksize} -m {max_spb} -a {alpha} # optional phasing args
 ```
 
-combine-counts estimates the read-depth ratio (RDR) and B-Allele frequencies (BAF) from the read counts of all genomic bins from matched-normal sample in `${RDR}normal.1bed`, from the read counts of all genomic bins from all tumor samples in `${RDR}tumor.1bed`, and germline SNPs allele counts in `${BAF}tumor.1bed`. The variables `${PHASE}` and `${BLOCK}` are not described in detail in this tutorial (but see the [script](script/README.md) directory for a brief explanation of how to run HATCHet with phasing. Briefly, when `${PHASE}` specifies the location of a phased VCF file, HATCHet uses this VCF to combined phased SNPS within a haplotype block size of `${BLOCK}`.
-The output from standard output is correspondingly written in a BB file `${BB}bulk.bb`.
+combine-counts constructs genomic bins such that in all samples, each bin has at least `${msr}` SNP-covering reads and at least `${mtr}` total reads. Bins will not have the same width, but using this rule each bin will have comparable RDR and BAF signals for the following clustering steps. The BAF for each bin and the relative phase of all SNPs in the bin are inferred via EM, and the RDR for each bin is computed fom the read count files in the `${RDR}` folder. After this computation, RDR values are normalized using the total reads in each sample (from `${RDR}total.tsv`). As with other HATCHet commands, `-j ${J}` controls the number of parallel processes.
 
-## cluster-bins
+See the [script](script/README.md) directory for a guide on how to run HATCHet with phasing. If a phased VCF file is supplied via `-p, --phase ${PHASE}` (e.g., `-p phase/phased.vcf.gz`), SNPs are merged into blocks before BAF inference. Each block contains at most `${max_spb}` such that no two SNPs in the same block are further apart than `${max_blocksize}`, and such that no two adjacent SNPs have sufficiently different marginal BAF estimates (using significance level `${alpha}` -- higher `${alpha}` means less trust in the phasing results and smaller blocks). Then, blocks are passed to the EM which determines the relative phase of each block.
+
+## [cluster-bins](doc_cluster_bins.html)
 <a name="cluster-bins"></a>
 
 ```shell
@@ -153,7 +152,7 @@ The bootsraping can be controlled by adding the following parameter:
 
 A total of `20` synthetic genomic bins are added only for the clustering by bootstraping each bin and generating RDR and BAF following normal distributions with `0.02` and `0.02`  variances, respectively. These values for `-dR` and `-dB` are specified by default, but the default value for `-u` is 0.
 
-## plot-bins
+## [plot-bins](doc_plot_bins.html)
 <a name="plot-bins"></a>
 
 ```shell
@@ -168,7 +167,7 @@ python3 -m hatchet plot-bins -c CBB ../${BBC}bulk.bbc -tS 0.01
 plot-bins produces informative plots which are described [here](doc_plot_bins.md).
 Many of these plots can be very useful to assess the performance of the various steps of HATCHet, especially in the case of noisy datasets.
 
-## compute-cn
+## [compute-cn](doc_compute_cn.html)
 <a name="compute-cn"></a>
 
 ```shell
@@ -194,7 +193,7 @@ The details of these parameters are the following:
   - Confidence in the presence of a single tumor clone `g`. This value determines the confidence in having a single tumor clone in several of the given samples. The user can investigate the hypothesis that a single tumor clone is present by increasing the confidence, e.g. using values of `0.4, 0.5, ...`. Vice versa, the confidence is lowered by decreasing these values. For example, one can do that to investigate the presence of tumor clones with small CNAs or small proportions.
   - Sensitivity `l`. This value determines the sensitivity of the method. Lower values correspond to higher sensitivities which allow to consider solutions with a higher number of clones. The user can decrease this value for investigating the presence of more tumor clones, especially tumor clones with small different CNAs or present in small proportions.
 
-## plot-cn
+## [plot-cn](doc_plot_cn.html)
 <a name="plot-cn"></a>
 
 ```shell

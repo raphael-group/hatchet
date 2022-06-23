@@ -62,7 +62,7 @@ want to create either a new Conda environment for Python 3 and activate it:
     pip install -U pip
     pip install -U setuptools
     ```
-    
+
 
 6. **Build and install HATCHet**
 
@@ -94,7 +94,7 @@ want to create either a new Conda environment for Python 3 and activate it:
 
 If you wish to use an alternate ILP optimizer, then you do not need a C++ compiler.
 
-In this case, set the `HATCHET_BUILD_NOEXT` environment variable to `1` (using `export HATCHET_BUILD_NOEXT=1`), 
+In this case, set the `HATCHET_BUILD_NOEXT` environment variable to `1` (using `export HATCHET_BUILD_NOEXT=1`),
 set the environment variable `HATCHET_COMPUTE_CN_SOLVER` to a Pyomo-supported solver (see the
 [Using a different Pyomo-supported solver](README.html#usingasolver_other) section of the README for more details)
 and proceed directly to step (4) above.

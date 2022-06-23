@@ -4,7 +4,7 @@ This command of HATCHet runs the `compute_cn` step on a set of small data files 
 If you are unable to run this command, it likely indicates a licensing issue with default (Gurobi) solver. To use alternative solvers, see the
 [Using a different Pyomo-supported solver](README.html#usingasolver_other) section of the README for more details).
 
-Other checks are planned in the future that will check if other 3rd party dependencies are working correctly. You will still only need to run the `check` command to run a series of these diagnostic checks. 
+Other checks are planned in the future that will check if other 3rd party dependencies are working correctly. You will still only need to run the `check` command to run a series of these diagnostic checks.
 
 ## Input
 

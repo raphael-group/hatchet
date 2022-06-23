@@ -38,9 +38,9 @@ results.
 First run `hatchet run hatchet.ini`, but **enable only the first 3 steps** of the HATCHet pipeline in `hatchet.ini`:
 
 ```
-count_reads = True
 genotype_snps = True
 count_alleles = True
+count_reads = True
 combine_counts = False
 cluster_bins = False
 plot_bins = False
@@ -52,7 +52,7 @@ After the run finishes, go to the `snps` subdirectory within the output director
 `hatchet.ini`. Here you will find a collection of VCF files, one for each chromosome. These must then be phased (e.g.
 using the [Michigan Imputation Server](https://imputationserver.sph.umich.edu/index.html#!)), and the location of the
 phased VCF file specified in `hatchet.ini` as the `phase` variable under the `combine_counts` section. If you use the
-Michigan imputation server: 
+Michigan imputation server:
 
 1. You may have to use `bcftools annotate` to convert between chromosome names (e.g. chr20 -> 20)
 2. Results are always returned in hg19 coordinates, so you may need to convert coordinates back to hg38 using e.g.
@@ -70,9 +70,9 @@ Then, run the HATCHet workflow again using `hatchet run hatchet.ini`, after enab
 the HATCHet pipeline. This should have a shorter runtime than when you ran the first 3 steps:
 
 ```
-count_reads = False
 genotype_snps = False
 count_alleles = False
+count_reads = False
 combine_counts = True
 cluster_bins = True
 plot_bins = True

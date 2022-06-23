@@ -130,7 +130,7 @@ If using Gurobi (the default option), make sure that the environmental variable 
 
 If you do not have or wish to use Gurobi (though using Gurobi will be at least twice as fast as any other solver),
 you can use any Pyomo-supported solver by setting the environment variable `HATCHET_COMPUTE_CN_SOLVER` to `cbc`,
-`glpk`, or any other Pyomo-supported solver. For example, `export HATCHET_COMPUTE_CN_SOLVER=cbc`. 
+`glpk`, or any other Pyomo-supported solver. For example, `export HATCHET_COMPUTE_CN_SOLVER=cbc`.
 
 Alternatively, you can set the key `solver` key in the `compute_cn`
 section of your `hatchet.ini` (if using the [hatchet run](doc_runhatchet.html) command) to a specific Pyomo-supported
@@ -150,11 +150,11 @@ HATCHet requires 3 input data files:
 3. A human reference genome. Ideally, one should consider the same human reference genome used to align the sequencing reads in the given BAM files. The most-used human reference genome are available at [GRC](https://www.ncbi.nlm.nih.gov/grc/human) or [UCSC](http://hgdownload.cse.ucsc.edu/downloads.html#human). Observe that human reference genomes use two different notations for chromosomes: either `1, 2, 3, 4, 5 ...` or `chr1, chr2, chr3, chr4, chr5 ...`. One needs to make sure all BAM files and reference genome share that same chromosome notation. When this is not the case, one needs to change the reference to guarantee consistency and needs to re-index the new reference (e.g. using [SAMtools](http://www.htslib.org/workflow/#mapping_to_variant)). Also, HATCHet requires that the name of each chromosome is the first word in each ID such that `>1 [ANYTHING] ... \n>2 [ANYTHING] ... \n>3 [ANYTHING] ...` or `>chr1 [ANYTHING] ... \n>chr2 [ANYTHING] ... \n>chr3 [ANYTHING]`.
 
    For the reference genome, HATCHet requires the existence of a a sequence dictionary (`.dict`), which is part of all standard pipelines for sequencing data, see for example [GATK](https://gatk.broadinstitute.org/hc/en-us/articles/360035531652-FASTA-Reference-genome-format) or [Galaxy](https://galaxyproject.org/admin/data-preparation/). Please note that the sequence dictionary is **NOT** the reference index `.fai`, which is a different structure, has a different function, and it is also recommended.
-   
+
    The dictionary of a reference genome is often included in the available bundles for the reference genomes, see the [example for hg19](ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg19) from Broad Institute. However, the dictionary can also be generated in seconds using either [SAMtools](http://www.htslib.org/doc/samtools-dict.html) or [Picard tools](https://gatk.broadinstitute.org/hc/en-us/articles/360036729911-CreateSequenceDictionary-Picard-).
-   
+
    In the folder where you want to download and index the human genome, the steps would typically be:
-   
+
    ```script
    curl -L https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz | gzip -d > hg19.fa
    samtools faidx hg19.fa

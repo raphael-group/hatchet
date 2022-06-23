@@ -2,8 +2,8 @@
 
 : ex: set ft=markdown ;:<<'```shell' #
 
-The following HATCHet demo represents a guided example of the complete HATCHet pipeline starting from an exemplary dataset of tumour and matched normal 
-[BAM files](https://doi.org/10.5281/zenodo.4046906) publicly available. From this directory, simply run this file through BASH as a standard script to run 
+The following HATCHet demo represents a guided example of the complete HATCHet pipeline starting from an exemplary dataset of tumour and matched normal
+[BAM files](https://doi.org/10.5281/zenodo.4046906) publicly available. From this directory, simply run this file through BASH as a standard script to run
 the complete demo. The demo can also be considered as a guided example of a complete execution and is correspondingly commented.
 
 ## Requirements and set up
@@ -71,13 +71,13 @@ samtools dict data/hg19.fa > data/hg19.dict
 ## Configuring the HATCHet's execution
 
 We follow the template of the HATCHet's [script](../../doc/doc_fullpipeline.md#fullpipelineandtutorial).
- 
+
 1. We specify the correct path to the reference genome and the output folder, and other required flags
 ```shell
 echo '[run]' > hatchet.ini
-echo 'count_reads=True' >> hatchet.ini
 echo 'genotype_snps=True' >> hatchet.ini
 echo 'count_alleles=True' >> hatchet.ini
+echo 'count_reads=True' >> hatchet.ini
 echo 'combine_counts=True' >> hatchet.ini
 echo 'cluster_bins=True' >> hatchet.ini
 echo 'plot_bins=True' >> hatchet.ini
@@ -105,10 +105,8 @@ echo 'samples=TumorSample1 TumorSample2 TumorSample3' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-4. We specify the bin size and min/max coverage for the genotpe_snps step
+4. We specify the min/max coverage for the genotpe_snps step
 ```shell
-echo '[count_reads]' >> hatchet.ini
-echo 'size=50kb' >> hatchet.ini
 echo '[genotype_snps]' >> hatchet.ini
 echo 'mincov=8' >> hatchet.ini
 echo 'maxcov=300' >> hatchet.ini
@@ -122,11 +120,19 @@ echo 'chr_notation=True' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-6. We specify mincov/maxcov for the count_alleles step 
+6. We specify mincov/maxcov for the count_alleles step
 ```shell
 echo '[count_alleles]' >> hatchet.ini
 echo 'mincov=8' >> hatchet.ini
 echo 'maxcov=300' >> hatchet.ini
+:<<'```shell' # Ignore this line
+```
+
+7. We specify the minimum number of total and SNP-covering reads in each bin for the combine_counts step
+```shell
+echo '[combine_counts]' >> hatchet.ini
+echo 'msr=3000' >> hatchet.ini
+echo 'mtr=5000' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
@@ -136,4 +142,3 @@ echo 'maxcov=300' >> hatchet.ini
 python -m hatchet run hatchet.ini
 exit $?
 ```
-

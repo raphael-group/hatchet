@@ -39,13 +39,13 @@ std::istream& operator>>(std::istream& in, InputInstance& instance)
 {
     instance._R.clear();
     instance._B.clear();
-    
+
     std::string line;
     std::vector<std::string> tokens;
-    
+
     std::vector<std::pair<std::string, std::string>> keys;
     std::vector<std::pair<double, double>> values;
-    
+
     while(!in.eof())
     {
         std::getline(in, line, '\n');
@@ -53,7 +53,7 @@ std::istream& operator>>(std::istream& in, InputInstance& instance)
         {
             std::replace(line.begin(), line.end(), '\t', ' ');
             tokens = split(rtrim(ltrim(line)), ' ');
-            
+
             std::string cluster(tokens[0]);
             if(instance._clusters.find(cluster) == instance._clusters.end())
             {
@@ -65,7 +65,7 @@ std::istream& operator>>(std::istream& in, InputInstance& instance)
                 instance._w.push_back(w);
                 assert(idx_cluster + 1 == instance._w.size());
             }
-            
+
             std::string sample(tokens[1]);
             if(instance._samples.find(sample) == instance._samples.end())
             {
@@ -74,21 +74,21 @@ std::istream& operator>>(std::istream& in, InputInstance& instance)
                 instance._sampleToIdx[sample] = idx_sample;
                 instance._idxToSample[idx_sample] = sample;
             }
-            
+
             double rd = std::atof(tokens[3].c_str());
             double baf = std::atof(tokens[8].c_str());
-            
+
             keys.push_back(std::make_pair(cluster, sample));
             values.push_back(std::make_pair(rd, baf));
         }
     }
-    
+
     instance._m = instance._clusters.size();
     instance._k = instance._samples.size();
-    
+
     instance._R = DoubleMatrix(instance._m, DoubleArray(instance._k, 0.0));
     instance._B = DoubleMatrix(instance._m, DoubleArray(instance._k, 0.0));
-    
+
     for(int i = 0; i < keys.size(); ++i)
     {
         int s = instance._clusterToIdx[keys[i].first];
@@ -97,7 +97,6 @@ std::istream& operator>>(std::istream& in, InputInstance& instance)
         instance._R[s][p] = values[i].first;
         instance._B[s][p] = values[i].second;
     }
-    
+
     return in;
 };
-

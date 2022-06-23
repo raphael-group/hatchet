@@ -22,19 +22,19 @@ int main(int argc, char** argv)
 {
     try {
         ArgParse argparse(argc, argv);
-        
+
         log("Parsing and checking input arguments", VERBOSITY_t::ESSENTIAL, argparse.v());
         log(argparse.toString(), VERBOSITY_t::VERBOSE, argparse.v());
         g_rng = argparse.rnd() > 0 ? std::mt19937_64(argparse.rnd()) : std::mt19937_64();
-        
+
         log("Reading the input SEG file", VERBOSITY_t::ESSENTIAL, argparse.v());
         InputInstance instance;
         std::ifstream input(argparse.inputSEG());
         input >> instance;
-        
+
         if(argparse.v() >= VERBOSITY_t::DEBUGGING) {std::cerr << instance;}
-        
-        
+
+
         if (argparse.cn().size() > 0)
         {
             log("Scale the read-depth ratios into fractional copy numbers using the provided copy numbers", VERBOSITY_t::ESSENTIAL, argparse.v());
@@ -45,24 +45,24 @@ int main(int argc, char** argv)
         }
         DoubleMatrix F(scaleReadDepth(instance.R(), argparse.scalingCN(), instance.m(), instance.k(), instance.clusterToIdx(), argparse.v()));
         log("Fractional copy numbers:\n" + printFractions(F, instance), VERBOSITY_t::DEBUGGING, argparse.v());
-        
+
         CNMap cn(getCNMap(argparse, instance));
-        
+
         int cmax = argparse.cmax() > 0 ? argparse.cmax() : maxCeil(F);
         log("Inferred maximum copy number:" + std::to_string(cmax), VERBOSITY_t::DEBUGGING, argparse.v());
-        
+
         log("Compute allele-specific fractional copy numbers using BAF", VERBOSITY_t::ESSENTIAL, argparse.v());
         DoubleMatrix FA;
         DoubleMatrix FB;
         splitFractions(instance.B(), F, instance.m(), instance.k(), FA, FB);
         log("A-Allele fractional copy numbers:\n" + printFractions(FA, instance), VERBOSITY_t::DEBUGGING, argparse.v());
         log("B-Allele fractional copy numbers:\n" + printFractions(FB, instance), VERBOSITY_t::DEBUGGING, argparse.v());
-        
+
         double obj;
         IntMatrix ACN;
         IntMatrix BCN;
         DoubleMatrix U;
-        
+
         if(argparse.M() == SOLVE_t::BOTH)
         {
             log("Starting coordinate descent algorithm on " + std::to_string(argparse.nrSeeds()) + " seeds", VERBOSITY_t::ESSENTIAL, argparse.v());
@@ -70,19 +70,19 @@ int main(int argc, char** argv)
                                  argparse.forceAMPDEL(), cn, 2, argparse.maxiter(), argparse.nrSeeds(), argparse.j(), 1, argparse.s(), argparse.m(), argparse.v());
             cd.run();
             log("Objective value from coordinate descent:\t" + std::to_string(cd.getObjValue()), VERBOSITY_t::ESSENTIAL, argparse.v());
-            
+
             log("Starting exact ILP for improving solution found by coordinate descent", VERBOSITY_t::ESSENTIAL, argparse.v());
             IlpSubset ilp(argparse.n(), instance.m(), instance.k(), cmax, argparse.d(), argparse.minprop(), argparse.base(),
                           argparse.forceAMPDEL(), cn, FA, FB, instance.w(), argparse.v());
             ilp.init();
             ilp.hotStart(cd.getACN(), cd.getBCN());
             ilp.solve(argparse.s(), argparse.m(), argparse.j());
-            
+
             log("Runtime:\t" + std::to_string(ilp.runtime()), VERBOSITY_t::ESSENTIAL, argparse.v());
             log("Gap:\t" + std::to_string(ilp.gap()), VERBOSITY_t::ESSENTIAL, argparse.v());
             log("Final objective:\t" + std::to_string(ilp.getObjs()[0]), VERBOSITY_t::ESSENTIAL, argparse.v());
             printSolutions(instance.k(), 1, ilp.getObjs(), ilp.getACNs(), ilp.getBCNs(), ilp.getUs());
-            
+
             obj = ilp.getObjs()[0];
             ACN = ilp.getACNs()[0];
             BCN = ilp.getBCNs()[0];
@@ -98,12 +98,12 @@ int main(int argc, char** argv)
             hotstart = IlpSubset::firstHotStart(FA, FB, instance.m(), instance.k(), argparse.n(), cmax, argparse.d(), argparse.base(), argparse.forceAMPDEL(), cn);
             ilp.hotStart(hotstart.first, hotstart.second);
             ilp.solve(argparse.s(), argparse.m(), argparse.j());
-            
+
             log("Runtime:\t" + std::to_string(ilp.runtime()), VERBOSITY_t::ESSENTIAL, argparse.v());
             log("Gap:\t" + std::to_string(ilp.gap()), VERBOSITY_t::ESSENTIAL, argparse.v());
             log("Final objective:\t" + std::to_string(ilp.getObjs()[0]), VERBOSITY_t::ESSENTIAL, argparse.v());
             printSolutions(instance.k(), 1, ilp.getObjs(), ilp.getACNs(), ilp.getBCNs(), ilp.getUs());
-            
+
             obj = ilp.getObjs()[0];
             ACN = ilp.getACNs()[0];
             BCN = ilp.getBCNs()[0];
@@ -115,10 +115,10 @@ int main(int argc, char** argv)
             CoordinateDescent cd(FA, FB, instance.w(), instance.m(), instance.k(), argparse.n(), cmax, argparse.d(), argparse.minprop(), argparse.base(),
                                  argparse.forceAMPDEL(), cn, 2, argparse.maxiter(), argparse.nrSeeds(), argparse.j(), 1, argparse.s(), argparse.m(), argparse.v());
             cd.run();
-            
+
             log("Final objective:\t" + std::to_string(cd.getObjValue()), VERBOSITY_t::ESSENTIAL, argparse.v());
             printSolutions(instance.k(), cd.getObjValue(), cd.getACN(), cd.getBCN(), cd.getU());
-            
+
             obj = cd.getObjValue();
             ACN = cd.getACN();
             BCN = cd.getBCN();
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
         } else {
             throw "Unknown solving mode!";
         }
-        
+
         log("Reading the input BBC file", VERBOSITY_t::ESSENTIAL, argparse.v());
         BBCInstance bbc;
         std::ifstream bbffile(argparse.inputBBC());
@@ -159,21 +159,21 @@ CNAssignCluster inferDiploid(const InputInstance& instance, const ArgParse& argp
         {
             flag = flag && (sampleR >= (0.5 - argparse.diploidThreshold()));
         }
-        
+
         if (flag && (instance.w()[s] > max))
         {
             max = instance.w()[s];
             name = cluster;
         }
     }
-    
+
     if (max == -1) {
         throw "No diploid cluster found with a diploid-read-depth-ratio threshold of " + std::to_string(argparse.diploidThreshold());
     }
-    
+
     CNAssignCluster result;
     result.emplace(name, CNState(1, 1));
-    
+
     return result;
 }
 
@@ -181,11 +181,11 @@ CNAssignCluster inferDiploid(const InputInstance& instance, const ArgParse& argp
 DoubleMatrix scaleReadDepth(const DoubleMatrix &R, const CNAssignCluster &cn, const int m, const int k, const std::map<std::string, int> &clusterToIdx, const VERBOSITY_t verbose)
 {
     std::vector<double> cscale(k);
-    
+
     if(cn.size() == 1)
     {
         log("Scaling using:\t" + cn.begin()->first + ":" + std::to_string(cn.begin()->second.first) + ":" + std::to_string(cn.begin()->second.second), VERBOSITY_t::DEBUGGING, verbose);
-        
+
         for(int p = 0; p < k; ++p)
         {
             double denom = R[(*clusterToIdx.find(cn.begin()->first)).second][p];
@@ -195,23 +195,23 @@ DoubleMatrix scaleReadDepth(const DoubleMatrix &R, const CNAssignCluster &cn, co
             }
             cscale[p] = 2.0 / denom;
         }
-        
+
     } else if (cn.size() >= 2) {
         auto it = cn.begin();
         std::string logging = "Scaling using:\t";
-        
+
         int s1 = (*clusterToIdx.find(it->first)).second;
         CNState state1 = it->second;
         int c1 = state1.first + state1.second;
         logging += it->first + ":" + std::to_string(state1.first) + ":" + std::to_string(state1.second) + "\t";
-        
+
         std::advance(it, 1);
-        
+
         int s2 = (*clusterToIdx.find(it->first)).second;
         CNState state2 = it->second;
         int c2 = state2.first + state2.second;
         logging += it->first + ":" + std::to_string(state2.first) + ":" + std::to_string(state2.second);
-        
+
         log(logging, VERBOSITY_t::DEBUGGING, verbose);
 
         for(int p = 0; p < k; ++p)
@@ -225,21 +225,21 @@ DoubleMatrix scaleReadDepth(const DoubleMatrix &R, const CNAssignCluster &cn, co
 	    {
 	      purity = 0.0;
 	    }
-	      
+
             cscale[p] = (2.0 - 2.0 * purity + purity * c1) / R[s1][p];
-            
+
             if(purity < 0 || purity > 1 || cscale[p] < 0)
             {
 	      throw "The given copy-numbers do not allow to scale the read-depth ratios into corresponding fractional copy numbers, having RDRs of " + std::to_string(R[s1][p]) + " and " + std::to_string(R[s2][p]) + "!";
             }
         }
-        
+
     } else {
         throw "At least one clonal copy number should be provided!";
     }
-    
+
     log("Scaling factors:\n" + toString(cscale), VERBOSITY_t::DEBUGGING, verbose);
-    
+
     DoubleMatrix F(m);
     for(int s = 0; s < m; ++s)
     {
@@ -249,7 +249,7 @@ DoubleMatrix scaleReadDepth(const DoubleMatrix &R, const CNAssignCluster &cn, co
             F[s][p] = R[s][p] * cscale[p];
         }
     }
-    
+
     return F;
 }
 
@@ -258,7 +258,7 @@ void splitFractions(const DoubleMatrix &B, const DoubleMatrix &F, const int m, c
 {
     FA.clear();
     FB.clear();
-    
+
     FA = DoubleMatrix(m);
     FB = DoubleMatrix(m);
     for(int s = 0; s < m; ++s)
@@ -278,7 +278,7 @@ void printSolutions(const int k, const double obj, const IntMatrix& CA, const In
 {
     std::cout << "Obj : " << obj << std::endl;
     std::cout << std::endl;
-    
+
     for(int i = 0; i < CA[0].size(); ++i)
     {
         std::cout << "Clone " << i << " : ";
@@ -289,7 +289,7 @@ void printSolutions(const int k, const double obj, const IntMatrix& CA, const In
         std::cout << std::endl;
     }
     std::cout << std::endl;
-    
+
     for(int p = 0; p < k; ++p)
     {
         std::cout << "Sample " << p << ": ";
@@ -332,7 +332,7 @@ void segmentation(const InputInstance& instance, const BBCInstance& bbc, const i
     for(auto const& chr : bbc.chromosomes())
     {
         size_t idx_chr = chr.second;
-        
+
         std::vector<Bin> supp;
         for(auto const& mbin : bbc.bins()[idx_chr])
         {
@@ -346,7 +346,7 @@ void segmentation(const InputInstance& instance, const BBCInstance& bbc, const i
         IntArray previousB(n, -1);
         bool first = true;
         bool sameseg = true;
-        
+
         for(auto const& bin : supp)
         {
             size_t idx_bin = bbc.bins()[idx_chr].at(bin);
@@ -363,7 +363,7 @@ void segmentation(const InputInstance& instance, const BBCInstance& bbc, const i
                 }
                 outbbc << std::endl;
             }
-            
+
             for(int i = 0; i < n; ++i)
             {
                 std::string cluster = bbc.binsToCluster()[idx_chr][idx_bin];
@@ -377,7 +377,7 @@ void segmentation(const InputInstance& instance, const BBCInstance& bbc, const i
                     previousB.assign(BCN[s].begin(), BCN[s].end());
                     break;
                 } else if(ACN[s][i] != previousA[i] || BCN[s][i] != previousB[i] || bin.first != end) {
-                    
+
                     sameseg = false;
                     for(auto const& sample : instance.samples())
                     {
@@ -396,7 +396,7 @@ void segmentation(const InputInstance& instance, const BBCInstance& bbc, const i
                     break;
                 }
             }
-            
+
             if(sameseg)
             {
                 end = bin.second;
@@ -404,7 +404,7 @@ void segmentation(const InputInstance& instance, const BBCInstance& bbc, const i
                 sameseg = true;
             }
         }
-        
+
         for(auto const& sample : instance.samples())
         {
             outseg << chr.first << '\t' << start << '\t' << end << '\t' << sample;
@@ -416,7 +416,7 @@ void segmentation(const InputInstance& instance, const BBCInstance& bbc, const i
             outseg << std::endl;
         }
     }
-    
+
     outbbc.close();
     log("A BBC file with inferred copy numbers and proportion have written in: " + outprefix + ".bbc.ucn.tsv", VERBOSITY_t::ESSENTIAL, verbosity);
     outseg.close();
@@ -434,7 +434,7 @@ CNMap getCNMap(const ArgParse& argparse, const InputInstance& instance)
         {
             throw "The cluster with ID " + cluster + " specified in the input arguments has not been found in the input seg file!";
         }
-        
+
         int idx = instance.clusterToIdx().at(cluster);
         cnmap.emplace(idx, CNState(cn.second.first, cn.second.second));
     }
@@ -455,4 +455,3 @@ std::string printFractions(const DoubleMatrix &F, const InputInstance &instance)
     }
     return s.str();
 }
-
