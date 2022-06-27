@@ -475,7 +475,6 @@ def main(args=None):
             clonal, scale = parseClonalClusters(
                 clonal=args['clonal'],
                 fseg=fseg,
-                neutral=neutral,
                 size=size,
                 samples=samples,
                 v=args['v'],
@@ -552,6 +551,8 @@ def main(args=None):
     elif args['tetraploid']:
         if args['clonal'] is None:
             sys.stderr.write(log('# Finding clonal clusters and their copy numbers\n'))
+            neutral = findNeutralCluster(seg=fseg, size=size, td=args['td'], samples=samples, v=args['v'])
+
             clonal, scale = findClonalClusters(
                 fseg=fseg,
                 neutral=neutral,
@@ -566,7 +567,6 @@ def main(args=None):
             clonal, scale = parseClonalClusters(
                 clonal=args['clonal'],
                 fseg=fseg,
-                neutral=neutral,
                 size=size,
                 samples=samples,
                 v=args['v'],
@@ -987,7 +987,7 @@ def findClonalClusters(fseg, neutral, size, tB, tR, samples, v):
     return best_pattern, best_scale
 
 
-def parseClonalClusters(clonal, fseg, neutral, size, samples, v):
+def parseClonalClusters(clonal, fseg, size, samples, v):
     given = clonal.split(',')
     if len(given) < 2:
         raise RuntimeError(error('At least two clonal clusters must be provided!'))
