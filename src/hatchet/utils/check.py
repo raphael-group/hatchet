@@ -11,6 +11,7 @@ import shutil
 from hatchet import config
 import hatchet.data
 from hatchet.utils.check_solver import main as check_solver
+from hatchet.utils.commands import commands as all_commands
 
 
 # from https://stackoverflow.com/questions/2125702
@@ -102,6 +103,7 @@ def _check_python_import(which):
 
 
 # <HATCHet_command> => [(<dependency_name>, <success_message>, <failure_message>, <boolean_func>, <func_args>..), ..]
+# If the same <dependency_name> is used more than once, the first result of its check is cached and reused later.
 CHECKS = {
     'count-reads': [
         (
@@ -111,6 +113,17 @@ CHECKS = {
             'hatchet.ini as config.paths.tabix, or its location specified using the environment variable '
             'HATCHET_PATHS_TABIX',
             _check_tabix,
+        ),
+        (
+            'samtools',
+            '',
+            'Please install samtools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.samtools, or its location specified using the environment variable '
+            'HATCHET_PATHS_SAMTOOLS',
+            _check_cmd,
+            config.paths.samtools,
+            'samtools',
+            '--version',
         ),
         (
             'mosdepth',
@@ -124,7 +137,66 @@ CHECKS = {
             '--version',
         ),
     ],
+    'genotype-snps': [
+        (
+            'samtools',
+            '',
+            'Please install samtools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.samtools, or its location specified using the environment variable '
+            'HATCHET_PATHS_SAMTOOLS',
+            _check_cmd,
+            config.paths.samtools,
+            'samtools',
+            '--version',
+        ),
+        (
+            'bcftools',
+            '',
+            'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.bcftools, or its location specified using the environment variable '
+            'HATCHET_PATHS_BCFTOOLS',
+            _check_cmd,
+            config.paths.bcftools,
+            'bcftools',
+            '--version',
+        ),
+    ],
+    'count-alleles': [
+        (
+            'samtools',
+            '',
+            'Please install samtools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.samtools, or its location specified using the environment variable '
+            'HATCHET_PATHS_SAMTOOLS',
+            _check_cmd,
+            config.paths.samtools,
+            'samtools',
+            '--version',
+        ),
+        (
+            'bcftools',
+            '',
+            'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.bcftools, or its location specified using the environment variable '
+            'HATCHET_PATHS_BCFTOOLS',
+            _check_cmd,
+            config.paths.bcftools,
+            'bcftools',
+            '--version',
+        ),
+    ],
     'phase-snps': [
+        (
+            'bcftools',
+            '',
+            'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.samtools, or its location specified using the environment variable '
+            'HATCHET_PATHS_BCFTOOLS',
+            _check_cmd,
+            config.paths.bcftools,
+            'bcftools',
+            '--version',
+        ),
         (
             'picard',
             '',
@@ -159,8 +231,11 @@ CHECKS = {
 
 def main(hatchet_cmds=None):
     all_ok = True
-    hatchet_cmds = hatchet_cmds or CHECKS.keys()
+    hatchet_cmds = hatchet_cmds or all_commands
     print('======================\nRunning HATCHet checks\n======================')
+
+    _pred_cache = {}
+
     for hatchet_cmd in hatchet_cmds:
         if hatchet_cmd in CHECKS:
             checks = CHECKS[hatchet_cmd]
@@ -174,7 +249,11 @@ def main(hatchet_cmds=None):
                     check[4:],
                 )
                 with suppress_stdout():
-                    pred = func(*args)
+                    if cmd_name in _pred_cache:
+                        pred = _pred_cache[cmd_name]
+                    else:
+                        pred = func(*args)
+                        _pred_cache[cmd_name] = pred
                 if pred:
                     print(f'  {cmd_name} check SUCCESSFUL. {success_msg}')
                 else:
