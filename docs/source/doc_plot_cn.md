@@ -4,6 +4,8 @@ This step analyzes the inferred copy-number states and clone proportions and pro
 plot-cn produces several informative plots concerning the copy-number states and proportions for the inferred clones from multiple tumor samples of a patient.
 In additionl, plot-cn can also produce some informative plots to compare the solutions obtained on different patients.
 
+When `plot_cn = True` is indicated in `hatchet.ini`, the command `plot-cn-1d2d` will also be run. This command produces alternate plots in which bins are colored by cluster and colors match across samples between the 2D cluster view and 1D genomic view. In addition, these plots show the expected positions of the assigned copy-number states as labeled points in the 2D plots and black bars in the 1D plots.
+
 ## Input
 
 plot-cn considers in input one or more tab-separated files. Each of these files contains the inferred copy-number states and clone proportions for clustered genomic bins and has the following format:

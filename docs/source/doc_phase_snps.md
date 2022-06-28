@@ -13,6 +13,12 @@ This step of HATCHet phases genotypes found in VCF files. It automatically takes
 | `-o`, `--outdir` | Output folder for phased VCFs | Specify a path or relative path |
 | `-L`, `--snps` | A list of VCF files to phase, one per chromosome | Specify a list using a path along with a wildcard, e.g. /path/to/snps/*.vcf.gz |
 | `-j`, `--processes` | Number of parallel jobs | Parallel jobs independently phase VCF files, which are split up by chromosome |
+| `-si`, `--shapeit` | Path to the `shapeit` executable | `shapeit` is required to run this command |
+| `-pc`, `--picard` | Path to the `picard` executable or JAR file | `picard` is required to run this command |
+| `-bt`, `--bcftools` | Path to the `bcftools` executable | `bcftools` is required to run this command |
+| `-bg`, `--bgzip` | Path to the `bgzip` executable | `bgzip` is required to run this command |
+
+If HATCHet is installed via `conda`, the dependencies (`shapeit`, `picard`, `bcftools`, and `bgzip`) should be installed automatically. If HATCHet is installed from source, you may need to install them youself (i.e.,via `conda` or from source).
 
 ## Output
 

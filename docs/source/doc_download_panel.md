@@ -6,18 +6,16 @@ Note: This step requires access to the internet in order to download files.
 
 ## Input
 
-download-panel takes as input variables specified within the hatchet.ini file.
+`download-panel` takes no input files and the following options:
 
 | Name | Description | Usage |
 |------|-------------|-------|
 | `-D`, `--refpaneldir` | Path to the Reference Panel | This is the location where the 1000 genome project reference panel will be downloaded |
 | `-R`, `--refpanel` | Reference Panel to use; only 1000 genomes project currently supported | specify "1000GP_Phase3" to automatically download and use the panel from the 1000 genomes project |
-| `-V`, `--refversion` | Version of reference genome used in BAM files | Specify the human reference genome used for aligning sequencing reads; hg19 or hg38 |
-| `-N`, `--chrnotation` | Notation of chromosomes, with or without "chr" | Specify "true" or "false" according to whether chromosomes are prefixed by "chr" |
 
 ## Output
 
-download-panel produces various files for phasing germline SNPs, and performing liftover in situations when the reference genome used to align sequencing reads is different from the reference genome version used in the reference panel.
+download-panel produces several files for phasing germline SNPs, and for performing liftover in situations when the reference genome used to align sequencing reads is different from the reference genome version used in the reference panel.
 
 | Name | Description |
 |------|-------------|
