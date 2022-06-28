@@ -370,12 +370,7 @@ def main(args=None):
 
         os.makedirs(f'{output}/summary/1d2d', exist_ok=True)
         plot_cn_1d2d(
-            args=[
-                f'{output}/results/best.bbc.ucn',
-                '--outdir',
-                f'{output}/summary/1d2d',
-                '--bysample',
-            ]
+            args=[f'{output}/results/best.bbc.ucn', '--outdir', f'{output}/summary/1d2d', '--bysample', '--centromeres']
         )
 
 
