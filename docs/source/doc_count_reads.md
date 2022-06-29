@@ -30,13 +30,17 @@ This step of HATCHet uses the locations of heterozygous SNPs (called by `count-a
 
 ## Optional parameters
 
-| Name | Description | Usage |
-|------|-------------|-------|
-| `st`, `--samtools` | Location of `samtools` executable (default "" -- assumes `samtools` is on the PATH) |  |
-| `-j`, `--processes` | Number of parallel processes to use (default 1) |  |
-
+| Name | Description | Usage | Default |
+|------|-------------|-------|---------|
+| `-S`, `--samples` | White-space separater list of a names | The first name is used for the matched-normal sample, while the others are for the tumor samples and they match the same order of the corresponding BAM files | File names are used |
+| `-j`, `--processes` | Number of parallel jobs | Parallel jobs are used to consider the chromosomed in different samples in parallel. The higher the number the better the running time (up to 22 * n_samples) | 22 |
+| `-st`, `--samtools` | Path to `bin` directory of SAMtools | The path to this direcoty needs to be specified when it is not included in `$PATH` | Path is expected in the enviroment variable `$PATH` |
+| `-md`, `--mosdepth` | Path to the `mosdepth` executable | The path to this executable needs to be specified when it is not included in `$PATH` | None (expected on `PATH`) |
+| `-tx`, `--tabix` | Path to the `tabix` executable | The path to this executable needs to be specified when it is not included in `$PATH` | None (expected on `PATH`) |
+| `-q`, `--readquality` | Minimum mapping quality (MAPQ) for a read to be counted | Values range from 0 to 41, see alignment documentation for details  | 11 |
+| `-i`, `--intermediates` | Keep intermediate files | Retain intermediate files (read starts and per-position coverage) that are used to compute arrays for binning | False  (these files are deleted, subsequent arrays are retained instead) |
 ## Example usage
 
-Given samtools is on the PATH and the referenced files are in the current directory (as well as the output directory `array`):
+Given samtools, mosdepth, and tabix are on the PATH, the referenced files are in the current directory, and the intended output directory `array` is present:
 
 `hatchet count-reads -T first_sample.bam second_sample.bam -N normal_sample.bam -S normal tumor1 tumor2 -V hg19 -j 24 -O array -b baf/bulk.1bed`
