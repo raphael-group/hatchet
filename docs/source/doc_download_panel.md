@@ -8,14 +8,14 @@ This step of HATCHet downloads the 1000 genomes reference panel to phase germlin
 
 `download-panel` takes no input files and the following options:
 
-| Name | Description | Usage |
-|------|-------------|-------|
-| `-D`, `--refpaneldir` | Path to the Reference Panel | This is the location where the 1000 genome project reference panel will be downloaded |
-| `-R`, `--refpanel` | Reference Panel to use; only 1000 genomes project currently supported | specify "1000GP_Phase3" to automatically download and use the panel from the 1000 genomes project |
+| Name | Description | Usage | Default |
+|------|-------------|-------|---------|
+| `-D`, `--refpaneldir` | Path to the Reference Panel | This is the location where the 1000 genome project reference panel will be downloaded | None
+| `-R`, `--refpanel` | Reference Panel to use; only 1000 genomes project currently supported | specify "1000GP_Phase3" to automatically download and use the panel from the 1000 genomes project | "1000GP_Phase3"
 
 ## Output
 
-download-panel produces several files for phasing germline SNPs, and for performing liftover in situations when the reference genome used to align sequencing reads is different from the reference genome version used in the reference panel.
+download-panel populates the directory `-D, --refpaneldir` with several files for phasing germline SNPs, and for performing liftover in situations when the reference genome used to align sequencing reads is different from the reference genome version used in the reference panel.
 
 | Name | Description |
 |------|-------------|
