@@ -31,7 +31,7 @@ def bams():
 
 @pytest.fixture(scope='module')
 def output_folder():
-    out = os.path.join(this_dir, 'out', 'vl')
+    out = os.path.join(this_dir, 'out', 'vw')
     shutil.rmtree(out, ignore_errors=True)
     for sub_folder in ['rdr', 'bb', 'bbc']:
         os.makedirs(os.path.join(out, sub_folder))
@@ -56,7 +56,7 @@ def test_count_reads(_, bams, output_folder):
             '-j',
             '1',
             '-b',
-            os.path.join(this_dir, 'data', 'vl', 'baf', 'bulk.1bed'),
+            os.path.join(this_dir, 'data', 'vw', 'baf', 'bulk.1bed'),
             '-O',
             os.path.join(output_folder, 'rdr'),
             '-V',
@@ -69,10 +69,10 @@ def test_count_reads(_, bams, output_folder):
     arr3 = [l for l in open(os.path.join(output_folder, 'rdr', 'samples.txt'), 'r')]
     arr4 = pd.read_table(os.path.join(output_folder, 'rdr', 'total.tsv'))
 
-    truth1 = np.loadtxt(os.path.join(this_dir, 'data', 'vl', 'rdr', 'chr22.thresholds.gz'))
-    truth2 = np.loadtxt(os.path.join(this_dir, 'data', 'vl', 'rdr', 'chr22.total.gz'))
-    truth3 = [l for l in open(os.path.join(this_dir, 'data', 'vl', 'rdr', 'samples.txt'), 'r')]
-    truth4 = pd.read_table(os.path.join(this_dir, 'data', 'vl', 'rdr', 'total.tsv'))
+    truth1 = np.loadtxt(os.path.join(this_dir, 'data', 'vw', 'rdr', 'chr22.thresholds.gz'))
+    truth2 = np.loadtxt(os.path.join(this_dir, 'data', 'vw', 'rdr', 'chr22.total.gz'))
+    truth3 = [l for l in open(os.path.join(this_dir, 'data', 'vw', 'rdr', 'samples.txt'), 'r')]
+    truth4 = pd.read_table(os.path.join(this_dir, 'data', 'vw', 'rdr', 'total.tsv'))
 
     assert_array_equal(arr1, truth1)
     assert_array_equal(arr2, truth2)
@@ -87,13 +87,13 @@ def test_combine_counts(_, output_folder):
     combine_counts(
         args=[
             '-A',
-            os.path.join(this_dir, 'data', 'vl', 'rdr'),
+            os.path.join(this_dir, 'data', 'vw', 'rdr'),
             '-t',
-            os.path.join(this_dir, 'data', 'vl', 'rdr', 'total.tsv'),
+            os.path.join(this_dir, 'data', 'vw', 'rdr', 'total.tsv'),
             '-j',
             '1',
             '-b',
-            os.path.join(this_dir, 'data', 'vl', 'baf', 'bulk.1bed'),
+            os.path.join(this_dir, 'data', 'vw', 'baf', 'bulk.1bed'),
             '-o',
             os.path.join(output_folder, 'bb', 'bulk_nophase.bb'),
             '-V',
@@ -101,32 +101,32 @@ def test_combine_counts(_, output_folder):
         ]
     )
     df1 = pd.read_csv(os.path.join(output_folder, 'bb', 'bulk_nophase.bb'), sep='\t')
-    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bb', 'bulk_nophase.bb'), sep='\t')
+    df2 = pd.read_csv(os.path.join(this_dir, 'data', 'vw', 'bb', 'bulk_nophase.bb'), sep='\t')
     assert_frame_equal(df1, df2)
 
     # Test with phasing
     combine_counts(
         args=[
             '-A',
-            os.path.join(this_dir, 'data', 'vl', 'rdr'),
+            os.path.join(this_dir, 'data', 'vw', 'rdr'),
             '-t',
-            os.path.join(this_dir, 'data', 'vl', 'rdr', 'total.tsv'),
+            os.path.join(this_dir, 'data', 'vw', 'rdr', 'total.tsv'),
             '-j',
             '1',
             '-b',
-            os.path.join(this_dir, 'data', 'vl', 'baf', 'bulk.1bed'),
+            os.path.join(this_dir, 'data', 'vw', 'baf', 'bulk.1bed'),
             '-o',
             os.path.join(output_folder, 'bb', 'bulk_yesphase.bb'),
             '-V',
             'hg19',
             '-p',
-            os.path.join(this_dir, 'data', 'vl', 'phase', 'phased.vcf.gz'),
+            os.path.join(this_dir, 'data', 'vw', 'phase', 'phased.vcf.gz'),
         ]
     )
 
     df3 = pd.read_csv(os.path.join(output_folder, 'bb', 'bulk_yesphase.bb'), sep='\t')
     df4 = pd.read_csv(
-        os.path.join(this_dir, 'data', 'vl', 'bb', 'bulk_yesphase.bb'),
+        os.path.join(this_dir, 'data', 'vw', 'bb', 'bulk_yesphase.bb'),
         sep='\t',
     )
     assert_frame_equal(df3, df4)
@@ -135,7 +135,7 @@ def test_combine_counts(_, output_folder):
 def test_cluster_bins_loc(output_folder):
     cluster_bins_loc(
         args=[
-            f'{this_dir}/data/fl/bb/bulk.bb',
+            f'{this_dir}/data/fw/bb/bulk.bb',
             '-o',
             f'{output_folder}/bbc/bulk.seg',
             '-O',
@@ -156,8 +156,8 @@ def test_cluster_bins_loc(output_folder):
     seg1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk.seg'), sep='\t')
     bbc1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk.bbc'), sep='\t')
 
-    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk.seg'), sep='\t')
-    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk.bbc'), sep='\t')
+    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'vw', 'bbc', 'bulk.seg'), sep='\t')
+    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'vw', 'bbc', 'bulk.bbc'), sep='\t')
     assert_frame_equal(seg1, seg2)
     assert_frame_equal(bbc1, bbc2)
 
@@ -165,7 +165,7 @@ def test_cluster_bins_loc(output_folder):
 def test_cluster_bins_loc_singleton(output_folder):
     cluster_bins_loc(
         args=[
-            f'{this_dir}/data/fl/bb/bulk.bb',
+            f'{this_dir}/data/fw/bb/bulk.bb',
             '-o',
             f'{output_folder}/bbc/bulk_onecl.seg',
             '-O',
@@ -184,7 +184,7 @@ def test_cluster_bins_loc_singleton(output_folder):
     seg1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk_onecl.seg'), sep='\t')
     bbc1 = pd.read_csv(os.path.join(output_folder, 'bbc', 'bulk_onecl.bbc'), sep='\t')
 
-    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk_onecl.seg'), sep='\t')
-    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'vl', 'bbc', 'bulk_onecl.bbc'), sep='\t')
+    seg2 = pd.read_csv(os.path.join(this_dir, 'data', 'vw', 'bbc', 'bulk_onecl.seg'), sep='\t')
+    bbc2 = pd.read_csv(os.path.join(this_dir, 'data', 'vw', 'bbc', 'bulk_onecl.bbc'), sep='\t')
     assert_frame_equal(seg1, seg2)
     assert_frame_equal(bbc1, bbc2)
