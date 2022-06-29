@@ -1,10 +1,13 @@
-# plot-bins
+# plot-bins-1d2d
 
-This step produces informative plots concerning the computed RDRs, BAFs, and clusters.
-The information produced by this step are important to validate the compute clusters of genomic regions and help to tune the parameters for better deal with special datasets.
-cluster-bins produces different plots which need to be specified by different commands and require different input.
+This step produces alternate plots that show bins in terms of their computed read-depth ratios (RDR), B-allele frequencies (BAF), and cluster assignments.
+These plots show bins colored by cluster, where the color is consistent between the "2D" (RDR x BAF) view and the "1D" (genomic location x RDR/BAF) view.
+These plots should be used to review the clustering and tune clustering parameters.
 
-When `plot_bins = True` is indicated in `hatchet.ini`, the command [`plot-bins-1d2d`](plot_bins_1d2d.html) will also be run. This command produces alternate plots in which bins are colored by cluster and colors match across samples between the 2D cluster view and 1D genomic view.
+When `plot_bins = True` is indicated in `hatchet.ini`, both this command and the command [plot-bins](doc_plot_bins.html) will be run.
+
+
+----------------------
 
 ## Input
 

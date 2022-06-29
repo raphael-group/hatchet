@@ -56,10 +56,10 @@ To determine the best setting for this value, please check the plots produced by
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-t`, `--transmat` | Type of transition matrix to infer | `fixed` (to off-diagonal = tau), `diag` (all diagonal elements are equal, all off-diagonal elements are equal) or `full` (freely varying) | `diag` |
 | `--tau` | Off-diagonal value for initializing transition matrix | must be `<= 1/(K-1)` | `1e-6` |
+| `-t`, `--transmat` | Type of transition matrix to infer | `fixed` (to off-diagonal = tau), `diag` (all diagonal elements are equal, all off-diagonal elements are equal) or `full` (freely varying) | `diag` |
 | `-c`, `--covar` | Type of covariance matrix to infer | options described in [hmmlearn documentation](https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.hmm.GaussianHMM) | `diag` |
-| `-x`, `--decoding` | Decoding algorithm to use to infer final estimates of states | `map` for MAP infernece, `viterbi` for Viterbi algorithm | `map` |
+| `-x`, `--decoding` | Decoding algorithm to use to infer final estimates of states | `map` for MAP inference, `viterbi` for Viterbi algorithm | `map` |
 
 Particularly, `tau` controls the balance between global information (RDR and BAf across samples) and local information (assigning adjacent bins to the same cluster): smaller values of `tau` put more weight on *local* information, and larger values of `tau` put more weight on *global* information. It may be appropriate to reduce `tau` by several orders of magnitude for noisier or lower-coverage datasets.
 
