@@ -1,6 +1,8 @@
 # Demo for WES data from a cancer patient
 : ex: set ft=markdown ;:<<'```shell' #
 
+**NOTE**: this demo has not yet been updated for version 1.0 of HATCHet which includes variable-width binning, phasing, and locality-aware clustering.
+
 The following HATCHet's demo represents a guided example starting from WES (whole-exome sequencing) data from 2 samples of the same patient. WES data are an interesting case to consider as they are typically characterize by a larger variance, especially for RDR. For simplicity, the demo starts from a BB file `demo-wes.bb` (included in this demo at `examples/demo-WES/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. count-reads, count-alleles, and combine-counts) have already been executed by running standard configuration for WES data (bin size of 250kb through -b 250kb of count-reads, and the allele counts for germline heterozygous SNPs have been selected between 30 and 400 through `-c 30 -C 400` of `count-alleles` as the average coverage is 180x).
 
 ## Requirements and set up

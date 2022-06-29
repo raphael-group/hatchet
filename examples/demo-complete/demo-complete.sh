@@ -9,14 +9,14 @@ the complete demo. The demo can also be considered as a guided example of a comp
 ## Requirements and set up
 
 The demo requires that HATCHet has been succesfully installed in the current python environment.
-Please make sure that you can succesfully run the required `samtools` and `bcftools`.
+Please make sure that you can succesfully run the required dependencies `samtools`, `bcftools`, `tabix`, and `mosdepth`.
 The demo includes the downloading of all the required files and will terminate in <20 minutes on machine with minimum requirements satisfied.
 
-We gurantee that the running directory in the same directory of the demo and we remove previous results.
+We guarantee that the running directory in the same directory of the demo and we remove previous results.
 
 ```shell
 cd $( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )
-rm -rf rdr/ baf/ snps/ bb/ bbc/ analysis/ results/ evaluation/
+rm -rf rdr/ baf/ snps/ bb/ bbc/ plots/ results/ summary/
 :<<'```shell' # Ignore this line
 ```
 
