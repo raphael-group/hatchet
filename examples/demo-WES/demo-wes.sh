@@ -43,7 +43,7 @@ ${CLUSTERBINS} demo-wes.bb -o demo-wes.seg -O demo-wes.bbc -e 12 -tB 0.03 -tR 0.
 ```
 
 For different type of data it is essential to assess the quality of the clustering because this is performed by a Dirichlet process and it is affected by varying degrees of noise. This assesment is particularly important in the case of WES data where the variance is higher than expected, especially for RDR; in fact we often observe that the clusters are much wider in terms of RDR (x-axis) and tend to have a *disc* shape rather than the expected *oval* shape. To do this, we use `plot-bins`, i.e. the HATCHet's component designed for the analysis of the data, and produce the cluster plot using the `CBB` command. To help we use the following options:
-- `--xmin 0` and `--xmax 2` allow to zoom in and to focus the figure on the same RDR (x-axis) range for every sample.
+- `--xmin 0` and `--xmax 2` allow to zoom in and to focus the figure on the same RDR (y-axis) range for every sample.
 - `-tS 0.005` asks to plot only the clusters which cover at least the `0.5%` of the genome. This is useful to clean the figure and focus on the main components.
 To trace all steps, we also move the figure to `tR015-cbb.pdf`.
 
