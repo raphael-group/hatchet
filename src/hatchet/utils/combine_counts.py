@@ -205,8 +205,8 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
             low_memory=False,
             dtype={'CHR': object, 'POS': np.uint32},
         )
-        phases['FLIP'] = phases.PHASE.str.contains('1\|0').astype(np.int8)  # noqa: W605
-        phases['NOFLIP'] = phases.PHASE.str.contains('0\|1').astype(np.int8)  # noqa: W605
+        phases['FLIP'] = phases.PHASE.str.contains('1|0', regex=False).astype(np.int8)  # noqa: W605
+        phases['NOFLIP'] = phases.PHASE.str.contains('0|1', regex=False).astype(np.int8)  # noqa: W605
 
         # Drop entries without phasing output
         phases = phases[phases.FLIP + phases.NOFLIP > 0]
