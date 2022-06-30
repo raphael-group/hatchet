@@ -1,12 +1,12 @@
 # check
 
-This command of HATCHet verifies that dependencies that are unique to specific parts of HATCHet are correctly installed. The relevant commands are `count-reads`, `phase-snps`, and `compute-cn`.
+This command of HATCHet verifies that dependencies that are unique to specific parts of HATCHet are correctly installed. The relevant commands with dependencies are `count-reads`, `phase-snps`, and `compute-cn`. Note that this command currently does not check for working versions of `samtools`, `bcftools`, or `bgzip` which are also required for various parts of HATCHet.
 
 All checks can be run simultaneously via `hatchet check`, or an individual command can be checked via, e.g., `hatchet check compute-cn`.
 
 The check for `compute-cn` runs the step on a set of small data files (.bbc/.seg) pre-packaged with HATCHet, and is a quick way to verify if your solver is working correctly.
 If you are unable to run this command, it likely indicates a licensing issue with default (Gurobi) solver. To use alternative solvers, see the
-[Using a different Pyomo-supported solver](README.html#usingasolver_other) section of the README for more details).
+[Using a different Pyomo-supported solver](README.html#usingasolver_other) section of the README for more details.
 
 ## Input
 
