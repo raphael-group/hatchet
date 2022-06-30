@@ -1060,9 +1060,10 @@ def parse_phase_snps_arguments(args=None):
     parser.add_argument(
         '-N',
         '--chrnotation',
-        required=True,
+        required=False,
         action='store_true',
-        help='Notation of chromosomes, with or without "chr"',
+        help='Use this flag to indicate that chromosomes are named with "chr" (default: no "chr")',
+        default=False,
     )
     parser.add_argument(
         '-o',
