@@ -1,7 +1,7 @@
 # cluster-bins
 
 This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample.
-cluster-bins uses BNPY for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see Main parameters below).
+cluster-bins uses a non-parametric Gaussian mixture model (GMM) (scikit-learn implementation) for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see [Main Parameters](#main-parameters) below).
 
 ## Input
 
@@ -70,7 +70,7 @@ If your clusters do not appear to be cohesive, try lowering the maximum number o
 | `-dB`,`--bafdeviation` | Standard deviation for generate BAF of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
 | `-s`, `--seed` | Random seed | The value is used to seed the random generation of RDR and BAF of synthetic bins | 0 |
 
-4. cluster-bins offers a basic iterative process to merge clusters according to given tolerances. This feature can be used to refine the results of BNPY clustering and merge distinct clusters that are not sufficiently distinguished. This process can be controlled by the following parameters.
+4. cluster-bins offers a basic iterative process to merge clusters according to given tolerances. This feature can be used to refine the results of the GMM clustering and merge distinct clusters that are not sufficiently distinguished. This process can be controlled by the following parameters.
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|

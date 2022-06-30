@@ -4,7 +4,7 @@ This step constructs variable-length bins that ensure that each bin has at least
 
 ## Input
 
-`combine-counts` takes in input the output from `count-reads` (i.e., for each chromosome `ch`, two gzipped filed `ch.total.gz` and `ch.thresholds.gz`). Use the `-A, --array` flag to specify a directory containing these input files.
+`combine-counts` takes in input the output from `count-reads` (i.e., two gzipped files `ch.total.gz` and `ch.thresholds.gz` for each chromosome `ch`, ). Use the `-A, --array` argument to specify a directory containing these input files.
 
 It also requires (specified by the flag `-b`, `--baffile`) a tab-separated file specifying the allele counts for heterzygous germline SNPs from all tumor samples. The tab separated file would typically be produced by the `count-alleles` command and has the following fields:
 
@@ -24,7 +24,7 @@ In summary, **the following arguments are required to specify input**:
 |------|-------------|-------|---------|
 | `-A`, `--array`  | Directory containing intermediate files | Typically populated by `count-reads`. For each chromosome `ch`, this directory should contain files `ch.total.gz` and `ch.thresholds.gz` (as well as `samples.txt` indicating sample names) |  |
 | `-b, --baffile`  | Tab-separated file with allele counts | Typically produced by `count-alleles`. See description above. |  |
-| `-t, --totalcounts`  | Tab-separated file with total aligned reads for each sample | Typically produced by `count-alleles`. | |
+| `-t, --totalcounts`  | Tab-separated file with total aligned reads for each sample | Typically produced by `count-reads`. | |
 | `-V, --refversion` | Reference genome version | Either "hg19" or "hg38". This argument is used to select which centromere locations to use. |
 
 

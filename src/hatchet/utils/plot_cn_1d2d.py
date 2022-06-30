@@ -448,6 +448,9 @@ def plot_genome(
         axes[idx * 2 + 0].title.set_text(f'Sample: {sample}')
         axes[idx * 2 + 1].title.set_text(f'Sample: {sample}')
 
+        axes[idx * 2 + 0].grid(False)
+        axes[idx * 2 + 1].grid(False)
+
         if save_samples:
             plt.tight_layout()
             plt.savefig(f'{save_prefix}_{sample}.png')

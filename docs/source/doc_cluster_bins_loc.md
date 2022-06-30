@@ -1,7 +1,7 @@
 # cluster-bins-loc
 
 This step globally clusters genomic bins along the entire genome and jointly across tumor samples.
-`cluster-bins-loc` clusters bins while also taking into account their locations on the genome to form clusters that tend to be contiguous genomic segments
+`cluster-bins-loc` clusters bins while also taking into account their locations on the genome to preferentially form clusters that correspond to contiguous genomic segments on chromosome arms.
 The input/output files for `cluster-bins-loc` are exactly the same as those for `cluster-bins`.
 
 ## Input
@@ -46,21 +46,22 @@ The fields `#SNPS`, `COV`, `ALPHA`, and `BETA` are currently deprecated and thei
 
 ## Main parameters
 
-1. `cluster-bins-loc` has a parameter `-d`, `--diploidbaf` that specifies the maximum expected shift from 0.5 for BAF for a diploid or tetraploid cluster (i.e. with copy-number states (1, 1) or (2, 2)). This threshold is used for two goals: (1) To identify the diploid or tetraploid cluster which is used to correct the estimated BAF of potentially biased clusters. (2) To identify potentially biased clusters.
-The default value of this parameter (0.1) is typically sufficient for most of the datasets, but its value can be changed or tuned to accommodate the features of special datasets.
-In particular, the value of this threshold depends on the variance in the data (related to noise and coverage); generally, higher variance requires a higher shift.
-Information provided by `plot-bins` can be crucial to decide whether one needs to change this value in special datasets.
+1. `cluster-bins-loc` has a parameter `-d`, `--diploidbaf` that specifies the maximum expected shift from 0.5 the BAF of a balanced cluster (i.e., diploid with copy-number state (1, 1) or tetraploid with copy-number state (2, 2)). This threshold is used to correct bias in the BAF of these balanced clusters.
+The default value of this parameter (0.1) is often sufficient, but the most appropriate value will vary depending on noise and coverage. In general, this value should be set to include only those clusters that are closest to 0.5 -- for example, if some clusters have centroids near 0.47 and others have centroids near 0.42, this parameter should be set to 0.035 or 0.04.
+To determine the best setting for this value, please check the plots produced by `plot-bins` and the centroid values described  `bbc/bulk.seg` (output from this command).
 
 2. By default, `cluster-bins-loc` takes as input a minimum number of clusters (`--minK`, default `2`) and maximum number of clusters (`--maxK`, default `30`), and chooses the number `K` of clusters in this closed interval that maximizes the silhoutette score. Users can also specify an exact number of clusters (`--exactK`) to infer, which skips the model selection step.
 
-3. Other options are available to change aspects of the GHMM model that is used by `cluster-bins-loc`:
+3. Other options are available to change aspects of the Gaussian Hidden Markov model (GHMM) that is used by `cluster-bins-loc`:
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-t`, `--transmat` | Type of transition matrix to infer | `fixed` (to off-diagonal = tau), `diag` (all diagonal elements are equal, all off-diagonal elements are equal) or `full` (freely varying) | `diag` |
 | `--tau` | Off-diagonal value for initializing transition matrix | must be `<= 1/(K-1)` | `1e-6` |
+| `-t`, `--transmat` | Type of transition matrix to infer | `fixed` (to off-diagonal = tau), `diag` (all diagonal elements are equal, all off-diagonal elements are equal) or `full` (freely varying) | `diag` |
 | `-c`, `--covar` | Type of covariance matrix to infer | options described in [hmmlearn documentation](https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.hmm.GaussianHMM) | `diag` |
-| `-x`, `--decoding` | Decoding algorithm to use to infer final estimates of states | `map` for MAP infernece, `viterbi` for Viterbi algorithm | `map` |
+| `-x`, `--decoding` | Decoding algorithm to use to infer final estimates of states | `map` for MAP inference, `viterbi` for Viterbi algorithm | `map` |
+
+Particularly, `tau` controls the balance between global information (RDR and BAf across samples) and local information (assigning adjacent bins to the same cluster): smaller values of `tau` put more weight on *local* information, and larger values of `tau` put more weight on *global* information. It may be appropriate to reduce `tau` by several orders of magnitude for noisier or lower-coverage datasets.
 
 ## Optional parameters
 

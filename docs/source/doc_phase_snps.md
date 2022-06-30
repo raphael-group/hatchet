@@ -1,5 +1,7 @@
 # phase-snps
 
+**Note:** To run this step, you must first run [*download-panel*](doc_download_panel.html) to download the reference-based phasing panel, and specify its location via the argument `-D, --refpaneldir`. The `download-panel` command only needs to be run once per system.
+
 This step of HATCHet phases genotypes found in VCF files. It automatically takes care of differences in coordinates if the user has aligned their reads to a version of the reference genome (e.g. hg38) that is different from the version used in the reference panel (e.g. hg19 for the 1000 genomes project), using the liftover utility within Picard. Once genotypes are lifted over and phased, we again perform one last liftover to the coordinates of the genome used for alignment. Liftover is skipped if the version of the reference genome used for alignments corresponds to the same version used in the reference panel. Lastly, in order to account for differences in naming conventions for chromosomes, with or without the "chr" prefix, we also add or remove these prefixes so that chromosome names correspond to those used in the reference panel (without "chr" for the 1000 genomes project hg19 panel).
 
 ## Input
@@ -13,6 +15,12 @@ This step of HATCHet phases genotypes found in VCF files. It automatically takes
 | `-o`, `--outdir` | Output folder for phased VCFs | Specify a path or relative path |
 | `-L`, `--snps` | A list of VCF files to phase, one per chromosome | Specify a list using a path along with a wildcard, e.g. /path/to/snps/*.vcf.gz |
 | `-j`, `--processes` | Number of parallel jobs | Parallel jobs independently phase VCF files, which are split up by chromosome |
+| `-si`, `--shapeit` | Path to the `shapeit` executable | `shapeit` is required to run this command |
+| `-pc`, `--picard` | Path to the `picard` executable or JAR file | `picard` is required to run this command |
+| `-bt`, `--bcftools` | Path to the `bcftools` executable | `bcftools` is required to run this command |
+| `-bg`, `--bgzip` | Path to the `bgzip` executable | `bgzip` is required to run this command |
+
+If HATCHet is installed via `conda`, the dependencies (`shapeit`, `picard`, `bcftools`, and `bgzip`) should be installed automatically. If HATCHet is installed from source, you may need to install them youself (i.e.,via `conda` or from source).
 
 ## Output
 
