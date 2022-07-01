@@ -1277,17 +1277,6 @@ def parse_count_alleles_arguments(args=None):
         ),
     )
     parser.add_argument(
-        '-e',
-        '--regions',
-        required=False,
-        default=config.count_alleles.regions,
-        type=str,
-        help=(
-            'BED file containing the a list of genomic regions to consider in the format "CHR  START  END", '
-            'REQUIRED for WES data with coding regions (default: none, consider entire genome)'
-        ),
-    )
-    parser.add_argument(
         '-j',
         '--processes',
         required=False,
