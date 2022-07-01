@@ -1,7 +1,7 @@
 # cluster-bins
 
 This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample.
-cluster-bins uses BNPY for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see Main parameters below).
+cluster-bins uses a non-parametric Gaussian mixture model (GMM) (scikit-learn implementation) for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see [Main Parameters](#main-parameters) below).
 
 ## Input
 
@@ -48,7 +48,7 @@ cluster-bins produces two tab-separated files:
 cluster-bins has 4 main features with some main parameters that allow  to improve the clustering.
 
 1. cluster-bins has a parameter `-d`, `--diploidbaf` that specifies the maximum expected shift from 0.5 for BAF for a diploid or tetraploid cluster (i.e. with copy-number states (1, 1) or (2, 2)). This threshold is used for two goals: (1) To identify the diploid or tetraploid cluster which is used to correct the estimated BAF of potentially biased clusters. (2) To identify potentially biased clusters.
-The default value of this parameter (0.08) is typically sufficient for most of the datasets, but its value can be changed or tuned to accommodate the features of special datasets.
+The default value of this parameter (0.1) is typically sufficient for most of the datasets, but its value can be changed or tuned to accommodate the features of special datasets.
 In particular, the value of this threshold depends on the variance in the data (related to noise and coverage); generally, higher variance requires a higher shift.
 Information provided by plot-bins can be crucial to decide whether one needs to change this value in special datasets.
 
@@ -70,7 +70,7 @@ If your clusters do not appear to be cohesive, try lowering the maximum number o
 | `-dB`,`--bafdeviation` | Standard deviation for generate BAF of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
 | `-s`, `--seed` | Random seed | The value is used to seed the random generation of RDR and BAF of synthetic bins | 0 |
 
-4. cluster-bins offers a basic iterative process to merge clusters according to given tolerances. This feature can be used to refine the results of BNPY clustering and merge distinct clusters that are not sufficiently distinguished. This process can be controlled by the following parameters.
+4. cluster-bins offers a basic iterative process to merge clusters according to given tolerances. This feature can be used to refine the results of the GMM clustering and merge distinct clusters that are not sufficiently distinguished. This process can be controlled by the following parameters.
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|

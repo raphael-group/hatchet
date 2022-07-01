@@ -52,6 +52,7 @@ This repository includes a quick overview of the HATCHet's algorithm and softwar
 5. HATCHet's model selection criterion identifies the matrices *A*, *B* and *U* in the factorization while evaluating the fit according to both the inferred number of clones and presence/absence of a WGD.
 6. Clusters are classified by their inferred copy-number states in each sample. *Sample-clonal clusters* have a unique copy-number state in the sample and correspond to evenly-spaced positions in the scaled RDR-BAF plot (vertical grid lines in each plot). *Sample-subclonal clusters* (e.g. cyan in *p*) have different copy-number states in a sample and thus correspond to intermediate positions in the scaled RDR-BAF plot. *Tumor-clonal clusters* have identical copy-number states in all tumor clones -- thus they are sample-clonal clusters in every sample and preserve their relative positions in scaled-RDR-BAF plots. In contrast, *tumor-subclonal clusters* have different copy-number states in different tumor clones and their relative positions in the scaled RDR-BAF plot varies across samples (e.g. purple cluster).
 
+Note that this overview and figure do not include recently added features such as variable-width binning and locality-aware clustering that are currently default in HATCHet. These features will be described in a future publication.
 
 ### Software
 <a name="software"></a>
@@ -75,22 +76,10 @@ The setup process is composed of 3 steps:
 
 #### Standard Installation
 
-`HATCHet` can be installed using an existing installation of `conda` (e.g. either the compact
+HATCHet can be installed using an existing installation of `conda` (e.g. either the compact
 [Miniconda](https://docs.conda.io/en/latest/miniconda.html) or the complete [Anaconda](https://www.anaconda.com/)).
-First, `bioconda` [requires](https://bioconda.github.io/user/index.html) to set the following channels in this exact order:
-```shell
-conda config --add channels defaults
-conda config --add channels bioconda
-conda config --add channels conda-forge
-```
 
-Next, `HATCHet` can be installed with the following one-time command:
-```shell
-conda install hatchet
-```
-
-This command installs `hatchet` in the base conda environment, however best practices generally recommend, especially in computing servers, to keep distinct packages independent.
-Therefore, it is preferable to use the following command to install `hatchet`:
+We recommend creating a new environment in which to install `hatchet`:
 ```shell
 conda create -n hatchet hatchet
 ```
@@ -98,6 +87,23 @@ conda create -n hatchet hatchet
 In this case, `hatchet` must be activated before every session with the following command
 ```shell
 source activate hatchet
+```
+
+For installation, `bioconda` [requires](https://bioconda.github.io/user/index.html) to set the following channels in this exact order:
+```shell
+conda config --add channels defaults
+conda config --add channels bioconda
+conda config --add channels conda-forge
+```
+
+Then, `hatchet` can be installed with the following one-time command:
+```shell
+conda install hatchet
+```
+
+If you would like to run the reference-based phasing modules of HATCHet, please install the additional dependency `shapeit` from the channel `dranew`:
+```shell
+conda install -c dranew shapeit
 ```
 
 #### Manual Installation
@@ -130,14 +136,14 @@ If using Gurobi (the default option), make sure that the environmental variable 
 
 If you do not have or wish to use Gurobi (though using Gurobi will be at least twice as fast as any other solver),
 you can use any Pyomo-supported solver by setting the environment variable `HATCHET_COMPUTE_CN_SOLVER` to `cbc`,
-`glpk`, or any other Pyomo-supported solver. For example, `export HATCHET_COMPUTE_CN_SOLVER=cbc`. 
+`glpk`, or any other Pyomo-supported solver. For example, `export HATCHET_COMPUTE_CN_SOLVER=cbc`.
 
 Alternatively, you can set the key `solver` key in the `compute_cn`
 section of your `hatchet.ini` (if using the [hatchet run](doc_runhatchet.html) command) to a specific Pyomo-supported
 solver. Make sure the relevant solver binaries are in your `$PATH`, otherwise Pyomo will not be able to find them
 correctly.
 
-One HATCHet command that is very useful to sanity-check your solver is `hatchet check-solver`. This command runs the HATCHet `compute_cn` step on a small set of pre-packaged data files and completes fairly quickly (a few seconds for the Gurobi optimizer, but up to a few minutes for glpk). Running this command will ensure that you have your solver settings (including licenses) set up correctly, so you should always run this command first before trying out the `compute_cn` step on your large data files.
+One HATCHet command that is very useful to sanity-check your solver is `hatchet check`. This command runs the HATCHet `compute_cn` step on a small set of pre-packaged data files and completes fairly quickly (a few seconds for the Gurobi optimizer, but up to a few minutes for glpk). Running this command will ensure that you have your solver settings (including licenses) set up correctly, so you should always run this command first before trying out the `compute_cn` step on your large data files.
 
 ### Required data
 <a name="requireddata"></a>
@@ -150,11 +156,11 @@ HATCHet requires 3 input data files:
 3. A human reference genome. Ideally, one should consider the same human reference genome used to align the sequencing reads in the given BAM files. The most-used human reference genome are available at [GRC](https://www.ncbi.nlm.nih.gov/grc/human) or [UCSC](http://hgdownload.cse.ucsc.edu/downloads.html#human). Observe that human reference genomes use two different notations for chromosomes: either `1, 2, 3, 4, 5 ...` or `chr1, chr2, chr3, chr4, chr5 ...`. One needs to make sure all BAM files and reference genome share that same chromosome notation. When this is not the case, one needs to change the reference to guarantee consistency and needs to re-index the new reference (e.g. using [SAMtools](http://www.htslib.org/workflow/#mapping_to_variant)). Also, HATCHet requires that the name of each chromosome is the first word in each ID such that `>1 [ANYTHING] ... \n>2 [ANYTHING] ... \n>3 [ANYTHING] ...` or `>chr1 [ANYTHING] ... \n>chr2 [ANYTHING] ... \n>chr3 [ANYTHING]`.
 
    For the reference genome, HATCHet requires the existence of a a sequence dictionary (`.dict`), which is part of all standard pipelines for sequencing data, see for example [GATK](https://gatk.broadinstitute.org/hc/en-us/articles/360035531652-FASTA-Reference-genome-format) or [Galaxy](https://galaxyproject.org/admin/data-preparation/). Please note that the sequence dictionary is **NOT** the reference index `.fai`, which is a different structure, has a different function, and it is also recommended.
-   
+
    The dictionary of a reference genome is often included in the available bundles for the reference genomes, see the [example for hg19](ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/hg19) from Broad Institute. However, the dictionary can also be generated in seconds using either [SAMtools](http://www.htslib.org/doc/samtools-dict.html) or [Picard tools](https://gatk.broadinstitute.org/hc/en-us/articles/360036729911-CreateSequenceDictionary-Picard-).
-   
+
    In the folder where you want to download and index the human genome, the steps would typically be:
-   
+
    ```script
    curl -L https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz | gzip -d > hg19.fa
    samtools faidx hg19.fa
@@ -182,13 +188,15 @@ As such, we also provide here an overview of the entire pipeline and we describe
 HATCHet is in active development, please report any issue or question as this could help the devolment and imporvement of HATCHet. Current known issues with current version are reported here below:
 
 - The allele-swapping feature of combine-counts has been temporarily disabled due to conflicts with recent SAMtools versions.
-- HATCHet has not been tested on Windows yet.
+- HATCHet has not been tested on Windows yet. For Windows users, we recommend [Windows Subsystems for Linux](https://docs.microsoft.com/en-us/windows/wsl/install).
 
 A list of the major recent updates:
-- HATCHet accepts now any reference genome (including non humans).
-- HATCHet now handles genomic regions properly, recommended for WES data.
+- Variable-width binning which adapts to the sequencing coverage and observed heterzygous germline SNP positions
+- Modules for reference-based phasing and associated pre- and post-processing
+- Locality-aware clustering which combines global clustering with genomic location
+- Added plotting modules which show a) bins with consistent coloring between 2D and genome-wide views and b) expected positions of assigned copy-number states
 
 ## Contacts
 <a name="contacts"></a>
 
-HATCHet is actively maintained by Simone Zaccaria, currently a post-doctoral research associate at Princeton University in the research group of prof. Ben Raphael.
+HATCHet is maintained by the research groups of Prof. Ben Raphael (Princeton) [[email]](mailto:braphael@princeton.edu) and Prof. Simone Zaccaria (UCL)  [[email]](mailto:s.zaccaria@ucl.ac.uk). Major contributors include Matt Myers, Vineet Bansal, and Brian Arnold.

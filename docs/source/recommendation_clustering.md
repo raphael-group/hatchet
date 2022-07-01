@@ -1,24 +1,30 @@
 # Analyze global clustering
 
-The global clustering performed along the genome and jointly across samples is a crucial feature of HATCHet and the quality of the final results is affected by the quality of the clustering. In particular, the global clustering is performed by HATCHet's component `cluster-bins`, whose default values for the main parameters allow to deal with most of the datasets. However, noisy or special datasets need tuning of these parameters, especially because the current version of `cluster-bins` uses [BNPY](https://bitbucket.org/michaelchughes/bnpy-dev/src/master/), an external implementation of a Dirichlet process which is not specific for sequencing data. Therefore, the user needs to validate the results and improve it to obtain best-quality results, especially when considering noisy and special datasets. 
+The global clustering performed along the genome and jointly across samples is a crucial feature of HATCHet and the quality of the final results is strongly affected by the quality of the clustering. This global clustering is performed by HATCHet's component `cluster-bins-loc`, whose default values are suitable for many datasets. However, for ideal results on specific datasets these parameters may need to be modified.
 
-The user should validate the results of the clustering, especially in noisy or suspicious cases, through the cluster figure produced by the [command CBB of plot-bins](doc_plot_bins.md) and as explained in the available [demos](https://github.com/raphael-group/hatchet#demos). More specifically, we suggest to consider the following criterion to validate the clustering: **Every pair of clusters needs to be clearly distinct in terms of RDR or BAF in at least one sample and each cluster only contains regions with similar values of RDR and BAF in all samples**.
+The module `cluster-bins-loc` incorporates genomic position to improve clustering using a Gaussian hidden Markov model (GHMM), as opposed to the position-agnostic Gaussian mixture model (GMM) used in `cluster-bins` and described in the original HATCHet publication. This page describes how to tune the parameters of `cluster-bins-loc` -- for recommendations on `cluster-bins`, see [this page](recommendation_old_clustering.html) instead.
 
-`cluster-bins` offers two sets of parameters that the user can tune to improve the result of the clustering: (1) `cluster-bins`-specific and (2) BNPY-specific parameters.
+The user should validate the results of the clustering, especially in noisy or suspicious cases, through the cluster figures produced by [plot-bins](doc_plot_bins.html) and [plot-bins-1d2d](doc_plot_bins_1d2d.html). More specifically, we suggest the following criteria to evaluate the clustering:
 
-### `cluster-bins`-specific parameters
+1. Every pair of clusters should be clearly distinct in terms of RDR or BAF in at least one sample, and
+2. Each cluster should contain regions with similar values of RDR and BAF in all samples
 
-`cluster-bins` provides two specific parameters that can be used to improve the results of the global clustering:
-- `-tR` threshold defines a RDR tolerance (default value is `-tR 0.15`)
-- `-tB` threshold defines a BAF tolerance (default value is `-tB 0.04`)
 
-These tolerances are used to merge any pair of clusters which have differences in terms of RDR and BAF always lower than the given thresholds across all samples. Intuitively these two thresolds are used to draw a rectangle (with `tR` width and `tB` height in every RDR-BAF plots) around every cluster in every sample. If two clusters are in the same rectangle in every sample, they are merged. As such, the user can estimate the RDR and BAF as the values of the thresholds by using the heat figure produced by the [command BB of plot-bins](doc_plot_bins.md). In particular, higher values allow to merge more clusters, avoid overfitting, and accomodate higher noise and variances, while smaller values allow to avoid overclustering. For example, clusters which have a disc/long shape, i.e. high variance of RDR as in the [cancer WGS demo](https://github.com/raphael-group/hatchet/blob/master/examples/demo-WGS-cancer/demo-wgs-cancer.sh) or [WES demo](https://github.com/raphael-group/hatchet/blob/master/examples/demo-WES/demo-wes.sh), will require a higher value of `tR`, e.g. `-tR 0.3` or `-tR 0.4`.
+`cluster-bins-loc` offers several parameters that can be used to tune the clustering.
+## Number of clusters
+By default, `cluster-bins-loc` tries several possible values for the number `K` of clusters and selects the one that maximizes the silhouette score. In practice, this tends to *underestimate* the number of clusters that are visually apparent. This can be modified by
 
-### `sklearn`-specific parameters
+1. Setting the parameters `--minK` and `--maxK` which specify the minimum and maximum number of clusters to consider, or
+2. Setting the parameter `--exactK` to fix the number of clusters to a given value.
 
-`cluster-bins` additionally provide 3 parameters which allow to directly control the clustering computed by the scikit-learn Gaussian Mixture Model:
-- `-R`: number of restarts (default is `-R 10`) which controls the number of restarts allows the method to escape local optima. While a lower number of restarts improves the running time of `cluster-bins` process, a higher number allows it to consider more solutions and choose a better clustering.
-- `-K`: this value provides the maximum possible number of clusters (default is `-K 50`). Scikit-learn tends to infer close to this maximum number `K` of clusters, so if you have relatively simple data with few apparent clusters you may want to lower `K`.
-- `-c`: this value (default `1`) determines the model's relative confidence in many even clusters (large `c`) vs. an uneven distribution of points into clusters, potentially with fewer than `K` components (small `c`). For experts, this is the concentration parameter for the Dirichlet process prior. Reducing this value by many orders of magnitude (e.g., `-c 0.001` or `-c 0.00001`) may enable scikit-learn to infer fewer than `K` clusters.
+## Model parameters
+Some parameters of the model can be tuned to change the clustering. The most useful one is the value `--tau`, which corresponds to the probability of transitioning between different copy-number states (i.e., the initial value for off-diagonal entries in the transition matrix). In practice, `tau` controls the balance between global information (RDR and BAf across samples) and local information (assigning adjacent bins to the same cluster): smaller values of `tau` put more weight on *local* information, and larger values of `tau` put more weight on *global* information.
+ It may be appropriate to reduce `tau` by several orders of magnitude for noisier or lower-coverage datasets, as in this case the global RDR/BAF values are less reliable.
 
-Note that that these clustering parameters determine the clustering *before* the merging heuristic described above is applied; if you are unsure which set of parameters to tune, consider turning off the merging heuristic (i.e., setting `-tR 0 -tB 0`) to inspect the clustering without merging.
+ Other parameters (below) are available to change the structure of the model, although in practice I have not found them particularly helpful in tuning the clustering.
+
+| Name | Description | Usage | Default |
+|------|-------------|-------|---------|
+| `-t`, `--transmat` | Type of transition matrix to infer | `fixed` (to off-diagonal = tau), `diag` (all diagonal elements are equal, all off-diagonal elements are equal) or `full` (freely varying) | `diag` |
+| `-c`, `--covar` | Type of covariance matrix to infer | options described in [hmmlearn documentation](https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.hmm.GaussianHMM) | `diag` |
+| `-x`, `--decoding` | Decoding algorithm to use to infer final estimates of states | `map` for MAP inference, `viterbi` for Viterbi algorithm | `map` |

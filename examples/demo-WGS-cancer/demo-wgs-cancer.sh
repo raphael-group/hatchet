@@ -1,6 +1,8 @@
 # Demo for WGS data from a cancer patient
 : ex: set ft=markdown ;:<<'```shell' #
 
+**NOTE**: this demo has not yet been updated for version 1.0 of HATCHet which includes variable-width binning, phasing, and locality-aware clustering.
+
 The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 samples (A12-A, A12-C, and A12-D) of metastatic patient A12, previously published in (Gundem et al., Nature, 2015)). For simplicity, the demo starts from a BB file `demo-wgs-cancer.bb` (included in this demo at `examples/demo-WGS-cancer/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. `count-reads`, `count-alleles`, and `combine-counts`) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of count-reads, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
 
 ## Requirements and set up
@@ -55,7 +57,7 @@ We thus obtain the following clustering:
 
 ![Bad clustering with default values](tR015-cbb.png)
 
-We can easily notice that the clustering is not ideal and is clearly overfitting the data by choosing too many distinct clusters; in fact we notice the presence of many different clusters that are extremely close and have identical BAF in every sample, e.g. light blue/dark blue/light orange/dark grey clusters or orange/purple clusters or pink/light gray clusters are always adjacent clusters which appear to be part of wider cluster. A good condition to assess the quality of the clustering is to assess that every pair of clusters is clearly distinct in one of the two dimensions (RDR and BAF) in **at least one** sample. 
+We can easily notice that the clustering is not ideal and is clearly overfitting the data by choosing too many distinct clusters; in fact we notice the presence of many different clusters that are extremely close and have identical BAF in every sample, e.g. light blue/dark blue/light orange/dark grey clusters or orange/purple clusters or pink/light gray clusters are always adjacent clusters which appear to be part of wider cluster. A good condition to assess the quality of the clustering is to assess that every pair of clusters is clearly distinct in one of the two dimensions (RDR and BAF) in **at least one** sample.
 
 Since Dirichlet clustering is not ad-hoc for this application, it can often result in overclustering. For this reason, cluster-bins additionally provides a procedure to merge clusters which are very likely to be part of a single cluster. However this procedure requires two maximum thresholds for doing this, one is the maximum shift for RDR (`-tR 0.15`) and one is the maximum shift for BAF (`-tB 0.03`). The default values allow to work with most of the datasets, however datasets of high variance require to tune these parameters. In our example, while the BAF of the clusters appears to be consistent with the default threshold, RDR appears to have much higher variance; in fact, the clusters that are always adjacent span much more than 0.15 of RDR in the x-axis. Therefore, by looking at the plot, we can see that a value of `-tR 0.5` fit much better the noise of RDR in our data and we repeat the clustering with this value.
 
@@ -80,7 +82,7 @@ In this clustering the previously-described condition is met and all the differe
 
 ## hatchet's step
 
-In the last step we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD. 
+In the last step we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
 We apply the last step with default parameters and, for simplicity of this demo, we apply only few changes:
 - As the dataset has high variance and noise (see clustering), we consider a minimum clone proportion `-u` slightly higher than the default value, i.e. `10%`. We do this because we cannot infer tumor clones with very low proportions when there is high noise and because potential clones inferred with very low proportions may simply be the result of overfitting. In fact, when using values of `-u` smaller than `10%` we obtain solutions with clone proporions identical to the minimum value of `-u`; this is the recommended criterion to determine the need of increasing the value of `-u`.
 - We limit the number of clones to 6 for simplicity of this demo and because it is a reasonable value for CNAs when consider only few samples from the same patient.

@@ -1,7 +1,8 @@
 # Temp
 *~
 *.ucn*
-!tests/data/best.bbc.ucn
+!tests/data/fw/best.bbc.ucn
+!tests/data/fw/results/best.bbc.ucn
 
 # Build directory
 build/
@@ -39,3 +40,4 @@ build/
 *.exe
 *.out
 *.app
+.vscode/*

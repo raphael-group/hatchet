@@ -7,9 +7,9 @@
 
 class IlpSubset
 {
-    
+
 public:
-    
+
     IlpSubset(const int n,
               const int m,
               const int k,
@@ -23,10 +23,10 @@ public:
               const DoubleMatrix& FB,
               const DoubleArray& w,
               const VERBOSITY_t v);
-    
-    
+
+
     void fixC(const IntMatrix& barCA, const IntMatrix& barCB);
-    
+
     void fixU(const DoubleMatrix& barU)
     {
         _barU = barU;
@@ -44,14 +44,14 @@ public:
     }
 
     void init();
-    
+
     void hotStart(const IntMatrix& hCA, const IntMatrix& hCB);
-    
+
     int solve(const int timeLimit, const int memoryLimit, const int nrThreads);
     int solve(const int timeLimit, const int memoryLimit, const int nrThreads, const int maxIter);
-    
+
     void exportModel(const std::string& filename);
-    
+
     DoubleArray getObjs()
     {
         return _objs;
@@ -68,12 +68,12 @@ public:
     {
         return _Us;
     }
-    
+
     double runtime()
     {
         return _model.get(GRB_DoubleAttr_Runtime);
     }
-    
+
     double gap()
     {
         return _model.get(GRB_DoubleAttr_MIPGap);
@@ -90,12 +90,12 @@ public:
     }
 
     void printValues();
-    
+
     static std::pair<IntMatrix, IntMatrix> firstHotStart(const DoubleMatrix &FA, const DoubleMatrix &FB, const int m, const int k, const int n,
                                                          const int cmax, const int d, const int base, const bool ampdel, const CNMap& cn);
-    
+
 private:
-    
+
     /// Build main common variables
     void buildVariables();
     /// Build the variables that depend on the chosen second objective
@@ -124,7 +124,7 @@ private:
     bool checkRank(const IntMatrix &hCA, const IntMatrix &hCB, const IntArray &map);
     ///
     double symmCoeff(const int index);
-    
+
     /// Number of clones
     const int _n;
     /// Number of total segments
@@ -161,7 +161,7 @@ private:
     MODE_t _mode;
     /// Maximum B-allele copy number
     const int _M;
-    
+
     /// Gurobi environment
     GRBEnv _env;
     /// Gurobi model
@@ -200,7 +200,7 @@ private:
     Var4Matrix _barcIJA;
     /// Variable barcB[b][t][i][j] = 1 iff _cB[b][t][i] and _cB[b][t][j] are different
     Var4Matrix _barcIJB;
-    
+
     /// Objective value for each found solution
     DoubleArray _objs;
     /// Integer A-allele copy numbers of the clones for each solution

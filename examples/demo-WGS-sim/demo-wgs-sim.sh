@@ -1,5 +1,7 @@
-# Demo for standard WGS data 
+# Demo for standard WGS data
 : ex: set ft=markdown ;:<<'```shell' #
+
+**NOTE**: this demo has not yet been updated for version 1.0 of HATCHet which includes variable-width binning, phasing, and locality-aware clustering.
 
 The following HATCHet's demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 simulated samples obtained from the same tumor. This represents an exemplary case of executing HATCHet on a typical dataset with standard noise. For simplicity, the demo starts from a BB file `demo-WGS-sim.bb` (included in this demo at `examples/demo-WGS-sim/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. count-reads, count-alleles, and combine-counts) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of count-reads, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through `-c 3 -C 200`).
 
@@ -60,11 +62,11 @@ We thus obtain the following clustering:
 
 ![CBB](cbb.png)
 
-We can easily notice that the clustering is good and not tuning is needed as every pair of clusters is clearly distinct in one of the two dimensions (RDR and BAF) in **at least one** sample. 
+We can easily notice that the clustering is good and not tuning is needed as every pair of clusters is clearly distinct in one of the two dimensions (RDR and BAF) in **at least one** sample.
 
 ## hatchet's step
 
-Next we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD. 
+Next we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
 We apply the last step with default parameters and, for simplicity of this demo, we consider 8 clones, which can be easily considered by HATCHet in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
 
 ```shell
@@ -96,7 +98,7 @@ We obtain the following summary of results:
     ## The related-tetraploid resulting files are copied to ./chosen.tetraploid.bbc.ucn and ./chosen.tetraploid.seg.ucn
     # The chosen solution is tetraploid with 3 clones and is written in ./best.bbc.ucn and ./best.seg.ucn
 
-HATCHet predicts the presence of 3 clones in the 3 tumor samples and, especially, predicts that 2 samples contains two distinct tumor clones, according to the true clonal composition. 
+HATCHet predicts the presence of 3 clones in the 3 tumor samples and, especially, predicts that 2 samples contains two distinct tumor clones, according to the true clonal composition.
 
 ## Analyzing inferred results
 

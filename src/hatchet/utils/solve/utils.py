@@ -1,4 +1,3 @@
-import warnings
 from collections import OrderedDict
 import numpy as np
 import pandas as pd
@@ -41,7 +40,12 @@ def parse_clonal(clonal):
         if i == 1:
             _first_cn_a, _first_cn_b = list(copy_numbers.values())[0]
             if _first_cn_a + _first_cn_b == cn_a + cn_b:
-                raise ValueError('When >= 2 clonal copy numbers are given, the first two must be different in the two segmental clusters')
+                raise ValueError(
+                    (
+                        'When >= 2 clonal copy numbers are given, the first two must be different in the two segmental '
+                        'clusters'
+                    )
+                )
 
         cn_total = cn_a + cn_b
         if (cn_total == 2) and (n_clonal_parts > 1):
@@ -76,18 +80,26 @@ def scale_rdr(rdr, copy_numbers, purity_tol=0.05):
         scale = (2 - (2 - cn_sum_1) * purity) / rdr_1
         assert np.all((0 <= purity) & (purity <= 1) & (scale >= 0)), 'scaling failed'
 
-    rdr = scale * rdr
-    return rdr
+    return scale
 
 
-def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None, seg_out_file=None):
+def segmentation(
+    cA,
+    cB,
+    u,
+    cluster_ids,
+    sample_ids,
+    bbc_file,
+    bbc_out_file=None,
+    seg_out_file=None,
+):
     df = pd.read_csv(bbc_file, sep='\t')
     # Chromosomes may or may not have chr notation - force a string dtype anyway
     df['#CHR'] = df['#CHR'].astype(str)
     # TODO: The legacy C++ implementation interprets the 'coverage' column as an int
     df['COV'] = df['COV'].astype(int)
 
-    n_cluster, n_clone = len(cluster_ids), len(cA[0])
+    n_clone = len(cA[0])
     cA = pd.DataFrame(cA, index=cluster_ids, columns=range(n_clone))
     cB = pd.DataFrame(cB, index=cluster_ids, columns=range(n_clone))
     u = pd.DataFrame(u, index=range(n_clone), columns=sample_ids)
@@ -110,7 +122,7 @@ def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None
 
     # last 2*n_clone columns names = [cn_normal, u_normal, cn_clone1, u_clone1, cn_clone2, ...]
     extra_columns = [col for sublist in zip(cN.columns, u.columns) for col in sublist]
-    all_columns = df.columns.values[:-2*n_clone].tolist() + extra_columns
+    all_columns = df.columns.values[: -2 * n_clone].tolist() + extra_columns
 
     if bbc_out_file is not None:
         # rearrange columns for easy comparison to legacy files
@@ -122,8 +134,6 @@ def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None
         df['segment'] = 0
         # all column names with cnA|cnB information (normal + clones)
         cN_column_names = cN.columns.tolist()
-        # all columns names with mixture information (normal + clone)
-        u_column_names = u.columns.tolist()
         # create a new column with all cnA|cnB strings joined as a single column
         df['all_copy_numbers'] = df[cN_column_names].apply(lambda x: ','.join(x), axis=1)
 
@@ -134,19 +144,19 @@ def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None
         group_name_to_indices = df.groupby(
             (
                 # Find indices where we see the first sample name AND
-                (df['SAMPLE'] == _first_sample_name) &
-                (
+                (df['SAMPLE'] == _first_sample_name)
+                & (
                     # The chromosome changed values from the previous row OR
                     # any of the copy-numbers changed from the previous row OR
                     # the START changed from the END in the previous row
-                    (df['#CHR'] != df['#CHR'].shift()) |
-                    (df['all_copy_numbers'] != df['all_copy_numbers'].shift()) |
-                    (df['START'] != df['END'].shift())
+                    (df['#CHR'] != df['#CHR'].shift())
+                    | (df['all_copy_numbers'] != df['all_copy_numbers'].shift())
+                    | (df['START'] != df['END'].shift())
                 )
             ).cumsum(),
             # cumulative sum increments whenever a True is encountered, thus creating a series of monotonically
             # increasing values we can use as segment numbers
-            sort=False
+            sort=False,
         ).indices
         # 'indices' of a Pandas GroupBy object gives us a mapping from the group 'name'
         # (numbers starting from 1) -> indices in the Dataframe
@@ -154,7 +164,12 @@ def segmentation(cA, cB, u, cluster_ids, sample_ids, bbc_file, bbc_out_file=None
         for group_name, indices in group_name_to_indices.items():
             df.loc[indices, 'segment'] = group_name
 
-        aggregation_rules = {'#CHR': 'first', 'START': 'min', 'END': 'max', 'SAMPLE': 'first'}
+        aggregation_rules = {
+            '#CHR': 'first',
+            'START': 'min',
+            'END': 'max',
+            'SAMPLE': 'first',
+        }
         aggregation_rules.update({c: 'first' for c in extra_columns})
         df = df.groupby(['segment', 'SAMPLE']).agg(aggregation_rules)
 

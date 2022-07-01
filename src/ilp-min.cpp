@@ -71,7 +71,7 @@ void IlpSubset::fixC(const IntMatrix& barCA, const IntMatrix& barCB)
         } else {
             upper = _cmax;
         }
-        
+
         int adA = 0;
         int adB = 0;
         for(int i = 0; i < _n; ++i)
@@ -108,7 +108,7 @@ void IlpSubset::init()
     {
         buildOptionalVariables();
     }
-    
+
     buildConstraints();
     if(_d > 0 && (_mode == MODE_t::FULL || _mode == MODE_t::CARCH))
     {
@@ -119,7 +119,7 @@ void IlpSubset::init()
         buildSymmetryBreaking();
         fixGivenCN();
     }
-    
+
     buildObjective();
     //test();
     _model.update();
@@ -161,7 +161,7 @@ void IlpSubset::hotStart(const IntMatrix& hCA, const IntMatrix& hCB)
 
         IntArray map = sort_indexes(rank);
         assert(checkRank(hCA, hCB, map));
-        
+
         for(int s = 0; s < _m; ++s)
         {
             for(int i = 0; i < _n; ++i)
@@ -201,13 +201,13 @@ int IlpSubset::solve(const int timeLimit, const int memoryLimit, const int nrThr
         {
             _model.getEnv().set(GRB_IntParam_LogToConsole, 0);
         }
-        
+
         bool proceed = true;
         do {
             _model.optimize();
             //printValues();
             int status = _model.get(GRB_IntAttr_Status);
-        
+
             if (status == GRB_OPTIMAL || status == GRB_TIME_LIMIT)
             {
                 _objs.push_back(_model.get(GRB_DoubleAttr_ObjVal));
@@ -243,21 +243,21 @@ int IlpSubset::solve(const int timeLimit, const int memoryLimit, const int nrThr
                 proceed = false;
             }
         } while(proceed && (maxIter == 0 || count < maxIter));
-        
+
         return count;
     }
     catch (const GRBException& e)
     {
         std::cerr << "Error code = " << e.getErrorCode() << std::endl;
         std::cerr << e.getMessage() << std::endl;
-        
+
         return -1;
     }
     catch (...)
     {
         return -1;
     }
-    
+
     return 0;
 }
 
@@ -278,7 +278,7 @@ void IlpSubset::printValues()
             std::cerr << _yB[s][p].get(GRB_StringAttr_VarName) << " = " << _yB[s][p].get(GRB_DoubleAttr_X) << std::endl;
         }
     }
-    
+
     for(int s = 0; s < _m; ++s)
     {
         for(int p = 0; p < _k; ++p)
@@ -298,7 +298,7 @@ void IlpSubset::printValues()
                 std::cerr << _cB[s][i].get(GRB_StringAttr_VarName) << " = " << _cB[s][i].get(GRB_DoubleAttr_X) << std::endl;
             }
         }
-    
+
         for(int b = 0; b < _M; ++b)
         {
             for(int s = 0; s < _m; ++s)
@@ -311,7 +311,7 @@ void IlpSubset::printValues()
             }
         }
     }
-    
+
     if(_mode == MODE_t::FULL || _mode == MODE_t::UARCH)
     {
         for(int i =0; i < _n; ++i)
@@ -418,7 +418,7 @@ std::pair<IntMatrix, IntMatrix> IlpSubset::firstHotStart(const DoubleMatrix &FA,
                     int mod = std::min(n, k);
                     int a = std::min(targetA[s][i % mod], cmax);
                     int b = std::min(targetB[s][i % mod], cmax);
-                    
+
                     if(ampdel)
                     {
                         adA = adA == 0 && a > base ? 1 : adA;
@@ -428,14 +428,14 @@ std::pair<IntMatrix, IntMatrix> IlpSubset::firstHotStart(const DoubleMatrix &FA,
 
                         a = adA >= 0 ? std::max(a, base) : std::min(a, base);
                         b = adB >= 0 ? std::max(b, base) : std::min(b, base);
-                        
+
                         if(a + b > cmax)
                         {
                             a = cmax - base;
                             b = cmax - a;
                         }
                     }
-                    
+
                     if(a + b <= cmax)
                     {
                         hCA[s][i] = a;
@@ -457,7 +457,7 @@ std::pair<IntMatrix, IntMatrix> IlpSubset::firstHotStart(const DoubleMatrix &FA,
             }
         }
     }
-    
+
     return std::make_pair(hCA, hCB);
 }
 
@@ -476,12 +476,12 @@ void IlpSubset::buildVariables()
         {
             snprintf(buf, 1024, "yA_%d_%d", s+1, p+1);
             _yA[s][p] = _model.addVar(0.0, GRB_INFINITY, 0, GRB_CONTINUOUS, buf);
-            
+
             snprintf(buf, 1024, "yB_%d_%d", s+1, p+1);
             _yB[s][p] = _model.addVar(0.0, GRB_INFINITY, 0, GRB_CONTINUOUS, buf);
         }
     }
-    
+
     _fA = VarMatrix(_m);
     _fB = VarMatrix(_m);
     for(int s = 0; s < _m; ++s)
@@ -493,14 +493,14 @@ void IlpSubset::buildVariables()
         } else {
             upper = _cmax;
         }
-        
+
         _fA[s] = VarArray(_k);
         _fB[s] = VarArray(_k);
         for(int p = 0; p < _k; ++p)
         {
             snprintf(buf, 1024, "fA_%d_%d", s+1, p+1);
             _fA[s][p] = _model.addVar(0.0, upper, 0, GRB_CONTINUOUS, buf);
-            
+
             snprintf(buf, 1024, "fB_%d_%d", s+1, p+1);
             _fB[s][p] = _model.addVar(0.0, upper, 0, GRB_CONTINUOUS, buf);
         }
@@ -519,19 +519,19 @@ void IlpSubset::buildVariables()
             } else {
                 upper = _cmax;
             }
-            
+
             _cA[s] = VarArray(_n);
             _cB[s] = VarArray(_n);
             for(int i = 0; i < _n; ++i)
             {
                 snprintf(buf, 1024, "cA_%d_%d", s+1, i+1);
                 _cA[s][i] = _model.addVar(0, upper, 0, GRB_INTEGER, buf);
-                
+
                 snprintf(buf, 1024, "cB_%d_%d", s+1, i+1);
                 _cB[s][i] = _model.addVar(0, upper, 0, GRB_INTEGER, buf);
             }
         }
-        
+
         if(_ampdel)
         {
             _adA = VarArray(_m);
@@ -549,7 +549,7 @@ void IlpSubset::buildVariables()
             }
         }
     }
-    
+
     if(_mode == MODE_t::FULL || (_d > 0 && _mode == MODE_t::CARCH))
     {
         _bitcA = Var3Matrix(_M);
@@ -566,14 +566,14 @@ void IlpSubset::buildVariables()
                 {
                     snprintf(buf, 1024, "bitcA_%d_%d_%d", b+1, s+1, i+1);
                     _bitcA[b][s][i] = _model.addVar(0, 1, 0, GRB_BINARY, buf);
-                    
+
                     snprintf(buf, 1024, "bitcB_%d_%d_%d", b+1, s+1, i+1);
                     _bitcB[b][s][i] = _model.addVar(0, 1, 0, GRB_BINARY, buf);
                 }
             }
         }
     }
-    
+
     if(_mode == MODE_t::FULL || _mode == MODE_t::UARCH)
     {
         _u = VarMatrix(_n);
@@ -587,7 +587,7 @@ void IlpSubset::buildVariables()
             }
         }
     }
-    
+
     if(_mode == MODE_t::FULL)
     {
         _vA = Var4Matrix(_M);
@@ -608,7 +608,7 @@ void IlpSubset::buildVariables()
                     {
                         snprintf(buf, 1024, "vA_%d_%d_%d_%d", b+1, s+1, i+1, p+1);
                         _vA[b][s][i][p] = _model.addVar(0, 1, 0, GRB_CONTINUOUS, buf);
-                        
+
                         snprintf(buf, 1024, "vB_%d_%d_%d_%d", b+1, s+1, i+1, p+1);
                         _vB[b][s][i][p] = _model.addVar(0, 1, 0, GRB_CONTINUOUS, buf);
                     }
@@ -616,7 +616,7 @@ void IlpSubset::buildVariables()
             }
         }
     }
-    
+
     if((_mode == MODE_t::FULL || _mode == MODE_t::UARCH) && _mu > 0.0)
     {
         _x = VarMatrix(_n);
@@ -630,7 +630,7 @@ void IlpSubset::buildVariables()
             }
         }
     }
-    
+
     _model.update();
 }
 
@@ -653,7 +653,7 @@ void IlpSubset::buildOptionalVariables()
             }
         }
     }
-    
+
     _model.update();
 }
 
@@ -666,12 +666,12 @@ void IlpSubset::buildConstraints()
         {
             _model.addConstr(_FA[s][p] - _fA[s][p] <= _yA[s][p]);
             _model.addConstr(_fA[s][p] - _FA[s][p] <= _yA[s][p]);
-            
+
             _model.addConstr(_FB[s][p] - _fB[s][p] <= _yB[s][p]);
             _model.addConstr(_fB[s][p] - _FB[s][p] <= _yB[s][p]);
         }
     }
-    
+
     if(_mode == MODE_t::FULL)
     {
         for(int s = 0; s < _m; ++s)
@@ -694,7 +694,7 @@ void IlpSubset::buildConstraints()
                 sum.clear();
             }
         }
-        
+
         for(int s = 0; s < _m; ++s)
         {
             for(int p = 0; p < _k; ++p)
@@ -715,7 +715,7 @@ void IlpSubset::buildConstraints()
                 sumB.clear();
             }
         }
-        
+
         for(int i = 0; i < _n; ++i)
         {
             for(int p = 0; p < _k; ++p)
@@ -735,7 +735,7 @@ void IlpSubset::buildConstraints()
         }
 
     }
-    
+
     if(_mode == MODE_t::FULL || (_d > 0 && _mode == MODE_t::CARCH))
     {
         for(int s = 0; s < _m; ++s)
@@ -747,7 +747,7 @@ void IlpSubset::buildConstraints()
             } else {
                 upper = _cmax;
             }
-            
+
             for(int i = 0; i < _n; ++i)
             {
                 GRBLinExpr sumA;
@@ -770,7 +770,7 @@ void IlpSubset::buildConstraints()
         }
 
     }
-    
+
     if (_mode == MODE_t::CARCH) {
         for(int s = 0; s < _m; ++s)
         {
@@ -789,7 +789,7 @@ void IlpSubset::buildConstraints()
                 sum.clear();
             }
         }
-        
+
         for(int s = 0; s < _m; ++s)
         {
             for(int p = 0; p < _k; ++p)
@@ -807,7 +807,7 @@ void IlpSubset::buildConstraints()
                 sumB.clear();
             }
         }
-        
+
         for(int s = 0; s < _m; ++s)
         {
             int upper = 0;
@@ -817,14 +817,14 @@ void IlpSubset::buildConstraints()
             } else {
                 upper = _cmax;
             }
-            
+
             for(int i = 0; i < _n; ++i)
             {
                 _model.addConstr(_cA[s][i] + _cB[s][i] <= upper);
             }
         }
     }
-    
+
     if(_mode == MODE_t::FULL || _mode == MODE_t::CARCH)
     {
         for(int s = 0; s < _m; ++s)
@@ -832,7 +832,7 @@ void IlpSubset::buildConstraints()
             _model.addConstr(_cA[s][0] == 1);
             _model.addConstr(_cB[s][0] == 1);
         }
-        
+
         if(_ampdel)
         {
             for(int s = 0; s < _m; ++s)
@@ -843,7 +843,7 @@ void IlpSubset::buildConstraints()
                     {
                         _model.addConstr(_cA[s][i] <= _cmax * _adA[s] + _base - _base * _adA[s]);
                         _model.addConstr(_cA[s][i] >= _base * _adA[s]);
-                        
+
                         _model.addConstr(_cB[s][i] <= _cmax * _adB[s] + _base - _base * _adB[s]);
                         _model.addConstr(_cB[s][i] >= _base * _adB[s]);
                     }
@@ -851,7 +851,7 @@ void IlpSubset::buildConstraints()
             }
         }
     }
-    
+
     if (_mode == MODE_t::UARCH) {
         for(int s = 0; s < _m; ++s)
         {
@@ -867,7 +867,7 @@ void IlpSubset::buildConstraints()
                 sum.clear();
             }
         }
-        
+
         for(int s = 0; s < _m; ++s)
         {
             for(int p = 0; p < _k; ++p)
@@ -883,7 +883,7 @@ void IlpSubset::buildConstraints()
             }
         }
     }
-    
+
     if(_mode == MODE_t::FULL || _mode == MODE_t::UARCH)
     {
         for(int p = 0; p < _k; ++p)
@@ -898,7 +898,7 @@ void IlpSubset::buildConstraints()
             sum.clear();
         }
     }
-    
+
     if((_mode == MODE_t::FULL || _mode == MODE_t::UARCH) && _mu > 0.0)
     {
         for(int p = 0; p < _k; ++p)
@@ -910,7 +910,7 @@ void IlpSubset::buildConstraints()
             }
         }
     }
-    
+
     _model.update();
 }
 
@@ -930,7 +930,7 @@ void IlpSubset::buildOptionalConstraints()
             _model.addConstr(sum == 1);
         }
     }
-    
+
     for(int s = 0; s < _m; ++s)
     {
         for(int b = 0; b < _M; ++b)
@@ -951,7 +951,7 @@ void IlpSubset::buildOptionalConstraints()
             }
         }
     }
-    
+
     for(int s = 0; s < _m; ++s)
     {
         for(int l = 0; l < _d - 1; ++l)
@@ -970,7 +970,7 @@ void IlpSubset::buildOptionalConstraints()
             sumL1.clear();
         }
     }
-    
+
     _model.update();
 }
 
@@ -992,7 +992,7 @@ void IlpSubset::buildSymmetryBreaking()
         sumI.clear();
         sumI1.clear();
     }
-    
+
     _model.update();
 }
 
@@ -1014,7 +1014,7 @@ void IlpSubset::buildObjective()
 {
     GRBLinExpr obj;
     obj = 0;
-    
+
     double norm = std::accumulate(_w.begin(), _w.end(), 0.0);
     DoubleArray ws;
     if(_mode == MODE_t::FULL) {log("Cluster objective weights:  ", VERBOSITY_t::DEBUGGING, _v);}
@@ -1032,8 +1032,8 @@ void IlpSubset::buildObjective()
             obj += _yA[s][p] * ws[s] + _yB[s][p] * ws[s];
         }
     }
-    
-    _model.setObjective(obj, GRB_MINIMIZE);    
+
+    _model.setObjective(obj, GRB_MINIMIZE);
     _model.update();
 }
 
@@ -1045,7 +1045,7 @@ void IlpSubset::buildNext()
     sum1 = 0;
     sum0 = 0;
     int count1 = 0;
-    
+
     for(int s = 0; s < _m; ++s)
     {
         for(int i = 0; i < _n; ++i)
@@ -1060,7 +1060,7 @@ void IlpSubset::buildNext()
                     sum0 += _bitcA[b][s][i];
                 }
             }
-            
+
             for(int b = 0; b < _M; ++b)
             {
                 if(round(_bitcB[b][s][i].get(GRB_DoubleAttr_X)) == 1)
@@ -1073,7 +1073,7 @@ void IlpSubset::buildNext()
             }
         }
     }
-    
+
     _model.addConstr(sum1 - sum0 <= count1 - 1);
 }
 
@@ -1179,4 +1179,3 @@ double IlpSubset::symmCoeff(const int index)
 {
     return std::pow(index+1, 1);
 }
-

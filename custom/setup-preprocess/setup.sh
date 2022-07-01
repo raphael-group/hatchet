@@ -47,9 +47,19 @@ echo 'export PATH='${SETUP_HOME}'/bcftools-1.6/bin/:${PATH}'  >> ${SETUP_HOME}/s
 We download and install Miniconda to create virtual environment specific to HATCHet.
 
 ```shell
-wget https://repo.anaconda.com/miniconda/Miniconda2-latest-Linux-x86_64.sh -P ${SETUP_HOME}/
-bash ${SETUP_HOME}/Miniconda2-latest-Linux-x86_64.sh -b -f -p ${SETUP_HOME}/miniconda/ && rm -f ${SETUP_HOME}/Miniconda2-latest-Linux-x86_64.sh
-${SETUP_HOME}/miniconda/bin/conda create -y -n hatchet python=3.8 numpy scipy pandas matplotlib seaborn
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -P ${SETUP_HOME}/
+bash ${SETUP_HOME}/Miniconda3-latest-Linux-x86_64.sh -b -f -p ${SETUP_HOME}/miniconda/ && rm -f ${SETUP_HOME}/Miniconda3-latest-Linux-x86_64.sh
+${SETUP_HOME}/miniconda/bin/conda create -y -n hatchet python=3.8
+# install HATCHet
+source ${SETUP_HOME}/miniconda/bin/activate hatchet
+pip install -U pip
+pip install -U setuptools
+pip install .
+# set up bioconda and install mosdepth
+conda config --add channels defaults
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda install mosdepth
 echo "source ${SETUP_HOME}/miniconda/bin/activate hatchet" >> ${SETUP_HOME}/setup_hatchet.sh
 :<<'```shell' # Ignore this line
 ```

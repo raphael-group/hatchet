@@ -1,6 +1,11 @@
 # compute-cn
 
-This step computes allele-specific fractional copy numbers, solves a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions, and deploys a model-selection criterion select the number of clone by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication.
+This step infers allele-specific copy numbers for each tumor clone as well as the mixture proportions of the tumor clones in each sample. It consists of the following components:
+
+1. Compute allele-specific fractional copy numbers.
+2. Solve a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions.
+3. Deploy a model-selection criterion to select the number of clones by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication.
+
 The step offers some parameters to control each of these features.
 
 ## Input
@@ -88,8 +93,8 @@ This heuristic can be controlled by the following parameters:
 | `-tR`, `--toleranceRDR` | Maximum RDR tolerance | The maximum RDR tolerance used by the heuristic when estimating the position of all clonal clusters | 0.04 |
 | `-tB`, `--toleranceBAF` | Maximum BAF tolerance | The maximum BAF tolerance used by the heuristic when estimating the position of all clonal clusters | 0.03 |
 | `--merge` | Activate merging of clusters | When activated, the heuristic will merge together clusters that appear to have the same values of RDR and BAF, according to the values below. This procedure can help the heuristic by refining the clustering and merging clusters that are likely to have the same copy-number states and unlikely to be clonal. | False, not used |
-| `-mR`, `--mergeRDR` | RDR merging threhsold | The maximum difference in RDR considered by the merging procedure | 0.1 |
-| `-mB`, `--mergeBAF` | BAF merging threhsold | The maximum difference in BAF considered by the merging procedure | 0.03 |
+| `-mR`, `--mergeRDR` | RDR merging threhsold | The maximum difference in RDR considered by the merging procedure | 0.08|
+| `-mB`, `--mergeBAF` | BAF merging threhsold | The maximum difference in BAF considered by the merging procedure | 0.04 |
 
 ## Simultaneous factorization
 
