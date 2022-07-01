@@ -59,6 +59,14 @@ def _check_tabix():
             return _check_cmd(config.paths.tabix, 'tabix', '-p', 'gff', _temp_gz_path, '-f')
 
 
+def _check_bgzip():
+    with tempfile.TemporaryDirectory() as tempdirname:
+        with importlib.resources.path(hatchet.data, 'sample.bbc') as file_path:
+            _temp_file_path = os.path.join(tempdirname, 'sample.bbc')
+            shutil.copy(file_path, _temp_file_path)
+            return _check_cmd(config.paths.bgzip, 'bgzip', _temp_file_path, '-f')
+
+
 def _check_picard():
     picard_dir = config.paths.picard
     picard_java_flags = config.phase_snps.picard_java_flags
@@ -216,6 +224,14 @@ CHECKS = {
             config.paths.shapeit,
             'shapeit',
             '--version',
+        ),
+        (
+            'bgzip',
+            '',
+            'Please install the bgzip executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.bgzip, or its location specified using the environment variable '
+            'HATCHET_PATHS_BGZIP. Note that bgzip can often be found at the same location as the tabix executable.',
+            _check_bgzip,
         ),
     ],
     'compute-cn': [
