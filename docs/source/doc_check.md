@@ -1,6 +1,6 @@
 # check
 
-This command of HATCHet verifies that dependencies that are unique to specific parts of HATCHet are correctly installed. The relevant commands with dependencies are `count-reads`, `phase-snps`, and `compute-cn`. Note that this command currently does not check for working versions of `samtools`, `bcftools`, or `bgzip` which are also required for various parts of HATCHet.
+This command of HATCHet verifies that dependencies that are unique to specific parts of HATCHet are correctly installed. The relevant commands with dependencies are `count-reads`, `phase-snps`, and `compute-cn`.
 
 All checks can be run simultaneously via `hatchet check`, or an individual command can be checked via, e.g., `hatchet check compute-cn`.
 

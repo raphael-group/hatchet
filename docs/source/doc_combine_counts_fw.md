@@ -1,6 +1,6 @@
 # combine-counts-fw
 
-NOTE: This function (formerly called `comBBo`) uses the legacy fixed-width binning described in the HATCHet paper. We recommend using `count-reads` and `combine-counts` which apply an adaptive binning scheme to ensure that each genomic bin has comparable SNP signal.
+NOTE: This function (formerly called `comBBo`) uses the legacy fixed-width binning described in the HATCHet paper. We recommend using [`count-reads`](doc_count_reads.md) and [`combine-counts`](doc_combine-counts.md) which apply an adaptive binning scheme to ensure that each genomic bin has comparable BAF signal.
 
 This step combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin.
 

@@ -59,17 +59,22 @@ combine-counts has some main parameters; the main values of these parameters all
 | `--msr`  | Minimum SNP-covering reads for each bin | Each bin constructed by this command must have at least this many reads covering heterozygous SNPs in each sample | 5000 |
 | `--mtr`  | Minimum total reads for each bin | Each bin constructed by this command must have at least this many total reads in each sample | 5000 |
 
-## Optional parameters
+## Phasing parameters
+A phased VCF file must be given via argument `-p, --phase` to apply reference-based phasing. The remaining parameters control the degree to which the phasing information is used.
+
+| Name | Description | Usage | Default |
+|------|-------------|-------|---------|
+| `-p`, `--phase`  | vcf.gz with phasing for all het. SNPs | File containing phasing data for germline SNPs, typically `phased.vcf.gz` if using the HATCHet pipeline. | None (no phasing is performed) |
+| `-s`, `--blocksize`  | Maximum phasing block size | Maximum distance (in bp) between a pair of SNPs included in the same phasing block (ignored if `-p, --phase` is not used) | 25000 |
+| `-m`, `--max_spb`  | Maximum number of SNPs per phased block | No more than this many SNPs can be included in the same phasing block (included to minimize phasing errors in high-LD regions) | 10 |
+| `-a`, `--alpha`  | Significance threshold to allow adjacent SNPs to be merged | If adjacent SNPs have significantly different BAFs (at this significance level) after taking the phasing into account, they are not merged a priori. Higher means less trust in phasing. | 0.1 |
+
+## Other optional parameters
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
 | `-j`, `--processes` | Number of parallel processes to use (default 1) |  | 1 |
-| `--use_mm`  | Use MM BAF inference | If this flag is set, an exhaustive "maximize-maximize" approach inference is used to infer BAF and phasing for each bin (instead of EM). MM results are higher-likelihood and may be closer to the inference from earlier versions of HATCHet, but often produces poorer clusters. |  |
 | `-z, --not_compressed`  | Indicates that intermediate files are not compressed | For compatibility with legacy versions of previous step -- set this flag if your `.total` and `.thresholds` files are plaintext rather than gzipped. |  |
-| `-p`, `--phase`  | vcf.gz with phasing for all het. SNPs | File containing phasing data for germline SNPs, typically `phased.vcf.gz` if using the HATCHet pipeline. |  |
-| `-s`, `--blocksize`  | Maximum phasing block size | Maximum distance (in bp) between a pair of SNPs included in the same phasing block (ignored if `-p, --phase` is not used) | 25000 |
-| `-m`, `--max_spb`  | Maximum number of SNPs per phased block | No more than this many SNPs can be included in the same phasing block (included to minimize phasing errors in high-LD regions) | 10 |
-| `-a`, `--alpha`  | Significance threshold to allow adjacent SNPs to be merged | If adjacent SNPs have significantly different BAFs (at this significance level) after taking the phasing into account, they are not merged a priori. Higher means less trust in phasing. | 0.1 |
 
 ## Example usage
 `hatchet combine-counts -b baf/bulk.1bed -o abin/bulk.bb -j 24 -V hg19 -A array -t array/total.tsv -V hg19`

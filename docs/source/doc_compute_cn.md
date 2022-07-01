@@ -1,6 +1,11 @@
 # compute-cn
 
-This step computes allele-specific fractional copy numbers, solves a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions, and deploys a model-selection criterion select the number of clone by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication.
+This step infers allele-specific copy numbers for each tumor clone as well as the mixture proportions of the tumor clones in each sample. It consists of the following components:
+
+1. Compute allele-specific fractional copy numbers.
+2. Solve a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions.
+3. Deploy a model-selection criterion to select the number of clones by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication.
+
 The step offers some parameters to control each of these features.
 
 ## Input
