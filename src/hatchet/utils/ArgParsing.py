@@ -1432,14 +1432,6 @@ def parse_count_alleles_arguments(args=None):
         snplists = {os.path.basename(f).split('.')[0]: f for f in args.snps}
     if not isfile(args.reference):
         raise ValueError(error('The provided file for human reference genome does not exist!'))
-    ensure(
-        (args.regions is None) or (isfile(args.regions)),
-        'The BED file of regions does not exist!',
-    )
-    ensure(
-        not all([args.snps, args.regions]),
-        'Both SNP list and genomic regions have been provided, please provide only one of these!',
-    )
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples, args.reference)
@@ -1475,7 +1467,6 @@ def parse_count_alleles_arguments(args=None):
         'samtools': samtools,
         'bcftools': bcftools,
         'snps': snplists,
-        'regions': args.regions,
         'reference': args.reference,
         'j': args.processes,
         'q': args.readquality,
