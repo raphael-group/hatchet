@@ -11,6 +11,7 @@ import shutil
 from hatchet import config
 import hatchet.data
 from hatchet.utils.check_solver import main as check_solver
+from hatchet.utils.commands import commands as all_commands
 
 
 # from https://stackoverflow.com/questions/2125702
@@ -58,6 +59,14 @@ def _check_tabix():
             return _check_cmd(config.paths.tabix, 'tabix', '-p', 'gff', _temp_gz_path, '-f')
 
 
+def _check_bgzip():
+    with tempfile.TemporaryDirectory() as tempdirname:
+        with importlib.resources.path(hatchet.data, 'sample.bbc') as file_path:
+            _temp_file_path = os.path.join(tempdirname, 'sample.bbc')
+            shutil.copy(file_path, _temp_file_path)
+            return _check_cmd(config.paths.bgzip, 'bgzip', _temp_file_path, '-f')
+
+
 def _check_picard():
     picard_dir = config.paths.picard
     picard_java_flags = config.phase_snps.picard_java_flags
@@ -102,6 +111,7 @@ def _check_python_import(which):
 
 
 # <HATCHet_command> => [(<dependency_name>, <success_message>, <failure_message>, <boolean_func>, <func_args>..), ..]
+# If the same <dependency_name> is used more than once, the first result of its check is cached and reused later.
 CHECKS = {
     'count-reads': [
         (
@@ -111,6 +121,17 @@ CHECKS = {
             'hatchet.ini as config.paths.tabix, or its location specified using the environment variable '
             'HATCHET_PATHS_TABIX',
             _check_tabix,
+        ),
+        (
+            'samtools',
+            '',
+            'Please install samtools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.samtools, or its location specified using the environment variable '
+            'HATCHET_PATHS_SAMTOOLS',
+            _check_cmd,
+            config.paths.samtools,
+            'samtools',
+            '--version',
         ),
         (
             'mosdepth',
@@ -124,7 +145,66 @@ CHECKS = {
             '--version',
         ),
     ],
+    'genotype-snps': [
+        (
+            'samtools',
+            '',
+            'Please install samtools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.samtools, or its location specified using the environment variable '
+            'HATCHET_PATHS_SAMTOOLS',
+            _check_cmd,
+            config.paths.samtools,
+            'samtools',
+            '--version',
+        ),
+        (
+            'bcftools',
+            '',
+            'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.bcftools, or its location specified using the environment variable '
+            'HATCHET_PATHS_BCFTOOLS',
+            _check_cmd,
+            config.paths.bcftools,
+            'bcftools',
+            '--version',
+        ),
+    ],
+    'count-alleles': [
+        (
+            'samtools',
+            '',
+            'Please install samtools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.samtools, or its location specified using the environment variable '
+            'HATCHET_PATHS_SAMTOOLS',
+            _check_cmd,
+            config.paths.samtools,
+            'samtools',
+            '--version',
+        ),
+        (
+            'bcftools',
+            '',
+            'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.bcftools, or its location specified using the environment variable '
+            'HATCHET_PATHS_BCFTOOLS',
+            _check_cmd,
+            config.paths.bcftools,
+            'bcftools',
+            '--version',
+        ),
+    ],
     'phase-snps': [
+        (
+            'bcftools',
+            '',
+            'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.samtools, or its location specified using the environment variable '
+            'HATCHET_PATHS_BCFTOOLS',
+            _check_cmd,
+            config.paths.bcftools,
+            'bcftools',
+            '--version',
+        ),
         (
             'picard',
             '',
@@ -145,6 +225,14 @@ CHECKS = {
             'shapeit',
             '--version',
         ),
+        (
+            'bgzip',
+            '',
+            'Please install the bgzip executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.bgzip, or its location specified using the environment variable '
+            'HATCHET_PATHS_BGZIP. Note that bgzip can often be found at the same location as the tabix executable.',
+            _check_bgzip,
+        ),
     ],
     'compute-cn': [
         (
@@ -159,8 +247,11 @@ CHECKS = {
 
 def main(hatchet_cmds=None):
     all_ok = True
-    hatchet_cmds = hatchet_cmds or CHECKS.keys()
+    hatchet_cmds = hatchet_cmds or all_commands
     print('======================\nRunning HATCHet checks\n======================')
+
+    _pred_cache = {}
+
     for hatchet_cmd in hatchet_cmds:
         if hatchet_cmd in CHECKS:
             checks = CHECKS[hatchet_cmd]
@@ -174,7 +265,11 @@ def main(hatchet_cmds=None):
                     check[4:],
                 )
                 with suppress_stdout():
-                    pred = func(*args)
+                    if cmd_name in _pred_cache:
+                        pred = _pred_cache[cmd_name]
+                    else:
+                        pred = func(*args)
+                        _pred_cache[cmd_name] = pred
                 if pred:
                     print(f'  {cmd_name} check SUCCESSFUL. {success_msg}')
                 else:
