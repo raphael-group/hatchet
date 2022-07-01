@@ -86,7 +86,8 @@ want to create either a new Conda environment for Python 3 and activate it:
 
 7. **Install required utilities**
 
-    For reading BAM files, read counting, allele counting, and SNP calling, you need to install [SAMtools and BCFtools](http://www.htslib.org/doc/).
+    For reading BAM files, read counting, allele counting, and SNP calling, you need to install [SAMtools, BCFtools, and tabix](http://www.htslib.org/doc/) as well as [mosdepth](https://github.com/brentp/mosdepth).
+    If you want to perform reference-based phasing, you must also install [shapeit](https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.html), [picard](https://broadinstitute.github.io/picard/), and [bgzip](http://www.htslib.org/doc/). The easiest way to install these is via `conda`, as all are available from the `bioconda` channel (except `shapeit` which is available from channel `dranew`).
 
 
 #### Compiling HATCHet *without* the built-in Gurobi optimizer

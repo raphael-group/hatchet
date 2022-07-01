@@ -4,6 +4,8 @@ This step produces informative plots concerning the computed RDRs, BAFs, and clu
 The information produced by this step are important to validate the compute clusters of genomic regions and help to tune the parameters for better deal with special datasets.
 cluster-bins produces different plots which need to be specified by different commands and require different input.
 
+When `plot_bins = True` is indicated in `hatchet.ini`, the command [`plot-bins-1d2d`](plot_bins_1d2d.md) will also be run. This command produces alternate plots in which bins are colored by cluster and colors match across samples between the 2D cluster view and 1D genomic view.
+
 ## Input
 
 plot-bins considers two different inputs which are tab-separated files, one is mandatory and the other is only required for certain command:
@@ -64,21 +66,20 @@ The command generates a scatter plot describing the BAF of every genomic bin in 
 
 ### BB
 
-The command generates a series of 2d-scatter plots where x-axis corresponds to the RDR and the y-axis corresponds to 0.5 - BAF. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR and BAF. The points are colored according to their density from blue (low density) to dark red (high density).
+The command generates a series of 2d-scatter plots where x-axis corresponds to the mirrored BAF and the y-axis corresponds to RDR. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR and BAF. The points are colored according to their density from blue (low density) to dark red (high density).
 
     python -m hatchet plot-bins A12.bbc -c BB --figsize 8,6 --markersize 1 --xmax 3.5 --xmin 0.5
 
-![](example_bb.png "Example of density plot from the output of BB command")
 
 ***
 
 ### CBB
 
-The command generates a series of 2d-scatter plots where x-axis corresponds to the RDR and the y-axis corresponds to 0.5 - BAF. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR and BAF. The points are colored according to the clusters computed by HATCHet. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
+The command generates a series of 2d-scatter plots where x-axis corresponds to the mirrored BAF and the y-axis corresponds to RDR. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR and BAF. The points are colored according to the clusters computed by HATCHet. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
 
     python -m hatchet plot-bins A12.bbc -c CBB --figsize 4,1.1 -m tab20 --markersize 1 --xmax 3.5 --xmin 0.5 --colwrap 3 -tS 0.005
 
-![](example_cbb.png "Example of cluster plot from the output of CBIN command")
+
 
 ***
 

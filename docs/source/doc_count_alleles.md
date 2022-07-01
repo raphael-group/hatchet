@@ -1,6 +1,6 @@
 # count-alleles
 
-This step of HATCHet calls heterozygous germline SNPs from the matched-normal sample and counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample.
+Given one or more BAM files and lists of heterozygous SNP positions, this step of HATCHet counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample.
 
 ## Input
 
@@ -10,6 +10,7 @@ count-alleles takes in input sorted and indexed BAM files for multiple tumor sam
 |------|-------------|-------|
 | `-T`, `--tumors` | A white-space separated list of sorted-indexed BAM files | The tumor samples from the same patient that are jointly analyzed by HATCHet |
 | `-N`, `--normal` | A sorted-indexed BAM file | The matched normal sample for the same patient |
+| `-L`, `--snps` | VCF files | One or more files listing heterozygous SNP positions |
 | `-r`, `--reference` | A FASTA file | The human reference genome used for germline variant calling |
 
 ## Output
@@ -58,6 +59,5 @@ count-alleles has some optional parameters; changes in the default values of the
 | `-Q`, `--basequality` | Threshold for phred-score quality of sequenced nucleotide bases | The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of sequenced nucleotide bases | 20 |
 | `-U`, `--snpquality` | Threshold for phred-score quality of called variants | The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of called variants | 20 |
 | `-L`, `--snps` | Path to file of SNPs in the format `#CHR POS` | When provided, only the included genomic positions will be considered for calling germline SNPs. Using well-known lists (e.g. dbSNP) help to significantly speed up this step | Not used, SNPs are called across all genome |
-| `-e`, `--regions` | Path to file of regions in the format `#CHR START END` where `START` and `END` are the startning and ending positions in `CHR` for each region | When provided, germline SNPs are called only in the specified regions. This options is especially useful with WES data to specifify the exome regions | Not used, SNPs are called across all genome |
 | `-E`,`--newbaq` | Flag to enable `newbaq` veafute of SAMtools | When selected, the user asks SAMtools to recompute alignment of reads on the fly during SNP calling | Not used |
 | `-b`, `--maxshift` | Maximum BAF difference from 0.5 | When used, only SNPs with an absolute difference between the BAF and 0.5 below the maximum are selected | Not used |

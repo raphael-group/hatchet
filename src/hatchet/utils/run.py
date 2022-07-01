@@ -145,6 +145,7 @@ def main(args=None):
             )
 
         os.makedirs(f'{output}/phase', exist_ok=True)
+        args
         phase_snps(
             args=[
                 '-D',
@@ -153,11 +154,11 @@ def main(args=None):
                 config.run.reference,
                 '-V',
                 config.genotype_snps.reference_version,
-                '-N' if config.genotype_snps.chr_notation else '',
                 '-o',
                 f'{output}/phase/',
                 '-L',
             ]
+            + (['-N'] if config.genotype_snps.chr_notation else [])
             + glob.glob(f'{output}/snps/*.vcf.gz')
             + extra_args
         )
@@ -370,12 +371,7 @@ def main(args=None):
 
         os.makedirs(f'{output}/summary/1d2d', exist_ok=True)
         plot_cn_1d2d(
-            args=[
-                f'{output}/results/best.bbc.ucn',
-                '--outdir',
-                f'{output}/summary/1d2d',
-                '--bysample',
-            ]
+            args=[f'{output}/results/best.bbc.ucn', '--outdir', f'{output}/summary/1d2d', '--bysample', '--centromeres']
         )
 
 

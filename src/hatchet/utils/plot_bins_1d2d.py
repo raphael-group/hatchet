@@ -204,6 +204,7 @@ def plot_1d(
             title=s,
             show_centromeres=show_centromeres,
         )
+        plt.gca().grid(False)
 
         plt.subplot(212)
         plot_track(
@@ -219,6 +220,7 @@ def plot_1d(
             title=s,
             show_centromeres=show_centromeres,
         )
+        plt.gca().grid(False)
 
         if outdir is not None:
             plt.savefig(os.path.join(outdir, f'1D_{s}.png'))
