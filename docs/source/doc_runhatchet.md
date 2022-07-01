@@ -4,13 +4,14 @@ This tutorial illustrates how to use the complete pipeline through the `hatchet 
 
 The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:
 1. [Preliminaries](#preliminaries)
-2. [count-reads](#count-reads)
+2. [genotype-snps](#genotype-snps)
 3. [count-alleles](#count-alleles)
-4. [combine-counts](#combine-counts)
-5. [cluster-bins](#cluster-bins)
-6. [plot-bins](#plot-bins)
-7. [compute-cn](#compute-cn)
-8. [plot-cn](#plot-cn)
+4. [count-reads](#count-reads)
+5. [combine-counts](#combine-counts)
+6. [cluster-bins-loc](#cluster-bins-loc)
+7. [plot-bins](#plot-bins)
+8. [compute-cn](#compute-cn)
+9. [plot-cn](#plot-cn)
 
 We suggest you make a copy of the configuration file, place it into the designated running directory, and follow the tutorial.
 
@@ -61,12 +62,9 @@ The variable `samples` is also a white-space separated list of tumor sample name
 ```shell
 mincov = 8
 maxcov = 300
-size = 50kb
 ```
 
 Both `mincov` and `maxcov` specify the minimum and maximum sequencing depth for considering germline snps. For samples that have undergone whole-genome sequencing with depths >30X, values around 8 and 300 should be reasonable for the minimum and maximum, respectively. For samples in which only the exome was sequenced to ~100X, then values around 20 and 1000 should be fine for the minimum and maximum, respectively.
-
-The `size` variable indicates the size or genomic length of bins used to calculate the read-depth ratio (RDR) and B-Allele frequencies (BAF).
 
 ***
 
@@ -123,34 +121,26 @@ python3 -m hatchet combine-counts -A ${RDR} -t ${RDR}total.tsv -b {BAF}tumor.1be
 
 combine-counts constructs genomic bins such that in all samples, each bin has at least `${msr}` SNP-covering reads and at least `${mtr}` total reads. Bins will not have the same width, but using this rule each bin will have comparable RDR and BAF signals for the following clustering steps. The BAF for each bin and the relative phase of all SNPs in the bin are inferred via EM, and the RDR for each bin is computed fom the read count files in the `${RDR}` folder. After this computation, RDR values are normalized using the total reads in each sample (from `${RDR}total.tsv`). As with other HATCHet commands, `-j ${J}` controls the number of parallel processes.
 
-See the [script](script/README.md) directory for a guide on how to run HATCHet with phasing. If a phased VCF file is supplied via `-p, --phase ${PHASE}` (e.g., `-p phase/phased.vcf.gz`), SNPs are merged into blocks before BAF inference. Each block contains at most `${max_spb}` such that no two SNPs in the same block are further apart than `${max_blocksize}`, and such that no two adjacent SNPs have sufficiently different marginal BAF estimates (using significance level `${alpha}` -- higher `${alpha}` means less trust in the phasing results and smaller blocks). Then, blocks are passed to the EM which determines the relative phase of each block.
+See the [script](script/README.md) directory for a guide on how to run HATCHet with phasing. If a phased VCF file is supplied via `-p, --phase ${PHASE}` (e.g., `-p phase/phased.vcf.gz`), SNPs are merged into blocks before BAF inference. Each block contains at most `${max_spb}` such that no two SNPs in the same block are further apart than `${max_blocksize}`, and such that no two adjacent SNPs have significantly different marginal BAF estimates (at significance level `${alpha}` -- higher `${alpha}` corresponds to less trust in the phasing results). Then, blocks are passed to the EM which determines the relative phase of each block.
 
-## [cluster-bins](doc_cluster_bins.html)
-<a name="cluster-bins"></a>
-
-```shell
-python3 -m hatchet cluster-bins ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
-                                      -e ${RANDOM} -tB 0.04 -tR 0.15 -d 0.08
-```
-
-cluster-bins globally clusters genomic bins based on RDR and BAF jointly along the genome and across all tumor samples, specified in a BB file `${BB}bulk.bb`.
-There are 2 main kind of parameters:
-- The maximum expected BAF shift `-d` for diploid segments equal to `0.08`.
-- Thresholds for clustering refinement `-tB` and `-tR` are used to merge clusters whose difference is no more than these values in all samples.
-
-For all these parameters, these standard values are good for most of the datasets, however very noisy datasets may require higher thresholds.
-In these cases, the values can be estimated and tuned by using the informative plots from plot-bins.
-Other simple parameters allow to specify the output files containing the data of clusters in `${BBC}bulk.seg`, the one containing the clusterd genomic bins in `${BBC}bulk.bbc`.
-
-This set up is generally effective when considering whole-genome sequencing (WGS) data.
-However, a bootstraping approach allows to improve and empower the clustering when considering more sparse data as the ones from whole-exome sequeing (WES).
-The bootsraping can be controlled by adding the following parameter:
+## [cluster-bins-loc](doc_cluster_bins_loc.html)
+<a name="cluster-bins-loc"></a>
 
 ```shell
--u 20 -dR 0.02 -dB 0.02
+python3 -m hatchet cluster-bins-loc ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
+                                      -minK 5 -maxK 10 -tau 0.0001 -d 0.08
 ```
 
-A total of `20` synthetic genomic bins are added only for the clustering by bootstraping each bin and generating RDR and BAF following normal distributions with `0.02` and `0.02`  variances, respectively. These values for `-dR` and `-dB` are specified by default, but the default value for `-u` is 0.
+cluster-bins-loc globally clusters genomic bins based on RDR and BAF (specified in a BB file `${BB}bulk.bb`) jointly along the genome and across all tumor samples. This *locality-aware* clustering takes into account the contiguity of bins along the genome to inform the clustering.
+
+The main parameters are as follows:
+- The maximum expected BAF shift `-d` for a balanced cluster, here set to `0.08`. This parameter should be as small as possible while still including the clusters with the closest BAF to 0.5.
+- Parameters `minK` and `maxK` which specify the minimum and maximum (respectively) of clusters to consider. Alternatively, one can specify `exactK` to fix the number of clusters at a given value.
+- Parameter `tau` which controls the trade-off between local and global information: lower `tau` puts more weight on *local* information (i.e., adjacent bins on each chromosome arm) while higher `tau` puts more weight on *global* information (i.e., RDR and BAF values).
+
+The plots from `plot-bins` are helpful to evaluate clusterings and tune parameters.
+
+Other parameters are used to specify the output files containing the cluster information (`${BBC}bulk.seg`) and the clustered genomic bins (`${BBC}bulk.bbc`).
 
 ## [plot-bins](doc_plot_bins.html)
 <a name="plot-bins"></a>

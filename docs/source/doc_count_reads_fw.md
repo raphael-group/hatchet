@@ -1,6 +1,6 @@
 # count-reads-fw
 
-NOTE: This function (formerly called `binBAM`) uses the legacy fixed-width binning described in the HATCHet paper. We recommend using `count-reads` and `combine-counts` which apply an adaptive binning scheme to ensure that each genomic bin has comparable SNP signal.
+NOTE: This function (formerly called `comBBo`) uses the legacy fixed-width binning described in the HATCHet paper. We recommend using [`count-reads`](doc_count_reads.md) and [`combine-counts`](doc_combine-counts.md) which apply an adaptive binning scheme to ensure that each genomic bin has comparable BAF signal.
 
 This step of HATCHet splits the human reference genome into fixed-width bins (i.e., small genomic regions), and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample.
 

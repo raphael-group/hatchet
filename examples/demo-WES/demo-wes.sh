@@ -1,6 +1,8 @@
 # Demo for WES data from a cancer patient
 : ex: set ft=markdown ;:<<'```shell' #
 
+**NOTE**: this demo has not yet been updated for version 1.0 of HATCHet which includes variable-width binning, phasing, and locality-aware clustering.
+
 The following HATCHet's demo represents a guided example starting from WES (whole-exome sequencing) data from 2 samples of the same patient. WES data are an interesting case to consider as they are typically characterize by a larger variance, especially for RDR. For simplicity, the demo starts from a BB file `demo-wes.bb` (included in this demo at `examples/demo-WES/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. count-reads, count-alleles, and combine-counts) have already been executed by running standard configuration for WES data (bin size of 250kb through -b 250kb of count-reads, and the allele counts for germline heterozygous SNPs have been selected between 30 and 400 through `-c 30 -C 400` of `count-alleles` as the average coverage is 180x).
 
 ## Requirements and set up
@@ -41,7 +43,7 @@ ${CLUSTERBINS} demo-wes.bb -o demo-wes.seg -O demo-wes.bbc -e 12 -tB 0.03 -tR 0.
 ```
 
 For different type of data it is essential to assess the quality of the clustering because this is performed by a Dirichlet process and it is affected by varying degrees of noise. This assesment is particularly important in the case of WES data where the variance is higher than expected, especially for RDR; in fact we often observe that the clusters are much wider in terms of RDR (x-axis) and tend to have a *disc* shape rather than the expected *oval* shape. To do this, we use `plot-bins`, i.e. the HATCHet's component designed for the analysis of the data, and produce the cluster plot using the `CBB` command. To help we use the following options:
-- `--xmin 0` and `--xmax 2` allow to zoom in and to focus the figure on the same RDR (x-axis) range for every sample.
+- `--xmin 0` and `--xmax 2` allow to zoom in and to focus the figure on the same RDR (y-axis) range for every sample.
 - `-tS 0.005` asks to plot only the clusters which cover at least the `0.5%` of the genome. This is useful to clean the figure and focus on the main components.
 To trace all steps, we also move the figure to `tR015-cbb.pdf`.
 

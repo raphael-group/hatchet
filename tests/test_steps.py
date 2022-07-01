@@ -41,7 +41,7 @@ def bams():
 
 @pytest.fixture(scope='module')
 def normal_snps():
-    with open(f'{this_dir}/data/fl/snps/normal_snps.pik', 'rb') as f:
+    with open(f'{this_dir}/data/fw/snps/normal_snps.pik', 'rb') as f:
         return pickle.load(f)
 
 
@@ -101,11 +101,11 @@ def test_count_reads(_mock0, _mock1, bams, output_folder):
     )
 
     df1 = pd.read_csv(f'{output_folder}/bin/normal.1bed', sep='\t')
-    df2 = pd.read_csv(f'{this_dir}/data/fl/bin/normal.1bed', sep='\t')
+    df2 = pd.read_csv(f'{this_dir}/data/fw/bin/normal.1bed', sep='\t')
     assert_frame_equal(df1, df2)
 
     df1 = pd.read_csv(f'{output_folder}/bin/bulk.1bed', sep='\t')
-    df2 = pd.read_csv(f'{this_dir}/data/fl/bin/bulk.1bed', sep='\t')
+    df2 = pd.read_csv(f'{this_dir}/data/fw/bin/bulk.1bed', sep='\t')
     assert_frame_equal(df1, df2)
 
 
@@ -179,7 +179,7 @@ def test_count_alleles_normal_snps(_mock1, bams, normal_snps, output_folder):
             '-o',
             f'{output_folder}/baf/bulk.1bed',
             '-L',
-            f'{this_dir}/data/fl/snps/chr22:30256931-32622323.vcf.gz',
+            f'{this_dir}/data/fw/snps/chr22:30256931-32622323.vcf.gz',
         ]
     )
 
@@ -211,11 +211,11 @@ def test_combine_counts(output_folder):
     combine_counts(
         args=[
             '-c',
-            f'{this_dir}/data/fl/bin/normal.1bed',
+            f'{this_dir}/data/fw/bin/normal.1bed',
             '-C',
-            f'{this_dir}/data/fl/bin/bulk.1bed',
+            f'{this_dir}/data/fw/bin/bulk.1bed',
             '-B',
-            f'{this_dir}/data/fl/baf/bulk.1bed',
+            f'{this_dir}/data/fw/baf/bulk.1bed',
             '-e',
             '12',
         ]
@@ -225,14 +225,14 @@ def test_combine_counts(output_folder):
     sys.stdout.close()
     sys.stdout = _stdout
 
-    with open(f'{this_dir}/data/fl/bb/bulk.bb', 'r') as f:
+    with open(f'{this_dir}/data/fw/bb/bulk.bb', 'r') as f:
         assert out == f.read()
 
 
 def test_cluster_bins(output_folder):
     cluster_bins(
         args=[
-            f'{this_dir}/data/fl/bb/bulk.bb',
+            f'{this_dir}/data/fw/bb/bulk.bb',
             '-o',
             f'{output_folder}/bbc/bulk.seg',
             '-O',
@@ -251,7 +251,7 @@ def test_cluster_bins(output_folder):
     )
 
     df1 = pd.read_csv(f'{output_folder}/bbc/bulk.seg', sep='\t')
-    df2 = pd.read_csv(f'{this_dir}/data/fl/bbc/bulk.seg', sep='\t')
+    df2 = pd.read_csv(f'{this_dir}/data/fw/bbc/bulk.seg', sep='\t')
     assert_frame_equal(df1, df2)
 
 
@@ -259,7 +259,7 @@ def test_plot_bins(output_folder):
     # We simply check if we're able to run plot_bins without exceptions
     plot_bins(
         args=[
-            os.path.join(f'{this_dir}/data/fl/bbc/bulk.bbc'),
+            os.path.join(f'{this_dir}/data/fw/bbc/bulk.bbc'),
             '--rundir',
             os.path.join(output_folder, 'plots'),
         ]
@@ -273,7 +273,7 @@ def test_compute_cn(output_folder):
                 '-x',
                 f'{output_folder}/results',
                 '-i',
-                f'{this_dir}/data/fl/bbc/bulk',
+                f'{this_dir}/data/fw/bbc/bulk',
                 '-n2',
                 '-p',
                 '100',
@@ -297,7 +297,7 @@ def test_compute_cn(output_folder):
         )
 
         df1 = pd.read_csv(f'{output_folder}/results/best.bbc.ucn', sep='\t')
-        df2 = pd.read_csv(f'{this_dir}/data/fl/results/best.bbc.ucn', sep='\t')
+        df2 = pd.read_csv(f'{this_dir}/data/fw/results/best.bbc.ucn', sep='\t')
         assert_frame_equal(df1, df2)
 
 
@@ -305,7 +305,7 @@ def test_plot_cn(output_folder):
     # We simply check if we're able to run plot_cn without exceptions
     plot_cn(
         args=[
-            f'{this_dir}/data/fl/results/best.bbc.ucn',
+            f'{this_dir}/data/fw/results/best.bbc.ucn',
             '--rundir',
             f'{output_folder}/evaluation',
         ]
