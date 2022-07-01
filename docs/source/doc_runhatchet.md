@@ -4,13 +4,14 @@ This tutorial illustrates how to use the complete pipeline through the `hatchet 
 
 The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:
 1. [Preliminaries](#preliminaries)
-2. [count-reads](#count-reads)
+2. [genotype-snps](#genotype-snps)
 3. [count-alleles](#count-alleles)
-4. [combine-counts](#combine-counts)
-5. [cluster-bins-loc](#cluster-bins-loc)
-6. [plot-bins](#plot-bins)
-7. [compute-cn](#compute-cn)
-8. [plot-cn](#plot-cn)
+4. [count-reads](#count-reads)
+5. [combine-counts](#combine-counts)
+6. [cluster-bins-loc](#cluster-bins-loc)
+7. [plot-bins](#plot-bins)
+8. [compute-cn](#compute-cn)
+9. [plot-cn](#plot-cn)
 
 We suggest you make a copy of the configuration file, place it into the designated running directory, and follow the tutorial.
 

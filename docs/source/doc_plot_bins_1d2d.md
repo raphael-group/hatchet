@@ -4,7 +4,7 @@ This step produces alternate plots that show bins in terms of their computed rea
 These plots show bins colored by cluster, where the color is consistent between the "2D" (RDR x BAF) view and the "1D" (genomic location x RDR/BAF) view.
 These plots should be used to review the clustering and tune clustering parameters.
 
-When `plot_bins = True` is indicated in `hatchet.ini`, both this command and the command [plot-bins](doc_plot_bins.html) will be run.
+When `plot_bins = True` is indicated in `hatchet.ini`, both this command and the command [plot-bins](doc_plot_bins.md) will be run.
 
 ----------------------
 

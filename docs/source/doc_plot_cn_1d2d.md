@@ -4,13 +4,13 @@ This step produces alternate plots that show bins in terms of their computed rea
 These plots show bins colored by cluster, where the color is consistent between the "2D" (RDR x BAF) view and the "1D" (genomic location x RDR/BAF) view.
 Additionally, the labeled points in the 2D plots and the black bars in the 1D plots show the *expected* positions of the assigned copy-number states (determined by the mixture proportions and fractional copy number scaling). These indicators can be used to evaluate the consistency of the HATCHet solution.
 
-When `plot_cn = True` is indicated in `hatchet.ini`, both this command and the command [plot-cn](doc_plot_cn.html) will be run.
+When `plot_cn = True` is indicated in `hatchet.ini`, both this command and the command [plot-cn](doc_plot_cn.md) will be run.
 
-These plots should be used to review the results of the copy-number assignment step [compute_cn](doc_compute_cn.html) and tune its parameters. They are most useful when there are few samples - when there are many samples, the visualizations from `plot-cn` may be more interpretable.
+These plots should be used to review the results of the copy-number assignment step [compute_cn](doc_compute_cn.md) and tune its parameters. They are most useful when there are few samples - when there are many samples, the visualizations from `plot-cn` may be more interpretable.
 
 ## Input
 
-plot-bins requires a single tab-separated file as input. This file (e.g., `best.bbc.ucn`, `results.diploid.n3.bbc.ucn.tsv`, ...) is typically produced by [compute_cn](doc_compute_cn.html) and contains the following fields:
+plot-bins requires a single tab-separated file as input. This file (e.g., `best.bbc.ucn`, `results.diploid.n3.bbc.ucn.tsv`, ...) is typically produced by [compute_cn](doc_compute_cn.md) and contains the following fields:
 
 | Field | Description |
 |-------|-------------|
