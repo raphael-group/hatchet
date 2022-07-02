@@ -1,1 +1,1 @@
-tests/*/* linguist-vendored
+tests/data/** linguist-vendored
