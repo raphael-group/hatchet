@@ -236,7 +236,7 @@ def parse_plot_cn_1d2d_args(args=None):
     }
 
 
-def parse_cluster_bins_loc_args(args=None):
+def parse_cluster_bins_args(args=None):
     """
     Parse command line arguments
     Returns:
@@ -262,7 +262,7 @@ def parse_cluster_bins_loc_args(args=None):
         '-o',
         '--outsegments',
         required=False,
-        default=config.cluster_bins_loc.outsegments,
+        default=config.cluster_bins.outsegments,
         type=str,
         help='Output filename for the segments computed by clustering bins (default: stdout)',
     )
@@ -270,7 +270,7 @@ def parse_cluster_bins_loc_args(args=None):
         '-O',
         '--outbins',
         required=False,
-        default=config.cluster_bins_loc.outbins,
+        default=config.cluster_bins.outbins,
         type=str,
         help='Output filename for a BB file adding the clusters (default: stdout)',
     )
@@ -279,7 +279,7 @@ def parse_cluster_bins_loc_args(args=None):
         '--diploidbaf',
         type=float,
         required=False,
-        default=config.cluster_bins_loc.diploidbaf,
+        default=config.cluster_bins.diploidbaf,
         help=(
             'Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the '
             'cluster inside this threshold accordingly (default: None, scaling is not performed)'
@@ -290,28 +290,28 @@ def parse_cluster_bins_loc_args(args=None):
         '--seed',
         type=int,
         required=False,
-        default=config.cluster_bins_loc.seed,
+        default=config.cluster_bins.seed,
         help='Random seed used for clustering (default: 0)',
     )
     parser.add_argument(
         '--minK',
         type=int,
         required=False,
-        default=config.cluster_bins_loc.mink,
-        help=f'Minimum number of clusters to infer (default = {config.cluster_bins_loc.mink})',
+        default=config.cluster_bins.mink,
+        help=f'Minimum number of clusters to infer (default = {config.cluster_bins.mink})',
     )
     parser.add_argument(
         '--maxK',
         type=int,
         required=False,
-        default=config.cluster_bins_loc.maxk,
-        help=f'Maximum number of clusters to infer (default = {config.cluster_bins_loc.maxk})',
+        default=config.cluster_bins.maxk,
+        help=f'Maximum number of clusters to infer (default = {config.cluster_bins.maxk})',
     )
     parser.add_argument(
         '--exactK',
         type=int,
         required=False,
-        default=config.cluster_bins_loc.exactk,
+        default=config.cluster_bins.exactk,
         help='Skip model selection and infer exactly this many clusters (default: None)',
     )
     parser.add_argument(
@@ -319,22 +319,22 @@ def parse_cluster_bins_loc_args(args=None):
         '--transmat',
         type=str,
         required=False,
-        default=config.cluster_bins_loc.transmat,
+        default=config.cluster_bins.transmat,
         help='Form of transition matrix to infer: fixed, diag (1-parameter), or full (default: diag)',
     )
     parser.add_argument(
         '--tau',
         type=float,
         required=False,
-        default=config.cluster_bins_loc.tau,
-        help=f'Off-diagonal value for initializing transition matrix (default: {config.cluster_bins_loc.tau})',
+        default=config.cluster_bins.tau,
+        help=f'Off-diagonal value for initializing transition matrix (default: {config.cluster_bins.tau})',
     )
     parser.add_argument(
         '-c',
         '--covar',
         type=str,
         required=False,
-        default=config.cluster_bins_loc.covar,
+        default=config.cluster_bins.covar,
         help='Form of covariance matrix: spherical, diag, full, or tied (default: diag)',
     )
     parser.add_argument(
@@ -342,7 +342,7 @@ def parse_cluster_bins_loc_args(args=None):
         '--decoding',
         type=str,
         required=False,
-        default=config.cluster_bins_loc.decoding,
+        default=config.cluster_bins.decoding,
         help='Decoding algorithm to use: map or viterbi (default: map)',
     )
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
@@ -1884,7 +1884,7 @@ def parse_combine_counts_fw_args(args=None):
     }
 
 
-def parse_cluster_bins_args(args=None):
+def parse_cluster_bins_gmm_args(args=None):
     parser = argparse.ArgumentParser(
         prog='hatchet cluster-bins',
         description=(
@@ -1906,7 +1906,7 @@ def parse_cluster_bins_args(args=None):
         '-o',
         '--outsegments',
         required=False,
-        default=config.cluster_bins.outsegments,
+        default=config.cluster_bins_gmm.outsegments,
         type=str,
         help='Output filename for the segments computed by clustering bins (default: stdout)',
     )
@@ -1914,7 +1914,7 @@ def parse_cluster_bins_args(args=None):
         '-O',
         '--outbins',
         required=False,
-        default=config.cluster_bins.outbins,
+        default=config.cluster_bins_gmm.outbins,
         type=str,
         help='Output filename for a BB file adding the clusters (default: stdout)',
     )
@@ -1923,7 +1923,7 @@ def parse_cluster_bins_args(args=None):
         '--diploidbaf',
         type=float,
         required=False,
-        default=config.cluster_bins.diploidbaf,
+        default=config.cluster_bins_gmm.diploidbaf,
         help=(
             'Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the '
             'cluster inside this threshold accordingly (default: None, scaling is not performed)'
@@ -1934,7 +1934,7 @@ def parse_cluster_bins_args(args=None):
         '--tolerancerdr',
         type=float,
         required=False,
-        default=config.cluster_bins.tolerancerdr,
+        default=config.cluster_bins_gmm.tolerancerdr,
         help=(
             'Refine the clustering merging the clusters with this maximum difference in RDR values (default: None, '
             'gurobipy required)'
@@ -1945,7 +1945,7 @@ def parse_cluster_bins_args(args=None):
         '--tolerancebaf',
         type=float,
         required=False,
-        default=config.cluster_bins.tolerancebaf,
+        default=config.cluster_bins_gmm.tolerancebaf,
         help=(
             'Refine the clustering merging the clusters with this maximum difference in BAF values (default: None, ',
             'gurobipy required)',
@@ -1956,7 +1956,7 @@ def parse_cluster_bins_args(args=None):
         '--bootclustering',
         type=int,
         required=False,
-        default=config.cluster_bins.bootclustering,
+        default=config.cluster_bins_gmm.bootclustering,
         help=(
             'Number of points to add for bootstraping each bin to improve the clustering. Each point is generated '
             'by drawing its values from a normal distribution centered on the values of the bin. This can help the '
@@ -1968,7 +1968,7 @@ def parse_cluster_bins_args(args=None):
         '--ratiodeviation',
         type=float,
         required=False,
-        default=config.cluster_bins.ratiodeviation,
+        default=config.cluster_bins_gmm.ratiodeviation,
         help='Standard deviation of the read ratios used to generate the points in the clouds (default: 0.02)',
     )
     parser.add_argument(
@@ -1976,7 +1976,7 @@ def parse_cluster_bins_args(args=None):
         '--bafdeviation',
         type=float,
         required=False,
-        default=config.cluster_bins.bafdeviation,
+        default=config.cluster_bins_gmm.bafdeviation,
         help='Standard deviation of the BAFs used to generate the points in the clouds (default: 0.02)',
     )
     parser.add_argument(
@@ -1984,7 +1984,7 @@ def parse_cluster_bins_args(args=None):
         '--seed',
         type=int,
         required=False,
-        default=config.cluster_bins.seed,
+        default=config.cluster_bins_gmm.seed,
         help='Random seed used for clustering AND the normal distributions used in the clouds (default: 0)',
     )
     parser.add_argument(
@@ -1992,7 +1992,7 @@ def parse_cluster_bins_args(args=None):
         '--initclusters',
         type=int,
         required=False,
-        default=config.cluster_bins.initclusters,
+        default=config.cluster_bins_gmm.initclusters,
         help='The maximum number of clusters to infer (default: 50)',
     )
     parser.add_argument(
@@ -2000,7 +2000,7 @@ def parse_cluster_bins_args(args=None):
         '--concentration',
         type=float,
         required=False,
-        default=config.cluster_bins.concentration,
+        default=config.cluster_bins_gmm.concentration,
         help=(
             'Tuning parameter for clustering (concentration parameter for Dirichlet process prior). Higher favors '
             'more clusters, lower favors fewer clusters (default 0.02 = 1/K).'
@@ -2011,21 +2011,21 @@ def parse_cluster_bins_args(args=None):
         '--restarts',
         type=int,
         required=False,
-        default=config.cluster_bins.restarts,
+        default=config.cluster_bins_gmm.restarts,
         help='Number of restarts performed by the clustering to choose the best (default: 10)',
     )
     parser.add_argument(
         '-v',
         '--verbose',
         action='store_true',
-        default=config.cluster_bins.verbose,
+        default=config.cluster_bins_gmm.verbose,
         required=False,
         help='Use verbose log messages',
     )
     parser.add_argument(
         '--disablebar',
         action='store_true',
-        default=config.cluster_bins.disablebar,
+        default=config.cluster_bins_gmm.disablebar,
         required=False,
         help='Disable progress bar',
     )

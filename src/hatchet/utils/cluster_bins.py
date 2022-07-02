@@ -1,7 +1,12 @@
-import sys
-import math
-import numpy as np
 from collections import Counter
+import numpy as np
+import pandas as pd
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score
+from scipy.special import logsumexp
+from scipy.spatial.distance import pdist, squareform
+from hmmlearn import hmm
 
 from hatchet.utils.ArgParsing import parse_cluster_bins_args
 import hatchet.utils.Supporting as sp
@@ -13,444 +18,307 @@ def main(args=None):
     sp.logArgs(args, 80)
 
     sp.log(msg='# Reading the combined BB file\n', level='STEP')
-    combo, samples = readBB(args['bbfile'])
+    tracks, bb, sample_labels, chr_labels = read_bb(args['bbfile'])
 
-    sp.log(msg='# Format data to cluster\n', level='STEP')
-    points, bintoidx = getPoints(data=combo, samples=samples)
-
-    clouds = None
-    if args['cloud'] > 0:
-        sp.log(msg='# Bootstrap each bin for clustering\n', level='STEP')
-        clouds = generateClouds(
-            points=points,
-            density=args['cloud'],
-            seed=args['seed'],
-            sdeven=args['ratiodeviation'],
-            sdodd=args['bafdeviation'],
-        )
-
-    sp.log(
-        msg='# Clustering bins by RD and BAF across tumor samples\n',
-        level='STEP',
-    )
-    mus, sigmas, clusterAssignments, numPoints, numClusters = cluster(
-        points=points,
-        clouds=clouds,
-        K=args['initclusters'],
-        concentration_prior=args['concentration'],
-        restarts=args['restarts'],
-        seed=args['seed'],
-    )
-
-    if args['rdtol'] > 0.0 or args['baftol'] > 0.0:
-        sp.log(msg='# Refining clustering using given tolerances\n', level='STEP')
-        before = len(set(clusterAssignments))
-        clusterAssignments, numClusters = refineClustering(
-            combo=combo,
-            assign=clusterAssignments,
-            assignidx=bintoidx,
-            samples=samples,
-            rdtol=args['rdtol'],
-            baftol=args['baftol'],
-        )
-        sp.log(
-            msg='The number of clusters have been reduced from {} to {} with given tolerances\n'.format(
-                before, numClusters
-            ),
-            level='INFO',
-        )
-
-    clusterAssignments = reindex(clusterAssignments)
-
-    sp.log(msg='# Writing BBC output with resulting clusters\n', level='STEP')
-    if args['outbins'] is None:
-        outbins = sys.stdout
+    if args['exactK'] > 0:
+        minK = args['exactK']
+        maxK = args['exactK']
     else:
-        outbins = open(args['outbins'], 'w')
-    outbins.write('#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\tCLUSTER\n')
-    for key in sorted(combo, key=(lambda x: (sp.numericOrder(x[0]), int(x[1]), int(x[2])))):
-        for sample in sorted(combo[key]):
-            outbins.write(
-                '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
-                    key[0],
-                    key[1],
-                    key[2],
-                    sample[0],
-                    sample[1],
-                    sample[2],
-                    sample[3],
-                    sample[4],
-                    sample[5],
-                    sample[6],
-                    clusterAssignments[bintoidx[key]],
-                )
+        minK = args['minK']
+        maxK = args['maxK']
+
+        if minK <= 1:
+            sp.log(
+                msg='# WARNING: model selection does not support comparing K=1 to K>1. K=1 will be ignored.\n',
+                level='WARNING',
             )
-    if outbins is not sys.stdout:
-        outbins.close()
 
-    sp.log(msg='# Segmenting bins\n', level='STEP')
-    clusters = {
-        cluster: set(key for key in combo if clusterAssignments[bintoidx[key]] == cluster)
-        for cluster in set(clusterAssignments)
-    }
-    segments = segmentBins(bb=combo, clusters=clusters, samples=samples)
-
-    if args['diploidbaf'] is not None:
+    if args['exactK'] > 0 and args['exactK'] == 1:
         sp.log(
-            msg=(
-                '# Determining the largest cluster as diploid or tetraploid and rescaling all the clusters inside the '
-                'threshold accordingly\n'
-            ),
+            msg='# Found exactK=1, returning trivial clustering.\n',
             level='STEP',
         )
-        segments = scaleBAF(segments=segments, samples=samples, diploidbaf=args['diploidbaf'])
-
-    sp.log(msg='# Writing REF output with resulting segments\n', level='STEP')
-    if args['outsegments'] is None:
-        outsegments = sys.stdout
+        best_labels = [1] * int(len(bb) / len(sample_labels))
     else:
-        outsegments = open(args['outsegments'], 'w')
-    outsegments.write('#ID\tSAMPLE\t#BINS\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n')
-    for key in sorted(segments):
-        for sample in sorted(segments[key]):
-            record = segments[key][sample]
-            outsegments.write(
-                '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
-                    key,
-                    sample,
-                    record[0],
-                    record[1],
-                    record[2],
-                    record[3],
-                    record[4],
-                    record[5],
-                    record[6],
-                )
-            )
-    if outsegments is not sys.stdout:
-        outsegments.close()
-
-
-def readBB(bbfile):
-    read = {}
-    samples = set()
-    with open(bbfile, 'r') as f:
-        for line in f:
-            if line[0] != '#':
-                parsed = line.strip().split()
-                chromosome = parsed[0]
-                start = int(parsed[1])
-                end = int(parsed[2])
-                sample = parsed[3]
-                rd = float(parsed[4])
-                snps = int(parsed[5])
-                cov = float(parsed[6])
-                alpha = int(parsed[7])
-                beta = int(parsed[8])
-                baf = float(parsed[9])
-
-                samples.add(sample)
-                try:
-                    read[chromosome, start, end].append((sample, rd, snps, cov, alpha, beta, baf))
-                except KeyError:
-                    read[chromosome, start, end] = [(sample, rd, snps, cov, alpha, beta, baf)]
-    nonzeroab = lambda rb: all(rec[4] + rec[5] > 0 for rec in rb)
-    newread = {b: read[b] for b in read if nonzeroab(read[b])}
-    diff = len(read.keys()) - len(newread.keys())
-    if diff > 0:
         sp.log(
-            msg='{} bins have been discarded because no covered by any SNP\n'.format(diff),
-            level='WARN',
+            msg='# Clustering bins by RD and BAF across tumor samples using locality\n',
+            level='STEP',
         )
-    return newread, samples
+        (best_score, best_model, best_labels, best_K, results,) = hmm_model_select(
+            tracks,
+            minK=minK,
+            maxK=maxK,
+            seed=args['seed'],
+            covar=args['covar'],
+            decode_alg=args['decoding'],
+            tmat=args['transmat'],
+            tau=args['tau'],
+        )
+
+    best_labels = reindex(best_labels)
+    bb['CLUSTER'] = np.repeat(best_labels, len(sample_labels))
+
+    sp.log(msg='# Checking consistency of results\n', level='STEP')
+    pivot_check = bb.pivot(index=['#CHR', 'START', 'END'], columns='SAMPLE', values='CLUSTER')
+    # Verify that the array lengths and order match the bins in the BB file
+    chr_idx = 0
+    bin_indices = pivot_check.index.to_numpy()
+    i = 0
+    while chr_idx < len(tracks):
+        my_chr = chr_labels[chr_idx][:-2]
+
+        start_row = bin_indices[i]
+        assert str(start_row[0]) == my_chr, (start_row[0], my_chr)
+
+        prev_end = start_row[-1]
+
+        start_idx = i
+        i += 1
+        while i < len(bin_indices) and bin_indices[i][0] == start_row[0] and bin_indices[i][1] == prev_end:
+            prev_end = bin_indices[i][2]
+            i += 1
+
+        # check the array lengths
+        assert tracks[chr_idx].shape[1] == i - start_idx, (
+            tracks[chr_idx].shape[1],
+            i - start_idx,
+        )
+
+        chr_idx += 1
+
+    # Verify that cluster labels were applied correctly
+    cl_check = pivot_check.to_numpy().T
+    assert np.all(cl_check == cl_check[0])
+
+    sp.log(msg='# Writing output\n', level='STEP')
+    bb = bb[
+        [
+            '#CHR',
+            'START',
+            'END',
+            'SAMPLE',
+            'RD',
+            '#SNPS',
+            'COV',
+            'ALPHA',
+            'BETA',
+            'BAF',
+            'CLUSTER',
+        ]
+    ]
+    bb.to_csv(args['outbins'], index=False, sep='\t')
+
+    seg = form_seg(bb, args['diploidbaf'])
+    seg.to_csv(args['outsegments'], index=False, sep='\t')
+
+    sp.log(msg='# Done\n', level='STEP')
 
 
-def getPoints(data, samples):
-    idx = 0
-    points = []
-    bintoidx = {}
-    for bi in sorted(data, key=(lambda x: (sp.numericOrder(x[0]), int(x[1]), int(x[2])))):
-        partition = {}
-        for x in data[bi]:
-            if x[0] in partition:
-                raise ValueError(
-                    sp.error(
-                        'Found a bin ({}, {}) in chromosome {} defined multiple times for the same sample!'.format(
-                            bi[1], bi[2], bi[0]
-                        )
-                    )
-                )
-            else:
-                partition[x[0]] = [x[1], x[-1]]
-        if len(partition) != len(samples):
-            raise ValueError(
-                sp.error(
-                    'Found a bin ({}, {}) in chromosome {} that is not covered in all the samples!'.format(
-                        bi[1], bi[2], bi[0]
-                    )
-                )
-            )
-        points.append([e for sample in samples for e in partition[sample]])
-        bintoidx[bi] = idx
-        idx += 1
-    return points, bintoidx
-
-
-def cluster(points, clouds=None, concentration_prior=None, K=100, restarts=10, seed=0):
+def read_bb(bbfile, use_chr=True, compressed=False):
     """
-    Clusters a set of data points lying in an arbitrary number of clusters.
-    Arguments:
-        data (list of lists of floats): list of data points to be clustered.
-        clouds (list or lists of floats, same second dimension as data): bootstrapped bins for clustering
-        sampleName (string): The name of the input sample.
-        concentration_prior (float): Tuning parameter for clustering, must be between 0 and 1. Used to determine
-            concentration of points in clusters -- higher favors more clusters, lower favors fewer clusters.
-        K (int): maximum number of clusters to infer
-        restarts (int): number of initializations to try for GMM
-        seed (int): random number generator seed for GMM
+    Constructs arrays to represent the bin in each chromosome or arm.
+    If bbfile was binned around chromosome arm, then uses chromosome arms.
+    Otherwise, uses chromosomes.
+
     Returns:
-        mus (list of lists of floats): List of cluster means.
-        sigmas (list of 2D lists of floats): List of cluster covariances.
-        clusterAssignments (list of ints): The assignment of each interval to a cluster, where an entry
-                                            j at index i means the ith interval has been assigned to the
-                                            jth meta-interval.
-        numPoints (list of ints): Number of points assigned to each cluster
-        numClusters (int): The number of clusters.
+        botht: list of np.ndarrays of size (n_bins, n_tracks)
+            where n_tracks = n_samples * 2
+        bb: table read from input bbfile
+        sample_labels: order in which samples are represented in each array in botht
+        chr_lables: order in which chromosomes or arms are represented in botht
+
+    each array contains
+    1 track per sample for a single chromosome arm.
     """
-    from sklearn.mixture import BayesianGaussianMixture
-    from collections import Counter
 
-    sp.log(
-        msg='## Clustering with K={} and c={}...\n'.format(K, concentration_prior),
-        level='INFO',
-    )
-    total = list(points)
-    if clouds is not None:
-        total.extend(list(clouds))
-    npArray = np.array(total)
+    bb = pd.read_table(bbfile)
 
-    gmm = BayesianGaussianMixture(
-        n_components=K,
-        n_init=restarts,
-        weight_concentration_prior=concentration_prior,
-        max_iter=int(1e6),
-        random_state=seed,
-    )
-    targetAssignments = gmm.fit_predict(npArray)
-    targetAssignments = targetAssignments[: len(points)]
-    mus = gmm.means_
-    sigmas = gmm.covariances_
-    cntr = Counter(targetAssignments)
-    numPoints = [cntr[i] if i in cntr else 0 for i in range(K)]
-    numClusters = len(cntr)
+    tracks = []
 
-    return mus, sigmas, targetAssignments, numPoints, numClusters
+    sample_labels = []
+    populated_labels = False
 
+    chr_labels = []
+    for ch, df0 in bb.groupby(['#CHR']):
+        df0 = df0.sort_values('START')
 
-def refineClustering(combo, assign, assignidx, samples, rdtol, baftol):
-    assignment = {b: assign[assignidx[b]] for b in combo}
-    clusters = set(assignment[b] for b in assignment)
-    size = {c: float(sum(c == assignment[b] for b in combo)) for c in clusters}
-    getbaf = lambda c, p: float(sum(e[6] for b in combo for e in combo[b] if assignment[b] == c and e[0] == p))
-    baf = {c: {p: getbaf(c, p) / size[c] for p in samples} for c in clusters}
-    getrdr = lambda c, p: float(sum(e[1] for b in combo for e in combo[b] if assignment[b] == c and e[0] == p))
-    rdr = {c: {p: getrdr(c, p) / size[c] for p in samples} for c in clusters}
+        p_arrs = []
+        q_arrs = []
 
-    mbaf = lambda c: {p: baf[c][p] for p in samples}
-    mrdr = lambda c: {p: rdr[c][p] for p in samples}
-    merge = {c: {'BAF': mbaf(c), 'RDR': mrdr(c), 'SIZE': size[c], 'CLUS': {c}} for c in clusters}
+        for sample, df in df0.groupby('SAMPLE'):
+            if not populated_labels:
+                sample_labels.append(sample)
 
-    def mergable(m):
-        checkrdr = lambda f, s: False not in set(abs(m[f]['RDR'][p] - m[s]['RDR'][p]) <= rdtol for p in samples)
-        checkbaf = lambda f, s: False not in set(abs(m[f]['BAF'][p] - m[s]['BAF'][p]) <= baftol for p in samples)
-        check = lambda f, s: checkrdr(f, s) and checkbaf(f, s)
-        varrdr = lambda f, s: sum(abs(m[f]['RDR'][p] - m[s]['RDR'][p]) for p in samples)
-        varbaf = lambda f, s: sum(abs(m[f]['BAF'][p] - m[s]['BAF'][p]) for p in samples)
-        var = lambda f, s: varrdr(f, s) + varbaf(f, s)
+            gaps = np.where(df.START.to_numpy()[1:] - df.END.to_numpy()[:-1] > 0)[0]
+            # print(ch, gaps)
 
-        seq = sorted(m, key=(lambda x: m[x]['SIZE']))
-        for idx, f in enumerate(seq):
-            opts = {s: var(f, s) for s in seq[idx + 1 :] for p in samples if s != f and check(f, s)}
-            if len(opts) > 0:
-                first = f
-                break
-        if len(opts) > 0:
-            f = first
-            return first, sp.argmin(opts)
+            if len(gaps) > 0:
+                assert len(gaps) == 1, 'Found a chromosome with >1 gaps between bins'
+                gap = gaps[0] + 1
+
+                df_p = df.iloc[:gap]
+                df_q = df.iloc[gap:]
+
+                p_arrs.append(df_p.BAF.to_numpy())
+                p_arrs.append(df_p.RD.to_numpy())
+
+                q_arrs.append(df_q.BAF.to_numpy())
+                q_arrs.append(df_q.RD.to_numpy())
+            else:
+                df_p = df
+                p_arrs.append(df_p.BAF.to_numpy())
+                p_arrs.append(df_p.RD.to_numpy())
+
+        if len(q_arrs) > 0:
+            tracks.append(np.array(p_arrs))
+            chr_labels.append(str(ch) + '_p')
+
+            tracks.append(np.array(q_arrs))
+            chr_labels.append(str(ch) + '_q')
         else:
-            None
+            tracks.append(np.array(p_arrs))
+            chr_labels.append(str(ch) + '_p')
 
-    m = mergable(merge)
-    while m is not None:
-        m1 = m[0]
-        m2 = m[1]
-        tot = float(merge[m1]['SIZE'] + merge[m2]['SIZE'])
-        newbaf = {
-            p: float(merge[m1]['BAF'][p] * merge[m1]['SIZE'] + merge[m2]['BAF'][p] * merge[m2]['SIZE']) / tot
-            for p in samples
-        }
-        newrdr = {
-            p: float(merge[m1]['RDR'][p] * merge[m1]['SIZE'] + merge[m2]['RDR'][p] * merge[m2]['SIZE']) / tot
-            for p in samples
-        }
-        newclu = merge[m1]['CLUS'] | merge[m2]['CLUS']
-        merge = {c: merge[c] for c in merge if c != m1 and c != m2}
-        if len(merge) == 0:
-            merge = {}
-        merge[m1] = {'BAF': newbaf, 'RDR': newrdr, 'SIZE': tot, 'CLUS': newclu}
-        m = mergable(merge)
+        populated_labels = True
 
-    newassign = [-1 for i in range(len(assign))]
-    for b in combo:
-        get = [c for c in merge if assign[assignidx[b]] in merge[c]['CLUS']]
-        assert len(get) == 1
-        newassign[assignidx[b]] = get[0]
-    assert -1 not in set(newassign)
-
-    return newassign, len(merge)
+    return (
+        tracks,
+        bb.sort_values(by=['#CHR', 'START', 'SAMPLE']),
+        sample_labels,
+        chr_labels,
+    )
 
 
-def generateClouds(points, density, seed, sdeven=0.02, sdodd=0.02):
-    res = []
-    resappend = res.append
-    for point in points:
-        np.random.seed(seed=seed)
-        for d in range(density):
-            normal = np.random.normal
-            newpoint = [normal(point[i], sdeven) if i % 2 == 0 else normal(point[i], sdodd) for i in range(len(point))]
-            resappend(newpoint)
-    return res
+def hmm_model_select(
+    tracks,
+    minK=20,
+    maxK=50,
+    tau=10e-6,
+    tmat='diag',
+    decode_alg='viterbi',
+    covar='diag',
+    seed=0,
+):
+    assert tmat in ['fixed', 'diag', 'free']
+    assert decode_alg in ['map', 'viterbi']
 
+    # format input
+    tracks = [a for a in tracks if a.shape[0] > 0 and a.shape[1] > 0]
+    if len(tracks) > 1:
+        X = np.concatenate(tracks, axis=1).T
+        lengths = [a.shape[1] for a in tracks]
+    else:
+        X = tracks[0].T
+        lengths = [tracks[0].shape[1]]
 
-def segmentBins(bb, clusters, samples):
-    sbb = {bi: {record[0]: record[1:] for record in bb[bi]} for bi in bb}
-    nbins = {cluster: {sample: len(clusters[cluster]) for sample in samples} for cluster in clusters}
-    rd = {
-        cluster: {
-            sample: float(sum(sbb[bi][sample][0] for bi in clusters[cluster])) / float(len(clusters[cluster]))
-            for sample in samples
-        }
-        for cluster in clusters
-    }
-    nsnps = {
-        cluster: {sample: sum(sbb[bi][sample][1] for bi in clusters[cluster]) for sample in samples}
-        for cluster in clusters
-    }
-    cov = {
-        cluster: {
-            sample: float(sum(sbb[bi][sample][2] for bi in clusters[cluster])) / float(len(clusters[cluster]))
-            for sample in samples
-        }
-        for cluster in clusters
-    }
-    return minSegmentBins(sbb, nbins, rd, nsnps, cov, clusters, samples)
+    best_K = 0
+    best_score = 0
+    best_model = None
+    best_labels = None
 
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    C = squareform(pdist(X_scaled))
 
-def minSegmentBins(sbb, nbins, rd, nsnps, cov, clusters, samples):
-    alpha = {
-        cluster: {
-            sample: sum(min(sbb[bi][sample][3], sbb[bi][sample][4]) for bi in clusters[cluster]) for sample in samples
-        }
-        for cluster in clusters
-    }
-    beta = {
-        cluster: {
-            sample: sum(max(sbb[bi][sample][3], sbb[bi][sample][4]) for bi in clusters[cluster]) for sample in samples
-        }
-        for cluster in clusters
-    }
-    mean = {
-        cluster: {
-            sample: float(alpha[cluster][sample]) / float(alpha[cluster][sample] + beta[cluster][sample])
-            for sample in samples
-        }
-        for cluster in clusters
-    }
-    return {
-        cluster: {
-            sample: (
-                nbins[cluster][sample],
-                rd[cluster][sample],
-                nsnps[cluster][sample],
-                cov[cluster][sample],
-                alpha[cluster][sample],
-                beta[cluster][sample],
-                mean[cluster][sample],
+    rs = {}
+    for K in range(minK, maxK + 1):
+        # print(K, datetime.now())
+        # construct initial transition matrix
+        A = make_transmat(1 - tau, K)
+
+        if tmat == 'fixed':
+            model = hmm.GaussianHMM(
+                n_components=K,
+                init_params='mc',
+                params='smc',
+                covariance_type=covar,
+                random_state=0,
             )
-            for sample in samples
-        }
-        for cluster in clusters
-    }
+        elif tmat == 'free':
+            model = hmm.GaussianHMM(
+                n_components=K,
+                init_params='mc',
+                params='smct',
+                covariance_type=covar,
+                random_state=0,
+            )
+        else:
+            model = DiagGHMM(
+                n_components=K,
+                init_params='mc',
+                params='smct',
+                covariance_type=covar,
+                random_state=0,
+            )
+
+        model.startprob_ = np.ones(K) / K
+        model.transmat_ = A
+        model.fit(X, lengths)
+
+        prob, labels = model.decode(X, lengths, algorithm=decode_alg)
+        score = silhouette_score(C, labels, metric='precomputed')
+
+        rs[K] = prob, score, labels
+        if score > best_score:
+            best_score = score
+            best_model = model
+            best_labels = labels
+            best_K = K
+
+    return best_score, best_model, best_labels, best_K, rs
 
 
-def scaleBAF(segments, samples, diploidbaf):
-    diploid = -1
-    main = -1
-    for key in segments:
-        if sum((0.5 - segments[key][sample][-1]) <= diploidbaf for sample in samples) == len(samples):
-            sample = list(samples)[0]
-            if main < segments[key][sample][0]:
-                main = segments[key][sample][0]
-                diploid = key
-    if diploid == -1:
-        raise ValueError(
-            sp.error('No potential neutral cluster has been found within the given threshold {}!'.format(diploidbaf))
-        )
-    scalings = {sample: segments[diploid][sample][-1] for sample in samples}
-    scale = (
-        lambda value, scale, diploidbaf: min((float(value) / float(scale)) * 0.5, 0.5)
-        if (0.5 - value) <= diploidbaf and scale > 0
-        else value
-    )
-    scaledBAF = {
-        segment: {sample: scale(segments[segment][sample][-1], scalings[sample], diploidbaf) for sample in samples}
-        for segment in segments
-    }
-    regulate = (
-        lambda record, baf: record[:-3] + splitBAF(baf, record[-3] + record[-2]) + (baf,)
-        if record[-1] != baf
-        else record
-    )
-    return {
-        segment: {sample: regulate(segments[segment][sample], scaledBAF[segment][sample]) for sample in samples}
-        for segment in segments
-    }
+class DiagGHMM(hmm.GaussianHMM):
+    def _accumulate_sufficient_statistics(self, stats, obs, framelogprob, posteriors, fwdlattice, bwdlattice):
+        super()._accumulate_sufficient_statistics(stats, obs, framelogprob, posteriors, fwdlattice, bwdlattice)
+
+        if 't' in self.params:
+            # for each ij, recover sum_t xi_ij from the inferred transition matrix
+            bothlattice = fwdlattice + bwdlattice
+            loggamma = (bothlattice.T - logsumexp(bothlattice, axis=1)).T
+
+            # denominator for each ij is the sum of gammas over i
+            denoms = np.sum(np.exp(loggamma), axis=0)
+            # transpose to perform row-wise multiplication
+            stats['denoms'] = denoms
+
+    def _do_mstep(self, stats):
+        super()._do_mstep(stats)
+        if 't' in self.params:
+
+            denoms = stats['denoms']
+            x = (self.transmat_.T * denoms).T
+
+            # numerator is the sum of ii elements
+            num = np.sum(np.diag(x))
+            # denominator is the sum of all elements
+            denom = np.sum(x)
+
+            # (this is the same as sum_i gamma_i)
+            # assert np.isclose(denom, np.sum(denoms))
+
+            stats['diag'] = num / denom
+            # print(num.shape)
+            # print(denom.shape)
+
+            self.transmat_ = self.form_transition_matrix(stats['diag'])
+
+    def form_transition_matrix(self, diag):
+        tol = 1e-10
+        diag = np.clip(diag, tol, 1 - tol)
+
+        offdiag = (1 - diag) / (self.n_components - 1)
+        transmat_ = np.diag([diag - offdiag] * self.n_components)
+        transmat_ += offdiag
+        # assert np.all(transmat_ > 0), (diag, offdiag, transmat_)
+        return transmat_
 
 
-def splitBAF(baf, scale):
-    BAF = float(baf)
-    BAF = min(BAF, 1.0 - BAF)
-    SUM = float(scale)
-
-    roundings = []
-    roundings.append((int(math.floor(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM))))
-    roundings.append((int(math.floor(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM))))
-    roundings.append((int(math.ceil(BAF * SUM)), int(math.floor((1.0 - BAF) * SUM))))
-    roundings.append((int(math.ceil(BAF * SUM)), int(math.ceil((1.0 - BAF) * SUM))))
-    roundings = [(int(min(a, b)), int(max(a, b))) for (a, b) in roundings]
-
-    estimations = [float(a) / float(a + b) if a + b > 0 else 1.0 for (a, b) in roundings]
-    diff = [abs(est - BAF) for est in estimations]
-    best = np.argmin(diff)
-    return roundings[best][0], roundings[best][1]
-
-
-def roundAlphasBetas(baf, alpha, beta):
-    BAF = float(baf)
-    BAF = min(BAF, 1.0 - BAF)
-    ALPHA = min(alpha, beta)
-    BETA = max(alpha, beta)
-
-    roundings = []
-    roundings.append((int(math.floor(ALPHA)), int(math.floor(BETA))))
-    roundings.append((int(math.floor(ALPHA)), int(math.ceil(BETA))))
-    roundings.append((int(math.ceil(ALPHA)), int(math.floor(BETA))))
-    roundings.append((int(math.ceil(ALPHA)), int(math.ceil(BETA))))
-    roundings = [(int(min(a, b)), int(max(a, b))) for (a, b) in roundings]
-
-    estimations = [float(a) / float(a + b) if a + b > 0 else 1.0 for (a, b) in roundings]
-    diff = [abs(est - BAF) for est in estimations]
-    return roundings[np.argmin(diff)]
+def make_transmat(diag, K):
+    offdiag = (1 - diag) / (K - 1)
+    transmat_ = np.diag([diag - offdiag] * K)
+    transmat_ += offdiag
+    return transmat_
 
 
 def reindex(labels):
@@ -466,6 +334,35 @@ def reindex(labels):
     old2newf = lambda x: old2new[x]
 
     return [old2newf(a) for a in labels]
+
+
+def form_seg(bbc, balanced_threshold):
+    segments = []
+    for (key, sample), df in bbc.groupby(['CLUSTER', 'SAMPLE']):
+        nbins = len(df)
+        rd = df.RD.mean()
+        nsnps = df['#SNPS'].sum()
+        cov = df.COV.mean()
+        a = np.sum(np.minimum(df.ALPHA, df.BETA))
+        b = np.sum(np.maximum(df.ALPHA, df.BETA))
+        baf = a / (a + b)
+        baf = baf if (0.5 - baf) > balanced_threshold else 0.5
+        segments.append([key, sample, nbins, rd, nsnps, cov, a, b, baf])
+    seg = pd.DataFrame(
+        segments,
+        columns=[
+            '#ID',
+            'SAMPLE',
+            '#BINS',
+            'RD',
+            '#SNPS',
+            'COV',
+            'ALPHA',
+            'BETA',
+            'BAF',
+        ],
+    )
+    return seg
 
 
 if __name__ == '__main__':

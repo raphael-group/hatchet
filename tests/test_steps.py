@@ -17,7 +17,7 @@ from hatchet.utils.count_reads_fw import main as count_reads
 from hatchet.utils.genotype_snps import main as genotype_snps
 from hatchet.utils.count_alleles import counting
 from hatchet.utils.combine_counts_fw import main as combine_counts
-from hatchet.utils.cluster_bins import main as cluster_bins
+from hatchet.utils.cluster_bins_gmm import main as cluster_bins_gmm
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.bin.HATCHet import main as main
 from hatchet.utils.plot_cn import main as plot_cn
@@ -229,8 +229,8 @@ def test_combine_counts(output_folder):
         assert out == f.read()
 
 
-def test_cluster_bins(output_folder):
-    cluster_bins(
+def test_cluster_bins_gmm(output_folder):
+    cluster_bins_gmm(
         args=[
             f'{this_dir}/data/fw/bb/bulk.bb',
             '-o',

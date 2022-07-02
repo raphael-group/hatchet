@@ -11,8 +11,8 @@ from hatchet.utils.genotype_snps import main as genotype_snps
 from hatchet.utils.count_alleles import main as count_alleles
 from hatchet.utils.combine_counts import main as combine_counts
 from hatchet.utils.combine_counts_fw import main as combine_counts_fw
+from hatchet.utils.cluster_bins_gmm import main as cluster_bins_gmm
 from hatchet.utils.cluster_bins import main as cluster_bins
-from hatchet.utils.cluster_bins_loc import main as loc_clust
 from hatchet.utils.plot_bins import main as plot_bins
 from hatchet.utils.plot_bins_1d2d import main as plot_bins_1d2d
 from hatchet.bin.HATCHet import main as hatchet_main
@@ -301,7 +301,7 @@ def main(args=None):
         os.makedirs(f'{output}/bbc', exist_ok=True)
 
         if config.run.loc_clust:
-            loc_clust(
+            cluster_bins(
                 args=[
                     f'{output}/bb/bulk.bb',
                     '-o',
@@ -311,7 +311,7 @@ def main(args=None):
                 ]
             )
         else:
-            cluster_bins(
+            cluster_bins_gmm(
                 args=[
                     f'{output}/bb/bulk.bb',
                     '-o',
