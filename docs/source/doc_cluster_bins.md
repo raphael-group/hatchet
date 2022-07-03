@@ -1,11 +1,12 @@
 # cluster-bins
 
-This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample.
-cluster-bins uses a non-parametric Gaussian mixture model (GMM) (scikit-learn implementation) for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see [Main Parameters](#main-parameters) below).
+This step globally clusters genomic bins along the entire genome and jointly across tumor samples.
+`cluster-bins` clusters bins while also taking into account their locations on the genome to preferentially form clusters that correspond to contiguous genomic segments on chromosome arms.
+The input/output files for `cluster-bins` are exactly the same as those for `cluster-bins-gmm`.
 
 ## Input
 
-cluster-bins takes in input a tab-separated file with the following fields.
+`cluster-bins` takes in input a tab-separated file with the following fields.
 
 | Field | Description |
 |-------|-------------|
@@ -24,7 +25,7 @@ The fields `#SNPS`, `COV`, `ALPHA`, and `BETA` are currently deprecated and thei
 
 ## Output
 
-cluster-bins produces two tab-separated files:
+`cluster-bins` produces two tab-separated files:
 
 1. A file of clustered genomic bins, specified by the flag `-O`, `--outbins`. The tab separated file has the same fields as the input plus a last field `CLUSTER` which specifies the name of the corresponding cluster.
 
@@ -45,41 +46,25 @@ cluster-bins produces two tab-separated files:
 
 ## Main parameters
 
-cluster-bins has 4 main features with some main parameters that allow  to improve the clustering.
+1. `cluster-bins` has a parameter `-d`, `--diploidbaf` that specifies the maximum expected shift from 0.5 the BAF of a balanced cluster (i.e., diploid with copy-number state (1, 1) or tetraploid with copy-number state (2, 2)). This threshold is used to correct bias in the BAF of these balanced clusters.
+The default value of this parameter (0.1) is often sufficient, but the most appropriate value will vary depending on noise and coverage. In general, this value should be set to include only those clusters that are closest to 0.5 -- for example, if some clusters have centroids near 0.47 and others have centroids near 0.42, this parameter should be set to 0.035 or 0.04.
+To determine the best setting for this value, please check the plots produced by `plot-bins` and the centroid values described  `bbc/bulk.seg` (output from this command).
 
-1. cluster-bins has a parameter `-d`, `--diploidbaf` that specifies the maximum expected shift from 0.5 for BAF for a diploid or tetraploid cluster (i.e. with copy-number states (1, 1) or (2, 2)). This threshold is used for two goals: (1) To identify the diploid or tetraploid cluster which is used to correct the estimated BAF of potentially biased clusters. (2) To identify potentially biased clusters.
-The default value of this parameter (0.1) is typically sufficient for most of the datasets, but its value can be changed or tuned to accommodate the features of special datasets.
-In particular, the value of this threshold depends on the variance in the data (related to noise and coverage); generally, higher variance requires a higher shift.
-Information provided by plot-bins can be crucial to decide whether one needs to change this value in special datasets.
+2. By default, `cluster-bins` takes as input a minimum number of clusters (`--minK`, default `2`) and maximum number of clusters (`--maxK`, default `30`), and chooses the number `K` of clusters in this closed interval that maximizes the silhoutette score. Users can also specify an exact number of clusters (`--exactK`) to infer, which skips the model selection step.
 
-2. cluster-bins has some main parameters to control the clustering; the default values for most of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.
-plot-bins provides informative plots that can be used to assess the quality of the clustering and evaluate the need of changing some parameters for special datasets.
-If your clusters do not appear to be cohesive, try lowering the maximum number of clusters (`-K`) which will force cluster-bins to infer fewer clusters.
+3. Other options are available to change aspects of the Gaussian Hidden Markov model (GHMM) that is used by `cluster-bins`:
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-K`, `--initclusters` | Maximum number of clusters | The parameter specifies the maximum number of clusters to infer, i.e., the maximum number of GMM components | 50 |
-| `-c`, `--concentration` | Concentration parameter for clustering | This parameter determines how much confidence the GMM has in different types of clusterings. Higher values (e.g., 10 or 100)  favor fewer clusters, and smaller values (e.g., 0.01 or 0.001) favor more clusters. For experts, this is the alpha parameter for the Dirichlet process prior. | 1/K |
+| `--tau` | Off-diagonal value for initializing transition matrix | must be `<= 1/(K-1)` | `1e-6` |
+| `-t`, `--transmat` | Type of transition matrix to infer | `fixed` (to off-diagonal = tau), `diag` (all diagonal elements are equal, all off-diagonal elements are equal) or `full` (freely varying) | `diag` |
+| `-c`, `--covar` | Type of covariance matrix to infer | options described in [hmmlearn documentation](https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.hmm.GaussianHMM) | `diag` |
+| `-x`, `--decoding` | Decoding algorithm to use to infer final estimates of states | `map` for MAP inference, `viterbi` for Viterbi algorithm | `map` |
 
-3. cluster-bins offers a bootstraping approach that allows a succesfull clustering even when there is a limited number genomic bins that are considred. The bootstraping approach generates sinthetic (i.e. used only for clustering) bins based on the data of the given bins. The bootstraping is controlled by the following parameters.
-
-| Name | Description | Usage | Default |
-|------|-------------|-------|---------|
-| `-u`, `--bootclustering` | Number of sinthetic bins to generate | Sinthetic bins can be generated based on the RDR and BAF of given bins and are added only to the clustering to improve it when the total number of bins is low (e.g. when considering data from WES) | 0, not used |
-| `-dR`,`--ratiodeviation` | Standard deviation for generate RDR of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
-| `-dB`,`--bafdeviation` | Standard deviation for generate BAF of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
-| `-s`, `--seed` | Random seed | The value is used to seed the random generation of RDR and BAF of synthetic bins | 0 |
-
-4. cluster-bins offers a basic iterative process to merge clusters according to given tolerances. This feature can be used to refine the results of the GMM clustering and merge distinct clusters that are not sufficiently distinguished. This process can be controlled by the following parameters.
-
-| Name | Description | Usage | Default |
-|------|-------------|-------|---------|
-| `-tR`, `--tolerancerdr` | Tolerance for RDR | The value is used to determine when two clusters should be merged in terms of RDR | 0.0, merging is not performed |
-| `-tB`, `--tolerancebaf` | Tolerance for BAF | The value is used to determine when two clusters should be merged in terms of BAF | 0.0, merging is not performed |
+Particularly, `tau` controls the balance between global information (RDR and BAf across samples) and local information (assigning adjacent bins to the same cluster): smaller values of `tau` put more weight on *local* information, and larger values of `tau` put more weight on *global* information. It may be appropriate to reduce `tau` by several orders of magnitude for noisier or lower-coverage datasets.
 
 ## Optional parameters
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-v`, `--verbose`  | Verbose logging flag | When enabled, combine-counts outputs a verbose log of the executiong | Not used |
-| `-r`, `--disablebar` | Disabling progress-bar flag | When enabled, the output progress bar is disabled | Not used |
+| `-e`, `--seed`  | Random number generator seed used in model fitting | 0 |

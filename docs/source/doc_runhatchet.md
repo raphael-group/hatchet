@@ -8,7 +8,7 @@ The tutorial is subdivided into some subsections and each of these describes seq
 3. [count-alleles](#count-alleles)
 4. [count-reads](#count-reads)
 5. [combine-counts](#combine-counts)
-6. [cluster-bins-loc](#cluster-bins-loc)
+6. [cluster-bins](#cluster-bins)
 7. [plot-bins](#plot-bins)
 8. [compute-cn](#compute-cn)
 9. [plot-cn](#plot-cn)
@@ -123,15 +123,15 @@ combine-counts constructs genomic bins such that in all samples, each bin has at
 
 See the [script](script/README.md) directory for a guide on how to run HATCHet with phasing. If a phased VCF file is supplied via `-p, --phase ${PHASE}` (e.g., `-p phase/phased.vcf.gz`), SNPs are merged into blocks before BAF inference. Each block contains at most `${max_spb}` such that no two SNPs in the same block are further apart than `${max_blocksize}`, and such that no two adjacent SNPs have significantly different marginal BAF estimates (at significance level `${alpha}` -- higher `${alpha}` corresponds to less trust in the phasing results). Then, blocks are passed to the EM which determines the relative phase of each block.
 
-## [cluster-bins-loc](doc_cluster_bins_loc.html)
-<a name="cluster-bins-loc"></a>
+## [cluster-bins](doc_cluster_bins.html)
+<a name="cluster-bins"></a>
 
 ```shell
-python3 -m hatchet cluster-bins-loc ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
+python3 -m hatchet cluster-bins ${BB}bulk.bb -o ${BBC}bulk.seg -O ${BBC}bulk.bbc \
                                       -minK 5 -maxK 10 -tau 0.0001 -d 0.08
 ```
 
-cluster-bins-loc globally clusters genomic bins based on RDR and BAF (specified in a BB file `${BB}bulk.bb`) jointly along the genome and across all tumor samples. This *locality-aware* clustering takes into account the contiguity of bins along the genome to inform the clustering.
+cluster-bins globally clusters genomic bins based on RDR and BAF (specified in a BB file `${BB}bulk.bb`) jointly along the genome and across all tumor samples. This *locality-aware* clustering takes into account the contiguity of bins along the genome to inform the clustering.
 
 The main parameters are as follows:
 - The maximum expected BAF shift `-d` for a balanced cluster, here set to `0.08`. This parameter should be as small as possible while still including the clusters with the closest BAF to 0.5.
