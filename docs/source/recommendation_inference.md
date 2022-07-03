@@ -46,7 +46,7 @@ HATCHet chooses the largest combination of consistent clonal clusters to obtain 
     ## Found pattern of size 886592751.0: {'8': (2, 0), '28': (4, 2), '50': (2, 2)}
     ## Chosen pattern of size 1080892751.0: {'8': (2, 1), '28': (3, 2), '50': (2, 2), '29': (4, 2), '23': (2, 0)}
 
-There are two parameters which control the identification of these patterns, which are `-tR`, i.e. RDR threshold, and `-tB`, i.e. BAF threshold. These thresholds are considered as the maximum allowed errors when estimating the clonal clusters. As such, the user can either decrease the thresholds (e.g. `-ts 0.03` and `-ts 0.02`) to consider more stringent constraints especially in low-noise datasets where subclonality can be accurately identified, or increase the thresholds (e.g. `-ts 0.15` and `-ts 0.05`) to accomodate the higher noise in certain datasets. The user can use the `bb_clustered.pdf` figure produced by the command `CBB` of `cluster-bins` to assess the identified clonal cluster. For example, in the following case
+There are two parameters which control the identification of these patterns, which are `-tR`, i.e. RDR threshold, and `-tB`, i.e. BAF threshold. These thresholds are considered as the maximum allowed errors when estimating the clonal clusters. As such, the user can either decrease the thresholds (e.g. `-ts 0.03` and `-ts 0.02`) to consider more stringent constraints especially in low-noise datasets where subclonality can be accurately identified, or increase the thresholds (e.g. `-ts 0.15` and `-ts 0.05`) to accomodate the higher noise in certain datasets. The user can use the `bb_clustered.pdf` figure produced by the command `CBB` of `plot-bins` to assess the identified clonal cluster. For example, in the following case
 
     ## 0:   SIZE= 498    #CHRS= 22    (RDR, BAF)= (1.0, 0.5)
     ## 1:   SIZE= 497    #CHRS= 22    (RDR, BAF)= (0.7, 0.25)
@@ -105,7 +105,7 @@ The final best solution, according to prediction of the presence or absence of a
 <a name="quality"></a>
 
 It is very important that the user verifies the results in different steps to guarantee the best-quality results, more specifically:
-- User can assess the validity of the chosen clonal cluster using the `bb_clustered.pdf` figure produced by the command `CBB` of `cluster-bins` and comparing the list of selected potential clonal clusters.
+- User can assess the validity of the chosen clonal cluster using the `bb_clustered.pdf` figure produced by the command `CBB` of `plot-bins` and comparing the list of selected potential clonal clusters.
 - User can assess the inferred copy numbers by analyzing the inferred maximum values and the inferred clone proportions which define the tumor clonal composition.
 - User can assess the joint inference of number of clones and WGD by analyzing the values of the objective function and the related scores.
 

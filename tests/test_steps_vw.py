@@ -10,7 +10,7 @@ import pytest
 
 from hatchet import config
 from hatchet.utils.count_reads import main as count_reads
-from hatchet.utils.cluster_bins_loc import main as cluster_bins_loc
+from hatchet.utils.cluster_bins import main as cluster_bins
 from hatchet.utils.combine_counts import main as combine_counts
 
 this_dir = os.path.dirname(__file__)
@@ -132,8 +132,8 @@ def test_combine_counts(_, output_folder):
     assert_frame_equal(df3, df4)
 
 
-def test_cluster_bins_loc(output_folder):
-    cluster_bins_loc(
+def test_cluster_bins(output_folder):
+    cluster_bins(
         args=[
             f'{this_dir}/data/fw/bb/bulk.bb',
             '-o',
@@ -162,8 +162,8 @@ def test_cluster_bins_loc(output_folder):
     assert_frame_equal(bbc1, bbc2)
 
 
-def test_cluster_bins_loc_singleton(output_folder):
-    cluster_bins_loc(
+def test_cluster_bins_singleton(output_folder):
+    cluster_bins(
         args=[
             f'{this_dir}/data/fw/bb/bulk.bb',
             '-o',

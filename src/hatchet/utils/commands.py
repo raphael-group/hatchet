@@ -14,7 +14,7 @@ commands = (
     'check',
     'download-panel',
     'phase-snps',
-    'cluster-bins-loc',
+    'cluster-bins-gmm',
     'plot-cn-1d2d',
     'plot-bins-1d2d',
 )
@@ -26,7 +26,7 @@ command_aliases = {
     'SNPCaller': 'genotype-snps',
     'deBAF': 'count-alleles',
     'comBBo': 'combine-counts-fw',
-    'cluBB': 'cluster-bins',
+    'cluBB': 'cluster-bins-gmm',
     'BBot': 'plot-bins',
     'solve': 'compute-cn',
     'BBeval': 'plot-cn',

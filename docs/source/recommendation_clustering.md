@@ -1,8 +1,8 @@
 # Analyze global clustering
 
-The global clustering performed along the genome and jointly across samples is a crucial feature of HATCHet and the quality of the final results is strongly affected by the quality of the clustering. This global clustering is performed by HATCHet's component `cluster-bins-loc`, whose default values are suitable for many datasets. However, for ideal results on specific datasets these parameters may need to be modified.
+The global clustering performed along the genome and jointly across samples is a crucial feature of HATCHet and the quality of the final results is strongly affected by the quality of the clustering. This global clustering is performed by HATCHet's component `cluster-bins`, whose default values are suitable for many datasets. However, for ideal results on specific datasets these parameters may need to be modified.
 
-The module `cluster-bins-loc` incorporates genomic position to improve clustering using a Gaussian hidden Markov model (GHMM), as opposed to the position-agnostic Gaussian mixture model (GMM) used in `cluster-bins` and described in the original HATCHet publication. This page describes how to tune the parameters of `cluster-bins-loc` -- for recommendations on `cluster-bins`, see [this page](recommendation_old_clustering.html) instead.
+The module `cluster-bins` incorporates genomic position to improve clustering using a Gaussian hidden Markov model (GHMM), as opposed to the position-agnostic Gaussian mixture model (GMM) used in `cluster-bins-gmm` and described in the original HATCHet publication. This page describes how to tune the parameters of `cluster-bins` -- for recommendations on `cluster-bins-gmm`, see [this page](recommendation_old_clustering.md) instead.
 
 The user should validate the results of the clustering, especially in noisy or suspicious cases, through the cluster figures produced by [plot-bins](doc_plot_bins.html) and [plot-bins-1d2d](doc_plot_bins_1d2d.html). More specifically, we suggest the following criteria to evaluate the clustering:
 
@@ -10,9 +10,9 @@ The user should validate the results of the clustering, especially in noisy or s
 2. Each cluster should contain regions with similar values of RDR and BAF in all samples
 
 
-`cluster-bins-loc` offers several parameters that can be used to tune the clustering.
+`cluster-bins` offers several parameters that can be used to tune the clustering.
 ## Number of clusters
-By default, `cluster-bins-loc` tries several possible values for the number `K` of clusters and selects the one that maximizes the silhouette score. In practice, this tends to *underestimate* the number of clusters that are visually apparent. This can be modified by
+By default, `cluster-bins` tries several possible values for the number `K` of clusters and selects the one that maximizes the silhouette score. In practice, this tends to *underestimate* the number of clusters that are visually apparent. This can be modified by
 
 1. Setting the parameters `--minK` and `--maxK` which specify the minimum and maximum number of clusters to consider, or
 2. Setting the parameter `--exactK` to fix the number of clusters to a given value.
