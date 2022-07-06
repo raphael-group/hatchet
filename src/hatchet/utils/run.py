@@ -158,8 +158,8 @@ def main(args=None):
                 f'{output}/phase/',
                 '-L',
             ]
-            + (['-N'] if config.genotype_snps.chr_notation else [])
             + glob.glob(f'{output}/snps/*.vcf.gz')
+            + (['-N'] if config.genotype_snps.chr_notation else [])
             + extra_args
         )
 
