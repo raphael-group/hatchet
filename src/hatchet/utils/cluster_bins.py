@@ -343,10 +343,17 @@ def form_seg(bbc, balanced_threshold):
         rd = df.RD.mean()
         nsnps = df['#SNPS'].sum()
         cov = df.COV.mean()
-        a = np.sum(np.minimum(df.ALPHA, df.BETA))
-        b = np.sum(np.maximum(df.ALPHA, df.BETA))
-        baf = a / (a + b)
-        baf = baf if (0.5 - baf) > balanced_threshold else 0.5
+        baf = df.BAF.mean()
+        smaller = np.sum(np.minimum(df.ALPHA, df.BETA))
+        larger = np.sum(np.maximum(df.ALPHA, df.BETA))
+        if baf <= 0.5:
+            a = smaller
+            b = larger
+        else:
+            a = larger
+            b = smaller
+        baf = baf if abs(0.5 - baf) > balanced_threshold else 0.5
+
         segments.append([key, sample, nbins, rd, nsnps, cov, a, b, baf])
     seg = pd.DataFrame(
         segments,
