@@ -282,7 +282,7 @@ def parse_cluster_bins_args(args=None):
         default=config.cluster_bins.diploidbaf,
         help=(
             'Maximum diploid-BAF shift used to determine the largest copy-neutral cluster and to rescale all the '
-            'cluster inside this threshold accordingly (default: None, scaling is not performed)'
+            'cluster inside this threshold accordingly (default: 0.1)'
         ),
     )
     parser.add_argument(
