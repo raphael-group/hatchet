@@ -48,7 +48,7 @@ def main(args=None):
             tracks,
             minK=minK,
             maxK=maxK,
-            seed=args['seed'],
+            # restarts=args['restarts'],
             covar=args['covar'],
             decode_alg=args['decoding'],
             tmat=args['transmat'],
@@ -189,16 +189,7 @@ def read_bb(bbfile, use_chr=True, compressed=False):
     )
 
 
-def hmm_model_select(
-    tracks,
-    minK=20,
-    maxK=50,
-    tau=10e-6,
-    tmat='diag',
-    decode_alg='viterbi',
-    covar='diag',
-    seed=0,
-):
+def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_alg='viterbi', covar='diag', restarts=10):
     assert tmat in ['fixed', 'diag', 'free']
     assert decode_alg in ['map', 'viterbi']
 
@@ -223,46 +214,56 @@ def hmm_model_select(
     rs = {}
     for K in range(minK, maxK + 1):
         # print(K, datetime.now())
-        # construct initial transition matrix
-        A = make_transmat(1 - tau, K)
 
-        if tmat == 'fixed':
-            model = hmm.GaussianHMM(
-                n_components=K,
-                init_params='mc',
-                params='smc',
-                covariance_type=covar,
-                random_state=0,
-            )
-        elif tmat == 'free':
-            model = hmm.GaussianHMM(
-                n_components=K,
-                init_params='mc',
-                params='smct',
-                covariance_type=covar,
-                random_state=0,
-            )
-        else:
-            model = DiagGHMM(
-                n_components=K,
-                init_params='mc',
-                params='smct',
-                covariance_type=covar,
-                random_state=0,
-            )
+        my_best_ll = -1 * np.inf
+        my_best_labels = None
+        my_best_model = None
+        for s in range(restarts):
+            # construct initial transition matrix
+            A = make_transmat(1 - tau, K)
 
-        model.startprob_ = np.ones(K) / K
-        model.transmat_ = A
-        model.fit(X, lengths)
+            if tmat == 'fixed':
+                model = hmm.GaussianHMM(
+                    n_components=K,
+                    init_params='mc',
+                    params='smc',
+                    covariance_type=covar,
+                    random_state=s,
+                )
+            elif tmat == 'free':
+                model = hmm.GaussianHMM(
+                    n_components=K,
+                    init_params='mc',
+                    params='smct',
+                    covariance_type=covar,
+                    random_state=s,
+                )
+            else:
+                model = DiagGHMM(
+                    n_components=K,
+                    init_params='mc',
+                    params='smct',
+                    covariance_type=covar,
+                    random_state=s,
+                )
 
-        prob, labels = model.decode(X, lengths, algorithm=decode_alg)
-        score = silhouette_score(C, labels, metric='precomputed')
+            model.startprob_ = np.ones(K) / K
+            model.transmat_ = A
+            model.fit(X, lengths)
 
-        rs[K] = prob, score, labels
+            prob, labels = model.decode(X, lengths, algorithm=decode_alg)
+            if prob > my_best_ll:
+                my_best_labels = labels
+                my_best_ll = prob
+                my_best_model = model
+
+        score = silhouette_score(C, my_best_labels, metric='precomputed')
+
+        rs[K] = my_best_ll, score, my_best_labels
         if score > best_score:
             best_score = score
-            best_model = model
-            best_labels = labels
+            best_model = my_best_model
+            best_labels = my_best_labels
             best_K = K
 
     return best_score, best_model, best_labels, best_K, rs
