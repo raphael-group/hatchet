@@ -48,11 +48,11 @@ def main(args=None):
             tracks,
             minK=minK,
             maxK=maxK,
-            # restarts=args['restarts'],
             covar=args['covar'],
             decode_alg=args['decoding'],
             tmat=args['transmat'],
             tau=args['tau'],
+            restarts=args['restarts'],
         )
 
     best_labels = reindex(best_labels)

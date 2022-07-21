@@ -286,14 +286,6 @@ def parse_cluster_bins_args(args=None):
         ),
     )
     parser.add_argument(
-        '-e',
-        '--seed',
-        type=int,
-        required=False,
-        default=config.cluster_bins.seed,
-        help='Random seed used for clustering (default: 0)',
-    )
-    parser.add_argument(
         '--minK',
         type=int,
         required=False,
@@ -345,6 +337,14 @@ def parse_cluster_bins_args(args=None):
         default=config.cluster_bins.decoding,
         help='Decoding algorithm to use: map or viterbi (default: map)',
     )
+    parser.add_argument(
+        '-R',
+        '--restarts',
+        type=int,
+        required=False,
+        default=config.cluster_bins.restarts,
+        help='Number of restarts performed by the clustering to choose the best (default: 10)',
+    )
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
@@ -353,7 +353,6 @@ def parse_cluster_bins_args(args=None):
         (args.diploidbaf is None) or (0.0 <= args.diploidbaf <= 0.5),
         'The specified maximum for diploid-BAF shift must be a value in [0.0, 0.5]',
     )
-    ensure(args.seed >= 0, 'Seed parameter must be non-negative.')
 
     if args.exactK > 0:
         log(
@@ -391,13 +390,12 @@ def parse_cluster_bins_args(args=None):
         args.transmat in valid_transmats,
         f'Invalid -t/--transmat argument: {args.transmat}. Valid values are {valid_transmats}.',
     )
-
+    ensure(args.restarts >= 1, 'Number of restarts must be positive.')
     ensure(args.tau >= 0, 'Transition parameter --tau must be non-negative.')
 
     return {
         'bbfile': args.BBFILE,
         'diploidbaf': args.diploidbaf,
-        'seed': args.seed,
         'decoding': args.decoding,
         'minK': args.minK,
         'maxK': args.maxK,
@@ -407,6 +405,7 @@ def parse_cluster_bins_args(args=None):
         'tau': args.tau,
         'outsegments': args.outsegments,
         'outbins': args.outbins,
+        'restarts': args.restarts,
     }
 
 
@@ -2045,7 +2044,7 @@ def parse_cluster_bins_gmm_args(args=None):
     ensure(args.seed >= 0, 'Seed parameter must be positive!')
     ensure(args.initclusters >= 0, 'Init-cluster parameter must be positive!')
     ensure(args.concentration >= 0, 'Concentration parameter must be positive!')
-    ensure(args.restarts >= 0, 'Number of restarts must be positive!')
+    ensure(args.restarts >= 1, 'Number of restarts must be positive!')
 
     return {
         'bbfile': args.BBFILE,
