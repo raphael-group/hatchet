@@ -3,13 +3,12 @@ import os
 import os.path
 import shlex
 import subprocess as pr
-from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 from scipy.stats import beta
 import tempfile
 
-import hatchet.utils.ProgressBar as pb
 import hatchet.utils.ArgParsing as ap
 from hatchet.utils.Supporting import log, logArgs, error, close
+from hatchet.utils.multiprocessing import Worker
 
 
 def main(args=None):
@@ -172,84 +171,33 @@ def counting(
     verbose,
     outdir,
 ):
-    # Define a Lock and a shared value for log printing through ProgressBar
-    err_lock = Lock()
-    counter = Value('i', 0)
-    progress_bar = pb.ProgressBar(
-        total=len(samples) * len(chromosomes),
-        length=40,
-        lock=err_lock,
-        counter=counter,
-        verbose=verbose,
-    )
 
-    # Establish communication queues
-    tasks = JoinableQueue()
-    results = Queue()
-
-    # Enqueue jobs
-    jobs_count = 0
+    work = []
     for bam in samples:
         for chro in chromosomes:
-            tasks.put((bam[0], bam[1], chro))
-            jobs_count += 1
+            work.append((bam[0], bam[1], chro))
 
-    # Setting up the workers
-    workers = [
-        AlleleCounter(
-            tasks,
-            results,
-            progress_bar,
-            bcftools,
-            reference,
-            q,
-            Q,
-            mincov,
-            dp,
-            E,
-            snplist,
-            verbose,
-            outdir,
-        )
-        for i in range(min(num_workers, jobs_count))
-    ]
+    worker = AlleleCounter(
+        bcftools,
+        reference,
+        q,
+        Q,
+        mincov,
+        dp,
+        E,
+        snplist,
+        verbose,
+        outdir,
+    )
 
-    # Add a poison pill for each worker
-    for i in range(len(workers)):
-        tasks.put(None)
-
-    # Start the workers
-    for w in workers:
-        w.start()
-
-    # Wait for all of the tasks to finish
-    tasks.join()
-
-    # Get the results
-    sorted_results = {}
-    for i in range(jobs_count):
-        res = results.get()
-        if len(res) > 0:
-            sorted_results[res[0][0], res[0][1]] = res
-
-    # Close Queues
-    tasks.close()
-    results.close()
-
-    # Ensure each worker terminates
-    for w in workers:
-        w.terminate()
-        w.join()
-
-    return sorted_results
+    results = worker.run(work=work, n_instances=num_workers)
+    results = {(v[0][0], v[0][1]): v for v in results}
+    return results
 
 
-class AlleleCounter(Process):
+class AlleleCounter(Worker):
     def __init__(
         self,
-        task_queue,
-        result_queue,
-        progress_bar,
         bcftools,
         reference,
         q,
@@ -261,10 +209,6 @@ class AlleleCounter(Process):
         verbose,
         outdir,
     ):
-        Process.__init__(self)
-        self.task_queue = task_queue
-        self.result_queue = result_queue
-        self.progress_bar = progress_bar
         self.bcftools = bcftools
         self.reference = reference
         self.q = q
@@ -276,30 +220,10 @@ class AlleleCounter(Process):
         self.verbose = verbose
         self.outdir = outdir
 
-    def run(self):
-        while True:
-            next_task = self.task_queue.get()
-            if next_task is None:
-                # Poison pill means shutdown
-                self.task_queue.task_done()
-                break
-
-            self.progress_bar.progress(
-                advance=False,
-                msg='{} starts on {} for {}'.format(self.name, next_task[1], next_task[2]),
-            )
-            snps = self.countAlleles(
-                bamfile=next_task[0],
-                samplename=next_task[1],
-                chromosome=next_task[2],
-            )
-            self.progress_bar.progress(
-                advance=True,
-                msg='{} ends on {} for {}'.format(self.name, next_task[1], next_task[2]),
-            )
-            self.task_queue.task_done()
-            self.result_queue.put(snps)
-        return
+    def work(self, bamfile, samplename, chromosome):
+        # return 42
+        snps = self.countAlleles(bamfile=bamfile, samplename=samplename, chromosome=chromosome)
+        return snps
 
     def countAlleles(self, bamfile, samplename, chromosome):
         cmd_mpileup = '{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD -q {} -Q {} -d {} -T {}'.format(
