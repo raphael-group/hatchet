@@ -57,6 +57,8 @@ class Worker:
         n_work = len(work)
         if n_instances is None:
             n_instances = min(cpu_count(), n_work)
+        else:
+            n_instances = min(n_instances, n_work)
 
         if show_progress:
             progress_bar = pb.ProgressBar(
