@@ -347,23 +347,38 @@ def reindex(labels):
 
 def form_seg(bbc, balanced_threshold):
     segments = []
-    for (key, sample), df in bbc.groupby(['CLUSTER', 'SAMPLE']):
-        nbins = len(df)
-        rd = df.RD.mean()
-        nsnps = df['#SNPS'].sum()
-        cov = df.COV.mean()
-        baf = df.BAF.mean()
-        smaller = np.sum(np.minimum(df.ALPHA, df.BETA))
-        larger = np.sum(np.maximum(df.ALPHA, df.BETA))
-        if baf <= 0.5:
-            a = smaller
-            b = larger
-        else:
-            a = larger
-            b = smaller
-        baf = baf if abs(0.5 - baf) > balanced_threshold else 0.5
+    for key, df_ in bbc.groupby('CLUSTER'):
+        nbins = []
+        rd = []
+        nsnps = []
+        cov = []
+        baf = []
+        a = []
+        b = []
+        samples = []
 
-        segments.append([key, sample, nbins, rd, nsnps, cov, a, b, baf])
+        for sample, df in df_.groupby('SAMPLE'):
+            nbins.append(len(df))
+            rd.append(df.RD.mean())
+            nsnps.append(df['#SNPS'].sum())
+            cov.append(df.COV.mean())
+            baf.append(df.BAF.mean())
+            smaller = np.sum(np.minimum(df.ALPHA, df.BETA))
+            larger = np.sum(np.maximum(df.ALPHA, df.BETA))
+            if baf[-1] <= 0.5:
+                a.append(smaller)
+                b.append(larger)
+            else:
+                a.append(larger)
+                b.append(smaller)
+            samples.append(sample)
+
+        keys = [key] * len(baf)
+        if all([abs(0.5 - baf_) < balanced_threshold for baf_ in baf]):
+            baf = [0.5] * len(baf)
+
+        [segments.append(t) for t in zip(keys, samples, nbins, rd, nsnps, cov, a, b, baf)]
+
     seg = pd.DataFrame(
         segments,
         columns=[
