@@ -223,6 +223,12 @@ def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_al
         for s in range(restarts):
             # construct initial transition matrix
             A = make_transmat(1 - tau, K)
+            assert np.all(A > 0), (
+                'Found 0 or negative elements in transition matrix.'
+                'This is likely a numerical precision issue -- try increasing tau.',
+                A,
+            )
+            assert np.allclose(np.sum(A, axis=1), 1), ('Not all rows in transition matrix sum to 1.', A)
 
             if tmat == 'fixed':
                 model = hmm.GaussianHMM(

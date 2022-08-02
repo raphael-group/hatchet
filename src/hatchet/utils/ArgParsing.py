@@ -403,6 +403,7 @@ def parse_cluster_bins_args(args=None):
     )
     ensure(args.restarts >= 1, 'Number of restarts must be positive.')
     ensure(args.tau >= 0, 'Transition parameter --tau must be non-negative.')
+    ensure(args.tau >= 6e-17, 'Transition parameter --tau must be at least 6e-17 to ensure numerical precision.')
 
     if args.subset is not None:
         import pandas as pd
