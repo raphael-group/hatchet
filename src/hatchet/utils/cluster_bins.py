@@ -18,7 +18,7 @@ def main(args=None):
     sp.logArgs(args, 80)
 
     sp.log(msg='# Reading the combined BB file\n', level='STEP')
-    tracks, bb, sample_labels, chr_labels = read_bb(args['bbfile'])
+    tracks, bb, sample_labels, chr_labels = read_bb(args['bbfile'], subset=args['subset'])
 
     if args['exactK'] > 0:
         minK = args['exactK']
@@ -114,7 +114,7 @@ def main(args=None):
     sp.log(msg='# Done\n', level='STEP')
 
 
-def read_bb(bbfile, use_chr=True, compressed=False):
+def read_bb(bbfile, subset=None):
     """
     Constructs arrays to represent the bin in each chromosome or arm.
     If bbfile was binned around chromosome arm, then uses chromosome arms.
@@ -132,6 +132,8 @@ def read_bb(bbfile, use_chr=True, compressed=False):
     """
 
     bb = pd.read_table(bbfile)
+    if subset is not None:
+        bb = bb[bb.SAMPLE.isin(subset)]
 
     tracks = []
 

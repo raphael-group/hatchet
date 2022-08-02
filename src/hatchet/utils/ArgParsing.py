@@ -345,6 +345,17 @@ def parse_cluster_bins_args(args=None):
         default=config.cluster_bins.restarts,
         help='Number of restarts performed by the clustering to choose the best (default: 10)',
     )
+    parser.add_argument(
+        '-S',
+        '--subset',
+        required=False,
+        default=config.cluster_bins.subset,
+        type=str,
+        nargs='+',
+        help=(
+            'List of sample names to use as a subset of those included in binning' '(default: none, run on all samples)'
+        ),
+    )
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
@@ -393,6 +404,18 @@ def parse_cluster_bins_args(args=None):
     ensure(args.restarts >= 1, 'Number of restarts must be positive.')
     ensure(args.tau >= 0, 'Transition parameter --tau must be non-negative.')
 
+    if args.subset is not None:
+        import pandas as pd
+
+        args.subset = args.subset.split()
+        bb = pd.read_table(args.BBFILE)
+        samples = bb.SAMPLE.unique()
+        ensure(
+            all([a in samples for a in args.subset]),
+            'Samples indicated in "subset" must be present in input BB file. BB file:'
+            + f'{samples}, argument: {args.subset}',
+        )
+
     return {
         'bbfile': args.BBFILE,
         'diploidbaf': args.diploidbaf,
@@ -406,6 +429,7 @@ def parse_cluster_bins_args(args=None):
         'outsegments': args.outsegments,
         'outbins': args.outbins,
         'restarts': args.restarts,
+        'subset': args.subset,
     }
 
 
