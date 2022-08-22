@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hatchet"
-version = "1.0.3"
+version = "1.0.4"
 authors = [
   { name="Simone Zaccaria", email="s.zaccaria@ucl.ac.uk" },
   { name="Ben Raphael", email="braphael@cs.princeton.edu" },
