@@ -107,8 +107,17 @@ def _check_bcftools():
     # The bcftools version we select should be capable of querying remote .vcf.gz files while also specifying
     # a region; This is the use case in HATCHet's genotype_snps step; Seems to work with bcftools>=1.11
     with tempfile.TemporaryDirectory() as tempdirname:
-        return _check_cmd(config.paths.bcftools, 'bcftools', tempdirname, 'query', '-f', '\'%CHROM\t%POS\n\'',
-                          '-r', '7', 'https://ftp.ncbi.nih.gov/snp/organisms/archive/apple_3750/VCF/00-All.vcf.gz')
+        return _check_cmd(
+            config.paths.bcftools,
+            'bcftools',
+            tempdirname,
+            'query',
+            '-f',
+            "'%CHROM\t%POS\n'",
+            '-r',
+            '7',
+            'https://ftp.ncbi.nih.gov/snp/organisms/archive/apple_3750/VCF/00-All.vcf.gz',
+        )
 
 
 def _check_python_import(which):
