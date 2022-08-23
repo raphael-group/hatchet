@@ -7,6 +7,7 @@ import importlib
 from contextlib import contextmanager
 import tempfile
 import shutil
+from packaging import version
 
 from hatchet import config
 import hatchet.data
@@ -105,19 +106,13 @@ def _check_picard():
 
 def _check_bcftools():
     # The bcftools version we select should be capable of querying remote .vcf.gz files while also specifying
-    # a region; This is the use case in HATCHet's genotype_snps step; Seems to work with bcftools>=1.11
-    with tempfile.TemporaryDirectory() as tempdirname:
-        return _check_cmd(
-            config.paths.bcftools,
-            'bcftools',
-            tempdirname,
-            'query',
-            '-f',
-            "'%CHROM\t%POS\n'",
-            '-r',
-            '7',
-            'https://ftp.ncbi.nih.gov/snp/organisms/archive/apple_3750/VCF/00-All.vcf.gz',
-        )
+    # a region; This is the use case in HATCHet's genotype_snps step; This seems to work with bcftools>=1.11
+    try:
+        cmd = os.path.join(config.paths.bcftools, 'bcftools')
+        bcftools_version = subprocess.check_output([cmd, '--version-only']).decode('utf-8')
+        return version.parse(bcftools_version) >= version.parse('1.11')
+    except:  # noqa: E722
+        return False
 
 
 def _check_python_import(which):
@@ -182,7 +177,7 @@ CHECKS = {
         (
             'bcftools',
             '',
-            'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
+            'Please install bcftools>=1.11 executable and either ensure its on your PATH, or its location specified in '
             'hatchet.ini as config.paths.bcftools, or its location specified using the environment variable '
             'HATCHET_PATHS_BCFTOOLS',
             _check_bcftools,
