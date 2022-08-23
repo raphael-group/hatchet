@@ -59,7 +59,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: testdata
-          key: hatchetcache04
+          key: hatchetcache05
 
       - name: Download Testing Data
         if: steps.cache-test-data.outputs.cache-hit != 'true'
