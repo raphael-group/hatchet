@@ -7,6 +7,7 @@ import importlib
 from contextlib import contextmanager
 import tempfile
 import shutil
+from packaging import version
 
 from hatchet import config
 import hatchet.data
@@ -29,7 +30,7 @@ def suppress_stdout():
             sys.stderr = old_stderr
 
 
-def _check_cmd(exe_path, exe_name, *args):
+def _check_cmd(exe_path, exe_name, cwd=None, *args):
     # This function should never raise Exceptions unless it's a genuine implementation bug
     # Only use exe and args that return a return code of 0
     # Use exe_path as '' if you expect <exe_name> to be on PATH
@@ -39,6 +40,7 @@ def _check_cmd(exe_path, exe_name, *args):
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
+            cwd=cwd,
             universal_newlines=True,
         )
         p.communicate()
@@ -49,14 +51,14 @@ def _check_cmd(exe_path, exe_name, *args):
         return True
 
 
-# Most command-line commands can be checked using _check_cmd(<folder_with_command>, <command>, '--version')
+# Most command-line commands can be checked using _check_cmd(<folder_with_command>, <command>, <cwd>, '--version')
 # Others, like below, need special handling because they have no simple invocations that return 0
 def _check_tabix():
     with tempfile.TemporaryDirectory() as tempdirname:
         with importlib.resources.path(hatchet.data, 'sample.sorted.gff.gz') as gz_path:
             _temp_gz_path = os.path.join(tempdirname, 'sample.sorted.gff.gz')
             shutil.copy(gz_path, _temp_gz_path)
-            return _check_cmd(config.paths.tabix, 'tabix', '-p', 'gff', _temp_gz_path, '-f')
+            return _check_cmd(config.paths.tabix, 'tabix', None, '-p', 'gff', _temp_gz_path, '-f')
 
 
 def _check_bgzip():
@@ -64,7 +66,7 @@ def _check_bgzip():
         with importlib.resources.path(hatchet.data, 'sample.bbc') as file_path:
             _temp_file_path = os.path.join(tempdirname, 'sample.bbc')
             shutil.copy(file_path, _temp_file_path)
-            return _check_cmd(config.paths.bgzip, 'bgzip', _temp_file_path, '-f')
+            return _check_cmd(config.paths.bgzip, 'bgzip', None, _temp_file_path, '-f')
 
 
 def _check_picard():
@@ -92,6 +94,7 @@ def _check_picard():
             return _check_cmd(
                 exe_path,
                 exe_name,
+                None,
                 *args_pre,
                 'BuildBamIndex',
                 '--INPUT',
@@ -99,6 +102,17 @@ def _check_picard():
                 '--OUTPUT',
                 f'{tempdirname}/sample.sorted.bam.bai',
             )
+
+
+def _check_bcftools():
+    # The bcftools version we select should be capable of querying remote .vcf.gz files while also specifying
+    # a region; This is the use case in HATCHet's genotype_snps step; This seems to work with bcftools>=1.11
+    try:
+        cmd = os.path.join(config.paths.bcftools, 'bcftools')
+        bcftools_version = subprocess.check_output([cmd, '--version-only']).decode('utf-8')
+        return version.parse(bcftools_version) >= version.parse('1.11')
+    except:  # noqa: E722
+        return False
 
 
 def _check_python_import(which):
@@ -131,6 +145,7 @@ CHECKS = {
             _check_cmd,
             config.paths.samtools,
             'samtools',
+            None,
             '--version',
         ),
         (
@@ -142,6 +157,7 @@ CHECKS = {
             _check_cmd,
             config.paths.mosdepth,
             'mosdepth',
+            None,
             '--version',
         ),
     ],
@@ -155,18 +171,16 @@ CHECKS = {
             _check_cmd,
             config.paths.samtools,
             'samtools',
+            None,
             '--version',
         ),
         (
             'bcftools',
             '',
-            'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
+            'Please install bcftools>=1.11 executable and either ensure its on your PATH, or its location specified in '
             'hatchet.ini as config.paths.bcftools, or its location specified using the environment variable '
             'HATCHET_PATHS_BCFTOOLS',
-            _check_cmd,
-            config.paths.bcftools,
-            'bcftools',
-            '--version',
+            _check_bcftools,
         ),
     ],
     'count-alleles': [
@@ -179,6 +193,7 @@ CHECKS = {
             _check_cmd,
             config.paths.samtools,
             'samtools',
+            None,
             '--version',
         ),
         (
@@ -187,10 +202,7 @@ CHECKS = {
             'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
             'hatchet.ini as config.paths.bcftools, or its location specified using the environment variable '
             'HATCHET_PATHS_BCFTOOLS',
-            _check_cmd,
-            config.paths.bcftools,
-            'bcftools',
-            '--version',
+            _check_bcftools,
         ),
     ],
     'phase-snps': [
@@ -200,10 +212,7 @@ CHECKS = {
             'Please install bcftools executable and either ensure its on your PATH, or its location specified in '
             'hatchet.ini as config.paths.samtools, or its location specified using the environment variable '
             'HATCHET_PATHS_BCFTOOLS',
-            _check_cmd,
-            config.paths.bcftools,
-            'bcftools',
-            '--version',
+            _check_bcftools,
         ),
         (
             'picard',
@@ -223,6 +232,7 @@ CHECKS = {
             _check_cmd,
             config.paths.shapeit,
             'shapeit',
+            None,
             '--version',
         ),
         (
