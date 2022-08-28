@@ -35,6 +35,11 @@ def main(args=None):
     output = output.rstrip('/')
     os.makedirs(output, exist_ok=True)
 
+    try:
+        chromosomes = [c for c in config.run.chromosomes.split()]
+    except (KeyError, AttributeError):  # if key is absent or is blank (None)
+        chromosomes = None  # process all
+
     extra_args = []
     try:
         if config.run.processes is not None:
@@ -117,6 +122,8 @@ def main(args=None):
                 snps,
                 '-o',
                 f'{output}/snps/',
+                '--chromosomes',
+                chromosomes
             ]
             + extra_args
         )
@@ -145,7 +152,6 @@ def main(args=None):
             )
 
         os.makedirs(f'{output}/phase', exist_ok=True)
-        args
         phase_snps(
             args=[
                 '-D',
@@ -180,6 +186,8 @@ def main(args=None):
                 f'{output}/baf/tumor.1bed',
                 '-l',
                 f'{output}',
+                '--chromosome',
+                chromosomes
             ]
             + extra_args
         )
@@ -203,6 +211,8 @@ def main(args=None):
                     f'{output}/baf/tumor.1bed',
                     '-O',
                     f'{output}/rdr',
+                    '--chromosomes',
+                    chromosomes
                 ]
                 + extra_args
             )
@@ -267,7 +277,9 @@ def main(args=None):
                     f'{output}/rdr/tumor.1bed',
                     '-t',
                     f'{output}/rdr/total.tsv',
-                ]
+                    '--chromosomes',
+                    chromosomes
+            ]
                 + extra_args
             )
 

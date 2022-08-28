@@ -191,7 +191,7 @@ def counting(
     )
 
     results = worker.run(work=work, n_instances=num_workers)
-    results = {(v[0][0], v[0][1]): v for v in results}
+    results = {(v[0][0], v[0][1]): v for v in results if v}
     return results
 
 
@@ -221,9 +221,7 @@ class AlleleCounter(Worker):
         self.outdir = outdir
 
     def work(self, bamfile, samplename, chromosome):
-        # return 42
-        snps = self.countAlleles(bamfile=bamfile, samplename=samplename, chromosome=chromosome)
-        return snps
+        return self.countAlleles(bamfile=bamfile, samplename=samplename, chromosome=chromosome)
 
     def countAlleles(self, bamfile, samplename, chromosome):
         cmd_mpileup = '{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD -q {} -Q {} -d {} -T {}'.format(
