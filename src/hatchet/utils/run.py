@@ -123,7 +123,7 @@ def main(args=None):
                 '-o',
                 f'{output}/snps/',
                 '--chromosomes',
-                chromosomes
+                chromosomes,
             ]
             + extra_args
         )
@@ -187,7 +187,7 @@ def main(args=None):
                 '-l',
                 f'{output}',
                 '--chromosome',
-                chromosomes
+                chromosomes,
             ]
             + extra_args
         )
@@ -212,7 +212,7 @@ def main(args=None):
                     '-O',
                     f'{output}/rdr',
                     '--chromosomes',
-                    chromosomes
+                    chromosomes,
                 ]
                 + extra_args
             )
@@ -278,8 +278,8 @@ def main(args=None):
                     '-t',
                     f'{output}/rdr/total.tsv',
                     '--chromosomes',
-                    chromosomes
-            ]
+                    chromosomes,
+                ]
                 + extra_args
             )
 

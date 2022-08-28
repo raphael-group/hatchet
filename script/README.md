@@ -31,7 +31,7 @@ As an example, this should be set to `chr22` for [HATCHet Demo data](https://zen
 To run the pipeline on all chromosomes, leave the key blank.
 
 ```
-chromosomes = 
+chromosomes =
 ```
 
 ## Run HATCHet without phasing
