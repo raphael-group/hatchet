@@ -72,7 +72,7 @@ def generate_1D2D_plots(
     chrlengths = {str(c): df.END.max() for c, df in bbc.groupby('#CHR')}
     chr_ends = [0]
     for i in range(22):
-        chr_ends.append(chr_ends[-1] + chrlengths[f'chr{i + 1}'])
+        chr_ends.append(chr_ends[-1] + chrlengths.get(f'chr{i + 1}', 0))
 
     n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc.columns])
     _, mapping = reindex([k for k, _ in bbc.groupby([f'cn_clone{i + 1}' for i in range(n_clones)])])
