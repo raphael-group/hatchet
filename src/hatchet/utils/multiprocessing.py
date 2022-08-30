@@ -53,7 +53,7 @@ class Worker:
     ):
         raise NotImplementedError
 
-    def run(self, work, n_instances=None, show_progress=False):
+    def run(self, work, n_instances=None, show_progress=True):
 
         n_work = len(work)
         if n_instances is None:
