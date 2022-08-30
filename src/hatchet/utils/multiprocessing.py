@@ -12,9 +12,8 @@ from hatchet.utils import ProgressBar as pb
 
 
 class TaskHandler(Process):
-    def __init__(self, handler_id, worker, task_queue, result_queue, progress_bar):
+    def __init__(self, worker, task_queue, result_queue, progress_bar):
         Process.__init__(self)
-        self.handler_id = handler_id
         self.worker = worker
         self.task_queue = task_queue
         self.result_queue = result_queue
@@ -22,10 +21,12 @@ class TaskHandler(Process):
 
     def run(self):
         while True:
-            args = self.task_queue.get()
-            if args is None:
+            task_i_and_args = self.task_queue.get()
+            if task_i_and_args is None:
                 self.task_queue.task_done()
                 break
+            else:
+                task_i, args = task_i_and_args
 
             try:
                 result = self.worker.work(*args)
@@ -38,7 +39,7 @@ class TaskHandler(Process):
             if self.progress_bar is not None:
                 self.progress_bar.progress(advance=True)
 
-            self.result_queue.put((self.handler_id, result))
+            self.result_queue.put((task_i, result))
             self.task_queue.task_done()
 
 
@@ -52,7 +53,7 @@ class Worker:
     ):
         raise NotImplementedError
 
-    def run(self, work, n_instances=None, show_progress=True):
+    def run(self, work, n_instances=None, show_progress=False):
 
         n_work = len(work)
         if n_instances is None:
@@ -72,17 +73,17 @@ class Worker:
             progress_bar = None
 
         task_queue = JoinableQueue()
-        for arg in work:
+        for i, arg in enumerate(work):
             if isinstance(arg, tuple):
-                task_queue.put(arg)
+                task_queue.put((i, arg))
             else:
-                task_queue.put(tuple([arg]))
+                task_queue.put((i, tuple([arg])))
 
         for _ in range(n_instances):
             task_queue.put(None)
 
         result_queue = Queue()
-        handlers = [TaskHandler(i, self, task_queue, result_queue, progress_bar) for i in range(n_instances)]
+        handlers = [TaskHandler(self, task_queue, result_queue, progress_bar) for _ in range(n_instances)]
 
         for h in handlers:
             h.start()
@@ -90,14 +91,13 @@ class Worker:
         task_queue.join()
 
         try:
-            _results = {}
-            for handler_id, handler_result in [result_queue.get() for _ in range(n_work)]:
-                if isinstance(handler_result, Exception):
-                    error_string = ''.join(getattr(handler_result, 'error', []))
-                    raise handler_result.__class__(f'HANDLER {handler_id} FAILED\n\n{error_string}')
+            results = [None] * n_work
+            for work_i, result in [result_queue.get() for _ in range(n_work)]:
+                if isinstance(result, Exception):
+                    error_string = ''.join(getattr(result, 'error', []))
+                    raise result.__class__(f'WORK {work_i} FAILED\n\n{error_string}')
                 else:
-                    _results[handler_id] = handler_result
-            sorted_results = [_results[k] for k in sorted(_results.keys())]
+                    results[work_i] = result
 
         finally:
             task_queue.close()
@@ -107,4 +107,4 @@ class Worker:
                 h.terminate()
                 h.join()
 
-        return sorted_results
+        return results
