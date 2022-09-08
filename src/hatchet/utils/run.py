@@ -277,7 +277,7 @@ def main(args=None):
                     f'{output}/rdr/tumor.1bed',
                     '-t',
                     f'{output}/rdr/total.tsv',
-                    '--chromosomes'
+                    '--chromosomes',
                 ]
                 + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
                 + extra_args
