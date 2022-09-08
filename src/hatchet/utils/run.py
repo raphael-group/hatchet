@@ -38,7 +38,7 @@ def main(args=None):
     try:
         chromosomes = [c for c in config.run.chromosomes.split()]
     except (KeyError, AttributeError):  # if key is absent or is blank (None)
-        chromosomes = None  # process all
+        chromosomes = []  # process all
 
     extra_args = []
     try:
@@ -123,8 +123,8 @@ def main(args=None):
                 '-o',
                 f'{output}/snps/',
                 '--chromosomes',
-                chromosomes,
             ]
+            + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
             + extra_args
         )
 
@@ -186,9 +186,9 @@ def main(args=None):
                 f'{output}/baf/tumor.1bed',
                 '-l',
                 f'{output}',
-                '--chromosome',
-                chromosomes,
+                '--chromosomes',
             ]
+            + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
             + extra_args
         )
 
@@ -212,8 +212,8 @@ def main(args=None):
                     '-O',
                     f'{output}/rdr',
                     '--chromosomes',
-                    chromosomes,
                 ]
+                + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
                 + extra_args
             )
 
@@ -278,8 +278,8 @@ def main(args=None):
                     '-t',
                     f'{output}/rdr/total.tsv',
                     '--chromosomes',
-                    chromosomes,
                 ]
+                + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
                 + extra_args
             )
 
