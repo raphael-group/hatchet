@@ -21,7 +21,7 @@ count-alleles produces three tab-separated files: the first contains the read co
 |------|-------------|--------|
 | `-O`, `--outputnormal` | The output file for the read counts from matched-normal sample | `#SAMPLE  CHR  POS  REF_COUNT  ALT_COUNT` |
 | `-o`, `--outputtumors` | The output file for the read counts from the tumor samples | `#SAMPLE  CHR  POS  REF_COUNT  ALT_COUNT` |
-| `-l`, `--outputsnps` | the output file for the list of identified heterozygous germline SNPs | `#CHR POS` |
+| `-l`, `--outputsnps` | the output directory for the list of identified heterozygous germline SNPs | `#CHR POS` |
 
 The format fields are described in the following.
 

@@ -163,7 +163,7 @@ def plot_1d(
     chrlengths = {str(c): df.END.max() for c, df in bbc.groupby('#CHR')}
     chr_ends = [0]
     for i in range(22):
-        chr_ends.append(chr_ends[-1] + chrlengths[f'chr{i + 1}'])
+        chr_ends.append(chr_ends[-1] + chrlengths.get(f'chr{i + 1}', 0))
 
 
     # NOTE: this implementation assumes that the only gaps between bins are centromeres

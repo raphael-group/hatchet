@@ -122,6 +122,8 @@ def log(
 
     if level == 'ERROR' and raise_exception:
         raise exception_class(msg)
+    else:
+        return formatted_msg
 
 
 def logArgs(args, width=40):

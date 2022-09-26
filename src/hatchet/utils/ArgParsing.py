@@ -541,6 +541,12 @@ def parse_count_reads_args(args=None):
         default=config.count_reads.intermediates,
         help='Produce intermediate counts files only and do not proceed to forming arrays (default: False)',
     )
+    parser.add_argument(
+        '--chromosomes',
+        required=False,
+        nargs='*',
+        help='One or more chromosomes to process (default: blank to process all chromosomes)',
+    )
 
     args = parser.parse_args(args)
 
@@ -569,6 +575,8 @@ def parse_count_reads_args(args=None):
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, [bams[0], 'normal'], [(x, '') for x in bams[1:]])
+    if args.chromosomes:
+        chromosomes = [c for c in chromosomes if c in args.chromosomes]
 
     # Check that chr notation is consistent across chromosomes
     using_chr = [a.startswith('chr') for a in chromosomes]
@@ -940,6 +948,12 @@ def parse_genotype_snps_arguments(args=None):
         help='Output folder for SNPs separated by chromosome (default: ./)',
     )
     parser.add_argument(
+        '--chromosomes',
+        required=False,
+        nargs='*',
+        help='One or more chromosomes to process (default: blank to process all chromosomes)',
+    )
+    parser.add_argument(
         '-v',
         '--verbose',
         action='store_true',
@@ -985,6 +999,8 @@ def parse_genotype_snps_arguments(args=None):
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, [], args.reference)
+    if args.chromosomes:
+        chromosomes = [c for c in chromosomes if c in args.chromosomes]
 
     ensure(
         args.processes > 0,
@@ -1403,6 +1419,12 @@ def parse_count_alleles_arguments(args=None):
         help='Output directory for lists of selected SNPs (default: ./)',
     )
     parser.add_argument(
+        '--chromosomes',
+        required=False,
+        nargs='*',
+        help='One or more chromosomes to process (default: blank to process all chromosomes)',
+    )
+    parser.add_argument(
         '-v',
         '--verbose',
         action='store_true',
@@ -1459,6 +1481,8 @@ def parse_count_alleles_arguments(args=None):
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples, args.reference)
+    if args.chromosomes:
+        chromosomes = [c for c in chromosomes if c in args.chromosomes]
     snplists = {c: snplists.get(c, []) for c in chromosomes}
 
     ensure(
@@ -1634,6 +1658,12 @@ def parse_count_reads_fw_arguments(args=None):
         required=False,
         help='Use verbose log messages',
     )
+    parser.add_argument(
+        '--chromosomes',
+        required=False,
+        nargs='*',
+        help='One or more chromosomes to process (default: blank to process all chromosomes)',
+    )
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
@@ -1713,6 +1743,8 @@ def parse_count_reads_fw_arguments(args=None):
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, samples)
+    if args.chromosomes:
+        chromosomes = [c for c in chromosomes if c in args.chromosomes]
 
     ensure(
         args.processes > 0,

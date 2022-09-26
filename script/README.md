@@ -9,7 +9,7 @@ will use `hatchet.ini` in the writeup below.
 ## Set variables
 
 Set all variables in `hatchet.ini` with appropriate values. You will likely not need to modify anything at all other
-than the paths to the reference genome, paths to the the normal and tumor bam files, and unique names for the tumor
+than the paths to the reference genome, paths to the normal and tumor bam files, and unique names for the tumor
 samples, all in the `run` section of `hatchet.ini`:
 
 ```
@@ -17,6 +17,21 @@ reference = "/path/to/reference.fa"
 normal = "/path/to/normal.bam"
 bams = "/path/to/tumor1.bam /path/to/tumor2.bam"
 samples = "Primary Met"
+```
+
+Optionally, if you wish to run the HATCHet pipeline only on select chromosome(s), specify their name(s) under the
+'chromosomes' key, separated by whitespace. For example:
+
+```
+chromosomes = chr21 chr22
+```
+
+This can be very useful when trying to validate your pipeline relatively quickly before running it on all chromosomes.
+As an example, this should be set to `chr22` for [HATCHet Demo data](https://zenodo.org/record/4046906).
+To run the pipeline on all chromosomes, leave the key blank.
+
+```
+chromosomes =
 ```
 
 ## Run HATCHet without phasing
