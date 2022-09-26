@@ -352,7 +352,7 @@ def form_counts_array(starts_files, perpos_files, thresholds, chromosome, tabix,
     Parameters:
         starts_files: list of <sample>.<chromosome>.starts.gz files each containing a list of start positions
         perpos_files: list of <sample>.per-base.bed.gz files containing per-position coverage from mosdepth
-        starts: list of potential bin start positions (thresholds between SNPs)
+        thresholds: list of potential bin start positions (thresholds between SNPs)
         chromosome: chromosome to extract read counts for
 
     Returns: <n> x <2d> np.ndarray
