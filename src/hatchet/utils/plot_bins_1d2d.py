@@ -165,9 +165,6 @@ def plot_1d(
     for i in range(22):
         chr_ends.append(chr_ends[-1] + chrlengths[f'chr{i + 1}'])
 
-    np.random.seed(0)
-    flips = np.random.randint(2, size=len(bbc))
-    bbc.loc[:, 'BAF'] = np.choose(flips, [bbc.loc[:, 'BAF'], 1 - bbc.loc[:, 'BAF']])
 
     # NOTE: this implementation assumes that the only gaps between bins are centromeres
     # If this is not the case in the future this needs to be updated
@@ -212,7 +209,7 @@ def plot_1d(
             chr_ends,
             chr2centro,
             yval='BAF',
-            ylabel='B-allele frequency',
+            ylabel='mhBAF',
             color_field='CLUSTER',
             ylim=baf_lim,
             display=display,
