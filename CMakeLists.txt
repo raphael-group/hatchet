@@ -4,7 +4,7 @@ project( HATCHet )
 
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR} ${CMAKE_MODULE_PATH} )
 
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11" )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++11" )
 
 # add the automatically determined parts of the RPATH
 # which point to directories outside the build tree to the install RPATH
