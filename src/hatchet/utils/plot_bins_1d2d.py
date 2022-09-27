@@ -165,7 +165,6 @@ def plot_1d(
     for i in range(22):
         chr_ends.append(chr_ends[-1] + chrlengths.get(f'chr{i + 1}', 0))
 
-
     # NOTE: this implementation assumes that the only gaps between bins are centromeres
     # If this is not the case in the future this needs to be updated
     chr2centro = {}
