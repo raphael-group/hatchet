@@ -602,6 +602,7 @@ def main(args=None):
                 )
             )
 
+
 t2s = lambda x: [str(a) for a in x]
 
 
@@ -1633,6 +1634,7 @@ def isfloat(value):
         return True
     except ValueError:
         return False
+
 
 def warning(msg):
     return '{}{}{}'.format('\033[93m', msg, '\033[0m')
