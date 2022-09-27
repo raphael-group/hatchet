@@ -455,7 +455,9 @@ def main(args=None):
     if not args['diploid'] and not args['tetraploid']:
         sys.stderr.write(
             log(
-                '## Neither "diploid" nor "tetraploid" was fixed. Model selection will be performed and the "clonal" argument will not be used for scaling.\n'
+                '## Neither "diploid" nor "tetraploid" was fixed. '
+                'Model selection will be performed and the "clonal" argument'
+                'will not be used for scaling.\n'
             )
         )
 
@@ -599,9 +601,6 @@ def main(args=None):
                     )
                 )
             )
-
-
-import hatchet.utils.Supporting as sp
 
 t2s = lambda x: [str(a) for a in x]
 
@@ -1634,15 +1633,6 @@ def isfloat(value):
         return True
     except ValueError:
         return False
-
-
-def error(msg):
-    return '{}{}{}'.format('\033[91m\033[1m', msg, '\033[0m')
-
-
-def log(msg):
-    return '{}{}{}'.format('\033[95m\033[1m', msg, '\033[0m')
-
 
 def warning(msg):
     return '{}{}{}'.format('\033[93m', msg, '\033[0m')
