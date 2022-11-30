@@ -289,6 +289,15 @@ def parsing_arguments(args=None):
             'variances (default False). Only works with non-cpp solvers.'
         ),
     )
+    parser.add_argument(
+        '-P',
+        '--purities',
+        type=float,
+        default=config.run.purities,
+        required=False,
+        nargs='+',
+        help='To fix purities for each sample, pass a space-separated list of purities',
+    )
     args = parser.parse_args(args)
 
     if config.compute_cn.solver == 'cpp':
@@ -376,6 +385,11 @@ def parsing_arguments(args=None):
     if not 0 <= args.verbosity <= 3:
         raise ValueError(error('The verbosity level must be a value within 0,1,2,3!'))
 
+    if args.purities:
+        for p in args.purities:
+            if not 0 <= p <= 1:
+                raise ValueError(error('One of the purities given is not between 0 and 1!'))
+
     return {
         'solver': args.SOLVER,
         'input': args.input,
@@ -410,6 +424,7 @@ def parsing_arguments(args=None):
         'tetraploid': args.tetraploid,
         'v': args.verbosity,
         'binwise': args.binwise,
+        'purities': args.purities
     }
 
 
@@ -435,6 +450,9 @@ def main(args=None):
 
     assert bsamples == ssamples, error('Samples in BBC files does not match the ones in SEG file!')
     samples = ssamples
+
+    if args['purities']:
+        assert len(args['purities']) == len(samples), error('The number of purities given in space-separated list does not match the number of samples!')
 
     sys.stderr.write(log('# Computing the cluster sizes\n'))
     size = computeSizes(seg=seg, bbc=bbc, samples=samples)
@@ -1080,6 +1098,7 @@ def execute_python(solver, args, n, outprefix):
         max_iters=args['f'],
         timelimit=args['s'],
         binwise=args['binwise'],
+        purities=args['purities'],
     )
 
     segmentation(

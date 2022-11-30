@@ -38,6 +38,7 @@ def solve(
     max_iters=None,
     timelimit=None,
     binwise=False,
+    purities=None
 ):
 
     assert solve_mode in ('ilp', 'cd', 'both'), 'Unrecognized solve_mode'
