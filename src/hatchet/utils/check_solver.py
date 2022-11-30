@@ -46,10 +46,12 @@ def main(args=None):
                         '0.35',
                         '-l',
                         '0.6',
+                        '-P',
+                        '0.6 0.2 0'
                     ]
                 )
 
-    except Exception:
+    except Exception as e:
         return False
     else:
         log(msg=f'# Your current solver {config.compute_cn.solver} seems to be working correctly\n')

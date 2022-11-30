@@ -292,10 +292,9 @@ def parsing_arguments(args=None):
     parser.add_argument(
         '-P',
         '--purities',
-        type=float,
+        type=str,
         default=config.run.purities,
         required=False,
-        nargs='+',
         help='To fix purities for each sample, pass a space-separated list of purities',
     )
     args = parser.parse_args(args)
@@ -385,10 +384,14 @@ def parsing_arguments(args=None):
     if not 0 <= args.verbosity <= 3:
         raise ValueError(error('The verbosity level must be a value within 0,1,2,3!'))
 
-    if args.purities:
+    if args.purities != 'None':
+        args.purities = [float(p) for p in args.purities.split()]
         for p in args.purities:
-            if not 0 <= p <= 1:
+            if not 0 <= float(p) <= 1:
                 raise ValueError(error('One of the purities given is not between 0 and 1!'))
+    else:
+        args.purities = None
+
 
     return {
         'solver': args.SOLVER,
