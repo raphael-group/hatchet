@@ -129,6 +129,17 @@ def parsing_arguments(args=None):
         ),
     )
     parser.add_argument(
+        '-bD',
+        '--breakpointmax',
+        type=int,
+        required=False,
+        default=config.compute_cn.breakpointmax,
+        help=(
+            'Maximum breakpoint distance between inferred non-normal clones (default: 15, 0 means all clones will have '
+            'identical copy number profiles)'
+        ),
+    )
+    parser.add_argument(
         '--merge',
         action='store_true',
         default=config.compute_cn.merge,
@@ -330,6 +341,8 @@ def parsing_arguments(args=None):
         args.diploidcmax = None
     if args.diploidcmax is not None and args.diploidcmax <= 0:
         raise ValueError(error('The maximum diploid copy number a positive non-zero integer!'))
+    if args.breakpointmax is not None and args.breakpointmax < 0:
+        raise ValueError(error('The maximum pairwise breakpoint distance must be a non-negative integer!'))
     if args.tetraploidcmax == 0:
         args.tetraploidcmax = None
     if args.tetraploidcmax is not None and args.tetraploidcmax <= 0:
@@ -410,6 +423,7 @@ def parsing_arguments(args=None):
         'tetraploid': args.tetraploid,
         'v': args.verbosity,
         'binwise': args.binwise,
+        'bp_max': args.breakpointmax
     }
 
 
@@ -1080,6 +1094,7 @@ def execute_python(solver, args, n, outprefix):
         max_iters=args['f'],
         timelimit=args['s'],
         binwise=args['binwise'],
+        bp_max=args['bp_max']
     )
 
     segmentation(

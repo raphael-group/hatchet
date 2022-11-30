@@ -38,6 +38,7 @@ def solve(
     max_iters=None,
     timelimit=None,
     binwise=False,
+    bp_max=15
 ):
 
     assert solve_mode in ('ilp', 'cd', 'both'), 'Unrecognized solve_mode'
@@ -61,6 +62,31 @@ def solve(
 
     rdr = df.pivot(index='#ID', columns='SAMPLE', values='RD')
     baf = df.pivot(index='#ID', columns='SAMPLE', values='BAF')
+
+    #  compute adjacency matrix for breakpoint distance constraint
+
+    # verts = list(df["#ID"].unique()) + [-1]
+    # clus_adj_mat = {}
+    # for i in verts:
+    #     for j in verts:
+    #         clus_adj_mat.setdefault(i, {})[j] = 0
+
+    #  get the first sample name and extract cluster ids in the genomic order
+    clust_id_ord = list(bbc[bbc["SAMPLE"] == bbc["SAMPLE"].values[0]]["CLUSTER"])
+
+    clus_adj_list = []
+    #  telomere adjacencies -1
+    clus_adj_list.append((-1, clust_id_ord[0]))
+    clus_adj_list.append((-1, clust_id_ord[-1]))
+
+    for i in range(1, len(clust_id_ord)):
+        c1, c2 = sorted([clust_id_ord[i-1], clust_id_ord[i]])
+        if c1 != c2:
+            clus_adj_list.append((c1, c2))
+
+    clus_adj_counts = dict()
+    for i in clus_adj_list:
+        clus_adj_counts[i] = clus_adj_counts.get(i, 0) + 1
 
     bins = {}  # cluster_id => no. of bins
     for cluster_id, _df in df.groupby('#ID'):
@@ -101,6 +127,8 @@ def solve(
                 f_a=f_a,
                 f_b=f_b,
                 w=weights,
+                clus_adj_counts=clus_adj_counts,
+                bp_max=bp_max
             )
             ilp.create_model(pprint=True)
             return ilp.run(solver_type=solver, timelimit=timelimit)
@@ -115,6 +143,8 @@ def solve(
                 w=weights,
                 ampdel=ampdel,
                 cn=copy_numbers,
+                clus_adj_counts=clus_adj_counts,
+                bp_max=bp_max
             )
             return cd.run(
                 solver_type=solver,
@@ -135,6 +165,8 @@ def solve(
                 w=weights,
                 ampdel=ampdel,
                 cn=copy_numbers,
+                clus_adj_counts=clus_adj_counts,
+                bp_max=bp_max
             )
             _, cA, cB, _, _, _ = cd.run(
                 solver_type=solver,
@@ -155,6 +187,8 @@ def solve(
                 f_a=f_a,
                 f_b=f_b,
                 w=weights,
+                clus_adj_counts=clus_adj_counts,
+                bp_max=bp_max
             )
             ilp.create_model()
             ilp.hot_start(cA, cB)
@@ -216,6 +250,7 @@ def solve(
                 binsA=binsA,
                 binsB=binsB,
                 lengths=bins_length,
+                clus_adj_counts=clus_adj_counts
             )
             ilp.create_model(pprint=True)
             return ilp.run(solver_type=solver, timelimit=timelimit)

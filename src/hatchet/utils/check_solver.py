@@ -25,13 +25,13 @@ def main(args=None):
                         os.path.join(tempdirname),
                         '-i',
                         input_files_prefix,
-                        '-n2',
+                        '-n4',
                         '-p',
                         '5',
                         '-v',
                         '3',
                         '-u',
-                        '0.03',
+                        '0',
                         '--mode',
                         '0',
                         '-r',
@@ -46,10 +46,12 @@ def main(args=None):
                         '0.35',
                         '-l',
                         '0.6',
+                        '-bD',
+                        '12'
                     ]
                 )
 
-    except Exception:
+    except Exception as e:
         return False
     else:
         log(msg=f'# Your current solver {config.compute_cn.solver} seems to be working correctly\n')
