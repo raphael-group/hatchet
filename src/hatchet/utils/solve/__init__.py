@@ -102,6 +102,7 @@ def solve(
                 f_a=f_a,
                 f_b=f_b,
                 w=weights,
+                purities=purities
             )
             ilp.create_model(pprint=True)
             return ilp.run(solver_type=solver, timelimit=timelimit)
@@ -116,6 +117,7 @@ def solve(
                 w=weights,
                 ampdel=ampdel,
                 cn=copy_numbers,
+                purities=purities
             )
             return cd.run(
                 solver_type=solver,
@@ -136,6 +138,8 @@ def solve(
                 w=weights,
                 ampdel=ampdel,
                 cn=copy_numbers,
+                purities=purities
+
             )
             _, cA, cB, _, _, _ = cd.run(
                 solver_type=solver,
@@ -156,6 +160,8 @@ def solve(
                 f_a=f_a,
                 f_b=f_b,
                 w=weights,
+                purities=purities
+
             )
             ilp.create_model()
             ilp.hot_start(cA, cB)
@@ -217,6 +223,8 @@ def solve(
                 binsA=binsA,
                 binsB=binsB,
                 lengths=bins_length,
+                purities=purities
+
             )
             ilp.create_model(pprint=True)
             return ilp.run(solver_type=solver, timelimit=timelimit)
