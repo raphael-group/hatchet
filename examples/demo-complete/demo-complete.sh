@@ -88,6 +88,7 @@ echo 'output=output/' >> hatchet.ini
 j=$(grep -c ^processor /proc/cpuinfo)
 processes="processes=${j}"
 echo $processes >> hatchet.ini
+echo 'chromosomes="chr22"' >> hatchet.ini
 
 :<<'```shell' # Ignore this line
 ```
