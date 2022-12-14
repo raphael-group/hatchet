@@ -49,6 +49,9 @@ def main(args=None):
             )
 
         else:
+            if args['segfile'] and not os.path.exists(args['segfile']):
+                raise ValueError(error('A path to a nonexistant segfile was given to count-reads!'))
+
             params = zip(
                 np.repeat(chromosomes, len(bams)),
                 [outdir] * len(bams) * len(chromosomes),
@@ -95,6 +98,7 @@ def main(args=None):
                 p.map(mosdepth_wrapper, mosdepth_params)
 
             if len(check_counts_files(outdir, chromosomes, names)) > 0:
+                print(check_counts_files(outdir, chromosomes, names))
                 raise ValueError(error('Missing some counts files!'))
 
         ### Aggregate count files into count arrays for adaptive binning ###
@@ -150,6 +154,7 @@ def main(args=None):
                 chr2centro[ch][1],
                 args['baf_file'],
                 tabix,
+                args['segfile'],
             )
             for ch in chromosomes
         ]
@@ -460,6 +465,7 @@ def run_chromosome(
     centromere_end,
     baf_file,
     tabix,
+    seg_file,
 ):
     """
     Construct arrays that contain all counts needed to perform adaptive binning for a single chromosome
@@ -505,6 +511,9 @@ def run_chromosome(
         else:
             positions, _, _ = read_snps(baf_file, chromosome, all_names)
 
+        # create segments for computing read depth, these will be the midpoints of germline SNPs
+        # during the adaptive binning process in combine_counts.py, these segments will be combined in order to meet
+        # QC metrics, i.e. the minimum number of SNP-covering reads
         thresholds = np.trunc(np.vstack([positions[:-1], positions[1:]]).mean(axis=0)).astype(np.uint32)
         last_idx_p = np.argwhere(thresholds > centromere_start)[0][0]
         first_idx_q = np.argwhere(thresholds > centromere_end)[0][0]
@@ -526,6 +535,18 @@ def run_chromosome(
 
         np.savetxt(totals_out, total_counts, fmt='%d')
         np.savetxt(thresholds_out, complete_thresholds, fmt='%d')
+
+        # potentially repeat for pre-specified segments
+        if seg_file:
+            thresholds_segfile = read_segfile(seg_file, chromosome)
+            total_counts, complete_thresholds = form_counts_array(
+                starts_files, perpos_files, thresholds_segfile, chromosome, tabix=tabix
+            )
+
+            totals_out = os.path.join(outdir, f'{chromosome}.segfile_total.gz')
+            thresholds_out = os.path.join(outdir, f'{chromosome}.segfile_thresholds.gz')
+            np.savetxt(totals_out, total_counts, fmt='%d')
+            np.savetxt(thresholds_out, complete_thresholds, fmt='%d')
 
         log(msg=f'Done chromosome {chromosome}\n', level='INFO')
     except Exception as e:
@@ -587,6 +608,15 @@ def expected_arrays(darray, chrs):
 
 def check_array_files(darray, chrs):
     return [a for a in expected_arrays(darray, chrs) if not os.path.exists(a)]
+
+def read_segfile(segfile, chromosome):
+    with open(segfile, 'r') as f:
+        thresholds_segfile = np.array([i.split()[1] for i in f if i.split()[0] == chromosome], dtype=np.uint64)
+    if thresholds_segfile[0] > 1:
+        thresholds_segfile = np.concatenate([[1], thresholds_segfile])
+    if np.any(np.diff(thresholds_segfile) < 0):
+        raise ValueError(f"improper negative interval in provided segment file for chromosome {chromosome}")
+    return np.array(thresholds_segfile)
 
 
 if __name__ == '__main__':

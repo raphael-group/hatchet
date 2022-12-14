@@ -441,6 +441,14 @@ def parse_count_reads_args(args=None):
         help='1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)',
     )
     parser.add_argument(
+        '-s',
+        '--segfile',
+        required=False,
+        type=str,
+        default=config.count_reads.segfile,
+        help='path to bed file containing pre-specified segments for which to compute RDR',
+    )
+    parser.add_argument(
         '-V',
         '--refversion',
         required=True,
@@ -529,7 +537,7 @@ def parse_count_reads_args(args=None):
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     bams = [args.normal] + args.tumor
     for bamfile in bams:
-        ensure(isfile(bamfile), 'The specified tumor BAM file does not exist')
+        ensure(isfile(bamfile), f"The specified tumor BAM file {bamfile} does not exist")
 
     names = args.samples
     ensure(
@@ -610,6 +618,7 @@ def parse_count_reads_args(args=None):
         'refversion': ver,
         'baf_file': args.baffile,
         'readquality': args.readquality,
+        'segfile': args.segfile,
     }
 
 

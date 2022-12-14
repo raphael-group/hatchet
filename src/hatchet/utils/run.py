@@ -211,6 +211,8 @@ def main(args=None):
                     f'{output}/baf/tumor.1bed',
                     '-O',
                     f'{output}/rdr',
+                    '--segfile',
+                    config.count_reads.segfile,
                     '--chromosomes',
                 ]
                 + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing

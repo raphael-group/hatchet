@@ -90,12 +90,12 @@ def main(args=None):
         for ch in chromosomes
     ]
     # dispatch workers
-    """
     for p in params:
         run_chromosome_wrapper(p)
     """
     with Pool(n_workers) as p:
         p.map(run_chromosome_wrapper, params)
+    """
 
     sp.log(
         msg='# Merging per-chromosome bb files and correcting read counts\n',
@@ -892,9 +892,9 @@ def run_chromosome(
             msg=f'Loading intermediate files for chromosome {chromosome}\n',
             level='INFO',
         )
-        total_counts = np.loadtxt(os.path.join(arraystem, f'{chromosome}.total'), dtype=np.uint32)
+        total_counts = np.loadtxt(os.path.join(arraystem, f'{chromosome}.total.gz'), dtype=np.uint32)
         complete_thresholds = np.loadtxt(
-            os.path.join(arraystem, f'{chromosome}.thresholds'),
+            os.path.join(arraystem, f'{chromosome}.thresholds.gz'),
             dtype=np.uint32,
         )
 
