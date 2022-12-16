@@ -611,7 +611,11 @@ def check_array_files(darray, chrs):
 
 def read_segfile(segfile, chromosome):
     with open(segfile, 'r') as f:
-        thresholds_segfile = np.array([i.split()[1] for i in f if i.split()[0] == chromosome], dtype=np.uint64)
+        fi = f.readlines()
+        # detect optional header
+        header = not np.any(i.isdigit() for i in fi[0].split())
+        fi = fi[1:] if header else fi
+        thresholds_segfile = np.array([i.split()[1] for i in fi if i.split()[0] == chromosome], dtype=np.uint64)
     if thresholds_segfile[0] > 1:
         thresholds_segfile = np.concatenate([[1], thresholds_segfile])
     if np.any(np.diff(thresholds_segfile) < 0):
