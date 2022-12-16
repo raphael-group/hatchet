@@ -727,6 +727,14 @@ def parse_combine_counts_args(args=None):
         type=str,
         help='Version of reference genome used in BAM files',
     )
+    parser.add_argument(
+        '-f',
+        '--segfile',
+        required=False,
+        type=str,
+        default=config.count_reads.segfile,
+        help='path to bed file containing pre-specified segments for which to compute RDR',
+    )
     args = parser.parse_args(args)
 
     ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
@@ -820,6 +828,7 @@ def parse_combine_counts_args(args=None):
         'test_alpha': args.alpha,
         'multisample': not args.ss_em,
         'ref_version': ver,
+        'segfile': args.segfile,
     }
 
 

@@ -86,6 +86,7 @@ def main(args=None):
             blocksize,
             max_snps_per_block,
             test_alpha,
+            args['segfile']
         )
         for ch in chromosomes
     ]
@@ -103,15 +104,35 @@ def main(args=None):
     )
     # merge all BB files together to get the one remaining BB file
     outfiles = [a[3] for a in params]
+    big_bb = merge_bb_files(outfiles, args['totalcounts'], all_names)
+
+    autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
+    big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index=False, sep='\t')
+    big_bb.to_csv(outfile + '.withXY', index=False, sep='\t')
+
+    if args['segfile']:
+        outfiles = [f"{i}.segfile" for i in outfiles]
+        big_bb = merge_bb_files(outfiles, args['totalcounts'], all_names)
+
+        autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
+        big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(f"{outfile}.segfile", index=False, sep='\t')
+        big_bb.to_csv(outfile + '.segfile.withXY', index=False, sep='\t')
+
+    # Remove intermediate BB files
+    #[os.remove(f) for f in outfiles]
+
+    sp.log(msg='# Done\n', level='STEP')
+
+def merge_bb_files(outfiles, totalcounts, all_names):
+
     bbs = [pd.read_table(bb, dtype={'#CHR': str}) for bb in outfiles]
     big_bb = pd.concat(bbs)
     big_bb = big_bb.sort_values(by=['#CHR', 'START', 'SAMPLE'])
-
     big_bb['CORRECTED_READS'] = np.NAN
 
     # For each sample, correct read counts to account for differences in coverage (as in HATCHet)
     # (i.e., multiply read counts by total-reads-normal/total-reads-sample)
-    rc = pd.read_table(args['totalcounts'], header=None, names=['SAMPLE', '#READS'])
+    rc = pd.read_table(totalcounts, header=None, names=['SAMPLE', '#READS'])
     normal_name = all_names[0]
     nreads_normal = rc[rc.SAMPLE == normal_name].iloc[0]['#READS']
     for sample in rc.SAMPLE.unique():
@@ -126,7 +147,8 @@ def main(args=None):
 
         # Recompute RDR according to the corrected tumor reads
         big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = (
-            big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] / big_bb.loc[big_bb.SAMPLE == sample, 'NORMAL_READS']
+                big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] / big_bb.loc[
+            big_bb.SAMPLE == sample, 'NORMAL_READS']
         )
 
     if 'NORMAL_READS' not in big_bb:
@@ -136,16 +158,7 @@ def main(args=None):
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     big_bb.END = big_bb.END + 1
 
-    autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
-    big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index=False, sep='\t')
-
-    big_bb.to_csv(outfile + '.withXY', index=False, sep='\t')
-
-    # Remove intermediate BB files
-    [os.remove(f) for f in outfiles]
-
-    sp.log(msg='# Done\n', level='STEP')
-
+    return big_bb
 
 def read_snps(baf_file, ch, all_names, phasefile=None):
     """
@@ -875,6 +888,7 @@ def run_chromosome(
     blocksize,
     max_snps_per_block,
     test_alpha,
+    segfile
 ):
     """
     Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
@@ -892,11 +906,12 @@ def run_chromosome(
             msg=f'Loading intermediate files for chromosome {chromosome}\n',
             level='INFO',
         )
-        total_counts = np.loadtxt(os.path.join(arraystem, f'{chromosome}.total.gz'), dtype=np.uint32)
-        complete_thresholds = np.loadtxt(
-            os.path.join(arraystem, f'{chromosome}.thresholds.gz'),
-            dtype=np.uint32,
-        )
+
+        total_file = os.path.join(arraystem, f'{chromosome}.total.gz')
+        thresholds_file = os.path.join(arraystem, f'{chromosome}.thresholds.gz')
+
+        total_counts = np.loadtxt(total_file, dtype=np.uint32)
+        complete_thresholds = np.loadtxt(thresholds_file, dtype=np.uint32)
 
         # TODO: identify whether XX or XY, and only avoid SNPs/BAFs for XY
         if xy:
@@ -925,6 +940,8 @@ def run_chromosome(
         else:
             # sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
             # Load SNP positions and counts for this chromosome
+            # snp_counts contains TOTAL depth for each sample at each site
+            # snpsv is DataFrame with ALT/REF counts, phase info
             positions, snp_counts, snpsv = read_snps(baffile, chromosome, all_names, phasefile=phasefile)
 
         sp.log(msg=f'Binning p arm of chromosome {chromosome}\n', level='INFO')
@@ -1057,6 +1074,57 @@ def run_chromosome(
         # np.savetxt(outfile + '.thresholds', complete_thresholds)
 
         sp.log(msg=f'Done chromosome {chromosome}\n', level='INFO')
+
+        if segfile:
+            sp.log(msg='# Collecting read depth anf BAF info for pre-specified segments!\n', level='STEP')
+
+            total_file = os.path.join(arraystem, f'{chromosome}.segfile_total.gz')
+            thresholds_file = os.path.join(arraystem, f'{chromosome}.segfile_thresholds.gz')
+            if not os.path.exists(total_file) or not os.path.exists(thresholds_file):
+                raise ValueError(sp.error(f'input files {total_file} or {thresholds_file} for custom segmentation not found! Make sure you have run count-reads with the segmentation file'))
+
+            total_counts = np.loadtxt(total_file, dtype=np.uint32)
+            complete_thresholds = np.loadtxt(thresholds_file, dtype=np.uint32)
+
+            bins = bins_from_segfile(total_counts, complete_thresholds, positions)
+
+            starts= bins[0]
+            ends = bins[1]
+
+            if xy:
+                dfs = None
+                bafs = None
+            else:
+                # Partition SNPs for BAF inference
+                dfs = [snpsv[(snpsv.POS >= starts[i]) & (snpsv.POS <= ends[i])] for i in range(len(starts))]
+
+                #if len(dfs) > 1:
+                #    for i in range(len(dfs)):
+                #        assert np.all(
+                #            dfs[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0) >= min_snp_reads
+                #        ), i
+
+                # Infer BAF
+                bafs = [
+                    compute_baf_wrapper(
+                        d,
+                        blocksize,
+                        max_snps_per_block,
+                        test_alpha,
+                        multisample,
+                    )
+                    for d in dfs
+                ]
+
+            bb = merge_data(bins, dfs, bafs, all_names, chromosome)
+            bb.to_csv(f"{outfile}.segfile", index=False, sep='\t')
+            # np.savetxt(outfile + '.totalcounts', total_counts)
+            # np.savetxt(outfile + '.thresholds', complete_thresholds)
+
+            sp.log(msg=f'Done with custom segmentation on chromosome {chromosome}\n', level='INFO')
+
+
+
     except Exception as e:
         print(f'Error in chromosome {chromosome}:')
         print(e)
@@ -1066,6 +1134,88 @@ def run_chromosome(
 
 def run_chromosome_wrapper(param):
     run_chromosome(*param)
+
+
+def bins_from_segfile(total_counts, thresholds, snp_positions):
+    n_samples = int(total_counts.shape[1] / 2)
+    # number of reads that start between snp_thresholds[i] and snp_thresholds[i + 1]
+    even_index = np.array([i * 2 for i in range(int(n_samples))], dtype=np.int8)
+    # number of reads overlapping position snp_thresholds[i]
+    odd_index = np.array([i * 2 + 1 for i in range(int(n_samples))], dtype=np.int8)
+    bin_total = np.zeros(n_samples)
+    # bin_snp = np.zeros(n_samples - 1)
+    starts = []
+    ends = []
+
+    my_start = thresholds[0]
+
+    rdrs = []
+    totals = []
+    i = 1
+    j = 0
+    while i < len(thresholds)-1:
+        # Extend the current bin to the next threshold
+        next_threshold = thresholds[i]
+
+        # add the intervening reads to the current bin
+        # adding SNP reads
+        #assert snp_positions[i - 1] <= thresholds[i], (
+        #    i,
+        #    snp_positions[i - 1],
+        #    thresholds[i],
+        #)
+        # adding total reads
+        bin_total += total_counts[i - 1, even_index]
+
+        # get all SNPs
+        snps_overlapping_interval = 0
+        while (snp_positions[j] <= thresholds[i]) and (j < len(snp_positions)-1):
+            snps_overlapping_interval += 1
+            j += 1
+
+        # avoid creating bins without any BAF info
+        if snps_overlapping_interval >= 1:
+            # end this bin
+            starts.append(my_start)
+            ends.append(next_threshold)
+
+            # to get the total reads, subtract the number of reads covering the threshold position
+            bin_total -= total_counts[i, odd_index]
+            totals.append(bin_total)
+
+            # compute RDR
+            rdrs.append(bin_total[1:] / bin_total[0])
+
+            # and start a new one
+            bin_total = np.zeros(n_samples)
+            my_start = ends[-1] + 1
+
+        i += 1
+
+    # handle the case of 1 bin
+    if len(ends) == 0:
+        sp.log(
+            msg='WARNING: found only 1 bin in chromosome arm, may not meet MSR and MTR\t',
+            level='WARN',
+        )
+        assert len(starts) == 0
+        starts.append(thresholds[0])
+        ends.append(thresholds[-1])
+
+        bin_total = np.sum(total_counts[:, even_index], axis=0) - total_counts[-1, odd_index]
+        totals.append(bin_total)
+        rdrs.append(bin_total[1:] / bin_total[0])
+
+    # add whatever excess at the end to the last bin
+    if ends[-1] < thresholds[-1]:
+        # combine the last complete bin with the remainder
+        last_start_idx = np.where((thresholds == starts[-1] - 1) | (thresholds == starts[-1]))[0][0]
+        bin_total = np.sum(total_counts[last_start_idx:, even_index], axis=0) - total_counts[-1, odd_index]
+        totals[-1] = bin_total
+        rdrs[-1] = bin_total[1:] / bin_total[0]
+        ends[-1] = thresholds[-1]
+
+    return starts, ends, totals, rdrs
 
 
 if __name__ == '__main__':
