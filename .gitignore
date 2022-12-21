@@ -1,4 +1,5 @@
 # Temp
+src/hatchet/solve
 *~
 *.ucn*
 !tests/data/fw/best.bbc.ucn

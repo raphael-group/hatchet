@@ -17,7 +17,7 @@ recent version of `cmake` and compile the Hatchet code into a working package.
 
 The installation process can be broken down into the following steps:
 
-1. **Get [Gurobi](http://www.gurobi.com/)** (>= 6.0)
+1. **Get [Gurobi](http://www.gurobi.com/)** (v9.0.2)
 
     The coordinate-method applied by HATCHet is based on several integer linear programming (ILP) formulations. Gurobi is a commercial ILP solver with two licensing options: (1) a single-host license where the license is tied to a single computer and (2) a network license for use in a compute cluster (using a license server in the cluster). Both options are freely and [easily available](http://www.gurobi.com/academia/academia-center) for users in academia.
 [Download](https://www.gurobi.com/downloads/gurobi-optimizer-eula) Gurobi for your specific platform.
@@ -25,7 +25,7 @@ The installation process can be broken down into the following steps:
 
 2. **Set GUROBI_HOME environment variable**
     ```shell
-    $ export GUROBI_HOME=/path/to/gurobiXXX
+    $ export GUROBI_HOME=/path/to/gurobi902
     ```
     Set `GUROBI_HOME` to where you download Gurobi. Here `XXX` is the 3-digit version of gurobi.
 
