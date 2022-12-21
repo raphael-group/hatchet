@@ -941,12 +941,12 @@ def correct_haplotypes(
             ]
         )
         segment_means = np.array([np.mean(s) for s in segments])
-        segment_lengths = [len(s) for s in segments]
 
         # ALSO only correct segments with allelic imbalance at least <min_al_imb> in at least 1 sample
         segment_imbalances = np.array([np.max(np.abs(0.5 - np.mean(np.minimum(s, 1 - s), axis=0))) for s in segments])
 
         """
+        segment_lengths = [len(s) for s in segments]
         [sp.log(msg=f'Segment {i}: length {a},\tmean {b:.3f},\timbalance {c:.3f},\tswitch prop. {d:.3f}\n',
                 level = 'INFO')
                for i, (a,b,c, d)
