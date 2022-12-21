@@ -205,7 +205,7 @@ def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_al
         lengths = [tracks[0].shape[1]]
 
     best_K = 0
-    best_score = -1.01 # below minimum silhouette score value
+    best_score = -1.01   # below minimum silhouette score value
     best_model = None
     best_labels = None
 
