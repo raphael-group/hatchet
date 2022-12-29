@@ -35,7 +35,7 @@ def main(args=None):
     tabix = args['tabix']
     readquality = args['readquality']
 
-    if len(check_array_files(outdir, chromosomes)) == 0:
+    if len(check_array_files(outdir, chromosomes, args['segfile'])) == 0:
         log(
             msg='# Found all array files, skipping to total read counting. \n',
             level='STEP',
@@ -49,7 +49,7 @@ def main(args=None):
             )
 
         else:
-            if args['segfile'] and not os.path.exists(args['segfile']):
+            if args['segfile'] and (not os.path.exists(args['segfile'])):
                 raise ValueError(error('A path to a nonexistant segfile was given to count-reads!'))
 
             params = zip(
@@ -165,7 +165,7 @@ def main(args=None):
 
         np.savetxt(os.path.join(outdir, 'samples.txt'), names, fmt='%s')
 
-        if len(check_array_files(outdir, chromosomes)) > 0:
+        if len(check_array_files(outdir, chromosomes, args['segfile'])) > 0:
             raise ValueError(error('Missing some output arrays!'))
         else:
             log(
@@ -473,8 +473,11 @@ def run_chromosome(
     """
 
     try:
-        totals_out = os.path.join(outdir, f'{chromosome}.total.gz')
-        thresholds_out = os.path.join(outdir, f'{chromosome}.thresholds.gz')
+        if seg_file:
+            totals_name, thresholds_name = f'{chromosome}.segfile_total.gz', f'{chromosome}.segfile_thresholds.gz'
+        else:
+            totals_name, thresholds_name = f'{chromosome}.total.gz', f'{chromosome}.thresholds.gz'
+        totals_out, thresholds_out = os.path.join(outdir, totals_name), os.path.join(outdir, thresholds_name)
 
         if os.path.exists(totals_out) and os.path.exists(thresholds_out):
             log(
@@ -511,32 +514,6 @@ def run_chromosome(
         else:
             positions, _, _ = read_snps(baf_file, chromosome, all_names)
 
-        # create segments for computing read depth, these will be the midpoints of germline SNPs
-        # during the adaptive binning process in combine_counts.py, these segments will be combined in order to meet
-        # QC metrics, i.e. the minimum number of SNP-covering reads
-        thresholds = np.trunc(np.vstack([positions[:-1], positions[1:]]).mean(axis=0)).astype(np.uint32)
-        last_idx_p = np.argwhere(thresholds > centromere_start)[0][0]
-        first_idx_q = np.argwhere(thresholds > centromere_end)[0][0]
-        all_thresholds = np.concatenate(
-            [
-                [1],
-                thresholds[:last_idx_p],
-                [centromere_start],
-                [centromere_end],
-                thresholds[first_idx_q:],
-            ]
-        )
-
-        log(msg=f'Loading counts for chromosome {chromosome}\n', level='INFO')
-        # Load read count arrays from file (also adds end of chromosome as a threshold)
-        total_counts, complete_thresholds = form_counts_array(
-            starts_files, perpos_files, all_thresholds, chromosome, tabix=tabix
-        )
-
-        np.savetxt(totals_out, total_counts, fmt='%d')
-        np.savetxt(thresholds_out, complete_thresholds, fmt='%d')
-
-        # potentially repeat for pre-specified segments
         if seg_file:
             thresholds_segfile = read_segfile(seg_file, chromosome)
             total_counts, complete_thresholds = form_counts_array(
@@ -545,6 +522,32 @@ def run_chromosome(
 
             totals_out = os.path.join(outdir, f'{chromosome}.segfile_total.gz')
             thresholds_out = os.path.join(outdir, f'{chromosome}.segfile_thresholds.gz')
+            np.savetxt(totals_out, total_counts, fmt='%d')
+            np.savetxt(thresholds_out, complete_thresholds, fmt='%d')
+
+        else:
+            # create segments for computing read depth, these will be the midpoints of germline SNPs
+            # during the adaptive binning process in combine_counts.py, these segments will be combined in order to meet
+            # QC metrics, i.e. the minimum number of SNP-covering reads
+            thresholds = np.trunc(np.vstack([positions[:-1], positions[1:]]).mean(axis=0)).astype(np.uint32)
+            last_idx_p = np.argwhere(thresholds > centromere_start)[0][0]
+            first_idx_q = np.argwhere(thresholds > centromere_end)[0][0]
+            all_thresholds = np.concatenate(
+                [
+                    [1],
+                    thresholds[:last_idx_p],
+                    [centromere_start],
+                    [centromere_end],
+                    thresholds[first_idx_q:],
+                ]
+            )
+
+            log(msg=f'Loading counts for chromosome {chromosome}\n', level='INFO')
+            # Load read count arrays from file (also adds end of chromosome as a threshold)
+            total_counts, complete_thresholds = form_counts_array(
+                starts_files, perpos_files, all_thresholds, chromosome, tabix=tabix
+            )
+
             np.savetxt(totals_out, total_counts, fmt='%d')
             np.savetxt(thresholds_out, complete_thresholds, fmt='%d')
 
@@ -589,7 +592,7 @@ def check_counts_files(dcounts, chrs, all_names):
     return [a for a in expected_counts_files(dcounts, chrs, all_names) if not os.path.exists(a)]
 
 
-def expected_arrays(darray, chrs):
+def expected_arrays(darray, chrs, segfile):
     expected = []
     # formArray (abin/<chr>.<total/thresholds> files))
 
@@ -597,17 +600,22 @@ def expected_arrays(darray, chrs):
     expected.append(fname)
 
     for ch in chrs:
-        fname = os.path.join(darray, f'{ch}.total.gz')
+        if segfile:
+            total_name, thresholds_name = f'{ch}.segfile_total.gz', f'{ch}.segfile_thresholds.gz'
+        else:
+            total_name, thresholds_name = f'{ch}.total.gz', f'{ch}.thresholds.gz'
+
+        fname = os.path.join(darray, total_name)
         expected.append(fname)
 
-        fname = os.path.join(darray, f'{ch}.thresholds.gz')
+        fname = os.path.join(darray, thresholds_name)
         expected.append(fname)
 
     return expected
 
 
-def check_array_files(darray, chrs):
-    return [a for a in expected_arrays(darray, chrs) if not os.path.exists(a)]
+def check_array_files(darray, chrs, segfile):
+    return [a for a in expected_arrays(darray, chrs, segfile) if not os.path.exists(a)]
 
 def read_segfile(segfile, chromosome):
     with open(segfile, 'r') as f:

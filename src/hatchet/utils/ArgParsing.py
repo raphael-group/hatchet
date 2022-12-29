@@ -605,6 +605,8 @@ def parse_count_reads_args(args=None):
         ),
     )
 
+    segfile = None if args.segfile == "None" else args.segfile
+
     return {
         'bams': bams,
         'names': names,
@@ -618,7 +620,7 @@ def parse_count_reads_args(args=None):
         'refversion': ver,
         'baf_file': args.baffile,
         'readquality': args.readquality,
-        'segfile': args.segfile,
+        'segfile': segfile,
     }
 
 
