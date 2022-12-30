@@ -877,7 +877,7 @@ def segmented_piecewise(X, pieces=2):
         if (i, j) in segcost_memo:
             return segcost_memo[i, j]
         else:
-            my_mean = np.mean(X[i:j], axis=0) if j - i >= 0 else 0
+            my_mean = np.mean(X[i:j], axis=0) if j > i else 0
             result = np.sum(np.square(X[i:j] - my_mean))
             segcost_memo[i, j] = result
             return result
@@ -901,13 +901,24 @@ def segmented_piecewise(X, pieces=2):
                     best_tprime = tprime
 
             A[t, p] = best_cost
-            backpoint[t, p] = best_tprime
+            backpoint[t, p] = best_tprime   # if this throws a TypeError for int(None), then X may have NaNs
     return A, backpoint
 
 
 def correct_haplotypes(
-    bafs, min_prop_switch=0.01, n_segments=10, min_switch_density=0.1, min_mean_baf=0.45, minmax_al_imb=0.02
+    orig_bafs, min_prop_switch=0.01, n_segments=10, min_switch_density=0.1, min_mean_baf=0.45, minmax_al_imb=0.02
 ):
+    # Count switches using only samples with mean allelic imbalance above <minmax_al_imb>
+    imb_samples = np.where(np.mean(np.abs(orig_bafs - 0.5), axis=0) > minmax_al_imb)[0]
+
+    if len(imb_samples) == 0:
+        sp.log(
+            msg=f'No sample with avg. allelic imbalance above [{minmax_al_imb}], skipping correction.\n', level='INFO'
+        )
+        return orig_bafs, None
+
+    bafs = orig_bafs[:, imb_samples]
+
     # Look for haplotype switches
     above_mid = bafs > 0.5
     is_alternating = np.concatenate(
@@ -921,7 +932,7 @@ def correct_haplotypes(
         # If sufficient switches are found, run segmentation to identify segments w/ many switches
 
         sp.log(msg=f'Checking haplotype switching using [{n_segments}] segments\n', level='INFO')
-        # Segment using the mean BAFs only - faster and more reliable
+        # Segment using the mean BAFs only - faster and more reliable than using all samples
         A, bp = segmented_piecewise(np.mean(bafs, axis=1).reshape(-1, 1), pieces=n_segments)
 
         ts = backtrack(bp[:, :n_segments])
@@ -929,7 +940,7 @@ def correct_haplotypes(
         for idx in np.where(np.diff(ts) == 0)[0]:
             del ts[idx]
 
-        segments = [bafs[ts[i] : ts[i + 1]] for i in range(len(ts) - 1)]
+        segments = [orig_bafs[ts[i] : ts[i + 1]] for i in range(len(ts) - 1)]
 
         # Identify problematic segments as those with many switches and mean near 0.5
         # (note that mean(BAF_i) across samples i is always <= 0.5 by def. from EM function)
@@ -940,10 +951,12 @@ def correct_haplotypes(
                 for i in range(len(ts) - 1)
             ]
         )
-        segment_means = np.array([np.mean(s) for s in segments])
+        segment_means = np.array([(np.mean(s) if len(s) > 0 else 0.5) for s in segments])
 
         # ALSO only correct segments with allelic imbalance at least <min_al_imb> in at least 1 sample
-        segment_imbalances = np.array([np.max(np.abs(0.5 - np.mean(np.minimum(s, 1 - s), axis=0))) for s in segments])
+        segment_imbalances = np.array(
+            [(np.max(np.abs(0.5 - np.mean(np.minimum(s, 1 - s), axis=0))) if len(s) > 0 else 0) for s in segments]
+        )
 
         """
         segment_lengths = [len(s) for s in segments]
@@ -966,6 +979,7 @@ def correct_haplotypes(
         for s_idx in range(len(segments)):
             if s_idx in bad_segments:
                 seg = segments[s_idx].copy()
+                assert len(seg) > 0, 'Haplotype switch correction flagged a length-0 segment'
 
                 # Identify the sample with the most extreme allelic imbalance for this segment
                 minseg = np.minimum(seg, 1 - seg)
@@ -994,7 +1008,7 @@ def correct_haplotypes(
             msg=f'Insufficient haplotype switching detected (<[{min_prop_switch}]), skipping correction.\n',
             level='INFO',
         )
-        return bafs, None
+        return orig_bafs, None
 
 
 def run_chromosome(
@@ -1122,14 +1136,16 @@ def run_chromosome(
                 ]
 
             bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
-            sp.log(msg='Correcting haplotype switches on p arm...\n', level='STEP')
-            bafs_p = bb_p.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
-            # TODO: pass through other parameters to correct_haplotypes
-            corrected_bafs_p, _ = correct_haplotypes(bafs_p)
 
-            # flatten these results out and put them back into the BAF array
-            bb_p['ORIGINAL_BAF'] = bb_p.BAF
-            bb_p['BAF'] = corrected_bafs_p.flatten()
+            bafs_p = bb_p.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
+            if bafs_p.shape[0] > 2:
+                sp.log(msg='Correcting haplotype switches on p arm...\n', level='STEP')
+                # TODO: pass through other parameters to correct_haplotypes
+                corrected_bafs_p, _ = correct_haplotypes(bafs_p)
+
+                # flatten these results out and put them back into the BAF array
+                bb_p['ORIGINAL_BAF'] = bb_p.BAF
+                bb_p['BAF'] = corrected_bafs_p.flatten()
         else:
             sp.log(msg=f'No SNPs found in p arm for {chromosome}\n', level='INFO')
             bb_p = None
@@ -1190,14 +1206,16 @@ def run_chromosome(
                 ]
 
             bb_q = merge_data(bins_q, dfs_q, bafs_q, all_names, chromosome)
-            sp.log(msg='Correcting haplotype switches on q arm...\n', level='STEP')
-            bafs_q = bb_q.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
-            # TODO: pass through other parameters to correct_haplotypes
-            corrected_bafs_q, _ = correct_haplotypes(bafs_q)
 
-            # flatten these results out and put them back into the BAF array
-            bb_q['ORIGINAL_BAF'] = bb_q.BAF
-            bb_q['BAF'] = corrected_bafs_q.flatten()
+            bafs_q = bb_q.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
+            if bafs_q.shape[0] > 2:
+                sp.log(msg='Correcting haplotype switches on q arm...\n', level='STEP')
+                # TODO: pass through other parameters to correct_haplotypes
+                corrected_bafs_q, _ = correct_haplotypes(bafs_q)
+
+                # flatten these results out and put them back into the BAF array
+                bb_q['ORIGINAL_BAF'] = bb_q.BAF
+                bb_q['BAF'] = corrected_bafs_q.flatten()
         else:
             sp.log(msg=f'No SNPs found in q arm for {chromosome}\n', level='INFO')
             bb_q = None
