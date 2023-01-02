@@ -516,14 +516,15 @@ def run_chromosome(
 
         if seg_file:
             thresholds_segfile = read_segfile(seg_file, chromosome)
-            total_counts, complete_thresholds = form_counts_array(
-                starts_files, perpos_files, thresholds_segfile, chromosome, tabix=tabix
-            )
+            if len(thresholds_segfile) > 0:
+                total_counts, complete_thresholds = form_counts_array(
+                    starts_files, perpos_files, thresholds_segfile, chromosome, tabix=tabix
+                )
 
-            totals_out = os.path.join(outdir, f'{chromosome}.segfile_total.gz')
-            thresholds_out = os.path.join(outdir, f'{chromosome}.segfile_thresholds.gz')
-            np.savetxt(totals_out, total_counts, fmt='%d')
-            np.savetxt(thresholds_out, complete_thresholds, fmt='%d')
+                totals_out = os.path.join(outdir, f'{chromosome}.segfile_total.gz')
+                thresholds_out = os.path.join(outdir, f'{chromosome}.segfile_thresholds.gz')
+                np.savetxt(totals_out, total_counts, fmt='%d')
+                np.savetxt(thresholds_out, complete_thresholds, fmt='%d')
 
         else:
             # create segments for computing read depth, these will be the midpoints of germline SNPs
@@ -624,8 +625,9 @@ def read_segfile(segfile, chromosome):
         header = not np.any(i.isdigit() for i in fi[0].split())
         fi = fi[1:] if header else fi
         thresholds_segfile = np.array([i.split()[1] for i in fi if i.split()[0] == chromosome], dtype=np.uint64)
-    if thresholds_segfile[0] > 1:
-        thresholds_segfile = np.concatenate([[1], thresholds_segfile])
+    if len(thresholds_segfile) > 0:
+        if thresholds_segfile[0] > 1:
+            thresholds_segfile = np.concatenate([[1], thresholds_segfile])
     if np.any(np.diff(thresholds_segfile) < 0):
         raise ValueError(f"improper negative interval in provided segment file for chromosome {chromosome}")
     return np.array(thresholds_segfile)
