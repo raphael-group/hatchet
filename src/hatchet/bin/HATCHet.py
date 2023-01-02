@@ -657,13 +657,12 @@ def parse_clonal_diploid(clonal):
             for t in [my_diploid] + [my_second] + [t2 for t2 in clonal_list if t2[0] not in used_clusters]
         ]
     )
-    sys.stderr.write(
-        log(
-            f'# NOTE: cluster {my_diploid[0]} with copy number (1,1) will be used to scale '
-            'fractional copy numbers.\n'
-        )
+    log(
+        msg=f' NOTE: cluster {my_diploid[0]} with copy number (1,1) will be used to scale fractional copy numbers.\n',
+        level='INFO',
     )
-    sys.stderr.write(log(f"# Reordered 'clonal' argument={clonal}.\n"))
+    log(msg=f" Reordered 'clonal' argument={clonal}.\n", level='INFO')
+
     return clonal
 
 
