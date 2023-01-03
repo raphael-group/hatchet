@@ -766,19 +766,23 @@ def parse_combine_counts_args(args=None):
     names = open(namesfile).read().split()
 
     chromosomes = set()
+    if args.segfile:
+        thresh_name, tot_name = "segfile_thresholds", "segfile_total"
+    else:
+        thresh_name, tot_name = "thresholds", "total"
     for f in os.listdir(args.array):
         tkns = f.split('.')
-        if len(tkns) > 1 and (tkns[1] == 'thresholds' or tkns[1] == 'total'):
+        if len(tkns) > 1 and (tkns[1] == thresh_name or tkns[1] == tot_name):
             chromosomes.add(tkns[0])
     chromosomes = sorted(chromosomes)
 
     for ch in chromosomes:
         if args.not_compressed:
-            totals_arr = os.path.join(args.array, f'{ch}.total')
-            thresholds_arr = os.path.join(args.array, f'{ch}.thresholds')
+            totals_arr = os.path.join(args.array, f'{ch}.{tot_name}')
+            thresholds_arr = os.path.join(args.array, f'{ch}.{thresh_name}')
         else:
-            totals_arr = os.path.join(args.array, f'{ch}.total.gz')
-            thresholds_arr = os.path.join(args.array, f'{ch}.thresholds.gz')
+            totals_arr = os.path.join(args.array, f'{ch}.{tot_name}.gz')
+            thresholds_arr = os.path.join(args.array, f'{ch}.{thresh_name}.gz')
         if not os.path.exists(totals_arr):
             raise ValueError(error('Missing array file: {}'.format(totals_arr)))
         if not os.path.exists(thresholds_arr):
