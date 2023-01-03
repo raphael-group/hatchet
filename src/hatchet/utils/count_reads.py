@@ -35,6 +35,8 @@ def main(args=None):
     tabix = args['tabix']
     readquality = args['readquality']
 
+    if args['segfile']:
+        chromosomes = get_chromosomes_segfile(args['segfile'])
     if len(check_array_files(outdir, chromosomes, args['segfile'])) == 0:
         log(
             msg='# Found all array files, skipping to total read counting. \n',
@@ -515,7 +517,7 @@ def run_chromosome(
             positions, _, _ = read_snps(baf_file, chromosome, all_names)
 
         if seg_file:
-            thresholds_segfile = read_segfile(seg_file, chromosome)
+            thresholds_segfile = get_thresholds_segfile(seg_file, chromosome)
             if len(thresholds_segfile) > 0:
                 total_counts, complete_thresholds = form_counts_array(
                     starts_files, perpos_files, thresholds_segfile, chromosome, tabix=tabix
@@ -618,7 +620,7 @@ def expected_arrays(darray, chrs, segfile):
 def check_array_files(darray, chrs, segfile):
     return [a for a in expected_arrays(darray, chrs, segfile) if not os.path.exists(a)]
 
-def read_segfile(segfile, chromosome):
+def get_thresholds_segfile(segfile, chromosome):
     with open(segfile, 'r') as f:
         fi = f.readlines()
         # detect optional header
@@ -632,6 +634,11 @@ def read_segfile(segfile, chromosome):
         raise ValueError(f"improper negative interval in provided segment file for chromosome {chromosome}")
     return np.array(thresholds_segfile)
 
+def get_chromosomes_segfile(segfile):
+    df = pd.read_csv(segfile, sep="\t")
+    # get chromosomes from 1st column of segfile
+    chromosomes = list(df.iloc[:,0].unique())
+    return chromosomes
 
 if __name__ == '__main__':
     main()
