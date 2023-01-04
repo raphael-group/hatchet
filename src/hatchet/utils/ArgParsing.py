@@ -765,8 +765,10 @@ def parse_combine_counts_args(args=None):
     )
     names = open(namesfile).read().split()
 
+    segfile = None if args.segfile == "None" else args.segfile
+
     chromosomes = set()
-    if args.segfile:
+    if segfile:
         thresh_name, tot_name = "segfile_thresholds", "segfile_total"
     else:
         thresh_name, tot_name = "thresholds", "total"
@@ -834,7 +836,7 @@ def parse_combine_counts_args(args=None):
         'test_alpha': args.alpha,
         'multisample': not args.ss_em,
         'ref_version': ver,
-        'segfile': args.segfile,
+        'segfile': segfile,
     }
 
 
