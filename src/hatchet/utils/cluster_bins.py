@@ -18,7 +18,7 @@ def main(args=None):
     sp.logArgs(args, 80)
 
     sp.log(msg='# Reading the combined BB file\n', level='STEP')
-    tracks, bb, sample_labels, chr_labels = read_bb(args['bbfile'])
+    tracks, bb, sample_labels, chr_labels = read_bb(args['bbfile'], subset=args['subset'])
 
     if args['exactK'] > 0:
         minK = args['exactK']
@@ -48,11 +48,11 @@ def main(args=None):
             tracks,
             minK=minK,
             maxK=maxK,
-            seed=args['seed'],
             covar=args['covar'],
             decode_alg=args['decoding'],
             tmat=args['transmat'],
             tau=args['tau'],
+            restarts=args['restarts'],
         )
 
     best_labels = reindex(best_labels)
@@ -114,7 +114,7 @@ def main(args=None):
     sp.log(msg='# Done\n', level='STEP')
 
 
-def read_bb(bbfile, use_chr=True, compressed=False):
+def read_bb(bbfile, subset=None):
     """
     Constructs arrays to represent the bin in each chromosome or arm.
     If bbfile was binned around chromosome arm, then uses chromosome arms.
@@ -132,6 +132,8 @@ def read_bb(bbfile, use_chr=True, compressed=False):
     """
 
     bb = pd.read_table(bbfile)
+    if subset is not None:
+        bb = bb[bb.SAMPLE.isin(subset)]
 
     tracks = []
 
@@ -189,16 +191,7 @@ def read_bb(bbfile, use_chr=True, compressed=False):
     )
 
 
-def hmm_model_select(
-    tracks,
-    minK=20,
-    maxK=50,
-    tau=10e-6,
-    tmat='diag',
-    decode_alg='viterbi',
-    covar='diag',
-    seed=0,
-):
+def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_alg='viterbi', covar='diag', restarts=10):
     assert tmat in ['fixed', 'diag', 'free']
     assert decode_alg in ['map', 'viterbi']
 
@@ -212,7 +205,7 @@ def hmm_model_select(
         lengths = [tracks[0].shape[1]]
 
     best_K = 0
-    best_score = 0
+    best_score = -1.01   # below minimum silhouette score value
     best_model = None
     best_labels = None
 
@@ -223,46 +216,62 @@ def hmm_model_select(
     rs = {}
     for K in range(minK, maxK + 1):
         # print(K, datetime.now())
-        # construct initial transition matrix
-        A = make_transmat(1 - tau, K)
 
-        if tmat == 'fixed':
-            model = hmm.GaussianHMM(
-                n_components=K,
-                init_params='mc',
-                params='smc',
-                covariance_type=covar,
-                random_state=0,
+        my_best_ll = -1 * np.inf
+        my_best_labels = None
+        my_best_model = None
+        for s in range(restarts):
+            # construct initial transition matrix
+            A = make_transmat(1 - tau, K)
+            assert np.all(A > 0), (
+                'Found 0 or negative elements in transition matrix.'
+                'This is likely a numerical precision issue -- try increasing tau.',
+                A,
             )
-        elif tmat == 'free':
-            model = hmm.GaussianHMM(
-                n_components=K,
-                init_params='mc',
-                params='smct',
-                covariance_type=covar,
-                random_state=0,
-            )
-        else:
-            model = DiagGHMM(
-                n_components=K,
-                init_params='mc',
-                params='smct',
-                covariance_type=covar,
-                random_state=0,
-            )
+            assert np.allclose(np.sum(A, axis=1), 1), ('Not all rows in transition matrix sum to 1.', A)
 
-        model.startprob_ = np.ones(K) / K
-        model.transmat_ = A
-        model.fit(X, lengths)
+            if tmat == 'fixed':
+                model = hmm.GaussianHMM(
+                    n_components=K,
+                    init_params='mc',
+                    params='smc',
+                    covariance_type=covar,
+                    random_state=s,
+                )
+            elif tmat == 'free':
+                model = hmm.GaussianHMM(
+                    n_components=K,
+                    init_params='mc',
+                    params='smct',
+                    covariance_type=covar,
+                    random_state=s,
+                )
+            else:
+                model = DiagGHMM(
+                    n_components=K,
+                    init_params='mc',
+                    params='smct',
+                    covariance_type=covar,
+                    random_state=s,
+                )
 
-        prob, labels = model.decode(X, lengths, algorithm=decode_alg)
-        score = silhouette_score(C, labels, metric='precomputed')
+            model.startprob_ = np.ones(K) / K
+            model.transmat_ = A
+            model.fit(X, lengths)
 
-        rs[K] = prob, score, labels
+            prob, labels = model.decode(X, lengths, algorithm=decode_alg)
+            if prob > my_best_ll:
+                my_best_labels = labels
+                my_best_ll = prob
+                my_best_model = model
+
+        score = silhouette_score(C, my_best_labels, metric='precomputed')
+
+        rs[K] = my_best_ll, score, my_best_labels
         if score > best_score:
             best_score = score
-            best_model = model
-            best_labels = labels
+            best_model = my_best_model
+            best_labels = my_best_labels
             best_K = K
 
     return best_score, best_model, best_labels, best_K, rs
@@ -338,16 +347,38 @@ def reindex(labels):
 
 def form_seg(bbc, balanced_threshold):
     segments = []
-    for (key, sample), df in bbc.groupby(['CLUSTER', 'SAMPLE']):
-        nbins = len(df)
-        rd = df.RD.mean()
-        nsnps = df['#SNPS'].sum()
-        cov = df.COV.mean()
-        a = np.sum(np.minimum(df.ALPHA, df.BETA))
-        b = np.sum(np.maximum(df.ALPHA, df.BETA))
-        baf = a / (a + b)
-        baf = baf if (0.5 - baf) > balanced_threshold else 0.5
-        segments.append([key, sample, nbins, rd, nsnps, cov, a, b, baf])
+    for key, df_ in bbc.groupby('CLUSTER'):
+        nbins = []
+        rd = []
+        nsnps = []
+        cov = []
+        baf = []
+        a = []
+        b = []
+        samples = []
+
+        for sample, df in df_.groupby('SAMPLE'):
+            nbins.append(len(df))
+            rd.append(df.RD.mean())
+            nsnps.append(df['#SNPS'].sum())
+            cov.append(df.COV.mean())
+            baf.append(df.BAF.mean())
+            smaller = np.sum(np.minimum(df.ALPHA, df.BETA))
+            larger = np.sum(np.maximum(df.ALPHA, df.BETA))
+            if baf[-1] <= 0.5:
+                a.append(smaller)
+                b.append(larger)
+            else:
+                a.append(larger)
+                b.append(smaller)
+            samples.append(sample)
+
+        keys = [key] * len(baf)
+        if all([abs(0.5 - baf_) < balanced_threshold for baf_ in baf]):
+            baf = [0.5] * len(baf)
+
+        [segments.append(t) for t in zip(keys, samples, nbins, rd, nsnps, cov, a, b, baf)]
+
     seg = pd.DataFrame(
         segments,
         columns=[

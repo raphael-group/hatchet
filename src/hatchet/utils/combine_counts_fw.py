@@ -70,7 +70,11 @@ def main(args=None):
     sys.stdout.write('#CHR\tSTART\tEND\tSAMPLE\tRD\t#SNPS\tCOV\tALPHA\tBETA\tBAF\n')
     nonzerobaf = lambda rk: all(sample[4] + sample[5] > 0 for sample in rk)
     result = {key: result[key] for key in result if nonzerobaf(result[key])}
+    sexchroms = set(['X', 'Y', 'chrX', 'chrY'])
     for key in sorted(result, key=(lambda x: (sp.numericOrder(x[0]), int(x[1]), int(x[2])))):
+        if key[0] in sexchroms:
+            # skip sex chromosomes since there's no good way to handle them in this version
+            continue
         for sample in sorted(result[key]):
             sys.stdout.write(
                 '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(

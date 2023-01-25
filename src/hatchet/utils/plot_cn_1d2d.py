@@ -265,8 +265,6 @@ def plot_genome(
 
     big_bbc = big_bbc.copy()
     np.random.seed(0)
-    flips = np.random.randint(2, size=len(big_bbc))
-    big_bbc.loc[:, 'BAF'] = np.choose(flips, [big_bbc.loc[:, 'BAF'], 1 - big_bbc.loc[:, 'BAF']])
 
     colors1 = plt.cm.tab20b(np.arange(20))
     colors2 = plt.cm.tab20c(np.arange(20))
@@ -337,6 +335,7 @@ def plot_genome(
             minBAF, _ = baf_ylim
         else:
             minBAF = np.min(bbc_.BAF)
+            maxBAF = np.max(bbc_.BAF)
 
         chrkey = 'CHR' if 'CHR' in bbc_.columns else '#CHR'
 
@@ -349,7 +348,7 @@ def plot_genome(
 
             midpoint = np.mean(np.array([bbc.START, bbc.END]), axis=0) + chr_start
 
-            # Add black bars indicating
+            # Add black bars indicating expected values for CN states
             fcn_lines = []
             baf_lines = []
             colors = []
@@ -360,7 +359,6 @@ def plot_genome(
                 y_fcn, y_baf = cn2evs(state, props)
                 fcn_lines.append([(x0, y_fcn), (x1, y_fcn)])
                 baf_lines.append([(x0, y_baf), (x1, y_baf)])
-                baf_lines.append([(x0, 1 - y_baf), (x1, 1 - y_baf)])
 
                 colors.append((0, 0, 0, 1))
 
@@ -385,7 +383,7 @@ def plot_genome(
                         Rectangle(
                             (centro[0] + chr_start, minBAF - 0.02),
                             centro[1] - centro[0],
-                            1 - minBAF + 0.02,
+                            maxBAF - minBAF + 0.04,
                             linewidth=0,
                             color=(0, 0, 0, 0.4),
                         )
@@ -411,15 +409,15 @@ def plot_genome(
             axes[idx * 2 + 0].set_ylim([minFCN - 0.1, maxFCN + 0.1])
 
         axes[idx * 2 + 0].set_xlim([0, chr_ends[-1]])
-        axes[idx * 2 + 0].set_ylabel('Fractional Copy Number')
+        axes[idx * 2 + 0].set_ylabel('Fractional copy number')
 
         if limits_valid(baf_ylim):
             axes[idx * 2 + 1].set_ylim(baf_ylim)
         else:
-            axes[idx * 2 + 1].set_ylim([minBAF - 0.02, (1 - minBAF) + 0.02])
+            axes[idx * 2 + 1].set_ylim([minBAF - 0.02, maxBAF + 0.02])
 
         axes[idx * 2 + 1].set_xlim([0, chr_ends[-1]])
-        axes[idx * 2 + 1].set_ylabel('B-allele Frequency')
+        axes[idx * 2 + 1].set_ylabel('Mirrored haplotype BAF')
 
         axes[idx * 2 + 0].vlines(
             chr_ends[1:-1],
@@ -435,7 +433,14 @@ def plot_genome(
             linewidth=0.5,
             colors='k',
         )
-
+        axes[idx * 2 + 1].hlines(
+            y=0.5,
+            xmin=0,
+            xmax=chr_ends[-1],
+            colors='grey',
+            linestyle=':',
+            linewidth=1,
+        )
         xtick_labels = [f'chr{i}' for i in range(1, 23)]
         xtick_locs = [(chr_ends[i] + chr_ends[i + 1]) / 2 for i in range(22)]
         axes[idx * 2 + 0].set_xticks(xtick_locs)
@@ -474,6 +479,7 @@ def plot_clusters(
     ylim=None,
     save_samples=False,
     save_prefix=None,
+    coloring='original',
 ):
     if save_samples:
         if save_prefix is None:
@@ -523,42 +529,100 @@ def plot_clusters(
                 cmap(mapping[tuple(r)]) for _, r in bbc_[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
             ]
 
-        my_ax.scatter(bbc_.BAF, bbc_.RD * gamma, c=my_colors, s=1)
+        if coloring == 'local':
+            # not yet implemented
+            raise NotImplementedError('This coloring has not yet been implemented')
 
-        exs = []
-        eys = []
-        cs = []
-        for k, _ in bbc_.groupby([f'cn_clone{i + 1}' for i in range(n_clones)]):
-            if type(k) == str:
-                state = [(1, 1), str2state(k)]
-            else:
-                state = [(1, 1)] + [str2state(a) for a in k]
-            ey, ex = cn2evs(state, props)
-            if all([a == state[1] for a in state[1:]]) and n_clones > 1:
-                my_ax.annotate(
-                    f'{str(state[1])} ',
-                    (ex, ey),
-                    fontsize='x-small',
-                    fontweight='bold',
-                )
-            else:
-                my_ax.annotate(
-                    f'{",".join([str(a) for a in state[1:]])} ',
-                    (ex, ey),
-                    fontsize='x-small',
-                )
-            exs.append(ex)
-            eys.append(ey)
-            cs.append(cmap(mapping[k]))
+        elif coloring == 'hybrid':
+            my_ax.scatter(bbc_.BAF, bbc_.RD * gamma, c=my_colors, s=1)
 
-        my_ax.scatter(exs, eys, s=10, c=cs, edgecolor='k', linewidth=0.8)
+            exs = []
+            eys = []
+            cs = []
 
-        legendstr = []
-        for i in range(n_clones + 1):
-            if i == 0:
-                legendstr.append('Normal: {:.3f}'.format(bbc_.u_normal[0]))
-            else:
-                legendstr.append('Clone {}: {:.3f}'.format(i, bbc_['u_clone{}'.format(i)][0]))
+            present_clones = np.array([i for i, p in enumerate(props) if p > 0])
+
+            already_written = set()
+            for k, _ in bbc_.groupby([f'cn_clone{i + 1}' for i in range(n_clones)]):
+                if type(k) == str:
+                    # 1-clone case
+                    state = [(1, 1), str2state(k)]
+                else:
+                    state = [(1, 1)] + [str2state(a) for a in k]
+                    state = [state[i] for i in present_clones]
+
+                # some states may come up more than once
+                # (since they may only be different among clones not present in this sample)
+                statekey = '|'.join([str(a) for a in state])
+                if statekey in already_written:
+                    continue
+                else:
+                    already_written.add(statekey)
+
+                ey, ex = cn2evs(state, props[present_clones])
+                if all([a == state[1] for a in state[1:]]) and len(present_clones) > 2:
+                    my_ax.annotate(
+                        f'{str(state[1])} ', (ex, ey), fontsize='x-small', fontweight='bold', ha='right', va='center'
+                    )
+                else:
+                    my_ax.annotate(
+                        f'{",".join([str(a) for a in state[1:]])} ',
+                        (ex, ey),
+                        fontsize='x-small',
+                        ha='right',
+                        va='center',
+                    )
+                exs.append(ex)
+                eys.append(ey)
+                cs.append(cmap(mapping[k]))
+
+            my_ax.scatter(exs, eys, s=10, c=cs, edgecolor='k', linewidth=0.8)
+
+            legendstr = []
+            for i in present_clones:
+                if i == 0:
+                    legendstr.append('Normal: {:.3f}'.format(bbc_.u_normal[0]))
+                else:
+                    legendstr.append('Clone {}: {:.3f}'.format(i, bbc_['u_clone{}'.format(i)][0]))
+
+        else:
+            assert coloring == 'original'
+            my_ax.scatter(bbc_.BAF, bbc_.RD * gamma, c=my_colors, s=1)
+
+            exs = []
+            eys = []
+            cs = []
+            for k, _ in bbc_.groupby([f'cn_clone{i + 1}' for i in range(n_clones)]):
+                if type(k) == str:
+                    state = [(1, 1), str2state(k)]
+                else:
+                    state = [(1, 1)] + [str2state(a) for a in k]
+                ey, ex = cn2evs(state, props)
+                if all([a == state[1] for a in state[1:]]) and n_clones > 1:
+                    my_ax.annotate(
+                        f'{str(state[1])} ',
+                        (ex, ey),
+                        fontsize='x-small',
+                        fontweight='bold',
+                    )
+                else:
+                    my_ax.annotate(
+                        f'{",".join([str(a) for a in state[1:]])} ',
+                        (ex, ey),
+                        fontsize='x-small',
+                    )
+                exs.append(ex)
+                eys.append(ey)
+                cs.append(cmap(mapping[k]))
+
+            my_ax.scatter(exs, eys, s=10, c=cs, edgecolor='k', linewidth=0.8)
+
+            legendstr = []
+            for i in range(n_clones + 1):
+                if i == 0:
+                    legendstr.append('Normal: {:.3f}'.format(bbc_.u_normal[0]))
+                else:
+                    legendstr.append('Clone {}: {:.3f}'.format(i, bbc_['u_clone{}'.format(i)][0]))
 
         handles = [Rectangle((0, 0), 1, 1, fc='white', ec='white', lw=0, alpha=0)]
         my_ax.legend(
@@ -598,7 +662,7 @@ def plot_clusters(
 
         my_ax.set_ylabel('Fractional Copy Number')
         if idx == len(samples) - 1 or save_samples:
-            my_ax.set_xlabel('Mirrored BAF')
+            my_ax.set_xlabel('Mirrored haplotype BAF')
 
         if save_samples:
             plt.title(sample)

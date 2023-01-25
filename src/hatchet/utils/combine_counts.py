@@ -6,7 +6,7 @@ from importlib.resources import path
 import numpy as np
 import pandas as pd
 from scipy.stats import binom, norm
-from scipy.special import logsumexp
+from scipy.special import softmax
 
 import hatchet.data
 from hatchet.utils.ArgParsing import parse_combine_counts_args
@@ -512,46 +512,47 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
 
 
 def multisample_em(alts, refs, start, tol=10e-6):
-    assert refs.shape == alts.shape
-    assert 0 < start <= 0.5
-    assert np.all(alts >= 0)
-    assert np.all(refs >= 0)
+    assert refs.shape == alts.shape, 'Alternate and reference count arrays must have the same shape'
+    assert 0 < start <= 0.5, 'Initial estimate must be in (0, 0.5]'
+
+    totals = alts + refs
 
     n_samples, n_snps = alts.shape
+    totals_sum = np.sum(totals, axis=1)
+    assert np.all(totals_sum > 0), 'Every bin must have >0 SNP-covering reads in each sample!'
+
+    e_arr = np.zeros((2, n_snps))
 
     if np.all(np.logical_or(refs == 0, alts == 0)):
         return np.array([0.0] * n_samples), np.ones(n_snps) * 0.5, 0.0
     else:
-        theta = np.array([start] * n_samples)
+        theta = np.repeat(start, n_samples)
         prev = None
         while prev is None or np.all(np.abs(prev - theta) >= tol):
             prev = theta
 
-            # E-step in log space
-            t1 = np.sum(
-                (refs.T * np.log(theta)).T + (alts.T * np.log(1 - theta)).T,
-                axis=0,
-            )
-            t2 = np.sum(
-                (refs.T * np.log(1 - theta)).T + (alts.T * np.log(theta)).T,
-                axis=0,
-            )
-            phases = np.exp(t1 - logsumexp([t1, t2], axis=0))
-            assert not np.any(np.isnan(phases)), (phases, t1, t2)
-
-            # M-step
-            t1 = np.sum(refs * phases + alts * (1 - phases), axis=1)
-            t2 = np.sum(refs * (1 - phases) + alts * phases, axis=1)
-            theta = t1 / (t1 + t2)
-            assert not np.any(np.isnan(theta)), (theta, t1, t2)
-
+            # Ensure that theta is not exactly 0 or 1 to avoid log(0)
             theta = np.clip(theta, tol, 1 - tol)
 
-    # Force BAF <= 0.5 and flip phases accordingly
-    theta = np.minimum(theta, 1 - theta)
-    t1 = np.sum((refs.T * np.log(theta)).T + (alts.T * np.log(1 - theta)).T, axis=0)
-    t2 = np.sum((refs.T * np.log(1 - theta)).T + (alts.T * np.log(theta)).T, axis=0)
-    phases = np.exp(t1 - logsumexp([t1, t2], axis=0))
+            # E-step in log space
+            e_arr[0] = np.log(theta) @ refs + np.log(1 - theta) @ alts
+            e_arr[1] = np.log(1 - theta) @ refs + np.log(theta) @ alts
+            phases = softmax(e_arr, axis=0)[0, :]
+            assert not np.any(np.isnan(phases)), (phases, e_arr)
+
+            # M-step
+            t1 = refs @ phases + alts @ (1 - phases)
+            theta = t1 / totals_sum
+            assert not np.any(np.isnan(theta)), (theta, t1)
+
+    # If mean(BAF) > 0.5, flip phases accordingly
+    if np.mean(theta) > 0.5:
+        theta = np.clip(theta, tol, 1 - tol)
+
+        theta = 1 - theta
+        t1 = np.sum(np.log(theta) @ refs + np.log(1 - theta) @ alts, axis=0)
+        t2 = np.sum(np.log(1 - theta) @ refs + np.log(theta) @ alts, axis=0)
+        phases = softmax(np.vstack([t1, t2]), axis=0)[0, :]
 
     t1 = np.sum(np.log(theta) * (phases * refs).T, axis=0)
     t2 = np.sum(np.log(1 - theta) * (phases * alts).T, axis=0)
@@ -591,9 +592,7 @@ def merge_phasing(_, all_phase_data):
     for b in all_phase_data[0][0]:
         br = np.argwhere([a in breaks or a in orphans for a in b[:-1]])
         blocks.extend([list(a) for a in np.split(b, br.flatten() + 1)])
-    # print(blocks)
 
-    # print([a[0] for a in blocks if len(a) == 1])
     orphans = orphans.union([a[0] for a in blocks if len(a) == 1])
     blocks = [b for b in blocks if len(b) > 1]
 
@@ -859,6 +858,159 @@ def get_chr_end(stem, chromosome):
     return last_start
 
 
+def backtrack(bp):
+    n, p = bp.shape
+
+    starts = [bp[-1, -1]]
+    for i in range(p - 1, 0, -1):
+        starts.append(bp[starts[-1] - 1, i - 1])
+
+    thresholds = starts[::-1] + [n]
+    return thresholds
+
+
+def segmented_piecewise(X, pieces=2):
+    n, s = X.shape
+    segcost_memo = {}
+
+    def segment_cost(i, j):
+        if (i, j) in segcost_memo:
+            return segcost_memo[i, j]
+        else:
+            my_mean = np.mean(X[i:j], axis=0) if j > i else 0
+            result = np.sum(np.square(X[i:j] - my_mean))
+            segcost_memo[i, j] = result
+            return result
+
+    # penalty A[i, p] is the minimum error possible for fitting X[0] with p+1 pieces
+    A = np.zeros((n, pieces))
+    backpoint = np.zeros((n, pieces), dtype=int)
+
+    A[:, 0] = [segment_cost(0, i) for i in range(n)]
+
+    for p in range(1, pieces):
+        for t in range(1, n):
+            # search over t' < t
+            best_cost = np.inf
+            best_tprime = None
+            for tprime in range(t + 1):
+                # compute cost for making a new segment from tprime through t
+                cost = A[tprime, p - 1] + segment_cost(tprime, t)
+                if cost < best_cost:
+                    best_cost = cost
+                    best_tprime = tprime
+
+            A[t, p] = best_cost
+            backpoint[t, p] = best_tprime   # if this throws a TypeError for int(None), then X may have NaNs
+    return A, backpoint
+
+
+def correct_haplotypes(
+    orig_bafs, min_prop_switch=0.01, n_segments=10, min_switch_density=0.1, min_mean_baf=0.45, minmax_al_imb=0.02
+):
+    # Count switches using only samples with mean allelic imbalance above <minmax_al_imb>
+    imb_samples = np.where(np.mean(np.abs(orig_bafs - 0.5), axis=0) > minmax_al_imb)[0]
+
+    if len(imb_samples) == 0:
+        sp.log(
+            msg=f'No sample with avg. allelic imbalance above [{minmax_al_imb}], skipping correction.\n', level='INFO'
+        )
+        return orig_bafs, None
+
+    bafs = orig_bafs[:, imb_samples]
+
+    # Look for haplotype switches
+    above_mid = bafs > 0.5
+    is_alternating = np.concatenate(
+        [np.zeros((1, bafs.shape[1]), dtype=bool), np.logical_xor(above_mid[1:], above_mid[:-1])]
+    )
+    haplotype_switches = np.where(np.all(is_alternating, axis=1))[0]
+    prop_switched = len(haplotype_switches) / len(is_alternating)
+    sp.log(msg=f'Found haplotype switches in {prop_switched *100 : .2f}% of bins\n', level='INFO')
+
+    if prop_switched > min_prop_switch:
+        # If sufficient switches are found, run segmentation to identify segments w/ many switches
+
+        sp.log(msg=f'Checking haplotype switching using [{n_segments}] segments\n', level='INFO')
+        # Segment using the mean BAFs only - faster and more reliable than using all samples
+        A, bp = segmented_piecewise(np.mean(bafs, axis=1).reshape(-1, 1), pieces=n_segments)
+
+        ts = backtrack(bp[:, :n_segments])
+
+        for idx in np.where(np.diff(ts) == 0)[0]:
+            del ts[idx]
+
+        segments = [orig_bafs[ts[i] : ts[i + 1]] for i in range(len(ts) - 1)]
+
+        # Identify problematic segments as those with many switches and mean near 0.5
+        # (note that mean(BAF_i) across samples i is always <= 0.5 by def. from EM function)
+        switch_densities = np.array(
+            [
+                len(haplotype_switches[(haplotype_switches >= ts[i]) & (haplotype_switches < ts[i + 1])])
+                / (ts[i + 1] - ts[i])
+                for i in range(len(ts) - 1)
+            ]
+        )
+        segment_means = np.array([(np.mean(s) if len(s) > 0 else 0.5) for s in segments])
+
+        # ALSO only correct segments with allelic imbalance at least <min_al_imb> in at least 1 sample
+        segment_imbalances = np.array(
+            [(np.max(np.abs(0.5 - np.mean(np.minimum(s, 1 - s), axis=0))) if len(s) > 0 else 0) for s in segments]
+        )
+
+        """
+        segment_lengths = [len(s) for s in segments]
+        [sp.log(msg=f'Segment {i}: length {a},\tmean {b:.3f},\timbalance {c:.3f},\tswitch prop. {d:.3f}\n',
+                level = 'INFO')
+               for i, (a,b,c, d)
+               in enumerate(zip(segment_lengths, segment_means, segment_imbalances, switch_densities))]
+        """
+
+        bad_segments = np.where(
+            np.logical_and(
+                np.logical_and(switch_densities >= min_switch_density, segment_means >= min_mean_baf),
+                segment_imbalances >= minmax_al_imb,
+            )
+        )[0]
+
+        sp.log(msg=f'Identified {len(bad_segments)} segments with haplotype switching\n', level='INFO')
+        final_segments = []
+
+        for s_idx in range(len(segments)):
+            if s_idx in bad_segments:
+                seg = segments[s_idx].copy()
+                assert len(seg) > 0, 'Haplotype switch correction flagged a length-0 segment'
+
+                # Identify the sample with the most extreme allelic imbalance for this segment
+                minseg = np.minimum(seg, 1 - seg)
+                mmeans = np.mean(minseg, axis=0)
+                extreme_sample = np.argmin(mmeans)
+
+                # Flip all of those bins with mhBAF > 0.5 in the corresponding sample
+                my_flips = np.where(seg[:, extreme_sample] > 0.5)
+
+                seg[my_flips] = 1 - seg[my_flips]
+
+                my_mean = np.mean(seg)
+
+                # If this ends up choosing the haplotype that is more abundant on average,
+                if my_mean > 0.5:
+                    # flip all bins to select the minor haplotype instead
+                    seg = 1 - seg
+
+                final_segments.append(seg)
+            else:
+                final_segments.append(segments[s_idx])
+
+        return np.concatenate(final_segments), ts
+    else:
+        sp.log(
+            msg=f'Insufficient haplotype switching detected (<[{min_prop_switch}]), skipping correction.\n',
+            level='INFO',
+        )
+        return orig_bafs, None
+
+
 def run_chromosome(
     baffile,
     all_names,
@@ -984,6 +1136,16 @@ def run_chromosome(
                 ]
 
             bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
+
+            bafs_p = bb_p.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
+            if bafs_p.shape[0] > 2:
+                sp.log(msg='Correcting haplotype switches on p arm...\n', level='STEP')
+                # TODO: pass through other parameters to correct_haplotypes
+                corrected_bafs_p, _ = correct_haplotypes(bafs_p)
+
+                # flatten these results out and put them back into the BAF array
+                bb_p['ORIGINAL_BAF'] = bb_p.BAF
+                bb_p['BAF'] = corrected_bafs_p.flatten()
         else:
             sp.log(msg=f'No SNPs found in p arm for {chromosome}\n', level='INFO')
             bb_p = None
@@ -1044,6 +1206,16 @@ def run_chromosome(
                 ]
 
             bb_q = merge_data(bins_q, dfs_q, bafs_q, all_names, chromosome)
+
+            bafs_q = bb_q.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
+            if bafs_q.shape[0] > 2:
+                sp.log(msg='Correcting haplotype switches on q arm...\n', level='STEP')
+                # TODO: pass through other parameters to correct_haplotypes
+                corrected_bafs_q, _ = correct_haplotypes(bafs_q)
+
+                # flatten these results out and put them back into the BAF array
+                bb_q['ORIGINAL_BAF'] = bb_q.BAF
+                bb_q['BAF'] = corrected_bafs_q.flatten()
         else:
             sp.log(msg=f'No SNPs found in q arm for {chromosome}\n', level='INFO')
             bb_q = None
@@ -1058,8 +1230,8 @@ def run_chromosome(
 
         sp.log(msg=f'Done chromosome {chromosome}\n', level='INFO')
     except Exception as e:
-        print(f'Error in chromosome {chromosome}:')
-        print(e)
+        sp.log(msg=f'Error in chromosome {chromosome}:', level='ERROR')
+        sp.log(msg=str(e), level='ERROR')
         traceback.print_exc()
         raise e
 

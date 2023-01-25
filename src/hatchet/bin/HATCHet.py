@@ -8,7 +8,7 @@ from collections import Counter
 
 import hatchet
 from hatchet import config, __version__
-from hatchet.utils.Supporting import ensure
+from hatchet.utils.Supporting import ensure, log, error
 from hatchet.utils.solve import solve
 from hatchet.utils.solve.utils import segmentation
 
@@ -453,6 +453,14 @@ def main(args=None):
     )
 
     if not args['diploid'] and not args['tetraploid']:
+        sys.stderr.write(
+            log(
+                '## Neither "diploid" nor "tetraploid" was fixed. '
+                'Model selection will be performed and the "clonal" argument'
+                'will not be used for scaling.\n'
+            )
+        )
+
         sys.stderr.write(log('# Finding the neutral diploid/tetraploid cluster\n'))
         neutral = findNeutralCluster(seg=fseg, size=size, td=args['td'], samples=samples, v=args['v'])
 
@@ -522,19 +530,11 @@ def main(args=None):
         sys.stderr.write(log('# Running diploid\n'))
 
         if args['clonal'] is not None:
-            sys.stderr.write(log('# Using the first given clonal cluster for diploid scaling\n'))
-            clonal = args['clonal']
-            first_clonal = clonal.split(',')[0]
-            tkns = first_clonal.split(':')
-            assert (
-                int(tkns[1]) == 1 and int(tkns[2]) == 1
-            ), 'First clonal cluster must be the diploid cluster used for scaling'
-
+            clonal = parse_clonal_diploid(args['clonal'])
             neutral = None
         else:
             sys.stderr.write(log('# Finding the neutral diploid cluster\n'))
             neutral = findNeutralCluster(seg=fseg, size=size, td=args['td'], samples=samples, v=args['v'])
-
             clonal = None
 
         diploidObjs = runningDiploid(neutral=neutral, args=args, clonal=clonal)
@@ -564,8 +564,10 @@ def main(args=None):
             )
         else:
             sys.stderr.write(log('# Parsing given clonal copy numbers\n'))
+            clonal = parse_clonal_tetraploid(args['clonal'])
+
             clonal, scale = parseClonalClusters(
-                clonal=args['clonal'],
+                clonal=clonal,
                 fseg=fseg,
                 size=size,
                 samples=samples,
@@ -599,6 +601,127 @@ def main(args=None):
                     )
                 )
             )
+
+
+t2s = lambda x: [str(a) for a in x]
+
+
+def parse_clonal_diploid(clonal):
+    """
+    Given a list of clonal cluster copy numbers, this function tries to order them to be compatible
+    with the HATCHet C++ factorization module.
+    For diploid scaling, this module requires:
+    -the first cluster is indicated with copy-number 1,1
+    -the second cluster has a total copy number different from 2
+    """
+    clonal_list = [[int(a) for a in c.split(':')] for c in clonal.split(',')]
+    diploid_clusters = [t for t in clonal_list if t[1] == 1 and t[2] == 1]
+    if len(diploid_clusters) == 1:
+        my_diploid = diploid_clusters[0]
+    elif len(diploid_clusters) > 1:
+        if diploid_clusters[0] == clonal_list[0]:
+            my_diploid = diploid_clusters[0]
+        else:
+            raise ValueError(
+                error(
+                    'Found more than 1 cluster indicated as clonal (1,1) and '
+                    "neither was the first argument to 'clonal'. Please select one for scaling and place "
+                    'it first.'
+                )
+            )
+    else:
+        raise ValueError(
+            error(
+                "No cluster was indicated as (1,1) in argument to 'clonal' with "
+                "'diploid'=True. HATCHet solving module requires specification of (1,1) cluster for the "
+                "'clonal' argument to be used in this case."
+            )
+        )
+
+    candidate_second = [t for t in clonal_list if t[0] != my_diploid[0] and t[1] + t[2] != 2]
+    if len(candidate_second) == 0:
+        raise ValueError(
+            error(
+                'No cluster with total copy number different from 2 was included '
+                "in 'clonal'. At least one such cluster is required for this argument to be used with "
+                "'diploid'=True."
+            )
+        )
+    else:
+        my_second = candidate_second[0]
+    used_clusters = set([my_diploid[0], my_second[0]])
+
+    clonal = ','.join(
+        [
+            ':'.join(t2s(t))
+            for t in [my_diploid] + [my_second] + [t2 for t2 in clonal_list if t2[0] not in used_clusters]
+        ]
+    )
+    log(
+        msg=f' NOTE: cluster {my_diploid[0]} with copy number (1,1) will be used to scale fractional copy numbers.\n',
+        level='INFO',
+    )
+    log(msg=f" Reordered 'clonal' argument={clonal}.\n", level='INFO')
+
+    return clonal
+
+
+def parse_clonal_tetraploid(clonal):
+    """
+    Given a list of clonal cluster copy numbers, this function tries to order them to be compatible
+    with the HATCHet C++ factorization module.
+    For tetraploid scaling, this module requires:
+    -the first cluster is indicated with copy-number 2,2
+    -the second cluster has a total copy number different from 4
+    """
+    clonal_list = [[int(a) for a in c.split(':')] for c in clonal.split(',')]
+    wgd_clusters = [t for t in clonal_list if t[1] == 2 and t[2] == 2]
+    if len(wgd_clusters) == 1:
+        my_wgd = wgd_clusters[0]
+    elif len(wgd_clusters) > 1:
+        if wgd_clusters[0] == clonal_list[0]:
+            my_wgd = wgd_clusters[0]
+        else:
+            raise ValueError(
+                error(
+                    'Found more than 1 cluster indicated as clonal (2,2) and '
+                    "neither was the first argument to 'clonal'. Please select one "
+                    'for scaling and place it first.'
+                )
+            )
+    else:
+        raise ValueError(
+            error(
+                "No cluster was indicated as (2,2) in argument to 'clonal' with "
+                "'tetraploid'=True. HATCHet solving module requires specification of (2,2) cluster for the "
+                "'clonal' argument to be used in this case."
+            )
+        )
+
+    candidate_second = [t for t in clonal_list if t[0] != my_wgd[0] and t[1] + t[2] != 4]
+    if len(candidate_second) == 0:
+        raise ValueError(
+            error(
+                'No cluster with total copy number different from 4 was included '
+                "in 'clonal'. At least one such cluster is required for this "
+                "argument to be used with 'tetraploid'=True."
+            )
+        )
+    else:
+        my_second = candidate_second[0]
+    used_clusters = set([my_wgd[0], my_second[0]])
+
+    clonal = ','.join(
+        [':'.join(t2s(t)) for t in [my_wgd] + [my_second] + [t2 for t2 in clonal_list if t2[0] not in used_clusters]]
+    )
+    sys.stderr.write(
+        log(
+            f'# NOTE: cluster {my_wgd[0]} with copy number (2,2) and cluster {my_second[0]} with '
+            f'copy number ({my_second[1]}, {my_second[2]}) will be used to scale fractional copy numbers.\n'
+        )
+    )
+    sys.stderr.write(log(f"# Reordered 'clonal' argument={clonal}.\n"))
+    return clonal
 
 
 def readBBC(filename):
@@ -1510,14 +1633,6 @@ def isfloat(value):
         return True
     except ValueError:
         return False
-
-
-def error(msg):
-    return '{}{}{}'.format('\033[91m\033[1m', msg, '\033[0m')
-
-
-def log(msg):
-    return '{}{}{}'.format('\033[95m\033[1m', msg, '\033[0m')
 
 
 def warning(msg):

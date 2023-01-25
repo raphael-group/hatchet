@@ -67,4 +67,4 @@ Particularly, `tau` controls the balance between global information (RDR and BAf
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-e`, `--seed`  | Random number generator seed used in model fitting | 0 |
+| `-R`, `--restarts` | Number of restarts (initializations) | For each K, the HMM is initialized randomly this many times and the solution with the highest log-likelihood is kept | 10 |

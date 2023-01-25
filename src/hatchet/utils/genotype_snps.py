@@ -241,8 +241,10 @@ class Caller(Process):
                 codes = map(lambda p: p.wait(), [tgt, gzip])
             if any(c != 0 for c in codes):
                 raise ValueError(
-                    error('SNP Calling failed on {} of {}, please check errors in {}!').format(
-                        chromosome, samplename, errname
+                    error(
+                        'SNP Calling failed on {} of {}, please check errors in {}!'.format(
+                            chromosome, samplename, errname
+                        )
                     )
                 )
             else:

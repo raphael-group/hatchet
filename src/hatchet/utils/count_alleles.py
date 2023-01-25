@@ -258,8 +258,10 @@ class AlleleCounter(Worker):
             codes = map(lambda p: p.wait(), [mpileup, query])
         if any(c != 0 for c in codes):
             raise ValueError(
-                error('Allele counting failed on {} of {}, please check errors in {}!').format(
-                    chromosome, samplename, errname
+                error(
+                    'Allele counting failed on {} of {}, please check errors in {}!'.format(
+                        chromosome, samplename, errname
+                    )
                 )
             )
         else:
