@@ -72,12 +72,14 @@ def main(args=None):
                 for snp in sorted(hetSNPs[args['normal'][1], chro]):
                     count = hetSNPs[args['normal'][1], chro][snp]
                     handle.write(
-                        '{}\t{}\t{}\t{}\t{}\n'.format(
+                        '{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                             chro,
                             snp,
                             args['normal'][1],
                             count[0][1],
                             count[1][1],
+                            count[0][0],
+                            count[1][0],
                         )
                     )
         if handle is not sys.stdout:
@@ -121,7 +123,17 @@ def main(args=None):
             if (sample[1], chro) in counts:
                 for snp in counts[sample[1], chro]:
                     count = counts[sample[1], chro][snp]
-                    handle.write('{}\t{}\t{}\t{}\t{}\n'.format(chro, snp, sample[1], count[0][1], count[1][1]))
+                    handle.write(
+                        '{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                            chro,
+                            snp,
+                            sample[1],
+                            count[0][1],
+                            count[1][1],
+                            count[0][0],
+                            count[1][0],
+                        )
+                    )
     if handle is not sys.stdout:
         handle.close()
 
