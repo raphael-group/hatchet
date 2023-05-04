@@ -768,7 +768,7 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
                 n_snps = len(my_snps)
                 
                 if alt > ref:
-                    haplo = list(my_snps.NO_FLIP)
+                    haplo = list(my_snps.NOFLIP)
                 else:
                     haplo = list(my_snps.FLIP)
 
