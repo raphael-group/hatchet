@@ -442,12 +442,19 @@ def compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha)
 
         if phasing:
             my_snps = collapse_blocks(my_snps, *phase_data, bin_snps.iloc[0].CHR)
+        
+            flat_hap = [item for sublist in my_snps.HAPLO for item in sublist]
+            haplo = ",".join(flat_hap)
+            flat_snppos = [item for sublist in my_snps.SNP_POS for item in sublist]
+            snp_pos = ",".join(flat_snppos)       
+        else:
+            haplo, snp_pos = "", ""          
 
         baf, alpha, beta = apply_EM(totals_in=my_snps.TOTAL, alts_in=my_snps.ALT)
 
         cov = np.sum(alpha + beta) / n_snps
 
-        result[sample] = n_snps, cov, baf, alpha, beta
+        result[sample] = n_snps, cov, baf, alpha, beta, snp_pos, haplo
     return result
 
 
@@ -740,7 +747,11 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
         while i < len(df0):
             if i in singletons or i in orphans:
                 r = df0.iloc[i]
-                rows.append([ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1])
+                if r.ALT > r.REF:
+                    haplo = 1
+                else:
+                    haplo = 0
+                rows.append([ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1, [r.POS], haplo ])
                 i += 1
             else:
                 block = blocks[j]
@@ -755,7 +766,13 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
                 ref = np.sum(my_snps.FLIP * my_snps.ALT + (1 - my_snps.FLIP) * my_snps.REF).astype(np.uint64)
                 total = np.sum(my_snps.TOTAL)
                 n_snps = len(my_snps)
-                rows.append([ch, start, end, sample, alt, ref, total, n_snps])
+                
+                if alt > ref:
+                    haplo = list(my_snps.NO_FLIP)
+                else:
+                    haplo = list(my_snps.FLIP)
+
+                rows.append([ch, start, end, sample, alt, ref, total, n_snps, list(my_snps.POS), haplo])
 
     return pd.DataFrame(
         rows,
@@ -768,6 +785,8 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
             'REF',
             'TOTAL',
             '#SNPS',
+            'SNP_POS',
+            'HAPLO',
         ],
     ).sort_values(by=['CHR', 'START', 'SAMPLE'])
 
@@ -808,10 +827,10 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
             rdr = rdrs[j]
 
             if dfs is not None:
-                nsnps, cov, baf, alpha, beta = bafs[i][sample]
+                nsnps, cov, baf, alpha, beta, snp_pos, haplo = bafs[i][sample]
                 assert snpcounts_from_df[sample] == alpha + beta, (i, sample)
             else:
-                nsnps, cov, baf, alpha, beta = 0, 0, 0, 0, 0
+                nsnps, cov, baf, alpha, beta , snp_pos, haplo= 0, 0, 0, 0, 0, "", ""
 
             rows.append(
                 [
@@ -827,6 +846,8 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
                     baf,
                     total,
                     normal_reads,
+                    snp_pos,
+                    haplo,
                 ]
             )
 
@@ -845,6 +866,8 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
             'BAF',
             'TOTAL_READS',
             'NORMAL_READS',
+            'SNP_POS',
+            'HAPLO',
         ],
     )
 
