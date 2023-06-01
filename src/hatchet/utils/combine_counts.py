@@ -443,10 +443,10 @@ def compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha)
         if phasing:
             my_snps = collapse_blocks(my_snps, *phase_data, bin_snps.iloc[0].CHR)
         
-            flat_hap = [item for sublist in my_snps.HAPLO for item in sublist]
-            haplo = ",".join(flat_hap)
-            flat_snppos = [item for sublist in my_snps.SNP_POS for item in sublist]
-            snp_pos = ",".join(flat_snppos)       
+            flat_hap = [int(item) for sublist in my_snps.HAPLO for item in sublist]
+            haplo = ",".join(list(map(str,flat_hap)))
+            flat_snppos = [int(item) for sublist in my_snps.SNP_POS for item in sublist]
+            snp_pos = ",".join(list(map(str,flat_snppos)))       
         else:
             haplo, snp_pos = "", ""          
 
@@ -751,7 +751,7 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
                     haplo = 1
                 else:
                     haplo = 0
-                rows.append([ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1, [r.POS], haplo ])
+                rows.append([ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1, [r.POS], [haplo] ])
                 i += 1
             else:
                 block = blocks[j]
@@ -768,7 +768,7 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
                 n_snps = len(my_snps)
                 
                 if alt > ref:
-                    haplo = list(my_snps.NO_FLIP)
+                    haplo = list(my_snps.NOFLIP)
                 else:
                     haplo = list(my_snps.FLIP)
 
