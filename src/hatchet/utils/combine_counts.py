@@ -678,6 +678,7 @@ def phase_blocks_sequential(df, blocksize=50e3, max_snps_per_block=10, alpha=0):
     # Identify contiguous segments of SNPs with phasing information
     segments = consecutive(np.where(~df.PHASE.isna())[0])
 
+    orphans = set()
     if alpha < 1:
         ### Use binomial test to split adjacent SNPs with very different phased BAFs
         # (further dividing the segments identified above)
@@ -702,7 +703,6 @@ def phase_blocks_sequential(df, blocksize=50e3, max_snps_per_block=10, alpha=0):
         nm = np.vstack([no_merge, no_merge + 1])
 
         new_segments = []
-        orphans = set()
         for seg in segments:
             # identify adjacent pairs that violate test (p<alpha) and are both in this segment
             violations = np.all(np.isin(nm, seg), axis=0)
