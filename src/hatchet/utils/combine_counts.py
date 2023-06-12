@@ -375,6 +375,7 @@ def EM(totals_in, alts_in, start, tol=1e-6):
             # E-step
             assert 0 + tol < baf < 1 - tol, (baf, totals, alts, start)
             M = (totals - 2.0 * alts) * np.log(baf) + (2.0 * alts - totals) * np.log(1.0 - baf)
+            M = M.astype(float)
             M = np.exp(np.clip(a=M, a_min=-100, a_max=100))
             phases = np.reciprocal(1 + M)
 
@@ -384,22 +385,26 @@ def EM(totals_in, alts_in, start, tol=1e-6):
         assert 0 + tol < baf < 1 - tol, (baf, totals, alts, start)
         lpmf = binom.logpmf
         log_likelihood = float(
-            np.sum(phases * lpmf(k=alts, n=totals, p=baf) + (1 - phases) * lpmf(k=alts, n=totals, p=1 - baf))
+            np.sum(phases * lpmf(k=list(alts), n=list(totals), p=baf) + (1 - phases) * lpmf(k=
+                                                                                            list(alts), n=list(totals),
+                                                                                            p=1 - baf))
         )
         return baf, phases, log_likelihood
 
 
-def apply_EM(totals_in, alts_in):
+def apply_EM(totals_in, alts_in, refs_haplo):
     baf, phases, logl = max(
         (EM(totals_in, alts_in, start=st) for st in np.linspace(0.01, 0.49, 50)),
         key=(lambda x: x[2]),
     )
     refs = totals_in - alts_in
     phases = phases.round().astype(np.int8)
+    inverse_reference_haplo = pd.Series([[1 - ph for ph in hap] for hap in refs_haplo])
     return (
         baf,
         np.sum(np.choose(phases, [refs, alts_in])),
         np.sum(np.choose(phases, [alts_in, refs])),
+        np.choose(phases, [refs_haplo, inverse_reference_haplo]),
     )
 
 
@@ -440,21 +445,25 @@ def compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha)
         my_snps = bin_snps[bin_snps.SAMPLE == sample]
         n_snps = len(my_snps)
 
+        snp_pos = ",".join(map(str,my_snps.POS))
+        snp_ref_counts = ",".join(map(str,my_snps.REF))
+        snp_alt_counts = ",".join(map(str,my_snps.ALT))
         if phasing:
             my_snps = collapse_blocks(my_snps, *phase_data, bin_snps.iloc[0].CHR)
-        
-            flat_hap = [int(item) for sublist in my_snps.HAPLO for item in sublist]
-            haplo = ",".join(list(map(str,flat_hap)))
-            flat_snppos = [int(item) for sublist in my_snps.SNP_POS for item in sublist]
-            snp_pos = ",".join(list(map(str,flat_snppos)))       
         else:
-            haplo, snp_pos = "", ""          
+            # each snp is it's on haplo block. [1] represents the minor count.
+            # After EM algorithm, the haplostring tracks the haplotype with the minor
+            # allele count (alpha)
+            my_snps["HAPLO"] = len(my_snps)*[[1]]
 
-        baf, alpha, beta = apply_EM(totals_in=my_snps.TOTAL, alts_in=my_snps.ALT)
-
+        baf, alpha, beta, emhaplo = apply_EM(my_snps.TOTAL, my_snps.ALT, my_snps.HAPLO)
+        # flatten 2d list of haploblocks into one haplotype array for the whole bin
+        haploflat = [int(item) for sublist in emhaplo for item in sublist]
+        assert np.sum(np.choose(haploflat,[bin_snps.ALT, bin_snps.REF])) == alpha
+        haplostring = ",".join(list(map(str, haploflat)))
         cov = np.sum(alpha + beta) / n_snps
 
-        result[sample] = n_snps, cov, baf, alpha, beta, snp_pos, haplo
+        result[sample] = n_snps, cov, baf, alpha, beta, snp_pos, snp_ref_counts, snp_alt_counts, haplostring
     return result
 
 
@@ -747,11 +756,7 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
         while i < len(df0):
             if i in singletons or i in orphans:
                 r = df0.iloc[i]
-                if r.ALT > r.REF:
-                    haplo = 1
-                else:
-                    haplo = 0
-                rows.append([ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1, [r.POS], [haplo] ])
+                rows.append([ch, r.POS, r.POS, sample, r.ALT, r.REF, r.TOTAL, 1, [1]])
                 i += 1
             else:
                 block = blocks[j]
@@ -766,13 +771,8 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
                 ref = np.sum(my_snps.FLIP * my_snps.ALT + (1 - my_snps.FLIP) * my_snps.REF).astype(np.uint64)
                 total = np.sum(my_snps.TOTAL)
                 n_snps = len(my_snps)
-                
-                if alt > ref:
-                    haplo = list(my_snps.NOFLIP)
-                else:
-                    haplo = list(my_snps.FLIP)
 
-                rows.append([ch, start, end, sample, alt, ref, total, n_snps, list(my_snps.POS), haplo])
+                rows.append([ch, start, end, sample, alt, ref, total, n_snps, list(my_snps.NOFLIP)])
 
     return pd.DataFrame(
         rows,
@@ -785,7 +785,6 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
             'REF',
             'TOTAL',
             '#SNPS',
-            'SNP_POS',
             'HAPLO',
         ],
     ).sort_values(by=['CHR', 'START', 'SAMPLE'])
@@ -827,10 +826,12 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
             rdr = rdrs[j]
 
             if dfs is not None:
-                nsnps, cov, baf, alpha, beta, snp_pos, haplo = bafs[i][sample]
+                nsnps, cov, baf, alpha, beta, snp_pos, snp_ref_counts, snp_alt_counts, haplo = bafs[i][sample]
                 assert snpcounts_from_df[sample] == alpha + beta, (i, sample)
             else:
-                nsnps, cov, baf, alpha, beta , snp_pos, haplo= 0, 0, 0, 0, 0, "", ""
+                nsnps, cov, baf, alpha, beta, \
+                snp_pos, snp_ref_counts, snp_alt_counts, haplo = 0, 0, 0, 0, 0, "", "", "", ""
+
 
             rows.append(
                 [
@@ -847,6 +848,8 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
                     total,
                     normal_reads,
                     snp_pos,
+                    snp_ref_counts,
+                    snp_alt_counts,
                     haplo,
                 ]
             )
@@ -867,6 +870,8 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
             'TOTAL_READS',
             'NORMAL_READS',
             'SNP_POS',
+            'SNP_REF_COUNTS',
+            'SNP_ALT_COUNTS',
             'HAPLO',
         ],
     )
@@ -1169,6 +1174,7 @@ def run_chromosome(
                 # flatten these results out and put them back into the BAF array
                 bb_p['ORIGINAL_BAF'] = bb_p.BAF
                 bb_p['BAF'] = corrected_bafs_p.flatten()
+                bb_p['UNIT'] = 'p'
         else:
             sp.log(msg=f'No SNPs found in p arm for {chromosome}\n', level='INFO')
             bb_p = None
@@ -1239,6 +1245,7 @@ def run_chromosome(
                 # flatten these results out and put them back into the BAF array
                 bb_q['ORIGINAL_BAF'] = bb_q.BAF
                 bb_q['BAF'] = corrected_bafs_q.flatten()
+                bb_q['UNIT'] = 'q'
         else:
             sp.log(msg=f'No SNPs found in q arm for {chromosome}\n', level='INFO')
             bb_q = None

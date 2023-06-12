@@ -253,7 +253,7 @@ class Caller(Process):
         cmd_mpileup = '{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}'.format(
             self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp
         )
-        cmd_call = '{} call -mv -Oz -o {}'.format(self.bcftools, outfile)
+        cmd_call = '{} call -m -Oz -o {}'.format(self.bcftools, outfile)
         if self.snplist is not None:
             assert os.path.isfile(tgtfile)
             cmd_mpileup += ' -T {}'.format(tgtfile)
