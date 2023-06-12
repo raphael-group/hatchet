@@ -402,8 +402,8 @@ def apply_EM(totals_in, alts_in, refs_haplo):
     inverse_reference_haplo = pd.Series([[1 - ph for ph in hap] for hap in refs_haplo])
     return (
         baf,
-        np.sum(np.choose(phases, [refs, alts_in])),
-        np.sum(np.choose(phases, [alts_in, refs])),
+        int(np.sum(np.choose(phases, [alts_in, refs]))),
+        int(np.sum(np.choose(phases, [refs, alts_in]))),
         np.choose(phases, [refs_haplo, inverse_reference_haplo]),
     )
 
@@ -453,17 +453,18 @@ def compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha)
         else:
             # each snp is it's on haplo block. [1] represents the minor count.
             # After EM algorithm, the haplostring tracks the haplotype with the minor
-            # allele count (alpha)
+            # allele count (beta)
             my_snps["HAPLO"] = len(my_snps)*[[1]]
 
         baf, alpha, beta, emhaplo = apply_EM(my_snps.TOTAL, my_snps.ALT, my_snps.HAPLO)
         # flatten 2d list of haploblocks into one haplotype array for the whole bin
         haploflat = [int(item) for sublist in emhaplo for item in sublist]
-        assert np.sum(np.choose(haploflat,[bin_snps.ALT, bin_snps.REF])) == alpha
+        assert np.sum(np.choose(haploflat,[bin_snps.ALT, bin_snps.REF])) == beta
         haplostring = ",".join(list(map(str, haploflat)))
-        cov = np.sum(alpha + beta) / n_snps
+        cov = (int(alpha) + int(beta)) / n_snps
+        tot = (int(alpha) + int(beta))
 
-        result[sample] = n_snps, cov, baf, alpha, beta, snp_pos, snp_ref_counts, snp_alt_counts, haplostring
+        result[sample] = n_snps, cov, baf, alpha, beta, tot, snp_pos, snp_ref_counts, snp_alt_counts, haplostring
     return result
 
 
@@ -821,16 +822,16 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
 
         for j in range(len(sample_names)):
             sample = sample_names[j]
-            total = totals[j + 1]
-            normal_reads = totals[0]
+            total = int(totals[j + 1])
+            normal_reads = int(totals[0])
             rdr = rdrs[j]
 
             if dfs is not None:
-                nsnps, cov, baf, alpha, beta, snp_pos, snp_ref_counts, snp_alt_counts, haplo = bafs[i][sample]
+                nsnps, cov, baf, alpha, beta, tot_snp, snp_pos, snp_ref_counts, snp_alt_counts, haplo = bafs[i][sample]
                 assert snpcounts_from_df[sample] == alpha + beta, (i, sample)
             else:
-                nsnps, cov, baf, alpha, beta, \
-                snp_pos, snp_ref_counts, snp_alt_counts, haplo = 0, 0, 0, 0, 0, "", "", "", ""
+                nsnps, cov, baf, alpha, beta, tot_snp,\
+                snp_pos, snp_ref_counts, snp_alt_counts, haplo = 0, 0, 0, 0, 0, 0, "", "", "", ""
 
 
             rows.append(
@@ -844,6 +845,7 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
                     cov,
                     alpha,
                     beta,
+                    tot_snp,
                     baf,
                     total,
                     normal_reads,
@@ -866,6 +868,7 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
             'COV',
             'ALPHA',
             'BETA',
+            'TOTAL_SNP_READS',
             'BAF',
             'TOTAL_READS',
             'NORMAL_READS',
@@ -1254,7 +1257,7 @@ def run_chromosome(
             raise ValueError(sp.error(f'No SNPs found on either arm of chromosome {chromosome}!'))
 
         bb = pd.concat([bb_p, bb_q])
-        bb.to_csv(outfile, index=False, sep='\t')
+        bb.to_csv(outfile, index=False, sep='\t',float_format="%.5f")
         # np.savetxt(outfile + '.totalcounts', total_counts)
         # np.savetxt(outfile + '.thresholds', complete_thresholds)
 
