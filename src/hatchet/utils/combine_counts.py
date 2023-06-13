@@ -1060,7 +1060,7 @@ def run_chromosome(
     test_alpha,
 ):
     """
-    Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
+    Perform adaptive binning and infer BAFs to produce a HATCHet `bblock` and `btrack` file for a single chromosome.
     """
 
     try:
@@ -1110,153 +1110,102 @@ def run_chromosome(
             # Load SNP positions and counts for this chromosome
             positions, snp_counts, snpsv = read_snps(baffile, chromosome, all_names, phasefile=phasefile)
 
-        sp.log(msg=f'Binning p arm of chromosome {chromosome}\n', level='INFO')
-        if len(np.where(positions <= centromere_start)[0]) > 0:
-            # There may not be a SNP between the centromere end and the next SNP threshold
-            # Goal for p arm is to END at the FIRST threshold that is AFTER the LAST SNP BEFORE the centromere
-            last_snp_before_centromere = positions[np.where(positions < centromere_start)[0][-1]]
-            last_threshold_before_centromere = complete_thresholds[
-                np.where(complete_thresholds > last_snp_before_centromere)[0][0]
-            ]
+        def arm_indices(arm):
+            if arm == "p":
+                # There may not be a SNP between the centromere end and the next SNP threshold
+                # Goal for p arm is to END at the FIRST threshold that is AFTER the LAST SNP BEFORE the centromere
+                if len(np.where(positions < centromere_start)[0]) > 0:
+                    last_snp_before_centromere = positions[np.where(positions < centromere_start)[0][-1]]
+                    last_threshold_before_centromere = complete_thresholds[
+                        np.where(complete_thresholds > last_snp_before_centromere)[0][0]
+                    ]
+                    idx = np.where(complete_thresholds <= last_threshold_before_centromere)[0]
+                    snp_idx = np.where(positions <= last_threshold_before_centromere)[0]
+                else:
+                    idx, snp_idx = [], []
+            else: # arm == "q"
+                if len(np.where(positions > centromere_end)[0]) > 0:
+                    first_snp_after_centromere = positions[np.where(positions > centromere_end)[0][0]]
+                    first_threshold_after_centromere = complete_thresholds[
+                        np.where(complete_thresholds < first_snp_after_centromere)[0][-1]
+                    ]
+                    idx = np.where(complete_thresholds >= first_threshold_after_centromere)[0]
+                    snp_idx = np.where(positions >= first_threshold_after_centromere)[0]
+                else:
+                    idx, snp_idx = [], []
+            return idx, snp_idx
 
-            p_idx = np.where(complete_thresholds <= last_threshold_before_centromere)[0]
-            p_thresholds = complete_thresholds[p_idx]
-            p_counts = total_counts[p_idx]
+        armbbs = []
+        for arm in ["p", "q"]:
+            sp.log(msg=f'Binning {arm} arm of chromosome {chromosome}\n', level='INFO')
+            idx, snp_idx = arm_indices(arm)
+            if len(snp_idx) > 0:
+                thresholds = complete_thresholds[idx]
+                counts = total_counts[idx]
 
-            p_snp_idx = np.where(positions <= last_threshold_before_centromere)[0]
-            p_positions = positions[p_snp_idx]
-            p_snpcounts = snp_counts[p_snp_idx]
+                positions = positions[snp_idx]
+                snpcounts = snp_counts[snp_idx]
 
-            # Identify bins
-            bins_p = adaptive_bins_arm(
-                snp_thresholds=p_thresholds,
-                total_counts=p_counts,
-                snp_positions=p_positions,
-                snp_counts=p_snpcounts,
-                min_snp_reads=min_snp_reads,
-                min_total_reads=min_total_reads,
-            )
+                # Identify bins
+                bins = adaptive_bins_arm(
+                    snp_thresholds=thresholds,
+                    total_counts=counts,
+                    snp_positions=positions,
+                    snp_counts=snpcounts,
+                    min_snp_reads=min_snp_reads,
+                    min_total_reads=min_total_reads,
+                )
 
-            starts_p = bins_p[0]
-            ends_p = bins_p[1]
-            # Partition SNPs for BAF inference
-
-            # Infer BAF
-            if xy:
-                # TODO: compute BAFs for XX
-                dfs_p = None
-                bafs_p = None
-            else:
-                dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])] for i in range(len(starts_p))]
-
-                if len(dfs_p) > 1:
-                    for i in range(len(dfs_p)):
-                        assert np.all(
-                            dfs_p[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0) >= min_snp_reads
-                        ), i
-
-                bafs_p = [
-                    compute_baf_wrapper(
-                        d,
-                        blocksize,
-                        max_snps_per_block,
-                        test_alpha,
-                        multisample,
-                    )
-                    for d in dfs_p
-                ]
-
-            bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
-
-            bafs_p = bb_p.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
-            if bafs_p.shape[0] > 2:
-                sp.log(msg='Correcting haplotype switches on p arm...\n', level='STEP')
-                # TODO: pass through other parameters to correct_haplotypes
-                corrected_bafs_p, _ = correct_haplotypes(bafs_p)
-
-                # flatten these results out and put them back into the BAF array
-                bb_p['ORIGINAL_BAF'] = bb_p.BAF
-                bb_p['BAF'] = corrected_bafs_p.flatten()
-                bb_p['UNIT'] = 'p'
-        else:
-            sp.log(msg=f'No SNPs found in p arm for {chromosome}\n', level='INFO')
-            bb_p = None
-
-        sp.log(msg=f'Binning q arm of chromosome {chromosome}\n', level='INFO')
-
-        if len(np.where(positions >= centromere_end)[0]) > 0:
-            # There may not be a SNP between the centromere end and the next SNP threshold
-            # Goal for q arm is to start at the latest threshold that is before the first SNP after the centromere
-            first_snp_after_centromere = positions[np.where(positions > centromere_end)[0][0]]
-            first_threshold_after_centromere = complete_thresholds[
-                np.where(complete_thresholds < first_snp_after_centromere)[0][-1]
-            ]
-
-            q_idx = np.where(complete_thresholds >= first_threshold_after_centromere)[0]
-            q_thresholds = complete_thresholds[q_idx]
-            q_counts = total_counts[q_idx]
-
-            q_snp_idx = np.where(positions >= first_threshold_after_centromere)[0]
-            q_positions = positions[q_snp_idx]
-            q_snpcounts = snp_counts[q_snp_idx]
-
-            bins_q = adaptive_bins_arm(
-                snp_thresholds=q_thresholds,
-                total_counts=q_counts,
-                snp_positions=q_positions,
-                snp_counts=q_snpcounts,
-                min_snp_reads=min_snp_reads,
-                min_total_reads=min_total_reads,
-            )
-
-            starts_q = bins_q[0]
-            ends_q = bins_q[1]
-
-            if xy:
-                dfs_q = None
-                bafs_q = None
-            else:
+                starts = bins[0]
+                ends = bins[1]
                 # Partition SNPs for BAF inference
-                dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])] for i in range(len(starts_q))]
-
-                if len(dfs_q) > 1:
-                    for i in range(len(dfs_q)):
-                        assert np.all(
-                            dfs_q[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0) >= min_snp_reads
-                        ), i
 
                 # Infer BAF
-                bafs_q = [
-                    compute_baf_wrapper(
-                        d,
-                        blocksize,
-                        max_snps_per_block,
-                        test_alpha,
-                        multisample,
-                    )
-                    for d in dfs_q
-                ]
+                if xy:
+                    # TODO: compute BAFs for XX
+                    dfs = None
+                    bafs = None
+                else:
+                    dfs = [snpsv[(snpsv.POS >= starts[i]) & (snpsv.POS <= ends[i])] for i in range(len(starts))]
 
-            bb_q = merge_data(bins_q, dfs_q, bafs_q, all_names, chromosome)
+                    if len(dfs) > 1:
+                        for i in range(len(dfs)):
+                            assert np.all(
+                                dfs[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0) >= min_snp_reads
+                            ), i
 
-            bafs_q = bb_q.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
-            if bafs_q.shape[0] > 2:
-                sp.log(msg='Correcting haplotype switches on q arm...\n', level='STEP')
-                # TODO: pass through other parameters to correct_haplotypes
-                corrected_bafs_q, _ = correct_haplotypes(bafs_q)
+                    bafs = [
+                        compute_baf_wrapper(
+                            d,
+                            blocksize,
+                            max_snps_per_block,
+                            test_alpha,
+                            multisample,
+                        )
+                        for d in dfs
+                    ]
 
-                # flatten these results out and put them back into the BAF array
-                bb_q['ORIGINAL_BAF'] = bb_q.BAF
-                bb_q['BAF'] = corrected_bafs_q.flatten()
-                bb_q['UNIT'] = 'q'
-        else:
-            sp.log(msg=f'No SNPs found in q arm for {chromosome}\n', level='INFO')
-            bb_q = None
+                bb = merge_data(bins, dfs, bafs, all_names, chromosome)
 
-        if bb_p is None and bb_q is None:
+                bafs = bb.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
+                if bafs.shape[0] > 2:
+                    sp.log(msg=f'Correcting haplotype switches on {arm} arm...\n', level='STEP')
+                    # TODO: pass through other parameters to correct_haplotypes
+                    corrected_bafs, _ = correct_haplotypes(bafs)
+
+                    # flatten these results out and put them back into the BAF array
+                    bb['ORIGINAL_BAF'] = bb.BAF
+                    bb['BAF'] = corrected_bafs.flatten()
+                    bb['UNIT'] = arm
+            else:
+                sp.log(msg=f'No SNPs found in {arm} arm for {chromosome}\n', level='INFO')
+                bb = None
+            armbbs.append(bb)
+
+        if all(element is None for element in armbbs):
             raise ValueError(sp.error(f'No SNPs found on either arm of chromosome {chromosome}!'))
 
-        bb = pd.concat([bb_p, bb_q])
+        bb = pd.concat(armbbs)
         bb.to_csv(outfile, index=False, sep='\t',float_format="%.5f")
         # np.savetxt(outfile + '.totalcounts', total_counts)
         # np.savetxt(outfile + '.thresholds', complete_thresholds)
