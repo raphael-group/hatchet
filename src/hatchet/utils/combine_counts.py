@@ -103,9 +103,9 @@ def main(args=None):
     )
     # merge all BB files together to get the one remaining BB file
     outfiles = [a[3] for a in params]
-    bbs = [pd.read_table(bb, dtype={'#CHR': str}) for bb in outfiles]
+    bbs = [pd.read_table(bb, dtype={'CHR': str}) for bb in outfiles]
     big_bb = pd.concat(bbs)
-    big_bb = big_bb.sort_values(by=['#CHR', 'START', 'SAMPLE'])
+    big_bb = big_bb.sort_values(by=['CHR', 'START', 'SAMPLE'])
 
     big_bb['CORRECTED_READS'] = np.NAN
 
@@ -136,8 +136,8 @@ def main(args=None):
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     big_bb.END = big_bb.END + 1
 
-    autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
-    big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index=False, sep='\t')
+    autosomes = set([ch for ch in big_bb['CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
+    big_bb[big_bb['CHR'].isin(autosomes)].to_csv(outfile, index=False, sep='\t')
 
     big_bb.to_csv(outfile + '.withXY', index=False, sep='\t')
 
@@ -791,7 +791,7 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
     ).sort_values(by=['CHR', 'START', 'SAMPLE'])
 
 
-def merge_data(bins, dfs, bafs, sample_names, chromosome):
+def merge_data(bins, dfs, bafs, sample_names, chromosome, unit):
     """
     Merge bins data (starts, ends, total counts, RDRs) with SNP data and BAF data for each bin.
     Parameters:
@@ -837,45 +837,43 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
             rows.append(
                 [
                     chromosome,
+                    unit,
                     start,
                     end,
                     sample,
                     rdr,
-                    nsnps,
-                    cov,
-                    alpha,
-                    beta,
-                    tot_snp,
-                    baf,
                     total,
                     normal_reads,
+                    nsnps,
+                    beta,
+                    tot_snp,
+                    haplo,
                     snp_pos,
                     snp_ref_counts,
                     snp_alt_counts,
-                    haplo,
+                    baf,
                 ]
             )
 
     return pd.DataFrame(
         rows,
         columns=[
-            '#CHR',
+            'CHR',
+            'UNIT',
             'START',
             'END',
             'SAMPLE',
             'RD',
-            '#SNPS',
-            'COV',
-            'ALPHA',
-            'BETA',
-            'TOTAL_SNP_READS',
-            'BAF',
             'TOTAL_READS',
             'NORMAL_READS',
+            'SNPS',
+            'BCOUNT',
+            'TOTAL_SNP_READS',
+            'HAPLO',
             'SNP_POS',
             'SNP_REF_COUNTS',
             'SNP_ALT_COUNTS',
-            'HAPLO',
+            'BAF',
         ],
     )
 
@@ -1110,6 +1108,7 @@ def run_chromosome(
             # Load SNP positions and counts for this chromosome
             positions, snp_counts, snpsv = read_snps(baffile, chromosome, all_names, phasefile=phasefile)
 
+
         def arm_indices(arm):
             if arm == "p":
                 # There may not be a SNP between the centromere end and the next SNP threshold
@@ -1185,9 +1184,9 @@ def run_chromosome(
                         for d in dfs
                     ]
 
-                bb = merge_data(bins, dfs, bafs, all_names, chromosome)
+                bb = merge_data(bins, dfs, bafs, all_names, chromosome, arm)
 
-                bafs = bb.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
+                bafs = bb.pivot(index=['CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
                 if bafs.shape[0] > 2:
                     sp.log(msg=f'Correcting haplotype switches on {arm} arm...\n', level='STEP')
                     # TODO: pass through other parameters to correct_haplotypes
@@ -1196,7 +1195,6 @@ def run_chromosome(
                     # flatten these results out and put them back into the BAF array
                     bb['ORIGINAL_BAF'] = bb.BAF
                     bb['BAF'] = corrected_bafs.flatten()
-                    bb['UNIT'] = arm
             else:
                 sp.log(msg=f'No SNPs found in {arm} arm for {chromosome}\n', level='INFO')
                 bb = None

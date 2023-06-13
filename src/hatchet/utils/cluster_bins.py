@@ -141,6 +141,13 @@ def read_bb(bbfile, subset=None):
     populated_labels = False
 
     chr_labels = []
+
+
+    ### convert from new BB format to old format for compatibility
+
+    bb = bb.rename(columns={"CHR": "#CHR", "SNPS": "#SNPS", "BCOUNT": "BETA"})
+    bb['ALPHA'] = bb['TOTAL_SNP_READS']-bb['BETA']
+    bb['COV'] = bb['TOTAL_SNP_READS']/bb['#SNPS']
     for ch, df0 in bb.groupby('#CHR'):
         df0 = df0.sort_values('START')
 
