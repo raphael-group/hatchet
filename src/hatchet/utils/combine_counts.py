@@ -392,19 +392,21 @@ def EM(totals_in, alts_in, start, tol=1e-6):
         return baf, phases, log_likelihood
 
 
-def apply_EM(totals_in, alts_in, refs_haplo):
+def apply_EM(totals_in, alts_in, alt_haplo):
     baf, phases, logl = max(
         (EM(totals_in, alts_in, start=st) for st in np.linspace(0.01, 0.49, 50)),
         key=(lambda x: x[2]),
     )
     refs = totals_in - alts_in
     phases = phases.round().astype(np.int8)
-    inverse_reference_haplo = pd.Series([[1 - ph for ph in hap] for hap in refs_haplo])
+    inverse_reference_haplo = pd.Series([[1 - ph for ph in hap] for hap in alt_haplo])
+    if not np.all(phases == (alts_in < refs)):
+        sp.log(totals_in)
     return (
         baf,
         int(np.sum(np.choose(phases, [alts_in, refs]))),
         int(np.sum(np.choose(phases, [refs, alts_in]))),
-        np.choose(phases, [refs_haplo, inverse_reference_haplo]),
+        np.choose(phases, [alt_haplo, inverse_reference_haplo]),
     )
 
 
