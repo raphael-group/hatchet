@@ -2,6 +2,9 @@ import os
 import os.path
 import shlex
 import subprocess as pr
+import shutil
+import tempfile
+
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 
 from hatchet.utils.ArgParsing import parse_genotype_snps_arguments
@@ -25,6 +28,7 @@ def main(args=None):
         bcftools=args['bcftools'],
         reference=args['reference'],
         samples=[args['normal']],
+        nonormal=args['nonormal'],
         chromosomes=args['chromosomes'],
         num_workers=args['j'],
         q=args['q'],
@@ -79,6 +83,7 @@ def call(
     bcftools,
     reference,
     samples,
+    nonormal,
     chromosomes,
     num_workers,
     q,
@@ -119,6 +124,7 @@ def call(
             results,
             progress_bar,
             bcftools,
+            nonormal,
             reference,
             q,
             Q,
@@ -165,6 +171,7 @@ class Caller(Process):
         result_queue,
         progress_bar,
         bcftools,
+        nonormal,
         reference,
         q,
         Q,
@@ -180,6 +187,7 @@ class Caller(Process):
         self.result_queue = result_queue
         self.progress_bar = progress_bar
         self.bcftools = bcftools
+        self.nonormal = nonormal
         self.reference = reference
         self.q = q
         self.Q = Q
@@ -261,13 +269,21 @@ class Caller(Process):
             cmd_mpileup += ' -r {}'.format(chromosome)
         if self.E:
             cmd_mpileup += ' -E'
+
+        # extra step to run hetdetect if there is no matched normal   
+        if self.nonormal:
+            # make a temporary directory using tempfile within outdir
+            tmpdir = tempfile.mkdtemp(dir=self.outdir)
+            cmd_runhetdetect = 'run_hetdetect.py --compress -i {} -o {}'.format(outfile, tmpdir)
         with open(errname, 'w') as err:
+            pcss = []
             mpileup = pr.Popen(
                 shlex.split(cmd_mpileup),
                 stdout=pr.PIPE,
                 stderr=err,
                 universal_newlines=True,
             )
+            pcss.append(mpileup)
             call = pr.Popen(
                 shlex.split(cmd_call),
                 stdin=mpileup.stdout,
@@ -275,8 +291,20 @@ class Caller(Process):
                 stderr=err,
                 universal_newlines=True,
             )
-            codes = map(lambda p: p.wait(), [mpileup, call])
-        if any(c != 0 for c in codes):
+            pcss.append(call)
+            if self.nonormal:
+                hetdetect = pr.Popen(
+                    shlex.split(cmd_runhetdetect),
+                    stdout=pr.PIPE,
+                    stderr=err,
+                    env = os.environ.copy(),
+                    universal_newlines=True,
+                )
+                pcss.append(hetdetect)
+            codes = map(lambda p: p.wait(), pcss)
+        if any(c != 0 for c in codes) or (self.nonormal and not os.path.isfile(os.path.join(tmpdir,"hetdetect.vcf.gz"))):
+            if self.nonormal:
+                shutil.rmtree(tmpdir, ignore_errors=True)
             raise ValueError(
                 error('SNP Calling failed on {} of {}, please check errors in {}!').format(
                     chromosome, samplename, errname
@@ -284,6 +312,11 @@ class Caller(Process):
             )
         else:
             os.remove(errname)
+            if self.nonormal:
+                # copy hetdetect.vcf to outfile using shutil
+                shutil.copyfile(os.path.join(tmpdir,"hetdetect.vcf.gz"), outfile)
+                shutil.rmtree(tmpdir)
+
             if self.snplist is not None:
                 os.remove(tgtfile)
         return outfile

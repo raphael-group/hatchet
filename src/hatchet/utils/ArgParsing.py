@@ -846,7 +846,17 @@ def parse_genotype_snps_arguments(args=None):
         '--normal',
         required=True,
         type=str,
+        default = "None",
         help='BAM file corresponding to matched normal sample',
+    )
+    parser.add_argument(
+        '-T',
+        '--tumor',
+        required=False,
+        nargs = "+",
+        type=str,
+        default = [],
+        help='BAM file corresponding to matched tumor sample(s)',
     )
     parser.add_argument(
         '-r',
@@ -965,9 +975,18 @@ def parse_genotype_snps_arguments(args=None):
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
+    nonormalFlag = False
     normalbaf = args.normal
+    if normalbaf == "None":
+        log(
+            msg='Normal BAM file is not provided. Therefore the analysis will run without a matched normal.'
+                'het SNP positions will be inferred from the first tumor sample\n',
+            level='WARN',
+        )
+        normalbaf = args.tumor[0]
+        nonormalFlag = True
     if not isfile(os.path.abspath(normalbaf)):
-        raise ValueError(error('The specified normal BAM file does not exist'))
+        raise ValueError(error(f'The specified normal BAM file {normalbaf} does not exist'))
     normal = (os.path.abspath(normalbaf), 'Normal')
 
     # In default mode, check the existence and compatibility of samtools and bcftools
@@ -1021,6 +1040,7 @@ def parse_genotype_snps_arguments(args=None):
 
     return {
         'normal': normal,
+        'nonormal': nonormalFlag,
         'chromosomes': chromosomes,
         'samtools': samtools,
         'bcftools': bcftools,

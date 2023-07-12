@@ -116,6 +116,8 @@ def main(args=None):
             args=[
                 '-N',
                 config.run.normal,
+                '-T',
+                config.run.bams,
                 '-r',
                 config.run.reference,
                 '-R',
