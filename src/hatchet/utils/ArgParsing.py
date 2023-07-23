@@ -551,20 +551,27 @@ def parse_count_reads_args(args=None):
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
-    bams = [args.normal] + args.tumor
+    nonormalFlag = False
+    if args.normal == "None":
+        nonormalFlag = True
+        bams = args.tumor
+    else:
+        bams = [args.normal] + args.tumor
     for bamfile in bams:
         ensure(isfile(bamfile), 'The specified tumor BAM file does not exist')
 
     names = args.samples
+    if nonormalFlag:
+        names = [i for i in args.samples if i != 'normal']
     ensure(
         (names is None) or (len(bams) == len(names)),
         'A sample name must be provided for each corresponding BAM: both for each normal sample and each tumor sample',
     )
 
     if names is None:
-        names = ['normal']
-        for bamfile in bams[1:]:
-            names.append(os.path.splitext(os.path.basename(bamfile))[0])
+        names = [os.path.splitext(os.path.basename(bamfile))[0] for bamfile in bams]
+        if not nonormalFlag:
+            names[0] = 'normal'
 
     # In default mode, check the existence and compatibility of samtools and bcftools
     samtools = os.path.join(args.samtools, 'samtools')
@@ -624,6 +631,7 @@ def parse_count_reads_args(args=None):
     return {
         'bams': bams,
         'names': names,
+        'nonormal': nonormalFlag,
         'chromosomes': chromosomes,
         'samtools': samtools,
         'mosdepth': mosdepth,
@@ -769,6 +777,10 @@ def parse_combine_counts_args(args=None):
         'Missing file containing sample names (1 per line): {namesfile}',
     )
     names = open(namesfile).read().split()
+    if 'normal' not in names:
+        nonormalFlag = True
+    else:
+        nonormalFlag = False
 
     chromosomes = set()
     for f in os.listdir(args.array):
@@ -835,6 +847,7 @@ def parse_combine_counts_args(args=None):
         'test_alpha': args.alpha,
         'multisample': not args.ss_em,
         'ref_version': ver,
+        'nonormalFlag': nonormalFlag,
     }
 
 
@@ -1456,7 +1469,18 @@ def parse_count_alleles_arguments(args=None):
     args = parser.parse_args(args)
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
+    nonormalFlag = False
     normalbaf = args.normal
+    if normalbaf == "None":
+        log(
+            msg='Normal BAM file is not provided. Therefore the analysis will run without a matched normal. The tumor file %s will be used to infer het SNP positions. In addition, gamma and maxshift will be forced to set to 0.00000005 and 0.499999999 respectively.\n' % args.tumors[0],
+            level='WARN',
+        )
+        args.gamma = 0.00000005
+        args.maxshift = 0.499999999
+        normalbaf = args.tumors[0]
+        nonormalFlag = True
+        
     if not isfile(normalbaf):
         raise ValueError(error('The specified normal BAM file does not exist'))
     tumors = args.tumors
@@ -1530,6 +1554,7 @@ def parse_count_alleles_arguments(args=None):
 
     return {
         'normal': normal,
+        'nonormal': nonormalFlag,
         'samples': samples,
         'chromosomes': chromosomes,
         'samtools': samtools,

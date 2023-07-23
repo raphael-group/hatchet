@@ -4,8 +4,10 @@ import shlex
 import subprocess as pr
 import shutil
 import tempfile
+import gzip as gzz
 
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
+from distutils.dir_util import copy_tree
 
 from hatchet.utils.ArgParsing import parse_genotype_snps_arguments
 from hatchet.utils.Supporting import log, logArgs, error
@@ -226,7 +228,9 @@ class Caller(Process):
     def callSNPs(self, bamfile, samplename, chromosome):
         errname = os.path.join(self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome))
 
-        outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
+        outfile = os.path.join(self.outdir, 'allsnps', '{}.vcf.gz'.format(chromosome))
+        if not os.path.isdir(os.path.dirname(outfile)): 
+            os.makedirs(os.path.dirname(outfile))
 
         if self.snplist is not None:
             cmd_tgt = "{} query -f '%CHROM\t%POS\n' -r {} {}".format(self.bcftools, chromosome, self.snplist)
@@ -262,6 +266,10 @@ class Caller(Process):
             self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp
         )
         cmd_call = '{} call -m -Oz -o {}'.format(self.bcftools, outfile)
+
+        final_outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
+        cmd_filter = '{} view -i \'GT[0]=="0/1"\' -Ou -o {} {}'.format(self.bcftools, final_outfile, outfile)
+
         if self.snplist is not None:
             assert os.path.isfile(tgtfile)
             cmd_mpileup += ' -T {}'.format(tgtfile)
@@ -292,6 +300,9 @@ class Caller(Process):
                 universal_newlines=True,
             )
             pcss.append(call)
+            codes = [p.wait() for p in pcss]
+
+        with open(errname, 'a') as err:
             if self.nonormal:
                 hetdetect = pr.Popen(
                     shlex.split(cmd_runhetdetect),
@@ -301,10 +312,33 @@ class Caller(Process):
                     universal_newlines=True,
                 )
                 pcss.append(hetdetect)
-            codes = map(lambda p: p.wait(), pcss)
-        if any(c != 0 for c in codes) or (self.nonormal and not os.path.isfile(os.path.join(tmpdir,"hetdetect.vcf.gz"))):
-            if self.nonormal:
-                shutil.rmtree(tmpdir, ignore_errors=True)
+                codes = list(codes) + [hetdetect.wait()]      
+        
+        if self.nonormal:
+            if not os.path.isfile(os.path.join(tmpdir,"hetdetect.vcf.gz")):
+                raise ValueError(
+                    error('het SNP Calling without normal failed on {} of {}, please check errors in {}!').format(
+                        chromosome, samplename, errname
+                    )
+                )
+            else:
+                # copy hetdetect.vcf to outfile using shutil
+                shutil.copyfile(os.path.join(tmpdir,"hetdetect.vcf.gz"), outfile)
+                copy_tree(os.path.join(tmpdir,"plots"), os.path.join(self.outdir,"plots"))
+                shutil.rmtree(tmpdir)
+        
+        with open(errname, 'a') as err:
+            filter = pr.Popen(
+                shlex.split(cmd_filter),
+                stdout=pr.PIPE,
+                stderr=err,
+                universal_newlines=True,
+            )
+            codes = [filter.wait()]
+        
+        if any(c != 0 for c in codes):
+            # if self.nonormal:
+            #     shutil.rmtree(tmpdir, ignore_errors=True)
             raise ValueError(
                 error('SNP Calling failed on {} of {}, please check errors in {}!').format(
                     chromosome, samplename, errname
@@ -312,13 +346,10 @@ class Caller(Process):
             )
         else:
             os.remove(errname)
-            if self.nonormal:
-                # copy hetdetect.vcf to outfile using shutil
-                shutil.copyfile(os.path.join(tmpdir,"hetdetect.vcf.gz"), outfile)
-                shutil.rmtree(tmpdir)
 
             if self.snplist is not None:
                 os.remove(tgtfile)
+
         return outfile
 
 

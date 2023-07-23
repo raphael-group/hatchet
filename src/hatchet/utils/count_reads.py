@@ -23,9 +23,10 @@ def main(args=None):
     bams = args['bams']
     names = args['names']
 
-    tbams, tnames = zip(*sorted(zip(*(bams[1:], names[1:])), key=lambda x: x[1]))
-    bams = [bams[0]] + list(tbams)
-    names = [names[0]] + list(tnames)
+    if not args['nonormal']:
+        tbams, tnames = zip(*sorted(zip(*(bams[1:], names[1:])), key=lambda x: x[1]))
+        bams = [bams[0]] + list(tbams)
+        names = [names[0]] + list(tnames)
 
     chromosomes = args['chromosomes']
     samtools = args['samtools']
@@ -284,7 +285,7 @@ def read_snps(baf_file, ch, all_names):
     """
     Read and validate SNP data for this patient (TSV table output from HATCHet deBAF.py).
     """
-    all_names = all_names[1:]   # remove normal sample -- not looking for SNP counts from normal
+    all_names = [name for name in all_names if name != 'normal'] # remove normal sample -- not looking for SNP counts from normal
 
     # Read in HATCHet BAF table
     all_snps = pd.read_table(
@@ -369,7 +370,9 @@ def form_counts_array(starts_files, perpos_files, thresholds, chromosome, tabix,
         else:
             f = open(fname)
 
-        read_starts = [int(a) for a in gzip.open(fname, 'r')]
+        cx = gzip.open(fname, 'r')
+        read_starts = [int(a) for a in cx]
+
         end = thresholds[0]
         j = 0
         for idx in range(1, len(thresholds)):

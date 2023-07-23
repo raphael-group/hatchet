@@ -11,6 +11,7 @@ from scipy.special import softmax
 import hatchet.data
 from hatchet.utils.ArgParsing import parse_combine_counts_args
 import hatchet.utils.Supporting as sp
+from hatchet.utils.pon_normalization import correct_baf
 
 
 def main(args=None):
@@ -31,6 +32,7 @@ def main(args=None):
     max_snps_per_block = args['max_snps_per_block']
     test_alpha = args['test_alpha']
     multisample = args['multisample']
+    nonormalFlag = args['nonormalFlag']
 
     n_workers = min(len(chromosomes), threads)
 
@@ -86,6 +88,7 @@ def main(args=None):
             blocksize,
             max_snps_per_block,
             test_alpha,
+            nonormalFlag,
         )
         for ch in chromosomes
     ]
@@ -114,25 +117,32 @@ def main(args=None):
     rc = pd.read_table(args['totalcounts'], header=None, names=['SAMPLE', '#READS'])
     normal_name = all_names[0]
     nreads_normal = rc[rc.SAMPLE == normal_name].iloc[0]['#READS']
-    for sample in rc.SAMPLE.unique():
-        if sample == normal_name:
-            continue
-        nreads_sample = rc[rc.SAMPLE == sample].iloc[0]['#READS']
-        correction = nreads_normal / nreads_sample
-        my_bb = big_bb[big_bb.SAMPLE == sample]
+    if nonormalFlag:
+        for sample, df in big_bb.groupby('SAMPLE'):
+            big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = df['TOTAL_READS']/(df['END']-df['START']) / np.median(df['TOTAL_READS']/(df['END']-df['START']))
+    else:
+        for sample in rc.SAMPLE.unique():
+            if sample == normal_name:
+                continue
+            nreads_sample = rc[rc.SAMPLE == sample].iloc[0]['#READS']
+            correction = nreads_normal / nreads_sample
+            my_bb = big_bb[big_bb.SAMPLE == sample]
 
-        # Correct the tumor reads propotionally to the total reads in corresponding samples
-        big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] = (my_bb.TOTAL_READS * correction).astype(np.int64)
+            # Correct the tumor reads propotionally to the total reads in corresponding samples
+            big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] = (my_bb.TOTAL_READS * correction).astype(np.int64)
 
-        # Recompute RDR according to the corrected tumor reads
-        big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = (
-            big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] / big_bb.loc[big_bb.SAMPLE == sample, 'NORMAL_READS']
-        )
+            # Recompute RDR according to the corrected tumor reads
+            big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = (
+                big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] / big_bb.loc[big_bb.SAMPLE == sample, 'NORMAL_READS']
+            )
 
-    if 'NORMAL_READS' not in big_bb:
-        sp.log('# NOTE: adding NORMAL_READS column to bb file', level='INFO')
-        big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(np.uint32)
+        if 'NORMAL_READS' not in big_bb:
+            sp.log('# NOTE: adding NORMAL_READS column to bb file', level='INFO')
+            big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(np.uint32)
 
+    # Correct BAF when there is no normal sample. This correction useful only in LOH regions in high-purity samples
+    correct_baf(big_bb)
+    big_bb['BAF'] = big_bb['BAF'].round(5)
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     big_bb.END = big_bb.END + 1
 
@@ -151,8 +161,8 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
     """
     Read and validate SNP data for this patient (TSV table output from HATCHet deBAF.py).
     """
-    all_names = all_names[1:]   # remove normal sample -- not looking for SNP counts from normal
-
+    all_names = [name for name in all_names if name != 'normal'] # remove normal sample -- not looking for SNP counts from normal
+    
     # Read in HATCHet BAF table
     all_snps = pd.read_table(
         baf_file,
@@ -244,6 +254,7 @@ def adaptive_bins_arm(
     snp_counts,
     min_snp_reads=2000,
     min_total_reads=5000,
+    nonormalFlag=False,
 ):
     """
     Compute adaptive bins for a single chromosome arm.
@@ -283,7 +294,10 @@ def adaptive_bins_arm(
     odd_index = np.array([i * 2 + 1 for i in range(int(n_samples))], dtype=np.int8)
 
     bin_total = np.zeros(n_samples)
-    bin_snp = np.zeros(n_samples - 1)
+    if nonormalFlag:
+        bin_snp = np.zeros(n_samples)
+    else:
+        bin_snp = np.zeros(n_samples - 1)
 
     starts = []
     ends = []
@@ -292,6 +306,7 @@ def adaptive_bins_arm(
 
     rdrs = []
     totals = []
+    bss = []
     i = 1
     while i < len(snp_thresholds - 1):
         # Extend the current bin to the next threshold
@@ -317,16 +332,24 @@ def adaptive_bins_arm(
             starts.append(my_start)
             ends.append(next_threshold)
 
+            bss.append(bin_snp)
+
             # to get the total reads, subtract the number of reads covering the threshold position
             bin_total -= total_counts[i, odd_index]
             totals.append(bin_total)
 
             # compute RDR
-            rdrs.append(bin_total[1:] / bin_total[0])
+            if nonormalFlag:
+                rdrs.append(bin_total[0:] / bin_total[0:])
+            else:
+                rdrs.append(bin_total[1:] / bin_total[0])
 
             # and start a new one
             bin_total = np.zeros(n_samples)
-            bin_snp = np.zeros(n_samples - 1)
+            if nonormalFlag:
+                bin_snp = np.zeros(n_samples)
+            else:
+                bin_snp = np.zeros(n_samples - 1)
             my_start = ends[-1] + 1
 
         i += 1
@@ -343,7 +366,10 @@ def adaptive_bins_arm(
 
         bin_total = np.sum(total_counts[:, even_index], axis=0) - total_counts[-1, odd_index]
         totals.append(bin_total)
-        rdrs.append(bin_total[1:] / bin_total[0])
+        if nonormalFlag:
+            rdrs.append(bin_total[0:] / bin_total[0:])
+        else:
+            rdrs.append(bin_total[1:] / bin_total[0])
 
     # add whatever excess at the end to the last bin
     if ends[-1] < snp_thresholds[-1]:
@@ -351,7 +377,10 @@ def adaptive_bins_arm(
         last_start_idx = np.where((snp_thresholds == starts[-1] - 1) | (snp_thresholds == starts[-1]))[0][0]
         bin_total = np.sum(total_counts[last_start_idx:, even_index], axis=0) - total_counts[-1, odd_index]
         totals[-1] = bin_total
-        rdrs[-1] = bin_total[1:] / bin_total[0]
+        if nonormalFlag:
+            rdrs[-1] = bin_total[0:] / bin_total[0:]
+        else:
+            rdrs[-1] = bin_total[1:] / bin_total[0]
         ends[-1] = snp_thresholds[-1]
 
     return starts, ends, totals, rdrs
@@ -805,7 +834,12 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome, unit):
     """
 
     rows = []
-    sample_names = sample_names[1:]   # ignore the normal sample (first in the list)
+    if 'normal' in sample_names:
+        sample_names = sample_names[1:]   # ignore the normal sample (first in the list)
+        nonormalFlag = False
+    else:
+        nonormalFlag = True
+    
     for i in range(len(bins[0])):
         start = bins[0][i]
         end = bins[1][i]
@@ -824,8 +858,12 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome, unit):
 
         for j in range(len(sample_names)):
             sample = sample_names[j]
-            total = int(totals[j + 1])
-            normal_reads = int(totals[0])
+            if not nonormalFlag:
+                total = int(totals[j + 1])
+                normal_reads = int(totals[0])
+            else:
+                total = int(totals[j])
+                normal_reads = 0
             rdr = rdrs[j]
 
             if dfs is not None:
@@ -1058,6 +1096,7 @@ def run_chromosome(
     blocksize,
     max_snps_per_block,
     test_alpha,
+    nonormalFlag,
 ):
     """
     Perform adaptive binning and infer BAFs to produce a HATCHet `bblock` and `btrack` file for a single chromosome.
@@ -1155,6 +1194,7 @@ def run_chromosome(
                     snp_counts=snpcounts,
                     min_snp_reads=min_snp_reads,
                     min_total_reads=min_total_reads,
+                    nonormalFlag = nonormalFlag,
                 )
 
                 starts = bins[0]
@@ -1206,6 +1246,7 @@ def run_chromosome(
             raise ValueError(sp.error(f'No SNPs found on either arm of chromosome {chromosome}!'))
 
         bb = pd.concat(armbbs)
+
         bb.to_csv(outfile, index=False, sep='\t',float_format="%.5f")
         # np.savetxt(outfile + '.totalcounts', total_counts)
         # np.savetxt(outfile + '.thresholds', complete_thresholds)
