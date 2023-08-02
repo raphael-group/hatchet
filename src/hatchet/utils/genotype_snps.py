@@ -228,7 +228,7 @@ class Caller(Process):
     def callSNPs(self, bamfile, samplename, chromosome):
         errname = os.path.join(self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome))
 
-        outfile = os.path.join(self.outdir, 'allsnps', '{}.vcf.gz'.format(chromosome))
+        outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
         if not os.path.isdir(os.path.dirname(outfile)): 
             os.makedirs(os.path.dirname(outfile))
 
@@ -306,7 +306,7 @@ class Caller(Process):
             )
             pcss.append(filter)
             codes = [p.wait() for p in pcss]
-            
+
             if self.nonormal:
                 hetdetect = pr.Popen(
                     shlex.split(cmd_runhetdetect),
