@@ -265,11 +265,6 @@ class Caller(Process):
         cmd_mpileup = '{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}'.format(
             self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp
         )
-        cmd_call = '{} call -m -Oz -o {}'.format(self.bcftools, outfile)
-
-        final_outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
-        cmd_filter = '{} view -i \'GT[0]=="0/1"\' -Ou -o {} {}'.format(self.bcftools, final_outfile, outfile)
-
         if self.snplist is not None:
             assert os.path.isfile(tgtfile)
             cmd_mpileup += ' -T {}'.format(tgtfile)
@@ -277,6 +272,8 @@ class Caller(Process):
             cmd_mpileup += ' -r {}'.format(chromosome)
         if self.E:
             cmd_mpileup += ' -E'
+        cmd_call = '{} call -m -Ou'.format(self.bcftools)
+        cmd_filter = '{} view -i \'FMT/DP>={}\' -Oz -o {}'.format(self.bcftools, self.mincov, outfile)
 
         # extra step to run hetdetect if there is no matched normal   
         if self.nonormal:
@@ -300,9 +297,16 @@ class Caller(Process):
                 universal_newlines=True,
             )
             pcss.append(call)
+            filter = pr.Popen(
+                shlex.split(cmd_filter),
+                stdin=call.stdout,
+                stdout=pr.PIPE,
+                stderr=err,
+                universal_newlines=True,
+            )
+            pcss.append(filter)
             codes = [p.wait() for p in pcss]
-
-        with open(errname, 'a') as err:
+            
             if self.nonormal:
                 hetdetect = pr.Popen(
                     shlex.split(cmd_runhetdetect),
@@ -327,13 +331,7 @@ class Caller(Process):
                 copy_tree(os.path.join(tmpdir,"plots"), os.path.join(self.outdir,"plots"))
                 shutil.rmtree(tmpdir)
         
-        with open(errname, 'a') as err:
-            filter = pr.Popen(
-                shlex.split(cmd_filter),
-                stdout=pr.PIPE,
-                stderr=err,
-                universal_newlines=True,
-            )
+
             codes = [filter.wait()]
         
         if any(c != 0 for c in codes):
