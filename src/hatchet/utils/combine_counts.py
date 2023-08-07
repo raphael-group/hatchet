@@ -11,7 +11,7 @@ from scipy.special import softmax
 import hatchet.data
 from hatchet.utils.ArgParsing import parse_combine_counts_args
 import hatchet.utils.Supporting as sp
-from hatchet.utils.pon_normalization import correct_baf
+from hatchet.utils.pon_normalization import correct_baf, pon_normalize_rdr
 
 
 def main(args=None):
@@ -33,6 +33,7 @@ def main(args=None):
     test_alpha = args['test_alpha']
     multisample = args['multisample']
     nonormalFlag = args['nonormalFlag']
+    ponfile = args['ponfile']
 
     n_workers = min(len(chromosomes), threads)
 
@@ -145,6 +146,8 @@ def main(args=None):
     big_bb['BAF'] = big_bb['BAF'].round(5)
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     big_bb.END = big_bb.END + 1
+    if args['ponfile'] is not None:
+        big_bb = pon_normalize_rdr(big_bb, args['ponfile'])
 
     autosomes = set([ch for ch in big_bb['CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
     big_bb[big_bb['CHR'].isin(autosomes)].to_csv(outfile, index=False, sep='\t')
@@ -1183,15 +1186,15 @@ def run_chromosome(
                 thresholds = complete_thresholds[idx]
                 counts = total_counts[idx]
 
-                positions = positions[snp_idx]
-                snpcounts = snp_counts[snp_idx]
+                arm_positions = positions[snp_idx]
+                arm_snp_counts = snp_counts[snp_idx]
 
                 # Identify bins
                 bins = adaptive_bins_arm(
                     snp_thresholds=thresholds,
                     total_counts=counts,
-                    snp_positions=positions,
-                    snp_counts=snpcounts,
+                    snp_positions=arm_positions,
+                    snp_counts=arm_snp_counts,
                     min_snp_reads=min_snp_reads,
                     min_total_reads=min_total_reads,
                     nonormalFlag = nonormalFlag,

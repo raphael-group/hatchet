@@ -1,7 +1,3 @@
-import re
-import sys
-import os
-from collections import defaultdict
 import pandas as pd
 import numpy as np
 from scipy import optimize
@@ -31,7 +27,7 @@ def panel_normalize(bb, avg_normal, norm_constant):
                     normlen += r.END - bin_start
                 else:
                     # bin is within panelbin
-                    my_denom += (bin_end - bin_start) + r.perbase
+                    my_denom += (bin_end - bin_start) * r.perbase
                     normlen += bin_end - bin_start
 
             else:
@@ -48,12 +44,7 @@ def panel_normalize(bb, avg_normal, norm_constant):
         denoms.append(my_denom)
         # if sample has more reads overall than PoN, downweight number of reads by norm_constant, where
         # norm_constant = (total reads in PoN) / (total reads in sample)
-        
-        try:
-            panel_normalized.append( (num * norm_constant) / my_denom)
-        except:
-            import pdb; pdb.set_trace()
-
+        panel_normalized.append( (num * norm_constant) / my_denom)
     return panel_normalized, normlens, denoms
 
 def correct_baf(bb):
@@ -73,10 +64,10 @@ def correct_baf_bin(baf, read_per_snp):
     initial_value=0.5
     return optimize.newton(f,initial_value,fprime=fprime,fprime2=fprime2)
 
-def main(bb, outfile, pon_file):
+def pon_normalize_rdr(bb_file, pon_file):
     #bb_file = f"{outdir}/bb/bulk.bb"
-
-    #bb = pd.read_csv(bb_file, sep='\t')
+    
+    bb = pd.read_csv(bb_file, sep='\t')
     all_normals = pd.read_csv(pon_file, sep="\t")
     pvt = all_normals.pivot(index = ['CHR', 'START'], columns = 'SAMPLE', values = 'RD').to_numpy()
 
@@ -90,8 +81,9 @@ def main(bb, outfile, pon_file):
     avg_normal = all_normals[all_normals.SAMPLE == first_sample]
     avg_normal = avg_normal.sort_values(by = ['CHR', 'START'])
     avg_normal = avg_normal.drop(columns = 'SAMPLE')
-    avg_normal.RD = all_normals.pivot(index = ['CHR', 'START'], columns = 'SAMPLE', values = 'RD').to_numpy().mean(axis = 1)
+    avg_normal.RD = pvt.mean(axis = 1)
 
+    avg_normal=avg_normal.loc[avg_normal['CHR'].isin(bb.CHR.unique())]
     norm_constant = avg_normal.RD.sum() / bb.TOTAL_READS.sum()
     avg_normal['CHR'] = avg_normal.CHR
     avg_normal['perbase'] = avg_normal.RD / (avg_normal.END - avg_normal.START)
@@ -102,7 +94,8 @@ def main(bb, outfile, pon_file):
     #bb['LENGTH'] = bb.END - bb.START
     bb = bb.drop(['RD'], axis=1)
     bb['RD'] = panel_normalized
-    correct_baf(bb)
-    bb['BAF'] = bb['BAF'].round(5)
-    bb.to_csv(outfile, index=False, sep='\t',float_format="%.5f")
+    return bb
+    # correct_baf(bb)
+    # bb['BAF'] = bb['BAF'].round(5)
+    #bb.to_csv(outfile, index=False, sep='\t',float_format="%.5f")
     #bb.to_csv(f"{outdir}/bb/bulk_renorm.bb", sep='\t', index=False)
