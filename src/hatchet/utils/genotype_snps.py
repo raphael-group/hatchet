@@ -272,7 +272,7 @@ class Caller(Process):
             cmd_mpileup += ' -r {}'.format(chromosome)
         if self.E:
             cmd_mpileup += ' -E'
-        cmd_call = '{} call -m -Ou'.format(self.bcftools)
+        cmd_call = '{} call -Am -Ou'.format(self.bcftools)
         cmd_filter = '{} view -i \'FMT/DP>={}\' -Oz -o {}'.format(self.bcftools, self.mincov, outfile)
 
         # extra step to run hetdetect if there is no matched normal   
