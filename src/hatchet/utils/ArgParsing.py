@@ -561,7 +561,7 @@ def parse_count_reads_args(args=None):
         ensure(isfile(bamfile), 'The specified tumor BAM file does not exist')
     # also make sure the bam index files are present too
     for bamfile in bams:
-        ensure(isfile(bamfile + '.bai'), 'The specified tumor BAM file does not exist')
+        ensure(isfile(bamfile + '.bai') or isfile(bamfile.replace(".bam",".bai")), 'The specified tumor BAM file does not exist')
 
     names = args.samples
     if nonormalFlag:
