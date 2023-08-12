@@ -48,13 +48,12 @@ def panel_normalize(bb, avg_normal, norm_constant):
     return panel_normalized, normlens, denoms
 
 def correct_baf(bb):
-    for index, row in bb.iterrows():
-        baf = row['BAF']
-        coverage = floor(row['TOTAL_SNP_READS']/row['SNPS'])
-        if coverage < 2:
-            continue
-        bb.at[index,'BAF'] = correct_baf_bin(baf,coverage)
-
+    coverage = (bb['TOTAL_SNP_READS'] / bb['SNPS']).floordiv(2)
+    # when coverage is less than 10, don't correct BAF because it's not reliable and often becomes 0 
+    mask = coverage >= 10
+    corrected_baf = list(map(lambda x: correct_baf_bin(x[0],x[1]),zip(bb.loc[mask,'BAF'],coverage[mask])))
+    bb.loc[mask, 'BAF'] = corrected_baf
+    return bb
 
 def correct_baf_bin(baf, read_per_snp):
     # newton method functions f, f', and f''
