@@ -253,8 +253,6 @@ class Caller(Process):
         cmd_mpileup = '{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}'.format(
             self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp
         )
-        cmd_call = '{} call -Am -Ou'.format(self.bcftools)
-        cmd_filter = '{} view -i \'FMT/DP>={}\' -Oz -o {}'.format(self.bcftools, self.mincov, outfile)
 
         if self.snplist is not None:
             assert os.path.isfile(tgtfile)
@@ -263,6 +261,9 @@ class Caller(Process):
             cmd_mpileup += ' -r {}'.format(chromosome)
         if self.E:
             cmd_mpileup += ' -E'
+        cmd_call = '{} call -Am -Ou'.format(self.bcftools)
+        cmd_filter = '{} view -i \'FMT/DP>={}\' -Oz -o {}'.format(self.bcftools, self.mincov, outfile)
+
         with open(errname, 'w') as err:
             pcss = []
             mpileup = pr.Popen(
