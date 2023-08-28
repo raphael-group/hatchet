@@ -261,8 +261,8 @@ class Caller(Process):
             cmd_mpileup += ' -r {}'.format(chromosome)
         if self.E:
             cmd_mpileup += ' -E'
-        cmd_call = '{} call -Am -Ou'.format(self.bcftools)
-        cmd_filter = '{} view -i \'FMT/DP>={}\' -Oz -o {}'.format(self.bcftools, self.mincov, outfile)
+        cmd_call = '{} call -mv -Ou'.format(self.bcftools)
+        cmd_filter = "{} view -i 'FMT/DP>={}' -Oz -o {}".format(self.bcftools, self.mincov, outfile)
 
         with open(errname, 'w') as err:
             pcss = []

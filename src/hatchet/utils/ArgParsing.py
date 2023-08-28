@@ -556,8 +556,10 @@ def parse_count_reads_args(args=None):
         ensure(isfile(bamfile), 'The specified tumor BAM file does not exist')
     # also make sure the bam index files are present too
     for bamfile in bams:
-        ensure(isfile(bamfile + '.bai') or isfile(bamfile.replace(".bam", ".bai")),
-               'The specified tumor BAM file does not exist')
+        ensure(
+            isfile(bamfile + '.bai') or isfile(bamfile.replace('.bam', '.bai')),
+            'The specified tumor BAM file does not exist',
+        )
     names = args.samples
     ensure(
         (names is None) or (len(bams) == len(names)),
@@ -1002,8 +1004,10 @@ def parse_genotype_snps_arguments(args=None):
     # if the input snps file is a bgzip compressed vcf file
     # and associated tabix file is not located in the same directory, report error
     if args.snps is not None and isfile(args.snps) and args.snps.endswith('gz') and not isfile(args.snps + '.tbi'):
-        error('The provided list of SNPs is a bgzip compressed vcf file'
-              'but the associated tabix file does not exist!', raise_exception=True)
+        error(
+            'The provided list of SNPs is a bgzip compressed vcf file' 'but the associated tabix file does not exist!',
+            raise_exception=True,
+        )
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, [], args.reference)
