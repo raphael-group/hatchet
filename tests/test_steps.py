@@ -124,7 +124,7 @@ def test_genotype_snps(_mock1, bams, output_folder):
             '-r',
             config.paths.reference,
             '-c',
-            '290',  # min reads
+            '0',  # min reads
             '-C',
             '300',  # max reads
             '-o',

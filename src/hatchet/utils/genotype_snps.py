@@ -253,7 +253,7 @@ class Caller(Process):
         cmd_mpileup = '{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}'.format(
             self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp
         )
-        cmd_call = '{} call -mv -Oz -o {}'.format(self.bcftools, outfile)
+
         if self.snplist is not None:
             assert os.path.isfile(tgtfile)
             cmd_mpileup += ' -T {}'.format(tgtfile)
@@ -261,13 +261,18 @@ class Caller(Process):
             cmd_mpileup += ' -r {}'.format(chromosome)
         if self.E:
             cmd_mpileup += ' -E'
+        cmd_call = '{} call -mv -Ou'.format(self.bcftools)
+        cmd_filter = "{} view -i 'FMT/DP>={}' -Oz -o {}".format(self.bcftools, self.mincov, outfile)
+
         with open(errname, 'w') as err:
+            pcss = []
             mpileup = pr.Popen(
                 shlex.split(cmd_mpileup),
                 stdout=pr.PIPE,
                 stderr=err,
                 universal_newlines=True,
             )
+            pcss.append(mpileup)
             call = pr.Popen(
                 shlex.split(cmd_call),
                 stdin=mpileup.stdout,
@@ -275,7 +280,16 @@ class Caller(Process):
                 stderr=err,
                 universal_newlines=True,
             )
-            codes = map(lambda p: p.wait(), [mpileup, call])
+            pcss.append(call)
+            filter = pr.Popen(
+                shlex.split(cmd_filter),
+                stdin=call.stdout,
+                stdout=pr.PIPE,
+                stderr=err,
+                universal_newlines=True,
+            )
+            pcss.append(filter)
+            codes = [p.wait() for p in pcss]
         if any(c != 0 for c in codes):
             raise ValueError(
                 error('SNP Calling failed on {} of {}, please check errors in {}!').format(

@@ -141,7 +141,7 @@ def read_bb(bbfile, subset=None):
     populated_labels = False
 
     chr_labels = []
-    for ch, df0 in bb.groupby(['#CHR']):
+    for ch, df0 in bb.groupby('#CHR'):
         df0 = df0.sort_values('START')
 
         p_arrs = []
