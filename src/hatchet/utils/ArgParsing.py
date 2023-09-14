@@ -403,7 +403,10 @@ def parse_cluster_bins_args(args=None):
     )
     ensure(args.restarts >= 1, 'Number of restarts must be positive.')
     ensure(args.tau >= 0, 'Transition parameter --tau must be non-negative.')
-    ensure(args.tau >= 6e-17, 'Transition parameter --tau must be at least 6e-17 to ensure numerical precision.')
+    ensure(
+        args.tau >= 6e-17,
+        'Transition parameter --tau must be at least 6e-17 to ensure numerical precision.',
+    )
 
     if args.subset is not None:
         import pandas as pd
@@ -413,8 +416,8 @@ def parse_cluster_bins_args(args=None):
         samples = bb.SAMPLE.unique()
         ensure(
             all([a in samples for a in args.subset]),
-            'Samples indicated in "subset" must be present in input BB file. BB file:'
-            + f'{samples}, argument: {args.subset}',
+            'Samples indicated in "subset" must be present in input BB file. '
+            'BB file:' + f'{samples}, argument: {args.subset}',
         )
 
     return {
@@ -552,7 +555,7 @@ def parse_count_reads_args(args=None):
 
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     nonormalFlag = False
-    if args.normal == "None":
+    if args.normal == 'None':
         nonormalFlag = True
         bams = args.tumor
     else:
@@ -561,7 +564,10 @@ def parse_count_reads_args(args=None):
         ensure(isfile(bamfile), 'The specified tumor BAM file does not exist')
     # also make sure the bam index files are present too
     for bamfile in bams:
-        ensure(isfile(bamfile + '.bai') or isfile(bamfile.replace(".bam",".bai")), 'The specified tumor BAM file does not exist')
+        ensure(
+            isfile(bamfile + '.bai') or isfile(bamfile.replace('.bam', '.bai')),
+            'The specified tumor BAM file does not exist',
+        )
 
     names = args.samples
     if nonormalFlag:
@@ -683,7 +689,7 @@ def parse_combine_counts_args(args=None):
         required=False,
         type=str,
         help='panel of normal file used for normalizing RDR when no mathched normal is present (default: None).'
-             'Make sure the panel and the sample uses the same reference genome version.',
+        'Make sure the panel and the sample uses the same reference genome version.',
     )
     parser.add_argument(
         '--msr',
@@ -873,16 +879,16 @@ def parse_genotype_snps_arguments(args=None):
         '--normal',
         required=True,
         type=str,
-        default = "None",
+        default='None',
         help='BAM file corresponding to matched normal sample',
     )
     parser.add_argument(
         '-T',
         '--tumor',
         required=False,
-        nargs = "+",
+        nargs='+',
         type=str,
-        default = [],
+        default=[],
         help='BAM file corresponding to matched tumor sample(s)',
     )
     parser.add_argument(
@@ -1004,10 +1010,10 @@ def parse_genotype_snps_arguments(args=None):
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     nonormalFlag = False
     normalbaf = args.normal
-    if normalbaf == "None":
+    if normalbaf == 'None':
         log(
             msg='Normal BAM file is not provided. Therefore the analysis will run without a matched normal.'
-                'het SNP positions will be inferred from the first tumor sample\n',
+            'het SNP positions will be inferred from the first tumor sample\n',
             level='WARN',
         )
         normalbaf = args.tumor[0]
@@ -1042,9 +1048,13 @@ def parse_genotype_snps_arguments(args=None):
         args.snps = None
     if args.snps is not None and not (isfile(args.snps) or url_exists(args.snps)):
         error('The provided list of SNPs does not exist!', raise_exception=True)
-    # if the input snps file is a bgzip compressed vcf file and associated tabix file is not located in the same directory, report error
+    # if the input snps file is a bgzip compressed vcf file and associated tabix file is not located
+    # in the same directory, report error
     if args.snps is not None and isfile(args.snps) and args.snps.endswith('gz') and not isfile(args.snps + '.tbi'):
-        error('The provided list of SNPs is a bgzip compressed vcf file but the associated tabix file does not exist!', raise_exception=True)
+        error(
+            'The provided list of SNPs is a bgzip compressed vcf file but the associated tabix file does not exist!',
+            raise_exception=True,
+        )
 
     # Extract the names of the chromosomes and check their consistency across the given BAM files and the reference
     chromosomes = extractChromosomes(samtools, normal, [], args.reference)
@@ -1488,16 +1498,19 @@ def parse_count_alleles_arguments(args=None):
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     nonormalFlag = False
     normalbaf = args.normal
-    if normalbaf == "None":
+    if normalbaf == 'None':
         log(
-            msg='Normal BAM file is not provided. Therefore the analysis will run without a matched normal. The tumor file %s will be used to infer het SNP positions. In addition, gamma and maxshift will be forced to set to 0.00000005 and 0.499999999 respectively.\n' % args.tumors[0],
+            msg='Normal BAM file is not provided. Therefore the analysis will run without a matched normal. '
+            'The tumor file %s will be used to infer het SNP positions. In addition, gamma and maxshift will '
+            'be forced to set to 0.00000005 and 0.499999999 respectively.\n'
+            % args.tumors[0],
             level='WARN',
         )
         args.gamma = 0.00000005
         args.maxshift = 0.499999999
         normalbaf = args.tumors[0]
         nonormalFlag = True
-        
+
     if not isfile(normalbaf):
         raise ValueError(error('The specified normal BAM file does not exist'))
     tumors = args.tumors
@@ -2340,9 +2353,7 @@ def parse_plot_bins_args(args=None):
 
     ensure(isfile(args.INPUT), 'The specified BB file does not exist!')
     ensure(
-        args.command is None
-        or args.command
-        in (
+        args.command is None or args.command in (
             'RD',
             'CRD',
             'BAF',
