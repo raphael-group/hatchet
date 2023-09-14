@@ -4,13 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hatchet"
-version = "1.2.1"
+version = "3.0.0"
 authors = [
   { name="Simone Zaccaria", email="s.zaccaria@ucl.ac.uk" },
   { name="Ben Raphael", email="braphael@cs.princeton.edu" },
   { name="Matt Myers", email="mm63@cs.princeton.edu" },
   { name="Brian Arnold", email="brianjohnarnold@gmail.com" },
-  { name="Vineet Bansal", email="vineetb@princeton.edu" }
+  { name="Vineet Bansal", email="vineetb@princeton.edu" },
+  { name="Metin Balaban", email="metin@princeton.edu" },
+
 ]
 description = "A package to infer allele and clone-specific copy-number aberrations (CNAs)."
 readme = "README.md"

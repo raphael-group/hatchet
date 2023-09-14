@@ -8,7 +8,7 @@ from hatchet.utils.solve.utils import Random
 
 
 class ILPSubset:
-    def __init__(self, n, cn_max, d, mu, ampdel, copy_numbers, f_a, f_b, w):
+    def __init__(self, n, cn_max, d, mu, ampdel, copy_numbers, f_a, f_b, w, clus_adj_counts, bp_max):
 
         # Each ILPSubset maintains its own data, so make a deep-copy of passed-in DataFrames
         f_a, f_b = f_a.copy(deep=True), f_b.copy(deep=True)
@@ -18,6 +18,10 @@ class ILPSubset:
         assert np.all(f_a.columns == f_b.columns)
 
         self.m, self.k = f_a.shape
+
+        # each sample has its own clone + there is a normal clone + there may be some extra clones
+        assert n >= self.k + 1
+
         self.f_a = f_a
         self.f_b = f_b
         self.cluster_ids = f_a.index
@@ -30,6 +34,8 @@ class ILPSubset:
         self.ampdel = ampdel
         self.copy_numbers = copy_numbers
         self.w = w
+        self.clus_adj_counts=clus_adj_counts
+        self.bp_max = bp_max
 
         self.tol = 0.001
 
@@ -59,6 +65,8 @@ class ILPSubset:
             f_a=self.f_a,
             f_b=self.f_b,
             w=self.w,
+            clus_adj_counts=self.clus_adj_counts,
+            bp_max=self.bp_max
         )
 
     def __str__(self):
@@ -122,6 +130,7 @@ class ILPSubset:
         d = self.d
         _M = self.M
         _base = self.base
+        w_max = self.bp_max
 
         model = pe.ConcreteModel()
 
@@ -129,8 +138,11 @@ class ILPSubset:
         fB = {}
         yA = {}
         yB = {}
+        wA = {}
+        wB = {}
         adA = {}
         adB = {}
+        sAB = {}
 
         for _m in range(m):
 
@@ -149,9 +161,20 @@ class ILPSubset:
                 fB[(_m, _k)] = pe.Var(bounds=(0, ub), domain=pe.Reals)
                 model.add_component(f'fB_{_m + 1}_{_k + 1}', fB[(_m, _k)])
 
+        # auxiliary variable for breakpoint distance constraint
         if mode_t in ('FULL', 'CARCH'):
-            for _m in range(m):
+            for _n1 in range(1, n):
+                for _n2 in range(1, n):
+                    if _n1 < _n2:
+                        sAB[(_n1, _n2)] = pe.Var(bounds=(0, 2 * w_max), domain=pe.Reals)
+                        model.add_component(f'sAB_{_n1 + 1}_{_n2 + 1}', sAB[(_n1, _n2)])
+                        for _c1, _c2 in self.clus_adj_counts.keys():
+                            wA[(_c1, _c2, _n1, _n2)] = pe.Var(bounds=(0, 2 * ub), domain=pe.Reals)
+                            model.add_component(f'wA_{_c1}_{_c2}_{_n1 + 1}_{_n2 + 1}', wA[(_c1, _c2, _n1, _n2)])
+                            wB[(_c1, _c2, _n1, _n2)] = pe.Var(bounds=(0, 2 * ub), domain=pe.Reals)
+                            model.add_component(f'wB_{_c1}_{_c2}_{_n1 + 1}_{_n2 + 1}', wB[(_c1, _c2, _n1, _n2)])
 
+            for _m in range(m):
                 cluster_id = f_a.index[_m]
 
                 # upper bound for solver
@@ -213,6 +236,7 @@ class ILPSubset:
                                 vB[(_b, _m, _n, _k)],
                             )
 
+        # self.mu = 0 always (future work)
         x = {}
         if (mode_t in ('FULL', 'UARCH')) and (self.mu > 0):
             for _n in range(n):
@@ -231,6 +255,40 @@ class ILPSubset:
 
         # CONSTRAINTS
         model.constraints = pe.ConstraintList()
+
+        if mode_t in ('FULL', 'CARCH'):
+            # breakpoint distance upperbound constraint.
+            # skip the clone 1 because it's the normal clone.
+            clust_to_ind_map = dict([(j, i) for i, j in list(enumerate(f_a.index))]) # cluster id to f_a & f_b index map
+            for _n1 in range(1, n):
+                for _n2 in range(1, n):
+                    if _n1 < _n2:
+                        sum_w = 0
+                        # cluster ids including the telomere "-1"
+                        for adj, count in self.clus_adj_counts.items():
+                            _ci, _cj = adj  #  these are cluster ids
+                            _wA, _wB = wA[(_ci, _cj, _n1, _n2)], wB[(_ci, _cj, _n1, _n2)]
+                            sum_w += count * (_wA + _wB)
+                            if _ci == -1:   # a telomere
+                                _cA1i, _cB1i = 0, 0
+                                _cA2i, _cB2i = 0, 0
+                            else:
+                                _cxi = clust_to_ind_map[_ci]  #  this is cluster id index in f_a and cA matrix,
+                                                              #  which is sorted alphabetically
+                                _cA1i, _cB1i = self.cA[_cxi][_n1], self.cB[_cxi][_n1]
+                                _cA2i, _cB2i = self.cA[_cxi][_n2], self.cB[_cxi][_n2]
+                            # _cj cannot be -1 since during construction of clus_adj_counts _ci < _cj is warranted.
+                            _cxj = clust_to_ind_map[_cj]
+                            _cA1j, _cB1j = self.cA[_cxj][_n1], self.cB[_cxj][_n1]
+                            _cA2j, _cB2j = self.cA[_cxj][_n2], self.cB[_cxj][_n2]
+                            model.constraints.add((_cA1j - _cA1i) - (_cA2j - _cA2i) <= _wA)
+                            model.constraints.add((_cA2j - _cA2i) - (_cA1j - _cA1i) <= _wA)
+                            model.constraints.add((_cB1j - _cB1i) - (_cB2j - _cB2i) <= _wB)
+                            model.constraints.add((_cB2j - _cB2i) - (_cB1j - _cB1i) <= _wB)
+                        model.constraints.add(sAB[(_n1, _n2)] == sum_w) # for quickly accessing pairwise breakpoint
+                                                                        # distances between clones
+                        model.constraints.add(sAB[(_n1, _n2)] <= 2 * w_max)
+
 
         for _m in range(m):
 
@@ -352,11 +410,18 @@ class ILPSubset:
                     _sum += self.u[_n][_k]
                 model.constraints.add(_sum == 1)
 
+            for _k in range(k):
+                for _n in range(1, k+1):
+                    if _n != _k + 1:
+                        model.constraints.add(self.u[_n][_k] == 0)
+
+        # self.mu = 0 always true (future)
         if (mode_t in ('FULL', 'UARCH')) and self.mu > 0:
             for _k in range(k):
                 for _n in range(1, n):
                     model.constraints.add(x[(_n, _k)] >= self.u[_n][_k])
                     model.constraints.add(self.u[_n][_k] >= self.mu * x[(_n, _k)])
+
 
         # buildOptionalConstraints
         if (mode_t in ('FULL', 'CARCH')) and d > 0:
@@ -656,6 +721,7 @@ class ILPSubsetSplit(ILPSubset):
         self.mu = mu
         self.ampdel = ampdel
         self.copy_numbers = copy_numbers
+
 
         self.tol = 0.001
 

@@ -237,7 +237,7 @@ CHECKS = {
     'compute-cn': [
         (
             'solver',
-            f'Your selected solver "{config.compute_cn.solver}" seems to be working correctly',
+            f'Your selected solver "{config.compute_cn.solver}" seems to be working correctly YRRRRRRR',
             'See http://compbio.cs.brown.edu/hatchet/README.html#using-a-solver',
             check_solver,
         )
