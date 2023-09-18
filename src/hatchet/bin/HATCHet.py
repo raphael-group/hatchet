@@ -129,14 +129,35 @@ def parsing_arguments(args=None):
         ),
     )
     parser.add_argument(
+        '-E',
+        '--evolcons',
+        action='store_true',
+        default=config.compute_cn.evolconstraints,
+        required=False,
+        help=(
+            'Enforce evolutionary constraints on the copy numbers of the clonal clusters '
+            'except the normal clone (default: false). '
+        ),
+    )
+    parser.add_argument(
         '-bD',
         '--breakpointmax',
         type=int,
         required=False,
         default=config.compute_cn.breakpointmax,
         help=(
-            'Maximum breakpoint distance between inferred non-normal clones (default: 15, 0 means all clones will have '
+            'Maximum breakpoint distance between inferred non-normal clones (default: 60, 0 means all clones will have '
             'identical copy number profiles)'
+        ),
+    )
+    parser.add_argument(
+        '--uniqueclones',
+        action='store_true',
+        default=config.compute_cn.uniqueclones,
+        required=False,
+        help=(
+            'Force samples to have their own unique clones. This requires the number of clones to be greater than '
+            'or equal to the number of samples plus one (default: false)'
         ),
     )
     parser.add_argument(
@@ -341,7 +362,7 @@ def parsing_arguments(args=None):
         args.diploidcmax = None
     if args.diploidcmax is not None and args.diploidcmax <= 0:
         raise ValueError(error('The maximum diploid copy number a positive non-zero integer!'))
-    if args.breakpointmax is not None and args.breakpointmax < 0:
+    if args.evolcons and (args.breakpointmax is None or args.breakpointmax < 0):
         raise ValueError(error('The maximum pairwise breakpoint distance must be a non-negative integer!'))
     if args.tetraploidcmax == 0:
         args.tetraploidcmax = None
@@ -423,7 +444,9 @@ def parsing_arguments(args=None):
         'tetraploid': args.tetraploid,
         'v': args.verbosity,
         'binwise': args.binwise,
-        'bp_max': args.breakpointmax
+        'evolcons': args.evolcons,
+        'bp_max': args.breakpointmax,
+        'uniqueclones': args.uniqueclones,
     }
 
 

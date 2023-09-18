@@ -1,7 +1,5 @@
 from copy import copy
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import pandas as pd
-
 from hatchet.utils.solve.ilp_subset import ILPSubset, ILPSubsetSplit
 from hatchet.utils.solve.utils import Random
 
@@ -69,7 +67,7 @@ def _work(cd, u, solver_type, max_iters, max_convergence_iters, timelimit):
 
 
 class CoordinateDescent:
-    def __init__(self, f_a, f_b, n, mu, d, cn_max, cn, w, clus_adj_counts, bp_max, ampdel=True):
+    def __init__(self, f_a, f_b, n, mu, d, cn_max, cn, w, clus_adj_counts, evolcons, bp_max, uniqueclones, ampdel=True):
         # ilp attribute used here as a convenient storage container for properties
         self.ilp = ILPSubset(
             n=n,
@@ -82,7 +80,9 @@ class CoordinateDescent:
             f_b=f_b,
             w=w,
             clus_adj_counts=clus_adj_counts,
-            bp_max=bp_max
+            evolcons=evolcons,
+            bp_max=bp_max,
+            uniqueclones=uniqueclones,
         )
         # Building the model here is not strictly necessary, as, during execution,
         #   self.carch and c.uarch will copy self.ilp and create+run those models.
@@ -131,11 +131,11 @@ class CoordinateDescent:
 
         best = min(result)
         best_res = result[best]
-        res_A = pd.DataFrame(best_res[0])
-        res_B = pd.DataFrame(best_res[1])
-        res_u = pd.DataFrame(best_res[2])
-        input_fa = self.ilp.f_a
-        input_fb = self.ilp.f_b
+        # res_A = pd.DataFrame(best_res[0])
+        # res_B = pd.DataFrame(best_res[1])
+        # res_u = pd.DataFrame(best_res[2])
+        # input_fa = self.ilp.f_a
+        # input_fb = self.ilp.f_b
         return (best,) + best_res + (self.ilp.cluster_ids, self.ilp.sample_ids)
 
 

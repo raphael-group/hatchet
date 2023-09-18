@@ -46,12 +46,17 @@ def main(args=None):
                         '0.35',
                         '-l',
                         '0.6',
+                        '-E',
                         '-bD',
-                        '12'
+                        '12',
+                        '--uniqueclones',
                     ]
                 )
 
     except Exception as e:
+        # write the exception message to a log file named check_solver.log in the current directory
+        with open('check_solver.log', 'w') as f:
+            f.write(str(e))
         return False
     else:
         log(msg=f'# Your current solver {config.compute_cn.solver} seems to be working correctly\n')

@@ -38,7 +38,9 @@ def solve(
     max_iters=None,
     timelimit=None,
     binwise=False,
-    bp_max=15
+    evolcons=False,
+    bp_max=60,
+    uniqueclones=False,
 ):
 
     assert solve_mode in ('ilp', 'cd', 'both'), 'Unrecognized solve_mode'
@@ -80,7 +82,7 @@ def solve(
     clus_adj_list.append((-1, clust_id_ord[-1]))
 
     for i in range(1, len(clust_id_ord)):
-        c1, c2 = sorted([clust_id_ord[i-1], clust_id_ord[i]])
+        c1, c2 = sorted([clust_id_ord[i - 1], clust_id_ord[i]])
         if c1 != c2:
             clus_adj_list.append((c1, c2))
 
@@ -128,7 +130,9 @@ def solve(
                 f_b=f_b,
                 w=weights,
                 clus_adj_counts=clus_adj_counts,
-                bp_max=bp_max
+                evolcons=evolcons,
+                bp_max=bp_max,
+                uniqueclones=uniqueclones,
             )
             ilp.create_model(pprint=True)
             return ilp.run(solver_type=solver, timelimit=timelimit)
@@ -144,7 +148,9 @@ def solve(
                 ampdel=ampdel,
                 cn=copy_numbers,
                 clus_adj_counts=clus_adj_counts,
-                bp_max=bp_max
+                evolcons=evolcons,
+                bp_max=bp_max,
+                uniqueclones=uniqueclones,
             )
             return cd.run(
                 solver_type=solver,
@@ -166,7 +172,9 @@ def solve(
                 ampdel=ampdel,
                 cn=copy_numbers,
                 clus_adj_counts=clus_adj_counts,
-                bp_max=bp_max
+                evolcons=evolcons,
+                bp_max=bp_max,
+                uniqueclones=uniqueclones,
             )
             _, cA, cB, _, _, _ = cd.run(
                 solver_type=solver,
@@ -188,7 +196,9 @@ def solve(
                 f_b=f_b,
                 w=weights,
                 clus_adj_counts=clus_adj_counts,
-                bp_max=bp_max
+                evolcons=evolcons,
+                bp_max=bp_max,
+                uniqueclones=uniqueclones,
             )
             ilp.create_model()
             ilp.hot_start(cA, cB)
