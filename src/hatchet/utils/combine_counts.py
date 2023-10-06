@@ -993,9 +993,10 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome, unit):
             rdr = rdrs[j]
 
             if dfs is not None:
+                # the second variable below is "cov" from the old code. Should be removed.
                 (
                     nsnps,
-                    cov,
+                    _,
                     baf,
                     alpha,
                     beta,
@@ -1009,7 +1010,7 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome, unit):
             else:
                 (
                     nsnps,
-                    cov,
+                    _,
                     baf,
                     alpha,
                     beta,

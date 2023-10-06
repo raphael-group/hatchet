@@ -426,7 +426,6 @@ def parsing_arguments(args=None):
     else:
         args.purities = None
 
-
     return {
         'solver': args.SOLVER,
         'input': args.input,
@@ -492,7 +491,9 @@ def main(args=None):
     samples = ssamples
 
     if args['purities']:
-        assert len(args['purities']) == len(samples), error('The number of purities given in space-separated list does not match the number of samples!')
+        assert len(args['purities']) == len(samples), error(
+            'The number of purities given in space-separated list does not match the number of samples!'
+        )
 
     sys.stderr.write(log('# Computing the cluster sizes\n'))
     size = computeSizes(seg=seg, bbc=bbc, samples=samples)
