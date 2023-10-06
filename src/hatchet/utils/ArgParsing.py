@@ -468,6 +468,14 @@ def parse_count_reads_args(args=None):
         help='1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)',
     )
     parser.add_argument(
+        '-s',
+        '--segfile',
+        required=False,
+        type=str,
+        default=config.count_reads.segfile,
+        help='path to bed file containing pre-specified segments for which to compute RDR',
+    )
+    parser.add_argument(
         '-V',
         '--refversion',
         required=True,
@@ -637,6 +645,8 @@ def parse_count_reads_args(args=None):
         ),
     )
 
+    segfile = None if args.segfile == "None" else args.segfile
+
     return {
         'bams': bams,
         'names': names,
@@ -651,6 +661,7 @@ def parse_count_reads_args(args=None):
         'refversion': ver,
         'baf_file': args.baffile,
         'readquality': args.readquality,
+        'segfile': segfile,
     }
 
 
@@ -767,6 +778,14 @@ def parse_combine_counts_args(args=None):
         type=str,
         help='Version of reference genome used in BAM files',
     )
+    parser.add_argument(
+        '-f',
+        '--segfile',
+        required=False,
+        type=str,
+        default=config.count_reads.segfile,
+        help='path to bed file containing pre-specified segments for which to compute RDR',
+    )
     args = parser.parse_args(args)
 
     ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
@@ -796,25 +815,31 @@ def parse_combine_counts_args(args=None):
         'Missing file containing sample names (1 per line): {namesfile}',
     )
     names = open(namesfile).read().split()
+
+    segfile = None if args.segfile == "None" else args.segfile
     if 'normal' not in names:
         nonormalFlag = True
     else:
         nonormalFlag = False
 
     chromosomes = set()
+    if segfile:
+        thresh_name, tot_name = "segfile_thresholds", "segfile_total"
+    else:
+        thresh_name, tot_name = "thresholds", "total"
     for f in os.listdir(args.array):
         tkns = f.split('.')
-        if len(tkns) > 1 and (tkns[1] == 'thresholds' or tkns[1] == 'total'):
+        if len(tkns) > 1 and (tkns[1] == thresh_name or tkns[1] == tot_name):
             chromosomes.add(tkns[0])
     chromosomes = sorted(chromosomes)
 
     for ch in chromosomes:
         if args.not_compressed:
-            totals_arr = os.path.join(args.array, f'{ch}.total')
-            thresholds_arr = os.path.join(args.array, f'{ch}.thresholds')
+            totals_arr = os.path.join(args.array, f'{ch}.{tot_name}')
+            thresholds_arr = os.path.join(args.array, f'{ch}.{thresh_name}')
         else:
-            totals_arr = os.path.join(args.array, f'{ch}.total.gz')
-            thresholds_arr = os.path.join(args.array, f'{ch}.thresholds.gz')
+            totals_arr = os.path.join(args.array, f'{ch}.{tot_name}.gz')
+            thresholds_arr = os.path.join(args.array, f'{ch}.{thresh_name}.gz')
         if not os.path.exists(totals_arr):
             raise ValueError(error('Missing array file: {}'.format(totals_arr)))
         if not os.path.exists(thresholds_arr):
@@ -868,6 +893,7 @@ def parse_combine_counts_args(args=None):
         'ref_version': ver,
         'nonormalFlag': nonormalFlag,
         'ponfile': args.ponfile,
+        'segfile': segfile,
     }
 
 

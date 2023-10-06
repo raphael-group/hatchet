@@ -50,6 +50,8 @@ def main(args=None):
                         '-bD',
                         '12',
                         '--uniqueclones',
+                        '-P',
+                        '0.6 0.2 0'
                     ]
                 )
 

@@ -41,6 +41,7 @@ def solve(
     evolcons=False,
     bp_max=60,
     uniqueclones=False,
+    purities=None,
 ):
 
     assert solve_mode in ('ilp', 'cd', 'both'), 'Unrecognized solve_mode'
@@ -133,6 +134,7 @@ def solve(
                 evolcons=evolcons,
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,
+                purities=purities,
             )
             ilp.create_model(pprint=True)
             return ilp.run(solver_type=solver, timelimit=timelimit)
@@ -151,6 +153,7 @@ def solve(
                 evolcons=evolcons,
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,
+                purities=purities,
             )
             return cd.run(
                 solver_type=solver,
@@ -175,6 +178,8 @@ def solve(
                 evolcons=evolcons,
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,
+                purities=purities,
+
             )
             _, cA, cB, _, _, _ = cd.run(
                 solver_type=solver,
@@ -199,6 +204,8 @@ def solve(
                 evolcons=evolcons,
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,
+                purities=purities,
+
             )
             ilp.create_model()
             ilp.hot_start(cA, cB)
@@ -260,7 +267,9 @@ def solve(
                 binsA=binsA,
                 binsB=binsB,
                 lengths=bins_length,
-                clus_adj_counts=clus_adj_counts
+                clus_adj_counts=clus_adj_counts,
+                purities=purities,
+
             )
             ilp.create_model(pprint=True)
             return ilp.run(solver_type=solver, timelimit=timelimit)
