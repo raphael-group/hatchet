@@ -1,6 +1,7 @@
 import os.path
 import tempfile
 from importlib.resources import path
+import traceback
 
 from hatchet import config
 import hatchet.data
@@ -58,6 +59,8 @@ def main(args=None):
     except Exception as e:
         # write the exception message to a log file named check_solver.log in the current directory
         with open('check_solver.log', 'w') as f:
+            f.write(traceback.print_stack())
+            f.write('\n')
             f.write(str(e))
         return False
     else:

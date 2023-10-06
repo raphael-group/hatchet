@@ -141,6 +141,8 @@ class ILPSubset:
         purities = self.purities
 
         model = pe.ConcreteModel()
+        # CONSTRAINTS
+        model.constraints = pe.ConstraintList()
 
         fA = {}
         fB = {}
@@ -249,9 +251,6 @@ class ILPSubset:
                     for _d in range(d):
                         z[(_m, _n, _d)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                         model.add_component(f'z_{_m + 1}_{_n + 1}_{_d + 1}', z[(_m, _n, _d)])
-
-        # CONSTRAINTS
-        model.constraints = pe.ConstraintList()
 
         for _m in range(m):
 
