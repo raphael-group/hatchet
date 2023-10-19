@@ -20,6 +20,74 @@ def solver_available(solver=None):
     return pe.SolverFactory(solver).available(exception_flag=False)
 
 
+# Compute the Mahalanobis distance for each point "a" in S with regularization
+def mahalanobis_distances(S, centroid, regularization=1e-6):
+    num_points = len(S)
+    mahalanobis_sum = 0
+
+    # Compute the mean and covariance matrix of S
+    mean = centroid
+    # we take diagonal of covariance matrix
+    # gamma only scales one of the dimensions
+    cov_matrix = np.cov(S, rowvar=False)
+    if S.shape[1] == 1:
+        diagonal_cov_matrix = cov_matrix.reshape(1, 1)
+    else:
+        diagonal_cov_matrix = np.diag(np.diag(cov_matrix))
+
+    # Add regularization to the covariance matrix
+    cov_matrix_regularized = diagonal_cov_matrix + regularization * np.identity(
+        diagonal_cov_matrix.shape[0]
+    )
+
+    for i in range(num_points):
+        a = S[i]
+        diff = a - mean
+        mahalanobis_distance = np.sqrt(
+            np.dot(diff, np.dot(np.linalg.inv(cov_matrix_regularized), diff))
+        )
+        mahalanobis_sum += mahalanobis_distance
+
+    return mahalanobis_sum
+
+
+def compute_mahalanobis_objective(cA, cB, U, gamma, bbc):
+    fA = np.dot(cA, U)
+    fB = np.dot(cB, U)
+    rCent = (fA + fB) / list(gamma)[0]
+    bCent = fB / (fA + fB)
+
+    # find balanced clusters (i.e. rows with identical cA and cB)
+    balanced_clusters = []
+    for i in range(len(cA)):
+        if np.array_equal(cA[i], cB[i]):
+            balanced_clusters.append(i)
+
+    objective = 0
+    per_cluster_maha = dict()
+    # groupby cluster
+    for cluster_id, _df in bbc.groupby('CLUSTER'):
+        rdr = _df['RD']
+        baf = _df['BAF']
+        S = np.array([rdr, baf]).T
+        if S.shape[0] <= 1:
+            continue
+        # compute mahalanobis distance for each cluster
+        if cluster_id not in balanced_clusters:
+            increment = mahalanobis_distances(
+                S,
+                np.concatenate((rCent[cluster_id - 1], bCent[cluster_id - 1]), axis=0),
+                regularization=1e-7)
+        else:
+            increment = mahalanobis_distances(
+                S[:, 0].reshape(-1, 1),
+                rCent[cluster_id - 1],
+                regularization=1e-7)
+        objective += increment
+        per_cluster_maha[cluster_id] = increment
+    return objective, per_cluster_maha
+
+
 def solve(
     clonal,
     bbc_file,
@@ -137,7 +205,8 @@ def solve(
                 purities=purities,
             )
             ilp.create_model(pprint=True)
-            return ilp.run(solver_type=solver, timelimit=timelimit)
+            solution = ilp.run(solver_type=solver, timelimit=timelimit)
+            return solution
         elif solve_mode == 'cd':
             cd = CoordinateDescent(
                 f_a=f_a,
@@ -155,7 +224,7 @@ def solve(
                 uniqueclones=uniqueclones,
                 purities=purities,
             )
-            return cd.run(
+            solution = cd.run(
                 solver_type=solver,
                 max_iters=max_iters,
                 n_seed=n_seed,
@@ -163,6 +232,13 @@ def solve(
                 random_seed=random_seed,
                 timelimit=timelimit,
             )
+            objective, pcmaha = compute_mahalanobis_objective(solution[1], solution[2], solution[3], gamma, bbc)
+            sp.log(
+                msg=f'\nMahanalobis Objective value: {objective} \n {pcmaha}\n',
+                level='INFO',
+            )
+
+            return solution
         else:
             cd = CoordinateDescent(
                 f_a=f_a,
@@ -209,7 +285,8 @@ def solve(
             )
             ilp.create_model()
             ilp.hot_start(cA, cB)
-            return ilp.run(solver_type=solver, timelimit=timelimit)
+            solution = ilp.run(solver_type=solver, timelimit=timelimit)
+            return solution
 
     else:
         bins = OrderedDict()  # cluster_id => RDR for cluster

@@ -297,13 +297,15 @@ def read_snps(baf_file, ch, all_names):
     # Read in HATCHet BAF table
     all_snps = pd.read_table(
         baf_file,
-        names=['CHR', 'POS', 'SAMPLE', 'REF', 'ALT'],
+        names=['CHR', 'POS', 'SAMPLE', 'REF', 'ALT', 'REFC', 'ALTC'],
         dtype={
             'CHR': object,
             'POS': np.uint32,
             'SAMPLE': object,
             'ALT': np.uint32,
             'REF': np.uint32,
+            'REFC': object,
+            'ALTC': object,
         },
     )
 
