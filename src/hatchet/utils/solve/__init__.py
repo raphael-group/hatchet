@@ -186,6 +186,40 @@ def solve(
     f_b = rdr * baf
     f_a = rdr - f_b
 
+    # compute mean absolute errors for each cluster and sample using
+    # with respect to fa and fb (fractional copy numbers).
+    # use rdr and baf values in the bbc file
+
+    # bbc_rdr = bbc.pivot(index='CLUSTER', columns='SAMPLE', values='RD')
+    # bbc_baf = bbc.pivot(index='CLUSTER', columns='SAMPLE', values='BAF')
+    # bbc_rdr = bbc_rdr * gamma
+
+    # bbc_fb = bbc_rdr * bbc_baf
+    # bbc_fa = bbc_rdr - bbc_fb
+
+    # # compute means of fb and fa for each cluster and sample
+    # mean_fa = bbc_fa.mean(axis=2)
+    # mean_fb = bbc_fb.mean(axis=2)
+
+    # maes = np.mean(np.abs(bbc_fa - mean_fa), axis=2) + np.mean(np.abs(bbc_fb - mean_fb), axis=2)
+
+    # create a table called maes that has the same rows and index as f_a
+    maes = pd.DataFrame(index=f_a.index, columns=f_a.columns)
+
+    for _cluster_id, _df in bbc.groupby('CLUSTER'):
+        for _sample, _df2 in _df.groupby('SAMPLE'):
+            _rdr = _df2['RD'].values * gamma[_sample]
+            _baf = _df2['BAF'].values
+            _f_b = _rdr * _baf
+            _f_a = _rdr - _f_b
+
+            mean_fa = np.mean(_f_a)
+            mean_fb = np.mean(_f_b)
+            # compute mean absolute error
+            maes.loc[_cluster_id, _sample] = np.mean(np.abs(_f_a - mean_fa)) + np.mean(np.abs(_f_b - mean_fb))
+            if maes.loc[_cluster_id, _sample] == 0:
+                maes.loc[_cluster_id, _sample] = 1
+
     if not binwise:
         if solve_mode == 'ilp':
             ilp = ILPSubset(
@@ -199,6 +233,7 @@ def solve(
                 f_b=f_b,
                 w=weights,
                 clus_adj_counts=clus_adj_counts,
+                maes=maes,
                 evolcons=evolcons,
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,
@@ -219,6 +254,7 @@ def solve(
                 ampdel=ampdel,
                 cn=copy_numbers,
                 clus_adj_counts=clus_adj_counts,
+                maes=maes,
                 evolcons=evolcons,
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,
@@ -232,11 +268,12 @@ def solve(
                 random_seed=random_seed,
                 timelimit=timelimit,
             )
-            objective, pcmaha = compute_mahalanobis_objective(solution[1], solution[2], solution[3], gamma, bbc)
-            sp.log(
-                msg=f'\nMahanalobis Objective value: {objective} \n {pcmaha}\n',
-                level='INFO',
-            )
+
+            # objective, pcmaha = compute_mahalanobis_objective(solution[1], solution[2], solution[3], gamma, bbc)
+            # sp.log(
+            #     msg=f'\nMahanalobis Objective value: {objective} \n {pcmaha}\n',
+            #     level='INFO',
+            # )
 
             return solution
         else:
@@ -251,6 +288,7 @@ def solve(
                 ampdel=ampdel,
                 cn=copy_numbers,
                 clus_adj_counts=clus_adj_counts,
+                maes=maes,
                 evolcons=evolcons,
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,
@@ -277,6 +315,7 @@ def solve(
                 f_b=f_b,
                 w=weights,
                 clus_adj_counts=clus_adj_counts,
+                maes=maes,
                 evolcons=evolcons,
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,

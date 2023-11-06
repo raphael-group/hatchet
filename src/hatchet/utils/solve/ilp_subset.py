@@ -9,7 +9,7 @@ from hatchet.utils.solve.utils import Random
 
 class ILPSubset:
     def __init__(self, n, cn_max, d, mu, ampdel, copy_numbers,
-                 f_a, f_b, w, clus_adj_counts, evolcons, bp_max, uniqueclones, purities):
+                 f_a, f_b, w, clus_adj_counts, maes, evolcons, bp_max, uniqueclones, purities):
 
         # Each ILPSubset maintains its own data, so make a deep-copy of passed-in DataFrames
         f_a, f_b = f_a.copy(deep=True), f_b.copy(deep=True)
@@ -17,6 +17,9 @@ class ILPSubset:
         assert f_a.shape == f_b.shape
         assert np.all(f_a.index == f_b.index)
         assert np.all(f_a.columns == f_b.columns)
+
+        # make sure that minimum absolute error is all positive
+        assert np.all(maes > 0)
 
         self.m, self.k = f_a.shape
         self.uniqueclones = uniqueclones
@@ -38,6 +41,7 @@ class ILPSubset:
         self.copy_numbers = copy_numbers
         self.w = w
         self.clus_adj_counts = clus_adj_counts
+        self.maes = maes
         self.evolcons = evolcons
         self.bp_max = bp_max
         self.purities = purities
@@ -71,6 +75,7 @@ class ILPSubset:
             f_b=self.f_b,
             w=self.w,
             clus_adj_counts=self.clus_adj_counts,
+            maes=self.maes,
             evolcons=self.evolcons,
             bp_max=self.bp_max,
             uniqueclones=self.uniqueclones,
@@ -138,6 +143,7 @@ class ILPSubset:
         d = self.d
         _M = self.M
         _base = self.base
+        maes = self.maes
         purities = self.purities
 
         model = pe.ConcreteModel()
@@ -347,6 +353,13 @@ class ILPSubset:
             for _m in range(m):
                 model.constraints.add(self.cA[_m][0] == 1)
                 model.constraints.add(self.cB[_m][0] == 1)
+                cluster_id = self.cluster_ids[_m]
+
+                # if the fraction of the cluster size is larger than or equal to 0.02 in the whole dataset
+                # then its integer copy number cannot have (0,0) copy number
+                if self.w[cluster_id] / sum(self.w) >= 0.02:
+                    for _n in range(1, n):
+                        model.constraints.add(self.cA[_m][_n] + self.cB[_m][_n] >= 1)
 
             if ampdel:
                 for _m in range(m):
@@ -436,7 +449,8 @@ class ILPSubset:
         for _m in range(m):
             for _k in range(k):
                 cluster_id = self.cluster_ids[_m]
-                obj += (yA[(_m, _k)] + yB[(_m, _k)]) * self.w[cluster_id]
+                sample_id = self.sample_ids[_k]
+                obj += (yA[(_m, _k)] + yB[(_m, _k)]) * self.w[cluster_id] / maes.loc[cluster_id, sample_id]
 
         model.obj = pe.Objective(expr=obj, sense=pe.minimize)
         self.model = model
@@ -787,6 +801,7 @@ class ILPSubsetSplit(ILPSubset):
         d = self.d
         _M = self.M
         _base = self.base
+        maes = self.maes
 
         model = pe.ConcreteModel()
 
@@ -1081,8 +1096,9 @@ class ILPSubsetSplit(ILPSubset):
             n_bins = len(self.binsA[cluster_id])
 
             for _k in range(k):
+                sample_id = self.sample_ids[_k]
                 for _i in range(n_bins):
-                    obj += (yA[(_m, _k, _i)] + yB[(_m, _k, _i)]) * self.lengths[cluster_id][_i]
+                    obj += (yA[(_m, _k, _i)] + yB[(_m, _k, _i)]) * self.lengths[cluster_id][_i] / maes.loc[cluster_id, sample_id]
 
         model.obj = pe.Objective(expr=obj, sense=pe.minimize)
         self.model = model
