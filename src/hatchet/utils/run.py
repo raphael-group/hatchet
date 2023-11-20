@@ -112,12 +112,16 @@ def main(args=None):
                 ]
 
         os.makedirs(f'{output}/snps', exist_ok=True)
+        import sys
+        print(config.run.bams, file=sys.stderr)
         genotype_snps(
             args=[
                 '-N',
                 config.run.normal,
-                '-T',
-                config.run.bams,
+                '-T'
+            ] 
+            + config.run.bams.strip().split()
+            + [
                 '-r',
                 config.run.reference,
                 '-R',
