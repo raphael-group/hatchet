@@ -572,7 +572,9 @@ def compute_baf_task_single(
         baf, alpha, beta, emhaplo = apply_EM(my_snps.TOTAL, my_snps.ALT, my_snps.HAPLO)
         # flatten 2d list of haploblocks into one haplotype array for the whole bin
         haploflat = [int(item) for sublist in emhaplo for item in sublist]
-        assert np.sum(np.choose(haploflat, [bin_snps.ALT, bin_snps.REF])) == beta
+        assert np.sum(np.choose(haploflat,
+                                [bin_snps[bin_snps.SAMPLE == sample].ALT,
+                                 bin_snps[bin_snps.SAMPLE == sample].REF])) == beta
         haplostring = ",".join(list(map(str, haploflat)))
         cov = (int(alpha) + int(beta)) / n_snps
         tot = (int(alpha) + int(beta))

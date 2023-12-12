@@ -1,4 +1,3 @@
-import sys
 from io import StringIO
 import os.path
 import glob
@@ -119,7 +118,7 @@ def main(args=None):
                 '-N',
                 config.run.normal,
                 '-T'
-            ] 
+            ]
             + config.run.bams.strip().split()
             + [
                 '-r',
@@ -228,6 +227,7 @@ def main(args=None):
         # ----------------------------------------------------
 
         if config.run.combine_counts:
+            import sys
             _stdout = sys.stdout
             sys.stdout = StringIO()
             os.makedirs(f'{output}/bb', exist_ok=True)
