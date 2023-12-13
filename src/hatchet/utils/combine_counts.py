@@ -452,8 +452,8 @@ def EM(totals_in, alts_in, start, tol=1e-6):
     """
     Adapted from chisel/Combiner.py
     """
-    totals = np.array(totals_in)
-    alts = np.array(alts_in)
+    totals = np.array(totals_in).reshape(-1)
+    alts = np.array(alts_in).reshape(-1)
     assert (
         totals.size == alts.size and 0 < start < 1 and np.all(totals >= alts)
     )
@@ -487,183 +487,16 @@ def EM(totals_in, alts_in, start, tol=1e-6):
                 + (1 - phases) * lpmf(k=list(alts), n=list(totals), p=1 - baf)
             )
         )
-        return baf, phases, log_likelihood
+        return [baf], phases, log_likelihood
 
 
-def apply_EM(totals_in, alts_in, alt_haplo):
-    baf, phases, logl = max(
-        (
-            EM(totals_in, alts_in, start=st)
-            for st in np.linspace(0.01, 0.49, 50)
-        ),
-        key=(lambda x: x[2]),
-    )
-    refs = totals_in - alts_in
-    phases = phases.round().astype(np.int8)
-    inverse_reference_haplo = pd.Series(
-        [[1 - ph for ph in hap] for hap in alt_haplo]
-    )
-    if not np.all(phases == (alts_in < refs)):
-        sp.log(totals_in)
-    return (
-        baf,
-        int(np.sum(np.choose(phases, [alts_in, refs]))),
-        int(np.sum(np.choose(phases, [refs, alts_in]))),
-        np.choose(phases, [alt_haplo, inverse_reference_haplo]),
-    )
+def multisample_EM(totals, alts, start, tol=10e-6):
 
-
-def compute_baf_wrapper(
-    bin_snps, blocksize, max_snps_per_block, test_alpha, multisample
-):
-    if multisample:
-        return compute_baf_task_multi(
-            bin_snps, blocksize, max_snps_per_block, test_alpha
-        )
-    else:
-        return compute_baf_task_single(
-            bin_snps, blocksize, max_snps_per_block, test_alpha
-        )
-
-
-def compute_baf_task_single(
-    bin_snps, blocksize, max_snps_per_block, test_alpha
-):
-    """
-    Estimates the BAF for the bin containing exactly <bin_snps> SNPs.
-    <bin_snps> is a dataframe with at least ALT and REF columns containing read counts.
-    <blocksize>, <max_snps_per_block>, and <test_alpha> are used only for constructing phase blocks.
-    """
-
-    samples = sorted(bin_snps.SAMPLE.unique())
-    result = {}
-
-    phasing = 'PHASE' in bin_snps.columns
-    if phasing:
-        # TODO: select the highest coverage sample to use for constructing phase blocks?
-        # or maybe use all samples for BAF test?
-        all_phase_data = [
-            phase_blocks_sequential(
-                d,
-                blocksize=blocksize,
-                max_snps_per_block=max_snps_per_block,
-                alpha=test_alpha,
-            )
-            for _, d in bin_snps.groupby('SAMPLE')
-        ]
-        phase_data = merge_phasing(bin_snps, all_phase_data)
-
-    for sample in samples:
-        # Compute BAF
-        my_snps = bin_snps[bin_snps.SAMPLE == sample]
-        n_snps = len(my_snps)
-
-        snp_pos = ','.join(map(str, my_snps.POS))
-        snp_ref_counts = ','.join(map(str, my_snps.REF))
-        snp_alt_counts = ','.join(map(str, my_snps.ALT))
-        if phasing:
-            my_snps = collapse_blocks(my_snps, *phase_data, bin_snps.iloc[0].CHR)
-        else:
-            # each snp is it's on haplo block. [1] represents the minor count.
-            # After EM algorithm, the haplostring tracks the haplotype with the minor
-            # allele count (beta)
-            my_snps["HAPLO"] = len(my_snps) * [[1]]
-
-        baf, alpha, beta, emhaplo = apply_EM(my_snps.TOTAL, my_snps.ALT, my_snps.HAPLO)
-        # flatten 2d list of haploblocks into one haplotype array for the whole bin
-        haploflat = [int(item) for sublist in emhaplo for item in sublist]
-        assert np.sum(np.choose(haploflat,
-                                [bin_snps[bin_snps.SAMPLE == sample].ALT,
-                                 bin_snps[bin_snps.SAMPLE == sample].REF])) == beta
-        haplostring = ",".join(list(map(str, haploflat)))
-        cov = (int(alpha) + int(beta)) / n_snps
-        tot = (int(alpha) + int(beta))
-
-        result[sample] = n_snps, cov, baf, alpha, beta, tot, snp_pos, snp_ref_counts, snp_alt_counts, haplostring
-    return result
-
-
-def compute_baf_task_multi(
-    bin_snps, blocksize, max_snps_per_block, test_alpha
-):
-    """
-    Estimates the BAF for the bin containing exactly <bin_snps> SNPs.
-    <bin_snps> is a dataframe with at least ALT and REF columns containing read counts.
-    <blocksize>, <max_snps_per_block>, and <test_alpha> are used only for constructing phase blocks.
-    """
-
-    samples = sorted(bin_snps.SAMPLE.unique())
-    result = {}
-
-    phasing = 'PHASE' in bin_snps.columns
-    if phasing:
-        # TODO: select the highest coverage sample to use for constructing phase blocks?
-        # or maybe use all samples for BAF test?
-        all_phase_data = [
-            phase_blocks_sequential(
-                d,
-                blocksize=blocksize,
-                max_snps_per_block=max_snps_per_block,
-                alpha=test_alpha,
-            )
-            for _, d in bin_snps.groupby('SAMPLE')
-        ]
-        phase_data = merge_phasing(bin_snps, all_phase_data)
-
-        bin_snps = collapse_blocks(bin_snps, *phase_data, bin_snps.iloc[0].CHR)
-
-        alts = bin_snps.pivot(
-            index='SAMPLE', columns='START', values='ALT'
-        ).to_numpy()
-        refs = bin_snps.pivot(
-            index='SAMPLE', columns='START', values='REF'
-        ).to_numpy()
-        n_snps = (
-            bin_snps['#SNPS'].sum() / len(bin_snps.SAMPLE.unique())
-        ).astype(np.uint32)
-
-    else:
-        alts = bin_snps.pivot(
-            index='SAMPLE', columns='POS', values='ALT'
-        ).to_numpy()
-        refs = bin_snps.pivot(
-            index='SAMPLE', columns='POS', values='REF'
-        ).to_numpy()
-        n_snps = alts.shape[1]
-
-    runs = {
-        b: multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)
-    }
-    bafs, phases, ll = max(runs.values(), key=lambda x: x[-1])
-
-    # Need hard phasing to assign ref/alt reads to alpha/beta
-    phases = np.round(phases).astype(np.int8)
-
-    # Compose results table
-    for i in range(len(samples)):
-        sample = samples[i]
-
-        # Check that sample indexing lines up
-        my_snps = bin_snps[bin_snps.SAMPLE == sample]
-        assert np.array_equal(my_snps.ALT, alts[i])
-        assert np.array_equal(my_snps.REF, refs[i])
-
-        alpha = np.sum(np.choose(phases, [refs[i], alts[i]]))
-        beta = np.sum(np.choose(phases, [alts[i], refs[i]]))
-        baf = bafs[i]
-        cov = np.sum(alpha + beta) / n_snps
-
-        result[sample] = n_snps, cov, baf, alpha, beta
-    return result
-
-
-def multisample_em(alts, refs, start, tol=10e-6):
+    refs = totals - alts
     assert (
         refs.shape == alts.shape
     ), 'Alternate and reference count arrays must have the same shape'
     assert 0 < start <= 0.5, 'Initial estimate must be in (0, 0.5]'
-
-    totals = alts + refs
 
     n_samples, n_snps = alts.shape
     totals_sum = np.sum(totals, axis=1)
@@ -711,6 +544,109 @@ def multisample_em(alts, refs, start, tol=10e-6):
     log_likelihood = np.sum(t1 + t2 + t3 + t4)
 
     return theta, phases, log_likelihood
+
+
+def apply_EM(totals, alts, reference_based_haplo_blocks, multisample_em):
+    if multisample_em:
+        runs = (multisample_EM(totals, alts, b) for b in np.arange(0.05, 0.5, 0.05))
+    else:
+        runs = (EM(totals, alts, start=st) for st in np.linspace(0.01, 0.49, 50))
+    baf, phases, _ = max(runs, key=lambda x: x[-1])
+    refs = totals - alts
+    phases = phases.round().astype(np.int8).reshape(-1)
+    inverse_reference_haplo = pd.Series(
+        [[1 - ph for ph in hap] for hap in reference_based_haplo_blocks]
+    )
+    haplo = np.choose(phases, [reference_based_haplo_blocks, inverse_reference_haplo])
+    haploflat = [int(item) for sublist in haplo for item in sublist]
+    haplostring = ",".join(list(map(str, haploflat)))
+    # if not np.all(phases == (alts < refs)):
+    #     sp.log(totals)
+    return (
+        baf,
+        [int(np.sum(np.choose(phases, [alts[i], refs[i]]))) for i in range(len(alts))],
+        [int(np.sum(np.choose(phases, [refs[i], alts[i]]))) for i in range(len(alts))],
+        haplo,
+        haploflat,
+        haplostring,
+    )
+
+
+def compute_baf_task(
+    bin_snps, blocksize, max_snps_per_block, test_alpha, multisample_em
+):
+    """
+    Estimates the BAF for the bin containing exactly <bin_snps> SNPs.
+    <bin_snps> is a dataframe with at least ALT and REF columns containing read counts.
+    <blocksize>, <max_snps_per_block>, and <test_alpha> are used only for constructing phase blocks.
+    """
+
+    samples = sorted(bin_snps.SAMPLE.unique())
+    bafs, alphas, betas = [0] * len(samples), [0] * len(samples), [0] * len(samples)
+    result = {}
+
+    phasing = 'PHASE' in bin_snps.columns
+    if phasing:
+        # TODO: select the highest coverage sample to use for constructing phase blocks?
+        # or maybe use all samples for BAF test?
+        all_phase_data = [
+            phase_blocks_sequential(
+                d,
+                blocksize=blocksize,
+                max_snps_per_block=max_snps_per_block,
+                alpha=test_alpha,
+            )
+            for _, d in bin_snps.groupby('SAMPLE')
+        ]
+        phase_data = merge_phasing(bin_snps, all_phase_data)
+        grouped_snps = collapse_blocks(bin_snps, *phase_data, bin_snps.iloc[0].CHR)
+    else:
+        # each snp is it's on haplo block. [1] represents the minor count.
+        # After EM algorithm, the haplostring tracks the haplotype with the minor
+        # allele count (beta)
+        grouped_snps = bin_snps.copy()
+        grouped_snps["START"] = grouped_snps["POS"]
+        grouped_snps["HAPLO"] = len(grouped_snps) * [[1]]
+    reference_based_haplo_blocks = grouped_snps[grouped_snps.SAMPLE == samples[0]].HAPLO
+
+    totals = grouped_snps.pivot(
+        index='SAMPLE', columns='START', values='TOTAL'
+    ).to_numpy().astype(np.uint64)
+    alts = grouped_snps.pivot(
+        index='SAMPLE', columns='START', values='ALT'
+    ).to_numpy().astype(np.uint64)
+
+    # compute phasing once using all samples
+    if multisample_em:
+        bafs, alphas, betas, _, haploflat, haplostring = apply_EM(
+            totals, alts, reference_based_haplo_blocks, multisample_em)
+
+    for i in range(len(samples)):
+        sample = samples[i]
+        sample_snps = bin_snps[bin_snps.SAMPLE == sample]
+
+        # compute phases if not multisample
+        if not multisample_em:
+            bafs[i], alphas[i], betas[i], _, haploflat, haplostring = apply_EM(
+                totals[i].reshape(1, -1), alts[i].reshape(1, -1), reference_based_haplo_blocks, multisample_em)
+            bafs[i] = bafs[i][0]
+            alphas[i] = alphas[i][0]
+            betas[i] = betas[i][0]
+
+        assert np.sum(np.choose(haploflat, [sample_snps.ALT, sample_snps.REF])) == betas[i]
+
+        snp_pos = ','.join(map(str, sample_snps.POS))
+        snp_ref_counts = ','.join(map(str, sample_snps.REF))
+        snp_alt_counts = ','.join(map(str, sample_snps.ALT))
+        n_snps = len(sample_snps)
+
+        baf = bafs[i]
+        cov = (alphas[i] + betas[i]) / n_snps
+        tot = (alphas[i] + betas[i])
+
+        result[sample] = (n_snps, cov, baf, alphas[i], betas[i], tot, snp_pos,
+                          snp_ref_counts, snp_alt_counts, haplostring)
+    return result
 
 
 def merge_phasing(_, all_phase_data):
@@ -1378,7 +1314,7 @@ def run_chromosome(
 
                 # Infer BAF
                 bafs = [
-                    compute_baf_wrapper(
+                    compute_baf_task(
                         d,
                         blocksize,
                         max_snps_per_block,
@@ -1538,7 +1474,7 @@ def run_chromosome(
                                 ), i
 
                         bafs = [
-                            compute_baf_wrapper(
+                            compute_baf_task(
                                 d,
                                 blocksize,
                                 max_snps_per_block,
