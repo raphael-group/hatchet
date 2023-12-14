@@ -908,6 +908,15 @@ def segmented_piecewise(X, pieces=2):
 def correct_haplotypes(
     orig_bafs, min_prop_switch=0.01, n_segments=10, min_switch_density=0.1, min_mean_baf=0.45, minmax_al_imb=0.02
 ):
+    n_bins = orig_bafs.shape[0]
+    if n_bins == 1:
+        sp.log(msg=f'Only one bin in the chromosome arm, skipping correction.\n', level='INFO')
+        return orig_bafs, None
+    elif n_bins < n_segments:
+        # Assume that with this few bins, there is only 1 segment
+        sp.log(msg=f'Only {orig_bafs.shape[0]} bins < {n_segments} segments parameter, using 1 segment instead.\n', level='INFO')
+        n_segments = 1
+
     # Count switches using only samples with mean allelic imbalance above <minmax_al_imb>
     imb_samples = np.where(np.mean(np.abs(orig_bafs - 0.5), axis=0) > minmax_al_imb)[0]
 
