@@ -389,12 +389,9 @@ def plot_genome(
                         )
                     )
 
-            if n_clones == 1:
-                my_colors = [cmap(mapping[r]) for r in bbc.cn_clone1]
-            else:
-                my_colors = [
-                    cmap(mapping[tuple(r)]) for _, r in bbc[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
-                ]
+            my_colors = [
+                cmap(mapping[tuple(r)]) for _, r in bbc[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
+            ]
 
             axes[idx * 2 + 0].scatter(midpoint, bbc.RD * gamma, s=markersize, alpha=1, c=my_colors)
             axes[idx * 2 + 1].scatter(midpoint, bbc.BAF, s=markersize, alpha=1, c=my_colors)
@@ -522,12 +519,9 @@ def plot_clusters(
         n_clones2, gamma = compute_gamma(bbc_)
         assert n_clones2 == n_clones, (n_clones2, n_clones)
 
-        if n_clones == 1:
-            my_colors = [cmap(mapping[r]) for r in bbc_.cn_clone1]
-        else:
-            my_colors = [
-                cmap(mapping[tuple(r)]) for _, r in bbc_[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
-            ]
+        my_colors = [
+            cmap(mapping[tuple(r)]) for _, r in bbc_[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
+        ]
 
         if coloring == 'local':
             # not yet implemented
