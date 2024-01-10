@@ -552,6 +552,7 @@ def main(args=None):
             tetraploidObjs = runningTetraploid(clonal=clonal, scale=scale, size=size, args=args)
 
             sys.stderr.write(log('# Selecting best solution\n'))
+            #import pdb; pdb.set_trace()
             select(
                 diploid=diploidObjs,
                 tetraploid=tetraploidObjs,
@@ -1468,9 +1469,10 @@ def select(diploid, tetraploid, v, rundir, g, limit):
             info('## The related-tetraploid resulting files are copied to {} and {}\n'.format(tbout, tsout))
         )
 
+    #import pdb; pdb.set_trace()    
     bbest = os.path.join(rundir, 'best.bbc.ucn')
     sbest = os.path.join(rundir, 'best.seg.ucn')
-    if tchosen[0] < dchosen[0]:
+    if tchosen[0] <= dchosen[0] and tchosen[1] <= dchosen[1]:
         shutil.copy2(tchosen[2] + '.bbc.ucn.tsv', bbest)
         shutil.copy2(tchosen[2] + '.seg.ucn.tsv', sbest)
         sys.stderr.write(
