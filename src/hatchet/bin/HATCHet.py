@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import shlex
 from collections import Counter
+import pandas as pd
 
 import hatchet
 from hatchet import config, __version__
@@ -1468,11 +1469,21 @@ def select(diploid, tetraploid, v, rundir, g, limit):
         sys.stderr.write(
             info('## The related-tetraploid resulting files are copied to {} and {}\n'.format(tbout, tsout))
         )
+    
+    best_tetra_even_fraction = compute_tetra_even_fraction(tbout)
+    
+    sys.stderr.write(
+        info(
+            '# The chosen tetraploid has the following fraction of bins with all even copy numbers: {} \n'.format(
+                best_tetra_even_fraction
+            )
+        )
+    )
 
     #import pdb; pdb.set_trace()    
     bbest = os.path.join(rundir, 'best.bbc.ucn')
     sbest = os.path.join(rundir, 'best.seg.ucn')
-    if tchosen[0] <= dchosen[0] and tchosen[1] <= dchosen[1]:
+    if tchosen[0] <= dchosen[0] and tchosen[1] <= dchosen[1] and best_tetra_even_fraction < 0.85:
         shutil.copy2(tchosen[2] + '.bbc.ucn.tsv', bbest)
         shutil.copy2(tchosen[2] + '.seg.ucn.tsv', sbest)
         sys.stderr.write(
@@ -1637,6 +1648,35 @@ def selectTetraploid(tetraploid, v, rundir, g, limit):
             )
         )
     )
+
+
+def compute_tetra_even_fraction(tbout):
+    """
+    computes the percentage of rows with a|b copy number where a and b are even in chosen tetraploid solution.
+    It computes the percentage in a weighted way according to tumor clones' individual purity.
+    """
+    df = pd.read_table(tbout, header=0)
+
+    numclones = (df.shape[1] - 12) // 2
+    norfrac = df["u_normal"].mean()
+    if norfrac == 1:
+        return 0
+
+    weighedfr = 0
+    for i in range(numclones):
+        clnum = i + 1
+        uclone = df["u_clone" + str(clnum)].mean()
+
+        # split the values in cn_clone1 by |
+        df[["a", "b"]] = df["cn_clone" + str(clnum)].str.split("|", expand=True).astype(int)
+
+        # check if both a and b are even
+        df["is_even"] = (df["a"] % 2 == 0) & (df["b"] % 2 == 0)
+
+        # compute the fraction of rows where both a and b are even
+        fraction = df["is_even"].mean()
+        weighedfr += fraction * uclone / (1 - norfrac)
+    return weighedfr
 
 
 def safediv(v):
