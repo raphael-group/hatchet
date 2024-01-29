@@ -6,6 +6,7 @@ import subprocess
 import shlex
 from collections import Counter
 import pandas as pd
+import numpy as np
 
 import hatchet
 from hatchet import config, __version__
@@ -1239,6 +1240,36 @@ def runningTetraploid(clonal, scale, size, args):
     return results
 
 
+def get_purities(seg_file, purities):
+    """
+    if purities are specified by users, we fix the purities to the provided values.
+    otherwise, we estimate the lowerbound of the purity and use the range LB_i<=r_<=1 for
+    sample i.
+    """
+    if purities:
+        # Lowerbound, upperbound, the same
+        return [purities, purities]
+    else:
+        # estimate the lowerbound using the cluster with the smallest BAF.
+        # The mininum purity is when this cluster has (6,0) copy number state 
+        # (assuming that (x,0) cannot be present in the data if x>6)
+        lbs = []
+        ubs = []
+        dfall = pd.read_table(seg_file, header=0)
+        for sample, df in dfall.groupby("SAMPLE"):
+            total_bins = np.sum(df["#BINS"])
+            df = df[df["#BINS"] > 0.01 * total_bins]
+            minbaf = np.min(df["BAF"])
+            if minbaf > 0.4:
+                minpur = 0
+            else:
+                minpur = (1 - minbaf) / (5 * minbaf + 1)
+            lbs.append(minpur)
+            ubs.append(1)
+            sys.stderr.write(log(f"Purity lower bound for sample {sample} is {minpur}\n"))
+        return [lbs, ubs]
+
+
 def execute_python(solver, args, n, outprefix):
 
     bbc_out_file = outprefix + '.bbc.ucn.tsv'
@@ -1267,7 +1298,7 @@ def execute_python(solver, args, n, outprefix):
         evolcons=args['evolcons'],
         bp_max=args['bp_max'],
         uniqueclones=args['uniqueclones'],
-        purities=args['purities'],
+        purities=get_purities(args['seg'], args['purities']),
     )
 
     segmentation(

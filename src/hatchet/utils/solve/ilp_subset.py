@@ -327,8 +327,12 @@ class ILPSubset:
 
         #  this is where we fix the purities if user provides purity values for (tumor) samples
         if mode_t in ('FULL', 'UARCH') and purities:
-            for i, p in enumerate(purities):
-                model.constraints.add(self.u[0][i] == 1 - p)
+            lbs = purities[0]
+            ubs = purities[1]
+            for i, p in enumerate(lbs):
+                model.constraints.add(self.u[0][i] <= 1 - p)
+            for i, p in enumerate(ubs):
+                model.constraints.add(self.u[0][i] >= 1 - p)
 
         if mode_t == 'CARCH':
             # TODO: These loops can be collapsed once validation against C++ is complete
