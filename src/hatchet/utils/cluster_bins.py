@@ -381,8 +381,9 @@ def form_seg(bbc, balanced_threshold):
             samples.append(sample)
 
         keys = [key] * len(baf)
-        if all([abs(0.5 - baf_) < balanced_threshold for baf_ in baf]):
-            baf = [0.5] * len(baf)
+        # removed in the new balanced algorithm
+        # if all([abs(0.5 - baf_) < balanced_threshold for baf_ in baf]):
+        #     baf = [0.5] * len(baf)
 
         [segments.append(t) for t in zip(keys, samples, nbins, rd, nsnps, cov, a, b, baf)]
 
