@@ -162,9 +162,11 @@ def main(args=None):
                 big_bb.CORRECTED_READS / big_bb.RD
             ).astype(np.uint32)
 
-    # Correct BAF when there is no normal sample. This correction useful only in LOH regions in high-purity samples
+    """    
+# Correct BAF when there is no normal sample. This correction useful only in LOH regions in high-purity samples
     big_bb = correct_baf(big_bb)
     big_bb['BAF'] = big_bb['BAF'].round(5)
+    """
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     big_bb.END = big_bb.END + 1
     if ponfile is not None:
