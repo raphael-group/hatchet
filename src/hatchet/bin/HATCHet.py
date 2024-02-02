@@ -1258,7 +1258,8 @@ def get_purities(seg_file, purities):
         dfall = pd.read_table(seg_file, header=0)
         for sample, df in dfall.groupby("SAMPLE"):
             total_bins = np.sum(df["#BINS"])
-            df = df[df["#BINS"] > 0.01 * total_bins]
+            df = df[df["#BINS"] > 0.003 * total_bins]
+            df = df[df["RD"] < 5]
             minbaf = np.min(df["BAF"])
             if minbaf > 0.4:
                 minpur = 0
