@@ -1,0 +1,29 @@
+hatchet.bin package
+===================
+
+Submodules
+----------
+
+hatchet.bin.HATCHet module
+--------------------------
+
+.. automodule:: hatchet.bin.HATCHet
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.bin.HATCHet\-preprocess module
+--------------------------------------
+
+.. automodule:: hatchet.bin.HATCHet-preprocess
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: hatchet.bin
+   :members:
+   :undoc-members:
+   :show-inheritance:
