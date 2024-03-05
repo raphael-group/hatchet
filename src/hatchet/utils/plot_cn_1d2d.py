@@ -544,7 +544,7 @@ def plot_clusters(
 
             already_written = set()
             for k, _ in bbc_.groupby([f'cn_clone{i + 1}' for i in range(n_clones)]):
-                if type(k) == str:
+                if isinstance(k, str):
                     # 1-clone case
                     state = [(1, 1), str2state(k)]
                 else:
@@ -593,7 +593,7 @@ def plot_clusters(
             eys = []
             cs = []
             for k, _ in bbc_.groupby([f'cn_clone{i + 1}' for i in range(n_clones)]):
-                if type(k) == str:
+                if isinstance(k, str):
                     state = [(1, 1), str2state(k)]
                 else:
                     state = [(1, 1)] + [str2state(a) for a in k]
