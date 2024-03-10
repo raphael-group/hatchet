@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import binom, norm
 from scipy.special import softmax
+import tempfile
 
 import hatchet.data
 from hatchet.utils.ArgParsing import parse_combine_counts_args
@@ -195,9 +196,9 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
     """
     Read and validate SNP data for this patient (TSV table output from HATCHet deBAF.py).
     """
-    all_names = [
-        name for name in all_names if name != 'normal'
-    ]   # remove normal sample -- not looking for SNP counts from normal
+    # all_names = [
+    #     name for name in all_names if name != 'normal'
+    # ]   # remove normal sample -- not looking for SNP counts from normal
 
     # Read in HATCHet BAF table
     all_snps = pd.read_table(
@@ -217,6 +218,7 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
     # Keep only SNPs on this chromosome
     snps = all_snps[all_snps.CHR == ch].sort_values(by=['POS', 'SAMPLE'])
     snps = snps.reset_index(drop=True)
+    all_names = snps.SAMPLE.unique()
 
     if len(snps) == 0:
         raise ValueError(
@@ -290,11 +292,10 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
     check_pivot = snpsv.pivot(index='POS', columns='SAMPLE', values='TOTAL')
     assert np.array_equal(check_pivot, snp_counts), 'SNP file reading failed'
     assert not np.any(check_pivot.isna()), 'SNP file reading failed'
-    assert np.array_equal(
-        all_names, list(snp_counts.columns)
-    )   # make sure that sample order is the same
-
-    return np.array(snp_counts.index), np.array(snp_counts), snpsv
+    # order columns snp_counts in the same order as all_names
+    snp_counts = snp_counts[all_names]
+    snp_counts_normal_excluded = np.array(snp_counts[[n for n in all_names if n != "normal"]])
+    return np.array(snp_counts.index), snp_counts_normal_excluded, snpsv, np.array(snp_counts)
 
 
 def adaptive_bins_arm(
@@ -609,6 +610,12 @@ def compute_baf_task(
         grouped_snps = bin_snps.copy()
         grouped_snps["START"] = grouped_snps["POS"]
         grouped_snps["HAPLO"] = len(grouped_snps) * [[1]]
+
+    # ng = grouped_snps[grouped_snps.TOTAL >= 200]
+    # if ng.shape[0] == 0:
+    #     pass
+    # else:
+    #     grouped_snps = ng
     reference_based_haplo_blocks = grouped_snps[grouped_snps.SAMPLE == samples[0]].HAPLO
 
     totals = grouped_snps.pivot(
@@ -1288,7 +1295,7 @@ def run_chromosome(
             # Load SNP positions and counts for this chromosome
             # snp_counts contains TOTAL depth for each sample at each site
             # snpsv is DataFrame with ALT/REF counts, phase info
-            positions, snp_counts, snpsv = read_snps(
+            positions, snp_counts, snpsv, _ = read_snps(
                 baffile, chromosome, all_names, phasefile=phasefile
             )
             bins = bins_from_segfile(
@@ -1368,10 +1375,23 @@ def run_chromosome(
                 snpsv = None
 
             else:
+                # assert that there is a file called normal.1bed in the same folder baffile is located.
+                normal_baf_path = os.path.join(os.path.dirname(baffile), 'normal.1bed')
+                assert os.path.exists(
+                    normal_baf_path
+                )
+                # create a temporary file called
+                combined_baf = tempfile.NamedTemporaryFile(delete=False)
+                
+                # and write the contents of normal.1bed file and the baf file contents to combined_baf
+                with open(combined_baf.name, 'w') as f:
+                    f.write(open(normal_baf_path, 'r').read())
+                    f.write(open(baffile, 'r').read())
+
                 # sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
                 # Load SNP positions and counts for this chromosome
-                positions, snp_counts, snpsv = read_snps(
-                    baffile, chromosome, all_names, phasefile=phasefile
+                positions, snp_counts, snpsv, snp_counts_normal_included = read_snps(
+                    combined_baf, chromosome, all_names, phasefile=phasefile
                 )
 
             def arm_indices(arm):
@@ -1464,8 +1484,9 @@ def run_chromosome(
 
                         if len(dfs) > 1:
                             for i in range(len(dfs)):
+                                dft = dfs[i][dfs[i].SAMPLE != "normal"]
                                 assert np.all(
-                                    dfs[i]
+                                    dft
                                     .pivot(
                                         index='POS',
                                         columns='SAMPLE',
@@ -1485,6 +1506,9 @@ def run_chromosome(
                             )
                             for d in dfs
                         ]
+                    # remove "normal" key from bafs' elements. bafs is a list of dictionaries
+                    bafs = [{k: v for k, v in baf.items() if k != 'normal'} for baf in bafs]
+
                     bb = merge_data(
                         bins, dfs, bafs, all_names, chromosome, arm
                     )

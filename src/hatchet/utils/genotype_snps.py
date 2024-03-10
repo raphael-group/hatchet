@@ -312,14 +312,14 @@ class Caller(Process):
                     shlex.split(cmd_runhetdetect),
                     stdout=pr.PIPE,
                     stderr=err,
-                    env = os.environ.copy(),
+                    env=os.environ.copy(),
                     universal_newlines=True,
                 )
                 pcss.append(hetdetect)
                 codes = list(codes) + [hetdetect.wait()]      
         
         if self.nonormal:
-            if not os.path.isfile(os.path.join(tmpdir,"hetdetect.vcf.gz")):
+            if not os.path.isfile(os.path.join(tmpdir, "hetdetect.vcf.gz")):
                 raise ValueError(
                     error('het SNP Calling without normal failed on {} of {}, please check errors in {}!').format(
                         chromosome, samplename, errname
@@ -327,13 +327,12 @@ class Caller(Process):
                 )
             else:
                 # copy hetdetect.vcf to outfile using shutil
-                shutil.copyfile(os.path.join(tmpdir,"hetdetect.vcf.gz"), outfile)
-                copy_tree(os.path.join(tmpdir,"plots"), os.path.join(self.outdir,"plots"))
+                shutil.copyfile(os.path.join(tmpdir, "hetdetect.vcf.gz"), outfile)
+                copy_tree(os.path.join(tmpdir, "plots"), os.path.join(self.outdir, "plots"))
                 shutil.rmtree(tmpdir)
-        
 
             codes = [filter.wait()]
-        
+
         if any(c != 0 for c in codes):
             # if self.nonormal:
             #     shutil.rmtree(tmpdir, ignore_errors=True)
