@@ -52,7 +52,7 @@ def main(args=None):
                         '12',
                         '--uniqueclones',
                         '-P',
-                        '0.6 0.2 0'
+                        '0.6 0.2 0',
                     ]
                 )
 

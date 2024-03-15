@@ -67,8 +67,24 @@ def _work(cd, u, solver_type, max_iters, max_convergence_iters, timelimit):
 
 
 class CoordinateDescent:
-    def __init__(self, f_a, f_b, n, mu, d, cn_max, cn, w,
-                 clus_adj_counts, maes, evolcons, bp_max, uniqueclones, purities, ampdel=True):
+    def __init__(
+        self,
+        f_a,
+        f_b,
+        n,
+        mu,
+        d,
+        cn_max,
+        cn,
+        w,
+        clus_adj_counts,
+        maes,
+        evolcons,
+        bp_max,
+        uniqueclones,
+        purities,
+        ampdel=True,
+    ):
         # ilp attribute used here as a convenient storage container for properties
         self.ilp = ILPSubset(
             n=n,

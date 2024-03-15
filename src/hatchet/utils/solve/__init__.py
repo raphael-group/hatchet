@@ -36,16 +36,12 @@ def mahalanobis_distances(S, centroid, regularization=1e-6):
         diagonal_cov_matrix = np.diag(np.diag(cov_matrix))
 
     # Add regularization to the covariance matrix
-    cov_matrix_regularized = diagonal_cov_matrix + regularization * np.identity(
-        diagonal_cov_matrix.shape[0]
-    )
+    cov_matrix_regularized = diagonal_cov_matrix + regularization * np.identity(diagonal_cov_matrix.shape[0])
 
     for i in range(num_points):
         a = S[i]
         diff = a - mean
-        mahalanobis_distance = np.sqrt(
-            np.dot(diff, np.dot(np.linalg.inv(cov_matrix_regularized), diff))
-        )
+        mahalanobis_distance = np.sqrt(np.dot(diff, np.dot(np.linalg.inv(cov_matrix_regularized), diff)))
         mahalanobis_sum += mahalanobis_distance
 
     return mahalanobis_sum
@@ -75,14 +71,10 @@ def compute_mahalanobis_objective(cA, cB, U, gamma, bbc):
         # compute mahalanobis distance for each cluster
         if cluster_id not in balanced_clusters:
             increment = mahalanobis_distances(
-                S,
-                np.concatenate((rCent[cluster_id - 1], bCent[cluster_id - 1]), axis=0),
-                regularization=1e-7)
+                S, np.concatenate((rCent[cluster_id - 1], bCent[cluster_id - 1]), axis=0), regularization=1e-7
+            )
         else:
-            increment = mahalanobis_distances(
-                S[:, 0].reshape(-1, 1),
-                rCent[cluster_id - 1],
-                regularization=1e-7)
+            increment = mahalanobis_distances(S[:, 0].reshape(-1, 1), rCent[cluster_id - 1], regularization=1e-7)
         objective += increment
         per_cluster_maha[cluster_id] = increment
     return objective, per_cluster_maha
@@ -143,7 +135,7 @@ def solve(
     #         clus_adj_mat.setdefault(i, {})[j] = 0
 
     #  get the first sample name and extract cluster ids in the genomic order
-    clust_id_ord = list(bbc[bbc["SAMPLE"] == bbc["SAMPLE"].values[0]]["CLUSTER"])
+    clust_id_ord = list(bbc[bbc['SAMPLE'] == bbc['SAMPLE'].values[0]]['CLUSTER'])
 
     clus_adj_list = []
     #  telomere adjacencies -1
@@ -293,7 +285,6 @@ def solve(
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,
                 purities=purities,
-
             )
             _, cA, cB, _, _, _ = cd.run(
                 solver_type=solver,
@@ -320,7 +311,6 @@ def solve(
                 bp_max=bp_max,
                 uniqueclones=uniqueclones,
                 purities=purities,
-
             )
             ilp.create_model()
             ilp.hot_start(cA, cB)
@@ -385,7 +375,6 @@ def solve(
                 lengths=bins_length,
                 clus_adj_counts=clus_adj_counts,
                 purities=purities,
-
             )
             ilp.create_model(pprint=True)
             return ilp.run(solver_type=solver, timelimit=timelimit)

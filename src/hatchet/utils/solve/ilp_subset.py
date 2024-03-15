@@ -8,8 +8,24 @@ from hatchet.utils.solve.utils import Random
 
 
 class ILPSubset:
-    def __init__(self, n, cn_max, d, mu, ampdel, copy_numbers,
-                 f_a, f_b, w, clus_adj_counts, maes, evolcons, bp_max, uniqueclones, purities):
+    def __init__(
+        self,
+        n,
+        cn_max,
+        d,
+        mu,
+        ampdel,
+        copy_numbers,
+        f_a,
+        f_b,
+        w,
+        clus_adj_counts,
+        maes,
+        evolcons,
+        bp_max,
+        uniqueclones,
+        purities,
+    ):
 
         # Each ILPSubset maintains its own data, so make a deep-copy of passed-in DataFrames
         f_a, f_b = f_a.copy(deep=True), f_b.copy(deep=True)
@@ -1102,7 +1118,11 @@ class ILPSubsetSplit(ILPSubset):
             for _k in range(k):
                 sample_id = self.sample_ids[_k]
                 for _i in range(n_bins):
-                    obj += (yA[(_m, _k, _i)] + yB[(_m, _k, _i)]) * self.lengths[cluster_id][_i] / maes.loc[cluster_id, sample_id]
+                    obj += (
+                        (yA[(_m, _k, _i)] + yB[(_m, _k, _i)])
+                        * self.lengths[cluster_id][_i]
+                        / maes.loc[cluster_id, sample_id]
+                    )
 
         model.obj = pe.Objective(expr=obj, sense=pe.minimize)
         self.model = model

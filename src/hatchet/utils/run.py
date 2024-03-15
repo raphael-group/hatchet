@@ -112,13 +112,10 @@ def main(args=None):
 
         os.makedirs(f'{output}/snps', exist_ok=True)
         import sys
+
         print(config.run.bams, file=sys.stderr)
         genotype_snps(
-            args=[
-                '-N',
-                config.run.normal,
-                '-T'
-            ]
+            args=['-N', config.run.normal, '-T']
             + config.run.bams.strip().split()
             + [
                 '-r',
@@ -228,6 +225,7 @@ def main(args=None):
 
         if config.run.combine_counts:
             import sys
+
             _stdout = sys.stdout
             sys.stdout = StringIO()
             os.makedirs(f'{output}/bb', exist_ok=True)
@@ -244,6 +242,8 @@ def main(args=None):
                 config.genotype_snps.reference_version,
                 '-o',
                 f'{output}/bb/bulk.bb',
+                '-r',
+                config.run.reference,
             ] + extra_args
 
             if os.path.exists(phasefile):

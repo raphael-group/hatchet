@@ -3,6 +3,7 @@ import numpy as np
 from scipy import optimize
 from math import floor
 
+
 def panel_normalize(bb, avg_normal, norm_constant):
     denoms = []
     panel_normalized = []
@@ -14,8 +15,9 @@ def panel_normalize(bb, avg_normal, norm_constant):
         num = r0.TOTAL_READS
 
         # Find all panel bins overlapping this bin
-        my_bins = avg_normal[(avg_normal.START <= bin_end) & (avg_normal.END >= bin_start) &
-                            (avg_normal['CHR'] == bin_ch)]
+        my_bins = avg_normal[
+            (avg_normal.START <= bin_end) & (avg_normal.END >= bin_start) & (avg_normal['CHR'] == bin_ch)
+        ]
         my_denom = 0
         my_bp = 0
         normlen = 0
@@ -44,57 +46,62 @@ def panel_normalize(bb, avg_normal, norm_constant):
         denoms.append(my_denom)
         # if sample has more reads overall than PoN, downweight number of reads by norm_constant, where
         # norm_constant = (total reads in PoN) / (total reads in sample)
-        panel_normalized.append( (num * norm_constant) / my_denom)
+        panel_normalized.append((num * norm_constant) / my_denom)
     return panel_normalized, normlens, denoms
+
 
 def correct_baf(bb):
     coverage = (bb['TOTAL_SNP_READS'] / bb['SNPS']).floordiv(2)
-    # when coverage is less than 10, don't correct BAF because it's not reliable and often becomes 0 
+    # when coverage is less than 10, don't correct BAF because it's not reliable and often becomes 0
     mask = coverage >= 10
-    corrected_baf = list(map(lambda x: correct_baf_bin(x[0],x[1]),zip(bb.loc[mask,'BAF'],coverage[mask])))
+    corrected_baf = list(map(lambda x: correct_baf_bin(x[0], x[1]), zip(bb.loc[mask, 'BAF'], coverage[mask])))
     bb.loc[mask, 'BAF'] = corrected_baf
     return bb
 
+
 def correct_baf_bin(baf, read_per_snp):
     # newton method functions f, f', and f''
-    f = (lambda p: baf*(1-(1-p)**read_per_snp)-p)
-    fprime = (lambda p: baf*read_per_snp*(1-p)**(read_per_snp-1)-1)
-    fprime2 = (lambda p: -baf*read_per_snp*(read_per_snp-1)*(1-p)**(read_per_snp-2))
-    initial_value=0.5
-    return optimize.newton(f,initial_value,fprime=fprime,fprime2=fprime2)
+    f = lambda p: baf * (1 - (1 - p) ** read_per_snp) - p
+    fprime = lambda p: baf * read_per_snp * (1 - p) ** (read_per_snp - 1) - 1
+    fprime2 = lambda p: -baf * read_per_snp * (read_per_snp - 1) * (1 - p) ** (read_per_snp - 2)
+    initial_value = 0.5
+    return optimize.newton(f, initial_value, fprime=fprime, fprime2=fprime2)
+
 
 def pon_normalize_rdr(bb_file, pon_file):
-    #bb_file = f"{outdir}/bb/bulk.bb"
-    
+    # bb_file = f"{outdir}/bb/bulk.bb"
+
     bb = pd.read_csv(bb_file, sep='\t')
-    all_normals = pd.read_csv(pon_file, sep="\t")
-    pvt = all_normals.pivot(index = ['CHR', 'START'], columns = 'SAMPLE', values = 'RD').to_numpy()
+    all_normals = pd.read_csv(pon_file, sep='\t')
+    pvt = all_normals.pivot(index=['CHR', 'START'], columns='SAMPLE', values='RD').to_numpy()
 
     # normalize by the total read depth in each sample, then re-multiply to get comparable RDs
-    total_per_sample = np.sum(pvt, axis = 0)
-    avg_total = np.mean(total_per_sample) # axis = 0 sums along rows (e.g. takes sum of 1st col, then sum of 2nd col, ...)
+    total_per_sample = np.sum(pvt, axis=0)
+    avg_total = np.mean(
+        total_per_sample
+    )   # axis = 0 sums along rows (e.g. takes sum of 1st col, then sum of 2nd col, ...)
     pvt = (avg_total * pvt) / total_per_sample
 
     # create a df with unique bins (PoN has 38 samples, 38 bins per locus)
     first_sample = all_normals.SAMPLE.unique()[0]
     avg_normal = all_normals[all_normals.SAMPLE == first_sample]
-    avg_normal = avg_normal.sort_values(by = ['CHR', 'START'])
-    avg_normal = avg_normal.drop(columns = 'SAMPLE')
-    avg_normal.RD = pvt.mean(axis = 1)
+    avg_normal = avg_normal.sort_values(by=['CHR', 'START'])
+    avg_normal = avg_normal.drop(columns='SAMPLE')
+    avg_normal.RD = pvt.mean(axis=1)
 
-    avg_normal=avg_normal.loc[avg_normal['CHR'].isin(bb.CHR.unique())]
+    avg_normal = avg_normal.loc[avg_normal['CHR'].isin(bb.CHR.unique())]
     norm_constant = avg_normal.RD.sum() / bb.TOTAL_READS.sum()
     avg_normal['CHR'] = avg_normal.CHR
     avg_normal['perbase'] = avg_normal.RD / (avg_normal.END - avg_normal.START)
 
     panel_normalized, normlens, denoms = panel_normalize(bb, avg_normal, norm_constant)
 
-    #bb['normlen'] = normlens
-    #bb['LENGTH'] = bb.END - bb.START
+    # bb['normlen'] = normlens
+    # bb['LENGTH'] = bb.END - bb.START
     bb = bb.drop(['RD'], axis=1)
     bb['RD'] = panel_normalized
     return bb
     # correct_baf(bb)
     # bb['BAF'] = bb['BAF'].round(5)
-    #bb.to_csv(outfile, index=False, sep='\t',float_format="%.5f")
-    #bb.to_csv(f"{outdir}/bb/bulk_renorm.bb", sep='\t', index=False)
+    # bb.to_csv(outfile, index=False, sep='\t',float_format="%.5f")
+    # bb.to_csv(f"{outdir}/bb/bulk_renorm.bb", sep='\t', index=False)

@@ -229,7 +229,7 @@ class Caller(Process):
         errname = os.path.join(self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome))
 
         outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
-        if not os.path.isdir(os.path.dirname(outfile)): 
+        if not os.path.isdir(os.path.dirname(outfile)):
             os.makedirs(os.path.dirname(outfile))
 
         if self.snplist is not None:
@@ -273,9 +273,9 @@ class Caller(Process):
         if self.E:
             cmd_mpileup += ' -E'
         cmd_call = '{} call -Am -Ou'.format(self.bcftools)
-        cmd_filter = '{} view -i \'FMT/DP>={}\' -Oz -o {}'.format(self.bcftools, self.mincov, outfile)
+        cmd_filter = "{} view -i 'FMT/DP>={}' -Oz -o {}".format(self.bcftools, self.mincov, outfile)
 
-        # extra step to run hetdetect if there is no matched normal   
+        # extra step to run hetdetect if there is no matched normal
         if self.nonormal:
             # make a temporary directory using tempfile within outdir
             tmpdir = tempfile.mkdtemp(dir=self.outdir)
@@ -312,14 +312,14 @@ class Caller(Process):
                     shlex.split(cmd_runhetdetect),
                     stdout=pr.PIPE,
                     stderr=err,
-                    env = os.environ.copy(),
+                    env=os.environ.copy(),
                     universal_newlines=True,
                 )
                 pcss.append(hetdetect)
-                codes = list(codes) + [hetdetect.wait()]      
-        
+                codes = list(codes) + [hetdetect.wait()]
+
         if self.nonormal:
-            if not os.path.isfile(os.path.join(tmpdir,"hetdetect.vcf.gz")):
+            if not os.path.isfile(os.path.join(tmpdir, 'hetdetect.vcf.gz')):
                 raise ValueError(
                     error('het SNP Calling without normal failed on {} of {}, please check errors in {}!').format(
                         chromosome, samplename, errname
@@ -327,13 +327,12 @@ class Caller(Process):
                 )
             else:
                 # copy hetdetect.vcf to outfile using shutil
-                shutil.copyfile(os.path.join(tmpdir,"hetdetect.vcf.gz"), outfile)
-                copy_tree(os.path.join(tmpdir,"plots"), os.path.join(self.outdir,"plots"))
+                shutil.copyfile(os.path.join(tmpdir, 'hetdetect.vcf.gz'), outfile)
+                copy_tree(os.path.join(tmpdir, 'plots'), os.path.join(self.outdir, 'plots'))
                 shutil.rmtree(tmpdir)
-        
 
             codes = [filter.wait()]
-        
+
         if any(c != 0 for c in codes):
             # if self.nonormal:
             #     shutil.rmtree(tmpdir, ignore_errors=True)

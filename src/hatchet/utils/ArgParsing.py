@@ -645,7 +645,7 @@ def parse_count_reads_args(args=None):
         ),
     )
 
-    segfile = None if args.segfile == "None" else args.segfile
+    segfile = None if args.segfile == 'None' else args.segfile
 
     return {
         'bams': bams,
@@ -692,6 +692,13 @@ def parse_combine_counts_args(args=None):
         required=True,
         type=str,
         help='1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)',
+    )
+    parser.add_argument(
+        '-r',
+        '--referencefasta',
+        required=True,
+        type=str,
+        help='path to the reference genome fasta file',
     )
     parser.add_argument('-o', '--outfile', required=True, type=str, help='Filename for output')
     parser.add_argument(
@@ -789,6 +796,7 @@ def parse_combine_counts_args(args=None):
     args = parser.parse_args(args)
 
     ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
+    ensure(os.path.exists(args.referencefasta), f'Reference genome fasta file file not found: {args.referencefasta}')
     if args.ponfile is not None and not isfile(args.ponfile):
         raise ValueError(error('The specified file for panel of normal does not exist!'))
 
@@ -816,7 +824,7 @@ def parse_combine_counts_args(args=None):
     )
     names = open(namesfile).read().split()
 
-    segfile = None if args.segfile == "None" else args.segfile
+    segfile = None if args.segfile == 'None' else args.segfile
     if 'normal' not in names:
         nonormalFlag = True
     else:
@@ -824,9 +832,9 @@ def parse_combine_counts_args(args=None):
 
     chromosomes = set()
     if segfile:
-        thresh_name, tot_name = "segfile_thresholds", "segfile_total"
+        thresh_name, tot_name = 'segfile_thresholds', 'segfile_total'
     else:
-        thresh_name, tot_name = "thresholds", "total"
+        thresh_name, tot_name = 'thresholds', 'total'
     for f in os.listdir(args.array):
         tkns = f.split('.')
         if len(tkns) > 1 and (tkns[1] == thresh_name or tkns[1] == tot_name):
@@ -877,6 +885,7 @@ def parse_combine_counts_args(args=None):
     return {
         'baffile': args.baffile,
         'outfile': args.outfile,
+        'referencefasta': args.referencefasta,
         'sample_names': names,
         'min_snp_reads': args.msr,
         'min_total_reads': args.mtr,
@@ -1528,8 +1537,7 @@ def parse_count_alleles_arguments(args=None):
         log(
             msg='Normal BAM file is not provided. Therefore the analysis will run without a matched normal. '
             'The tumor file %s will be used to infer het SNP positions. In addition, gamma and maxshift will '
-            'be forced to set to 0.00000005 and 0.499999999 respectively.\n'
-            % args.tumors[0],
+            'be forced to set to 0.00000005 and 0.499999999 respectively.\n' % args.tumors[0],
             level='WARN',
         )
         args.gamma = 0.00000005
@@ -2379,7 +2387,9 @@ def parse_plot_bins_args(args=None):
 
     ensure(isfile(args.INPUT), 'The specified BB file does not exist!')
     ensure(
-        args.command is None or args.command in (
+        args.command is None
+        or args.command
+        in (
             'RD',
             'CRD',
             'BAF',

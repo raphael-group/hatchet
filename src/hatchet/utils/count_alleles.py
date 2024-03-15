@@ -162,6 +162,7 @@ def selectHetSNPs(
     }
     return {c: {int(r[2]): (r[3], r[4]) for r in reversed(results[c])} for c in results if len(results[c]) > 0}
 
+
 class HetSNPSelector(Worker):
     def __init__(
         self,
@@ -209,6 +210,7 @@ class HetSNPSelector(Worker):
         else:
             os.remove(errname)
         return count_alleles_from_stdout(stdout, samplename)
+
 
 def counting(
     bcftools,
@@ -322,21 +324,22 @@ class AlleleCounter(Worker):
             os.remove(errname)
         return count_alleles_from_stdout(stdout, samplename)
 
+
 def count_alleles_from_stdout(stdout, samplename):
-        alleles = {'A', 'C', 'G', 'T'}
-        mkcounts = lambda p, q: list(
-            map(
-                lambda y: (y[0], int(y[1])),
-                filter(lambda x: x[0] in alleles, zip(p, q)),
-            )
+    alleles = {'A', 'C', 'G', 'T'}
+    mkcounts = lambda p, q: list(
+        map(
+            lambda y: (y[0], int(y[1])),
+            filter(lambda x: x[0] in alleles, zip(p, q)),
         )
-        form = lambda p: (
-            samplename,
-            p[0],
-            p[1],
-            mkcounts(p[2].split(','), p[3].split(',')),
-        )
-        return [form(line.strip().split()) for line in stdout.strip().split('\n') if line != '']
+    )
+    form = lambda p: (
+        samplename,
+        p[0],
+        p[1],
+        mkcounts(p[2].split(','), p[3].split(',')),
+    )
+    return [form(line.strip().split()) for line in stdout.strip().split('\n') if line != '']
 
 
 if __name__ == '__main__':

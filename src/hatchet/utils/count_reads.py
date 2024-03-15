@@ -292,7 +292,9 @@ def read_snps(baf_file, ch, all_names):
     """
     Read and validate SNP data for this patient (TSV table output from HATCHet deBAF.py).
     """
-    all_names = [name for name in all_names if name != 'normal'] # remove normal sample -- not looking for SNP counts from normal
+    all_names = [
+        name for name in all_names if name != 'normal'
+    ]   # remove normal sample -- not looking for SNP counts from normal
 
     # Read in HATCHet BAF table
     all_snps = pd.read_table(
@@ -625,6 +627,7 @@ def expected_arrays(darray, chrs, segfile):
 def check_array_files(darray, chrs, segfile):
     return [a for a in expected_arrays(darray, chrs, segfile) if not os.path.exists(a)]
 
+
 def get_thresholds_segfile(segfile, chromosome):
     with open(segfile, 'r') as f:
         fi = f.readlines()
@@ -636,14 +639,16 @@ def get_thresholds_segfile(segfile, chromosome):
         if thresholds_segfile[0] > 1:
             thresholds_segfile = np.concatenate([[1], thresholds_segfile])
     if np.any(np.diff(thresholds_segfile) < 0):
-        raise ValueError(f"improper negative interval in provided segment file for chromosome {chromosome}")
+        raise ValueError(f'improper negative interval in provided segment file for chromosome {chromosome}')
     return np.array(thresholds_segfile)
 
+
 def get_chromosomes_segfile(segfile):
-    df = pd.read_csv(segfile, sep="\t")
+    df = pd.read_csv(segfile, sep='\t')
     # get chromosomes from 1st column of segfile
-    chromosomes = list(df.iloc[:,0].unique())
+    chromosomes = list(df.iloc[:, 0].unique())
     return chromosomes
+
 
 if __name__ == '__main__':
     main()
