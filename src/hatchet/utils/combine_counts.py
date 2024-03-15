@@ -166,13 +166,16 @@ def main(args=None):
         msg='# Performing GC bias correction on read depth signal\n',
         level='STEP',
     )
-    big_bb = rd_gccorrect(big_bb, referencefasta)
+
+    autosomes = set([ch for ch in big_bb['CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
+    autosomal_bb = big_bb[big_bb['CHR'].isin(autosomes)].copy()
+    autosomal_bb = rd_gccorrect(autosomal_bb, referencefasta)
 
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
-    big_bb.END = big_bb.END + 1
-    autosomes = set([ch for ch in big_bb['CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
-    big_bb[big_bb['CHR'].isin(autosomes)].to_csv(outfile, index=False, sep='\t')
+    autosomal_bb.END = autosomal_bb.END + 1
+    autosomal_bb.to_csv(outfile, index=False, sep='\t')
 
+    big_bb.END = big_bb.END + 1
     big_bb.to_csv(outfile + '.withXY', index=False, sep='\t')
 
     # Remove intermediate BB files

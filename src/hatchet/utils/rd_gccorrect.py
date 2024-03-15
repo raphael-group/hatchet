@@ -6,7 +6,7 @@ from pybedtools import BedTool
 def rd_gccorrect(bb, ref_genome):
     bb.rename(columns={'CHR': '#CHR'}, inplace=True)
 
-    bb['CHR'] = bb['#CHR'].str.replace('chr', '').astype(int)
+    bb['CHR'] = bb['#CHR'].str.replace('chr', '')
     bb = bb.sort_values(by=['CHR', 'START']).reset_index(drop=True)
 
     # add GC content
