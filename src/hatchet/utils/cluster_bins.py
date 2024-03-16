@@ -211,7 +211,7 @@ def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_al
         lengths = [tracks[0].shape[1]]
 
     best_K = 0
-    best_score = -1.01   # below minimum silhouette score value
+    best_score = np.inf # BIC is always negative
     best_model = None
     best_labels = None
 
@@ -271,10 +271,11 @@ def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_al
                 my_best_ll = prob
                 my_best_model = model
 
-        score = silhouette_score(C, my_best_labels, metric='precomputed')
+        #score = silhouette_score(C, my_best_labels, metric='precomputed')
+        score = model.bic(X)        
 
         rs[K] = my_best_ll, score, my_best_labels
-        if score > best_score:
+        if score <= best_score:
             best_score = score
             best_model = my_best_model
             best_labels = my_best_labels
