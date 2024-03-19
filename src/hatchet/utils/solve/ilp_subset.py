@@ -148,6 +148,36 @@ class ILPSubset:
         else:
             return self.u
 
+    def large_cn_penalty(self, model, beta, ub):
+        cA = self.cA
+        cB = self.cB
+        w = self.w
+        if self.mode == 'UARCH':
+            cA = self._fixed_cA
+            cB = self._fixed_cB
+        else:
+            cA = self.cA
+            cB = self.cB
+        bM = {}
+        aMb = {}
+        penalty = 0
+        for _m in range(self.m):
+            cluster_id = self.f_a.index[_m]
+            for _n in range(self.n):
+                bM[(_m, _n)] = pe.Var(bounds=(0, ub), domain=pe.Reals)
+                model.add_component(f'bM_{_m + 1}_{_n + 1}', bM[(_m, _n)])
+                aMb[(_m, _n)] = pe.Var(bounds=(0, ub), domain=pe.Reals)
+                model.add_component(f'aMb_{_m + 1}_{_n + 1}', aMb[(_m, _n)])
+
+                model.constraints.add(cB[_m][_n] - 1 <= bM[(_m, _n)])
+                model.constraints.add(1 - cB[_m][_n] <= bM[(_m, _n)])
+                model.constraints.add(cA[_m][_n] - cB[_m][_n] <= aMb[(_m, _n)])
+                model.constraints.add(cB[_m][_n] - cA[_m][_n] <= aMb[(_m, _n)])
+
+                penalty += (w[cluster_id] / sum(self.w)) * beta * (bM[(_m, _n)] + 0.5 * aMb[(_m, _n)])
+
+        return penalty
+
     def create_model(self, pprint=False):
 
         m, n, k = self.m, self.n, self.k
@@ -375,9 +405,9 @@ class ILPSubset:
                 model.constraints.add(self.cB[_m][0] == 1)
                 cluster_id = self.cluster_ids[_m]
 
-                # if the fraction of the cluster size is larger than or equal to 0.02 in the whole dataset
+                # if the fraction of the cluster size is larger than or equal to 0.005 in the whole dataset
                 # then its integer copy number cannot have (0,0) copy number
-                if self.w[cluster_id] / sum(self.w) >= 0.02:
+                if self.w[cluster_id] / sum(self.w) >= 0.005:
                     for _n in range(1, n):
                         model.constraints.add(self.cA[_m][_n] + self.cB[_m][_n] >= 1)
 
@@ -470,9 +500,11 @@ class ILPSubset:
             for _k in range(k):
                 cluster_id = self.cluster_ids[_m]
                 sample_id = self.sample_ids[_k]
-                obj += (yA[(_m, _k)] + yB[(_m, _k)]) * self.w[cluster_id] / maes.loc[cluster_id, sample_id]
-
+                obj += (yA[(_m, _k)] + yB[(_m, _k)]) * (self.w[cluster_id] / sum(self.w)) \
+                    / maes.loc[cluster_id, sample_id]
+        obj += self.large_cn_penalty(model, 1, ub)
         model.obj = pe.Objective(expr=obj, sense=pe.minimize)
+
         self.model = model
 
         if pprint:
@@ -1123,8 +1155,9 @@ class ILPSubsetSplit(ILPSubset):
                         * self.lengths[cluster_id][_i]
                         / maes.loc[cluster_id, sample_id]
                     )
-
+        obj += self.large_cn_penalty(model, 1, ub)
         model.obj = pe.Objective(expr=obj, sense=pe.minimize)
+
         self.model = model
 
         if pprint:
