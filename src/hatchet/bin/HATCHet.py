@@ -1251,19 +1251,27 @@ def get_purities(seg_file, purities):
         return [purities, purities]
     else:
         # estimate the lowerbound using the cluster with the smallest BAF.
-        # The mininum purity is when this cluster has (6,0) copy number state 
-        # (assuming that (x,0) cannot be present in the data if x>6)
+        # The mininum purity is when this cluster has (x,0) copy number state
+        # where x=4*r. This means that rd=1 corresponds to 4 total copy numbers.
+        # Note that in reality, rd = 1 may correspond to fewer total copy numbers
+        # but that is ok because we are only interested computing a lowerbound
+        # (we are assuming that (x,0) cannot be present in the data if x>6)
         lbs = []
         ubs = []
         dfall = pd.read_table(seg_file, header=0)
         for sample, df in dfall.groupby("SAMPLE"):
             total_bins = np.sum(df["#BINS"])
-            df = df[df["#BINS"] > 0.003 * total_bins]
+            df = df[df["#BINS"] > 0.001 * total_bins]
             df = df[df["RD"] < 5]
             minbaf = np.min(df["BAF"])
+            # Filter the dataframe by the condition and select the "RD" column
+            df2_baf = df.loc[df["BAF"] == minbaf, "RD"]
+            # Get the first element of the filtered column
+            minrd = df2_baf.iloc[0]
             if minbaf > 0.4:
                 minpur = 0
             else:
+                minpur = (1 - minbaf) / ((4 * minrd - 1) * minbaf + 1)
                 minpur = (1 - minbaf) / (5 * minbaf + 1)
             lbs.append(minpur)
             ubs.append(1)
