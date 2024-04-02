@@ -22,7 +22,7 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
 ]
 dependencies = [
-    "bedtools",
+    "pybedtools",
     "biopython",
     "hmmlearn",
     "matplotlib",
