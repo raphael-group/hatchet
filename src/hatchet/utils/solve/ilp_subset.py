@@ -323,6 +323,14 @@ class ILPSubset:
                 model.constraints.add(self.cA[_m][0] == 1)
                 model.constraints.add(self.cB[_m][0] == 1)
 
+                cluster_id = self.cluster_ids[_m]
+
+                # if the fraction of the cluster size is larger than or equal to 0.005 in the whole dataset
+                # then its integer copy number cannot have (0,0) copy number
+                if self.w[cluster_id] / sum(self.w) >= 0.005:
+                    for _n in range(1, n):
+                        model.constraints.add(self.cA[_m][_n] + self.cB[_m][_n] >= 1)
+
             if ampdel:
                 for _m in range(m):
                     cluster_id = f_a.index[_m]
