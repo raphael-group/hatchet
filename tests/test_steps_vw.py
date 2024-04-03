@@ -96,6 +96,8 @@ def test_combine_counts(_, output_folder):
             os.path.join(this_dir, 'data', 'vw', 'baf', 'bulk.1bed'),
             '-o',
             os.path.join(output_folder, 'bb', 'bulk_nophase.bb'),
+            '-r',
+            config.paths.reference,
             '-V',
             'hg19',
         ]

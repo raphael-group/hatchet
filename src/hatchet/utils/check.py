@@ -145,6 +145,19 @@ CHECKS = {
             '--version',
         ),
     ],
+    'combine-counts': [
+        (
+            'bedtools',
+            '',
+            'Please install bedtools executable and either ensure its on your PATH, or its location specified in '
+            'hatchet.ini as config.paths.bedtools, or its location specified using the environment variable '
+            'HATCHET_PATHS_BEDTOOLS',
+            _check_cmd,
+            config.paths.bedtools,
+            'bedtools',
+            '--version',
+        ),
+    ],
     'genotype-snps': [
         (
             'samtools',
