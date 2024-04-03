@@ -106,6 +106,9 @@ def test_combine_counts(_, output_folder):
     df2 = pd.read_csv(os.path.join(this_dir, 'data', 'vw', 'bb', 'bulk_nophase.bb'), sep='\t')
     assert_frame_equal(df1, df2)
 
+@pytest.mark.skipif(not config.paths.reference, reason='paths.reference not set')
+@patch('hatchet.utils.ArgParsing.extractChromosomes', return_value=['chr22'])
+def test_combine_counts_phasing(_, output_folder):
     # Test with phasing
     combine_counts(
         args=[
@@ -121,6 +124,8 @@ def test_combine_counts(_, output_folder):
             os.path.join(output_folder, 'bb', 'bulk_yesphase.bb'),
             '-V',
             'hg19',
+            '-r',
+            config.paths.reference,
             '-p',
             os.path.join(this_dir, 'data', 'vw', 'phase', 'phased.vcf.gz'),
         ]
