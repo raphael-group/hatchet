@@ -33,6 +33,7 @@ def main(args=None):
     test_alpha = args['test_alpha']
     multisample = args['multisample']
     referencefasta = args['referencefasta']
+    bedtools = args['bedtools']
 
     n_workers = min(len(chromosomes), threads)
 
@@ -142,6 +143,10 @@ def main(args=None):
 
     autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
     autosomal_bb = big_bb[big_bb['#CHR'].isin(autosomes)].copy()
+
+    # add bedtools path to the os.environ
+    os.environ['PATH'] = os.path.dirname(bedtools) + os.pathsep + os.environ.get('PATH', '')
+    # perform GC bias correction
     autosomal_bb = rd_gccorrect(autosomal_bb, referencefasta)
 
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format

@@ -863,6 +863,7 @@ def parse_combine_counts_args(args=None):
         'max_snps_per_block': args.max_spb,
         'test_alpha': args.alpha,
         'multisample': not args.ss_em,
+        'bedtools': bedtools,
         'ref_version': ver,
     }
 
