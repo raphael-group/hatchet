@@ -10,7 +10,8 @@ authors = [
   { name="Ben Raphael", email="braphael@cs.princeton.edu" },
   { name="Matt Myers", email="mm63@cs.princeton.edu" },
   { name="Brian Arnold", email="brianjohnarnold@gmail.com" },
-  { name="Vineet Bansal", email="vineetb@princeton.edu" }
+  { name="Vineet Bansal", email="vineetb@princeton.edu" },
+  { name="Metin Balaban", email="metin@princeton.edu" }
 ]
 description = "A package to infer allele and clone-specific copy-number aberrations (CNAs)."
 readme = "README.md"
@@ -21,6 +22,7 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
 ]
 dependencies = [
+    "pybedtools",
     "biopython",
     "hmmlearn",
     "matplotlib",
@@ -31,7 +33,8 @@ dependencies = [
     "requests",
     "seaborn",
     "scikit-learn",
-    "scipy"
+    "scipy",
+    "statsmodels"
 ]
 
 [project.optional-dependencies]

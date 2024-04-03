@@ -236,6 +236,8 @@ def main(args=None):
                 config.genotype_snps.reference_version,
                 '-o',
                 f'{output}/bb/bulk.bb',
+                '-r',
+                config.run.reference,
             ] + extra_args
 
             if os.path.exists(phasefile):

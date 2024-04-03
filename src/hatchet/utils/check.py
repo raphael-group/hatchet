@@ -145,6 +145,17 @@ CHECKS = {
             '--version',
         ),
     ],
+    'combine-counts': [
+        (
+            'bedtools',
+            '',
+            'Please install bedtools executable and either ensure its on your PATH',
+            _check_cmd,
+            '',
+            'bedtools',
+            '--version',
+        ),
+    ],
     'genotype-snps': [
         (
             'samtools',
