@@ -519,9 +519,7 @@ def plot_clusters(
         n_clones2, gamma = compute_gamma(bbc_)
         assert n_clones2 == n_clones, (n_clones2, n_clones)
 
-        my_colors = [
-            cmap(mapping[tuple(r)]) for _, r in bbc_[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
-        ]
+        my_colors = [cmap(mapping[tuple(r)]) for _, r in bbc_[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()]
 
         if coloring == 'local':
             # not yet implemented

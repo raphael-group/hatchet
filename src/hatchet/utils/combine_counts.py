@@ -914,7 +914,10 @@ def correct_haplotypes(
         return orig_bafs, None
     elif n_bins < n_segments:
         # Assume that with this few bins, there is only 1 segment
-        sp.log(msg=f'Only {orig_bafs.shape[0]} bins < {n_segments} segments parameter, using 1 segment instead.\n', level='INFO')
+        sp.log(
+            msg=f'Only {orig_bafs.shape[0]} bins < {n_segments} segments parameter, using 1 segment instead.\n',
+            level='INFO',
+        )
         n_segments = 1
 
     # Count switches using only samples with mean allelic imbalance above <minmax_al_imb>
@@ -1156,10 +1159,10 @@ def run_chromosome(
                 # TODO: pass through other parameters to correct_haplotypes
                 corrected_bafs_p, _ = correct_haplotypes(bafs_p)
 
-                sp.log(msg=
-                       f'{len(bb_p)}, {len(bb_p.SAMPLE.unique())}, {bafs_p.shape}, {corrected_bafs_p.shape} {corrected_bafs_p.flatten().shape}\n',
-                       level='DEBUG')
-
+                sp.log(
+                    msg=f'{len(bb_p)}, {len(bb_p.SAMPLE.unique())}, {bafs_p.shape}, {corrected_bafs_p.shape} {corrected_bafs_p.flatten().shape}\n',
+                    level='DEBUG',
+                )
 
                 # flatten these results out and put them back into the BAF array
                 bb_p['ORIGINAL_BAF'] = bb_p.BAF
