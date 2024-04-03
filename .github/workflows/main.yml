@@ -109,7 +109,7 @@ jobs:
         run: |
           wget https://github.com/arq5x/bedtools2/releases/download/v2.30.0/bedtools.static.binary -O bedtools
           chmod 775 bedtools
-          echo "HATCHET_PATHS_BEDTOOLS=$(pwd)" >> $GITHUB_ENV
+          echo "$(pwd)" >> $GITHUB_PATH
 
       - name: Download and index hg19.fa
         working-directory: testdata

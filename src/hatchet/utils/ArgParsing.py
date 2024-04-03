@@ -748,14 +748,6 @@ def parse_combine_counts_args(args=None):
         help='Non-compressed intermediate files',
     )
     parser.add_argument(
-        '-bt',
-        '--bedtools',
-        required=False,
-        type=str,
-        default=config.paths.bedtools,
-        help='Path to bedtools executable',
-    )
-    parser.add_argument(
         '-V',
         '--refversion',
         required=True,
@@ -783,12 +775,12 @@ def parse_combine_counts_args(args=None):
         f'The provided array directory does not exist: {args.array}',
     )
 
-    bedtools = os.path.join(args.bedtools, 'bedtools')
+    # pybedtools require 'bedtools' executable to be in PATH
     ensure(
-        which(bedtools) is not None,
+        which(os.path.join("bedtools")) is not None,
         (
             'The bedtools executable was not found or is not executable. Please install bedtools (e.g., conda install '
-            '-c bioconda bedtools) and/or supply the path to the executable.'
+            '-c bioconda bedtools). pybedtools require "bedtools" executable to be in PATH.'
         ),
     )
     namesfile = os.path.join(args.array, 'samples.txt')
@@ -863,7 +855,6 @@ def parse_combine_counts_args(args=None):
         'max_snps_per_block': args.max_spb,
         'test_alpha': args.alpha,
         'multisample': not args.ss_em,
-        'bedtools': bedtools,
         'ref_version': ver,
     }
 
