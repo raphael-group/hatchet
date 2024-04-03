@@ -777,7 +777,7 @@ def parse_combine_counts_args(args=None):
 
     # pybedtools require 'bedtools' executable to be in PATH
     ensure(
-        which(os.path.join("bedtools")) is not None,
+        which(os.path.join('bedtools')) is not None,
         (
             'The bedtools executable was not found or is not executable. Please install bedtools (e.g., conda install '
             '-c bioconda bedtools). pybedtools require "bedtools" executable to be in PATH.'
