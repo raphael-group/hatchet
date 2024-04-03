@@ -390,7 +390,7 @@ def plot_genome(
                     )
 
             if n_clones == 1:
-                my_colors = [cmap(mapping[r]) for r in bbc.cn_clone1]
+                my_colors = [cmap(mapping[tuple([r])]) for r in bbc.cn_clone1]
             else:
                 my_colors = [
                     cmap(mapping[tuple(r)]) for _, r in bbc[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
@@ -523,7 +523,7 @@ def plot_clusters(
         assert n_clones2 == n_clones, (n_clones2, n_clones)
 
         if n_clones == 1:
-            my_colors = [cmap(mapping[r]) for r in bbc_.cn_clone1]
+            my_colors = [cmap(mapping[tuple([r])]) for r in bbc_.cn_clone1]
         else:
             my_colors = [
                 cmap(mapping[tuple(r)]) for _, r in bbc_[[f'cn_clone{i + 1}' for i in range(n_clones)]].iterrows()
