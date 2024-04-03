@@ -670,6 +670,13 @@ def parse_combine_counts_args(args=None):
         type=str,
         help='1bed file containing SNP information from tumor samples (i.e., baf/bulk.1bed)',
     )
+    parser.add_argument(
+        '-r',
+        '--referencefasta',
+        required=True,
+        type=str,
+        help='path to the reference genome fasta file',
+    )
     parser.add_argument('-o', '--outfile', required=True, type=str, help='Filename for output')
     parser.add_argument(
         '--msr',
@@ -750,7 +757,7 @@ def parse_combine_counts_args(args=None):
     args = parser.parse_args(args)
 
     ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
-
+    ensure(os.path.exists(args.referencefasta), f'Reference genome fasta file file not found: {args.referencefasta}')
     if args.totalcounts is not None and not isfile(args.totalcounts):
         raise ValueError(error('The specified file for total read counts does not exist!'))
     ensure(
@@ -768,6 +775,14 @@ def parse_combine_counts_args(args=None):
         f'The provided array directory does not exist: {args.array}',
     )
 
+    # pybedtools require 'bedtools' executable to be in PATH
+    ensure(
+        which(os.path.join('bedtools')) is not None,
+        (
+            'The bedtools executable was not found or is not executable. Please install bedtools (e.g., conda install '
+            '-c bioconda bedtools). pybedtools require "bedtools" executable to be in PATH.'
+        ),
+    )
     namesfile = os.path.join(args.array, 'samples.txt')
     ensure(
         os.path.exists(namesfile),
@@ -826,6 +841,7 @@ def parse_combine_counts_args(args=None):
     return {
         'baffile': args.baffile,
         'outfile': args.outfile,
+        'referencefasta': args.referencefasta,
         'sample_names': names,
         'min_snp_reads': args.msr,
         'min_total_reads': args.mtr,

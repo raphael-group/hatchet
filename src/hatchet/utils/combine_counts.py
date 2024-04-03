@@ -11,6 +11,7 @@ from scipy.special import softmax
 import hatchet.data
 from hatchet.utils.ArgParsing import parse_combine_counts_args
 import hatchet.utils.Supporting as sp
+from hatchet.utils.rd_gccorrect import rd_gccorrect
 
 
 def main(args=None):
@@ -31,6 +32,7 @@ def main(args=None):
     max_snps_per_block = args['max_snps_per_block']
     test_alpha = args['test_alpha']
     multisample = args['multisample']
+    referencefasta = args['referencefasta']
 
     n_workers = min(len(chromosomes), threads)
 
@@ -133,12 +135,22 @@ def main(args=None):
         sp.log('# NOTE: adding NORMAL_READS column to bb file', level='INFO')
         big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(np.uint32)
 
-    # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
-    big_bb.END = big_bb.END + 1
+    sp.log(
+        msg='# Performing GC bias correction on read depth signal\n',
+        level='STEP',
+    )
 
     autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
-    big_bb[big_bb['#CHR'].isin(autosomes)].to_csv(outfile, index=False, sep='\t')
+    autosomal_bb = big_bb[big_bb['#CHR'].isin(autosomes)].copy()
 
+    # perform GC bias correction
+    autosomal_bb = rd_gccorrect(autosomal_bb, referencefasta)
+
+    # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
+    autosomal_bb.END = autosomal_bb.END + 1
+    autosomal_bb.to_csv(outfile, index=False, sep='\t')
+
+    big_bb.END = big_bb.END + 1
     big_bb.to_csv(outfile + '.withXY', index=False, sep='\t')
 
     # Remove intermediate BB files
