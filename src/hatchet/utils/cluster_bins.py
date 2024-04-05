@@ -52,6 +52,7 @@ def main(args=None):
             decode_alg=args['decoding'],
             tmat=args['transmat'],
             tau=args['tau'],
+            state_selection=args['selection'],
             restarts=args['restarts'],
         )
 
@@ -191,9 +192,10 @@ def read_bb(bbfile, subset=None):
     )
 
 
-def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_alg='viterbi', covar='diag', restarts=10):
+def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_alg='viterbi', covar='diag', state_selection='bic', restarts=10):
     assert tmat in ['fixed', 'diag', 'free']
     assert decode_alg in ['map', 'viterbi']
+    assert state_selection in ['silhouette', 'bic']
 
     # format input
     tracks = [a for a in tracks if a.shape[0] > 0 and a.shape[1] > 0]
@@ -205,7 +207,10 @@ def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_al
         lengths = [tracks[0].shape[1]]
 
     best_K = 0
-    best_score = -1.01   # below minimum silhouette score value
+    if state_selection == 'silhouette':
+        best_score = -1.01   # below minimum silhouette score value
+    else:
+        best_score = np.inf   # BIC is always negative
     best_model = None
     best_labels = None
 
@@ -265,10 +270,15 @@ def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_al
                 my_best_ll = prob
                 my_best_model = model
 
-        score = silhouette_score(C, my_best_labels, metric='precomputed')
+        if state_selection == 'silhouette':
+            score = silhouette_score(C, my_best_labels, metric='precomputed')
+            beats_the_current_best = score > best_score
+        else:  # bic
+            score = model.bic(X)
+            beats_the_current_best = score <= best_score
 
         rs[K] = my_best_ll, score, my_best_labels
-        if score > best_score:
+        if beats_the_current_best:
             best_score = score
             best_model = my_best_model
             best_labels = my_best_labels

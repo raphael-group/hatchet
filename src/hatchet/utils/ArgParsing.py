@@ -338,6 +338,14 @@ def parse_cluster_bins_args(args=None):
         help='Decoding algorithm to use: map or viterbi (default: map)',
     )
     parser.add_argument(
+        '-s',
+        '--selection',
+        type=str,
+        required=False,
+        default=config.cluster_bins.selection,
+        help='Number of HMM states selection criterion: bic or silhouette (default: bic)',
+    )
+    parser.add_argument(
         '-R',
         '--restarts',
         type=int,
@@ -396,6 +404,12 @@ def parse_cluster_bins_args(args=None):
         f'Invalid -x/--decoding argument: {args.decoding}. Valid values are {valid_decodings}.',
     )
 
+    valid_selections = ('bic', 'silhouette')
+    ensure(
+        args.selection in valid_selections,
+        f'Invalid -s/--selection argument: {args.selection}. Valid values are {valid_selections}.',
+    )
+
     valid_transmats = ('fixed', 'diag', 'tied')
     ensure(
         args.transmat in valid_transmats,
@@ -421,6 +435,7 @@ def parse_cluster_bins_args(args=None):
         'bbfile': args.BBFILE,
         'diploidbaf': args.diploidbaf,
         'decoding': args.decoding,
+        'selection': args.selection,
         'minK': args.minK,
         'maxK': args.maxK,
         'exactK': args.exactK,
