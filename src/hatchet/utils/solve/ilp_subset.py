@@ -8,7 +8,7 @@ from hatchet.utils.solve.utils import Random
 
 
 class ILPSubset:
-    def __init__(self, n, cn_max, d, mu, ampdel, copy_numbers, f_a, f_b, w):
+    def __init__(self, n, cn_max, d, mu, ampdel, copy_numbers, f_a, f_b, w, purities):
 
         # Each ILPSubset maintains its own data, so make a deep-copy of passed-in DataFrames
         f_a, f_b = f_a.copy(deep=True), f_b.copy(deep=True)
@@ -30,6 +30,7 @@ class ILPSubset:
         self.ampdel = ampdel
         self.copy_numbers = copy_numbers
         self.w = w
+        self.purities = purities
 
         self.tol = 0.001
 
@@ -59,6 +60,7 @@ class ILPSubset:
             f_a=self.f_a,
             f_b=self.f_b,
             w=self.w,
+            purities=self.purities,
         )
 
     def __str__(self):
@@ -122,6 +124,7 @@ class ILPSubset:
         d = self.d
         _M = self.M
         _base = self.base
+        purities = self.purities
 
         model = pe.ConcreteModel()
 
@@ -298,6 +301,12 @@ class ILPSubset:
                     model.constraints.add(self.cA[_m][_n] == sum_a)
                     model.constraints.add(self.cB[_m][_n] == sum_b)
                     model.constraints.add(self.cA[_m][_n] + self.cB[_m][_n] <= ub)
+
+        #  this is where we fix the purities if user provides purity values for (tumor) samples
+        # in each sample s, clone 0 (healty & normal) should have the purity 1 - purity_s
+        if mode_t in ('FULL', 'UARCH') and purities:
+            for i, p in enumerate(purities):
+                model.constraints.add(self.u[0][i] == 1 - p)
 
         if mode_t == 'CARCH':
             # TODO: These loops can be collapsed once validation against C++ is complete
