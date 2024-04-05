@@ -192,7 +192,17 @@ def read_bb(bbfile, subset=None):
     )
 
 
-def hmm_model_select(tracks, minK=20, maxK=50, tau=10e-6, tmat='diag', decode_alg='viterbi', covar='diag', state_selection='bic', restarts=10):
+def hmm_model_select(
+    tracks,
+    minK=20,
+    maxK=50,
+    tau=10e-6,
+    tmat='diag',
+    decode_alg='viterbi',
+    covar='diag',
+    state_selection='bic',
+    restarts=10,
+):
     assert tmat in ['fixed', 'diag', 'free']
     assert decode_alg in ['map', 'viterbi']
     assert state_selection in ['silhouette', 'bic']
