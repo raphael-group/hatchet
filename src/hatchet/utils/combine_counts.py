@@ -922,7 +922,7 @@ def correct_haplotypes(
 ):
     n_bins = orig_bafs.shape[0]
     if n_bins == 1:
-        sp.log(msg=f'Only one bin in the chromosome arm, skipping correction.\n', level='INFO')
+        sp.log(msg='Only one bin in the chromosome arm, skipping correction.\n', level='INFO')
         return orig_bafs, None
     elif n_bins < n_segments:
         # Assume that with this few bins, there is only 1 segment
@@ -1172,7 +1172,8 @@ def run_chromosome(
                 corrected_bafs_p, _ = correct_haplotypes(bafs_p)
 
                 sp.log(
-                    msg=f'{len(bb_p)}, {len(bb_p.SAMPLE.unique())}, {bafs_p.shape}, {corrected_bafs_p.shape} {corrected_bafs_p.flatten().shape}\n',
+                    msg=f'{len(bb_p)}, {len(bb_p.SAMPLE.unique())}, \
+                        {bafs_p.shape}, {corrected_bafs_p.shape} {corrected_bafs_p.flatten().shape}\n',
                     level='DEBUG',
                 )
 
