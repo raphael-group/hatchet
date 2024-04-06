@@ -403,7 +403,10 @@ def parse_cluster_bins_args(args=None):
     )
     ensure(args.restarts >= 1, 'Number of restarts must be positive.')
     ensure(args.tau >= 0, 'Transition parameter --tau must be non-negative.')
-    ensure(args.tau >= 6e-17, 'Transition parameter --tau must be at least 6e-17 to ensure numerical precision.')
+    ensure(
+        args.tau >= 6e-17,
+        'Transition parameter --tau must be at least 6e-17 to ensure numerical precision.',
+    )
 
     if args.subset is not None:
         import pandas as pd
@@ -553,12 +556,15 @@ def parse_count_reads_args(args=None):
     # Parse BAM files, check their existence, and infer or parse the corresponding sample names
     bams = [args.normal] + args.tumor
     for bamfile in bams:
-        ensure(isfile(bamfile), 'The specified tumor BAM file does not exist')
+        ensure(
+            isfile(bamfile),
+            f'The specified tumor BAM file {bamfile} does not exist',
+        )
     # also make sure the bam index files are present too
     for bamfile in bams:
         ensure(
             isfile(bamfile + '.bai') or isfile(bamfile.replace('.bam', '.bai')),
-            'The specified tumor BAM file does not exist',
+            f'The specified tumor BAM file {bamfile} does not have an index file (bai)',
         )
     names = args.samples
     ensure(
@@ -757,7 +763,10 @@ def parse_combine_counts_args(args=None):
     args = parser.parse_args(args)
 
     ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
-    ensure(os.path.exists(args.referencefasta), f'Reference genome fasta file file not found: {args.referencefasta}')
+    ensure(
+        os.path.exists(args.referencefasta),
+        f'Reference genome fasta file file not found: {args.referencefasta}',
+    )
     if args.totalcounts is not None and not isfile(args.totalcounts):
         raise ValueError(error('The specified file for total read counts does not exist!'))
     ensure(

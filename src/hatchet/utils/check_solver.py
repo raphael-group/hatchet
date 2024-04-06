@@ -19,6 +19,7 @@ def main(args=None):
         with tempfile.TemporaryDirectory() as tempdirname:
             with path(hatchet.data, 'sample.bbc') as bbc_path:
                 input_files_prefix = os.path.splitext(bbc_path)[0]
+                # purity values are free
                 hatchet_main(
                     args=[
                         '-x',
@@ -46,6 +47,38 @@ def main(args=None):
                         '0.35',
                         '-l',
                         '0.6',
+                    ]
+                )
+                # purity values are fixed
+                hatchet_main(
+                    args=[
+                        '-x',
+                        os.path.join(tempdirname),
+                        '-i',
+                        input_files_prefix,
+                        '-n2',
+                        '-p',
+                        '5',
+                        '-v',
+                        '3',
+                        '-u',
+                        '0.03',
+                        '--mode',
+                        '0',
+                        '-r',
+                        '6700',
+                        '-j',
+                        '1',
+                        '-eD',
+                        '6',
+                        '-eT',
+                        '12',
+                        '-g',
+                        '0.35',
+                        '-l',
+                        '0.6',
+                        '-P',
+                        '0.6 0.2 0',
                     ]
                 )
 
