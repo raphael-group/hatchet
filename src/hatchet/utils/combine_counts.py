@@ -918,8 +918,20 @@ def segmented_piecewise(X, pieces=2):
 
 
 def correct_haplotypes(
-    orig_bafs, min_prop_switch=0.01, n_segments=10, min_switch_density=0.1, min_mean_baf=0.45, minmax_al_imb=0.02
+    orig_bafs, min_prop_switch=0.01, n_segments=20, min_switch_density=0.1, min_mean_baf=0.48, minmax_al_imb=0.02
 ):
+    n_bins = orig_bafs.shape[0]
+    if n_bins == 1:
+        sp.log(msg='Only one bin in the chromosome arm, skipping correction.\n', level='INFO')
+        return orig_bafs, None
+    elif n_bins < n_segments:
+        # Assume that with this few bins, there is only 1 segment
+        sp.log(
+            msg=f'Only {orig_bafs.shape[0]} bins < {n_segments} segments parameter, using 1 segment instead.\n',
+            level='INFO',
+        )
+        n_segments = 1
+
     # Count switches using only samples with mean allelic imbalance above <minmax_al_imb>
     imb_samples = np.where(np.mean(np.abs(orig_bafs - 0.5), axis=0) > minmax_al_imb)[0]
 
@@ -951,6 +963,10 @@ def correct_haplotypes(
 
         for idx in np.where(np.diff(ts) == 0)[0]:
             del ts[idx]
+
+        # hacky bugfix: handle bug where backtracking gets to 0 and then adds more segments...
+        new_start = np.where(np.array(ts) == 0)[0][-1]
+        ts = ts[new_start:]
 
         segments = [orig_bafs[ts[i] : ts[i + 1]] for i in range(len(ts) - 1)]
 
@@ -1154,6 +1170,12 @@ def run_chromosome(
                 sp.log(msg='Correcting haplotype switches on p arm...\n', level='STEP')
                 # TODO: pass through other parameters to correct_haplotypes
                 corrected_bafs_p, _ = correct_haplotypes(bafs_p)
+
+                sp.log(
+                    msg=f'{len(bb_p)}, {len(bb_p.SAMPLE.unique())}, \
+                        {bafs_p.shape}, {corrected_bafs_p.shape} {corrected_bafs_p.flatten().shape}\n',
+                    level='DEBUG',
+                )
 
                 # flatten these results out and put them back into the BAF array
                 bb_p['ORIGINAL_BAF'] = bb_p.BAF
