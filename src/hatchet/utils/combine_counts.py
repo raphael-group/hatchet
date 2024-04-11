@@ -395,16 +395,20 @@ def adaptive_bins_arm(
     while i < len(snp_thresholds - 1):
         # Extend the current bin to the next threshold
         next_threshold = snp_thresholds[i]
-
+        if next_threshold < snp_positions[j]:
+            # adding total reads
+            bin_total += total_counts[i - 1, even_index]
+            i += 1
+            continue
         # add the intervening reads to the current bin
         # adding SNP reads
         while j < len(snp_positions) and snp_positions[j] <= next_threshold:
             bin_snp += snp_counts[j]
             j += 1
-        assert snp_positions[i - 1] >= snp_thresholds[i - 1]
-        assert snp_positions[i - 1] <= snp_thresholds[i], (
+        assert snp_positions[j - 1] >= snp_thresholds[i - 1]
+        assert snp_positions[j - 1] <= snp_thresholds[i], (
             i,
-            snp_positions[i - 1],
+            snp_positions[j - 1],
             snp_thresholds[i],
         )
 
