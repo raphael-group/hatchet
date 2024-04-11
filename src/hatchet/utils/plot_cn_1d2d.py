@@ -71,8 +71,8 @@ def generate_1D2D_plots(
     ### code below assumes that chromosomes in BBC table are named with prefix 'chr' ###
     chrlengths = {str(c): df.END.max() for c, df in bbc.groupby('#CHR')}
     chr_ends = [0]
-    for i in range(22):
-        chr_ends.append(chr_ends[-1] + chrlengths.get(f'chr{i + 1}', 0))
+    for i in list(range(1, 23)) + ["X"]:
+        chr_ends.append(chr_ends[-1] + chrlengths.get(f'chr{i}', 0))
 
     n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc.columns])
     _, mapping = reindex([k for k, _ in bbc.groupby([f'cn_clone{i + 1}' for i in range(n_clones)])])
@@ -316,7 +316,7 @@ def plot_genome(
         if chromosomes is None:
             # chromosomes = sorted(big_bbc['#CHR'].unique(), key = lambda x: int(x[3:]))
             # WARNING: THIS WILL PUT CHROMOSOMES OUT OF ORDER IF USING 'chr' NOTATION
-            chromosomes = sorted(bbc_['#CHR'].unique())
+            chromosomes = bbc_['#CHR'].unique()
 
         n_clones = max([i for i in range(MAX_CLONES) if f'cn_clone{i}' in bbc_.columns])
         props = np.array([bbc_.iloc[0, 2 * i + 12] for i in range(n_clones + 1)]).round(6)
@@ -341,7 +341,11 @@ def plot_genome(
 
         for chromosome in chromosomes:
             bbc = bbc_[bbc_[chrkey] == chromosome]
-            chr_start = chr_ends[int(chromosome[3:]) - 1]
+            if chromosome[3:] == "X":
+                chrin = 23
+            else:
+                chrin = int(chromosome[3:])
+            chr_start = chr_ends[chrin - 1]
 
             flag = bbc['#CHR'] == chromosome
             bbc = bbc[flag]
@@ -441,8 +445,8 @@ def plot_genome(
             linestyle=':',
             linewidth=1,
         )
-        xtick_labels = [f'chr{i}' for i in range(1, 23)]
-        xtick_locs = [(chr_ends[i] + chr_ends[i + 1]) / 2 for i in range(22)]
+        xtick_labels = [f'chr{i}' for i in list(range(1, 23)) + ["X"]]
+        xtick_locs = [(chr_ends[i] + chr_ends[i + 1]) / 2 for i in range(23)]
         axes[idx * 2 + 0].set_xticks(xtick_locs)
         axes[idx * 2 + 0].set_xticklabels(xtick_labels)
         axes[idx * 2 + 0].tick_params(axis='x', rotation=70)
