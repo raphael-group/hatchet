@@ -502,7 +502,7 @@ class ILPSubset:
                 sample_id = self.sample_ids[_k]
                 obj += (yA[(_m, _k)] + yB[(_m, _k)]) * (self.w[cluster_id] / sum(self.w)) \
                     / maes.loc[cluster_id, sample_id]
-        obj += self.large_cn_penalty(model, 0.6, ub)
+        obj += self.large_cn_penalty(model, 1, ub)
         model.obj = pe.Objective(expr=obj, sense=pe.minimize)
 
         self.model = model
