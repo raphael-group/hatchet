@@ -691,7 +691,6 @@ def run_chromosome(
                 )
                 min_snp_reads = 0
 
-                # TODO: do this procedure only for XY individuals
                 ### construct dummy SNP positions and all-0 snpcounts array for binning
                 before_centromere = complete_thresholds[complete_thresholds <= centromere_start]
                 after_centromere = complete_thresholds[complete_thresholds >= centromere_end]
@@ -768,8 +767,7 @@ def run_chromosome(
                     # Partition SNPs for BAF inference
 
                     # Infer BAF
-                    if xy:
-                        # TODO: compute BAFs for XX
+                    if xy and chromosome.endswith('X'):
                         dfs = None
                         bafs = None
                     else:
