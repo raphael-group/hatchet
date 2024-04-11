@@ -220,7 +220,6 @@ def main(args=None):
         # set BAF to 0.5 for X chromosome
         # also double the RD
         big_bb.loc[big_bb.CHR == x_ch, 'BAF'] = 0.5
-        big_bb.loc[big_bb.CHR == x_ch, 'RD'] = big_bb.loc[big_bb.CHR == x_ch, 'RD'] * 2
 
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     # autosomal_bb.END = autosomal_bb.END + 1
