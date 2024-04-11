@@ -287,7 +287,7 @@ def plot_track(
         )
 
     if show_centromeres:
-        chromosomes = sorted(bb['#CHR'].unique(), key=lambda x: int(x[3:]))
+        chromosomes = bb['#CHR'].unique()
         ax = plt.gca()
         ax.grid(False)
         for i, ch in enumerate(chromosomes):
