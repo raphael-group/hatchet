@@ -162,8 +162,8 @@ def plot_1d(
     ### code below assumes that chromosomes in BBC table are named with prefix 'chr' ###
     chrlengths = {str(c): df.END.max() for c, df in bbc.groupby('#CHR')}
     chr_ends = [0]
-    for i in range(22):
-        chr_ends.append(chr_ends[-1] + chrlengths.get(f'chr{i + 1}', 0))
+    for i in list(range(1, 23)) + ["X"]:
+        chr_ends.append(chr_ends[-1] + chrlengths.get(f'chr{i}', 0))
 
     # NOTE: this implementation assumes that the only gaps between bins are centromeres
     # If this is not the case in the future this needs to be updated
@@ -243,13 +243,20 @@ def plot_track(
     1) bb contains data for a single sample
     2) chromosomes are specified using "chr" notation
     """
-    xs = [int(r['START']) + chr_ends[int(r['#CHR'][3:]) - 1] + 0.5 * (r['END'] - r['START']) for _, r in bb.iterrows()]
+    xs = []
+    for _, r in bb.iterrows():
+        if r['#CHR'][3:] == 'X':
+            chrin = 23
+        else:
+            chrin = int(r['#CHR'][3:])
+        x_val = int(r['START']) + chr_ends[chrin - 1] + 0.5 * (r['END'] - r['START'])
+        xs.append(x_val)
     ys = bb[yval]
 
     markersize = int(max(1, 4 - np.floor(len(bb) / 500)))
 
-    xtick_labels = [f'chr{i}' for i in range(1, 23)]
-    xtick_locs = [(chr_ends[i] + chr_ends[i + 1]) / 2 for i in range(22)]
+    xtick_labels = [f'chr{i}' for i in list(range(1, 23)) + ["X"]]
+    xtick_locs = [(chr_ends[i] + chr_ends[i + 1]) / 2 for i in range(23)]
 
     if color_field is not None:
         # TODO: throw specific value error if "color_field" is not a column in "bb"
