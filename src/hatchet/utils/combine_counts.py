@@ -392,7 +392,7 @@ def adaptive_bins_arm(
     bss = []
     i = 1
     j = 0
-    while i < len(snp_thresholds - 1):
+    while i < len(snp_thresholds - 1) or j < len(snp_positions):
         # Extend the current bin to the next threshold
         next_threshold = snp_thresholds[i]
         if next_threshold < snp_positions[j]:
