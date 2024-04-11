@@ -12,7 +12,7 @@ import hatchet.utils.Supporting as sp
 from hatchet.utils.pon_normalization import correct_baf, pon_normalize_rdr
 from hatchet.utils.rd_gccorrect import rd_gccorrect
 from hatchet.utils.compute_baf import compute_baf_task
-from correct_haplotypes import correct_haplotypes
+from hatchet.utils.correct_haplotypes import correct_haplotypes
 
 
 def main(args=None):
@@ -36,6 +36,7 @@ def main(args=None):
     nonormalFlag = args['nonormalFlag']
     ponfile = args['ponfile']
     referencefasta = args['referencefasta']
+    sex = args['sex']
 
     n_workers = min(len(chromosomes), threads)
 
@@ -73,6 +74,48 @@ def main(args=None):
     isX = {ch: ch.endswith('X') for ch in chromosomes}
     isY = {ch: ch.endswith('Y') for ch in chromosomes}
 
+    # check if isX true for any of the chromosomes
+    if any(isX.values()):
+        sp.log(
+            msg='Determining sex for handling X chromosome\n',
+            level='INFO',
+        )
+        # X chromosome is present. We must determine sex of samples if not provided already.
+        if sex == 'auto':
+            # if read counts for Y chromosome is not provided, we cannot determine sex.
+            # We assume the sample is from a female
+            if not any(isY.values()):
+                xy = False
+            else:
+                # find total read counts for X and Y chromosomes.
+                # if the ratio of X to Y is larger than 50, we assume the sample is from a female
+
+                # find the first chromosome such that isX is true
+                x_ch = next((ch for ch in chromosomes if isX[ch]), None)
+                y_ch = next((ch for ch in chromosomes if isY[ch]), None)
+
+                x_tc, _ = read_total_and_thresholds(x_ch, args['array'], args['segfile'])
+                y_tc, _ = read_total_and_thresholds(y_ch, args['array'], args['segfile'])
+                total_x_reads = x_tc[:, 0].sum()
+                total_y_reads = y_tc[:, 0].sum()
+                if total_y_reads == 0:
+                    xy = False
+                else:
+                    xy = total_x_reads / total_y_reads <= 50
+
+        elif sex == 'xx':
+            xy = False
+        elif sex == 'xy':
+            xy = True
+
+        sp.log(
+            msg='Sex determined to be ' + ('male' if xy else 'female') + '\n',
+            level='INFO',
+        )
+    else:
+        # there is no X chromosome, no need to determine sex
+        # it does not matter what sex is given
+        xy = False
     # form parameters for each worker
     params = [
         (
@@ -85,7 +128,7 @@ def main(args=None):
             msr,
             mtr,
             args['array'],
-            isX[ch] or isY[ch],
+            xy,
             multisample,
             phase,
             blocksize,
@@ -94,7 +137,7 @@ def main(args=None):
             nonormalFlag,
             args['segfile'],
         )
-        for ch in chromosomes
+        for ch in chromosomes if not ch.endswith('Y')
     ]
     # dispatch workers
     """
@@ -127,7 +170,7 @@ def main(args=None):
     if nonormalFlag:
         for sample, df in big_bb.groupby('SAMPLE'):
             big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = (
-                df['TOTAL_READS'] / (df['END'] - df['START']) / np.median(df['TOTAL_READS'] / (df['END'] - df['START']))
+                df['TOTAL_READS'] / (df['END'] - df['START']) / np.mean(df['TOTAL_READS'] / (df['END'] - df['START']))
             )
     else:
         for sample in rc.SAMPLE.unique():
@@ -167,16 +210,24 @@ def main(args=None):
         level='STEP',
     )
 
-    autosomes = set([ch for ch in big_bb['CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
-    autosomal_bb = big_bb[big_bb['CHR'].isin(autosomes)].copy()
-    autosomal_bb = rd_gccorrect(autosomal_bb, referencefasta)
+    # autosomes = set([ch for ch in big_bb['CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
+    # autosomal_bb = big_bb[big_bb['CHR'].isin(autosomes)].copy()
+    # autosomal_bb = rd_gccorrect(autosomal_bb, referencefasta)
+    big_bb = rd_gccorrect(big_bb, referencefasta)
+
+    if xy and any(isX.values()):
+        x_ch = next((ch for ch in chromosomes if isX[ch]), None)
+        # set BAF to 0.5 for X chromosome
+        # also double the RD
+        big_bb.loc[big_bb.CHR == x_ch, 'BAF'] = 0.5
+        big_bb.loc[big_bb.CHR == x_ch, 'RD'] = big_bb.loc[big_bb.CHR == x_ch, 'RD'] * 2
 
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
-    autosomal_bb.END = autosomal_bb.END + 1
-    autosomal_bb.to_csv(outfile, index=False, sep='\t')
+    # autosomal_bb.END = autosomal_bb.END + 1
+    # autosomal_bb.to_csv(outfile, index=False, sep='\t')
 
     big_bb.END = big_bb.END + 1
-    big_bb.to_csv(outfile + '.withXY', index=False, sep='\t')
+    big_bb.to_csv(outfile, index=False, sep='\t')
 
     # Remove intermediate BB files
     [os.remove(f) for f in outfiles]
@@ -569,30 +620,7 @@ def run_chromosome(
             msg=f'Loading intermediate files for chromosome {chromosome}\n',
             level='INFO',
         )
-        if segfile:
-            total_name, thresholds_name = (
-                f'{chromosome}.segfile_total.gz',
-                f'{chromosome}.segfile_thresholds.gz',
-            )
-        else:
-            total_name, thresholds_name = (
-                f'{chromosome}.total.gz',
-                f'{chromosome}.thresholds.gz',
-            )
-
-        total_file = os.path.join(arraystem, total_name)
-        thresholds_file = os.path.join(arraystem, thresholds_name)
-
-        if not os.path.exists(total_file) or not os.path.exists(thresholds_file):
-            raise ValueError(
-                sp.error(
-                    f'input files {total_file} or {thresholds_file} for custom segmentation not found!'
-                    ' Make sure you have run both count-reads and combine-counts with or without the segmentation file'
-                )
-            )
-
-        total_counts = np.loadtxt(total_file, dtype=np.uint32)
-        complete_thresholds = np.loadtxt(thresholds_file, dtype=np.uint32)
+        total_counts, complete_thresholds = read_total_and_thresholds(chromosome, arraystem, segfile)
 
         if segfile:
             sp.log(
@@ -612,7 +640,8 @@ def run_chromosome(
             starts = bins[0]
             ends = bins[1]
 
-            if xy:
+            if xy and chromosome.endswith('X'):
+                # the sample is from a male. Don't compute BAF on X chromosome
                 dfs = None
                 bafs = None
             else:
@@ -648,10 +677,9 @@ def run_chromosome(
             )
         else:
             # adaptive binning
-            # TODO: identify whether XX or XY, and only avoid SNPs/BAFs for XY
-            if xy:
+            if xy and chromosome.endswith('X'):
                 sp.log(
-                    msg='Running on sex chromosome -- ignoring SNPs \n',
+                    msg='Running on sex chromosome X in a male -- ignoring SNPs \n',
                     level='INFO',
                 )
                 min_snp_reads = 0
@@ -803,6 +831,34 @@ def run_chromosome(
 
 def run_chromosome_wrapper(param):
     run_chromosome(*param)
+
+
+def read_total_and_thresholds(chromosome, arraystem, segfile):
+    if segfile:
+        total_name, thresholds_name = (
+            f'{chromosome}.segfile_total.gz',
+            f'{chromosome}.segfile_thresholds.gz',
+        )
+    else:
+        total_name, thresholds_name = (
+            f'{chromosome}.total.gz',
+            f'{chromosome}.thresholds.gz',
+        )
+
+    total_file = os.path.join(arraystem, total_name)
+    thresholds_file = os.path.join(arraystem, thresholds_name)
+
+    if not os.path.exists(total_file) or not os.path.exists(thresholds_file):
+        raise ValueError(
+            sp.error(
+                f'input files {total_file} or {thresholds_file} for custom segmentation not found!'
+                ' Make sure you have run both count-reads and combine-counts with or without the segmentation file'
+            )
+        )
+
+    total_counts = np.loadtxt(total_file, dtype=np.uint32)
+    complete_thresholds = np.loadtxt(thresholds_file, dtype=np.uint32)
+    return total_counts, complete_thresholds
 
 
 def bins_from_segfile(total_counts, thresholds, snp_positions):

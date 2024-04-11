@@ -793,6 +793,14 @@ def parse_combine_counts_args(args=None):
         default=config.count_reads.segfile,
         help='path to bed file containing pre-specified segments for which to compute RDR',
     )
+    parser.add_argument(
+        '-x',
+        '--sex',
+        required=False,
+        type=str,
+        default=config.combine_counts.sex,
+        help='sex of the sample: either XX, XY, or auto (automatic inference). Default: auto',
+    )
     args = parser.parse_args(args)
 
     ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
@@ -881,6 +889,11 @@ def parse_combine_counts_args(args=None):
         os.path.exists(outdir),
         f'Directory for output file does not exist: <{outdir}>',
     )
+    sex = args.sex.lower()
+    ensure(
+        sex in ('xx', 'xy', 'auto'),
+        f'Invalid sex: {args.sex}. Supported values are "XX", "XY", and "auto".',
+    )
 
     return {
         'baffile': args.baffile,
@@ -903,6 +916,7 @@ def parse_combine_counts_args(args=None):
         'nonormalFlag': nonormalFlag,
         'ponfile': args.ponfile,
         'segfile': segfile,
+        'sex': sex,
     }
 
 
