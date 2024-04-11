@@ -334,6 +334,7 @@ def adaptive_bins_arm(
     total_counts,
     snp_positions,
     snp_counts,
+    chromosome,
     min_snp_reads=2000,
     min_total_reads=5000,
     nonormalFlag=False,
@@ -360,7 +361,7 @@ def adaptive_bins_arm(
     """
     assert len(snp_thresholds) == len(total_counts)
     assert len(snp_positions) == len(snp_counts)
-    assert len(snp_positions) == len(snp_thresholds) - 1, (
+    assert len(snp_positions) == len(snp_thresholds) - 1 or chromosome.endswith('X'), (
         len(snp_positions),
         len(snp_thresholds),
     )
@@ -390,20 +391,22 @@ def adaptive_bins_arm(
     totals = []
     bss = []
     i = 1
+    j = 0
     while i < len(snp_thresholds - 1):
         # Extend the current bin to the next threshold
         next_threshold = snp_thresholds[i]
 
         # add the intervening reads to the current bin
         # adding SNP reads
+        while j < len(snp_positions) and snp_positions[j] <= next_threshold:
+            bin_snp += snp_counts[j]
+            j += 1
         assert snp_positions[i - 1] >= snp_thresholds[i - 1]
         assert snp_positions[i - 1] <= snp_thresholds[i], (
             i,
             snp_positions[i - 1],
             snp_thresholds[i],
         )
-
-        bin_snp += snp_counts[i - 1]
 
         # adding total reads
         bin_total += total_counts[i - 1, even_index]
