@@ -364,6 +364,13 @@ def parse_cluster_bins_args(args=None):
             'List of sample names to use as a subset of those included in binning' '(default: none, run on all samples)'
         ),
     )
+    parser.add_argument(
+        '--allow_gaps',
+        action='store_true',
+        required=False,
+        default=config.cluster_bins.allow_gaps,
+        help='Set this flag to allow gaps in chromosomes (each contiguous region is considered a separate "arm").',
+    )
     parser.add_argument('-V', '--version', action='version', version=f'%(prog)s {__version__}')
     args = parser.parse_args(args)
 
@@ -410,7 +417,7 @@ def parse_cluster_bins_args(args=None):
         f'Invalid -s/--selection argument: {args.selection}. Valid values are {valid_selections}.',
     )
 
-    valid_transmats = ('fixed', 'diag', 'tied')
+    valid_transmats = ('fixed', 'diag', 'free')
     ensure(
         args.transmat in valid_transmats,
         f'Invalid -t/--transmat argument: {args.transmat}. Valid values are {valid_transmats}.',
@@ -449,6 +456,7 @@ def parse_cluster_bins_args(args=None):
         'outbins': args.outbins,
         'restarts': args.restarts,
         'subset': args.subset,
+        'allow_gaps': args.allow_gaps,
     }
 
 

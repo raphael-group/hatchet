@@ -18,7 +18,9 @@ def main(args=None):
     sp.logArgs(args, 80)
 
     sp.log(msg='# Reading the combined BB file\n', level='STEP')
-    tracks, bb, sample_labels, chr_labels = read_bb(args['bbfile'], subset=args['subset'])
+    tracks, bb, sample_labels, chr_labels = read_bb(
+        args['bbfile'], subset=args['subset'], allow_gaps=args['allow_gaps']
+    )
 
     if args['exactK'] > 0:
         minK = args['exactK']
@@ -61,31 +63,33 @@ def main(args=None):
 
     sp.log(msg='# Checking consistency of results\n', level='STEP')
     pivot_check = bb.pivot(index=['#CHR', 'START', 'END'], columns='SAMPLE', values='CLUSTER')
-    # Verify that the array lengths and order match the bins in the BB file
-    chr_idx = 0
-    bin_indices = pivot_check.index.to_numpy()
-    i = 0
-    while chr_idx < len(tracks):
-        my_chr = chr_labels[chr_idx][:-2]
 
-        start_row = bin_indices[i]
-        assert str(start_row[0]) == my_chr, (start_row[0], my_chr)
+    if not args['allow_gaps']:
+        # Verify that the array lengths and order match the bins in the BB file
+        chr_idx = 0
+        bin_indices = pivot_check.index.to_numpy()
+        i = 0
+        while chr_idx < len(tracks):
+            my_chr = chr_labels[chr_idx][:-2]
 
-        prev_end = start_row[-1]
+            start_row = bin_indices[i]
+            assert str(start_row[0]) == my_chr, (start_row[0], my_chr)
 
-        start_idx = i
-        i += 1
-        while i < len(bin_indices) and bin_indices[i][0] == start_row[0] and bin_indices[i][1] == prev_end:
-            prev_end = bin_indices[i][2]
+            prev_end = start_row[-1]
+
+            start_idx = i
             i += 1
+            while i < len(bin_indices) and bin_indices[i][0] == start_row[0] and bin_indices[i][1] == prev_end:
+                prev_end = bin_indices[i][2]
+                i += 1
 
-        # check the array lengths
-        assert tracks[chr_idx].shape[1] == i - start_idx, (
-            tracks[chr_idx].shape[1],
-            i - start_idx,
-        )
+            # check the array lengths
+            assert tracks[chr_idx].shape[1] == i - start_idx, (
+                tracks[chr_idx].shape[1],
+                i - start_idx,
+            )
 
-        chr_idx += 1
+            chr_idx += 1
 
     # Verify that cluster labels were applied correctly
     cl_check = pivot_check.to_numpy().T
@@ -115,7 +119,7 @@ def main(args=None):
     sp.log(msg='# Done\n', level='STEP')
 
 
-def read_bb(bbfile, subset=None):
+def read_bb(bbfile, subset=None, allow_gaps=False):
     """
     Constructs arrays to represent the bin in each chromosome or arm.
     If bbfile was binned around chromosome arm, then uses chromosome arms.
@@ -145,44 +149,67 @@ def read_bb(bbfile, subset=None):
     for ch, df0 in bb.groupby('#CHR'):
         df0 = df0.sort_values('START')
 
-        p_arrs = []
-        q_arrs = []
+        if allow_gaps:
+            pt = df0.pivot(index=['START', 'END'], columns='SAMPLE', values=['RD', 'BAF']).reset_index()
+            sample_labels = list(pt['RD'].columns)
+            populated_labels = True
+            gaps = np.where(pt.START.to_numpy()[1:] - pt.END.to_numpy()[:-1] > 0)[0] + 1
 
-        for sample, df in df0.groupby('SAMPLE'):
-            if not populated_labels:
-                sample_labels.append(sample)
+            chunks = []
+            prev_end = 0
+            for gap in gaps:
+                chunks.append(pt.iloc[prev_end:gap])
+                prev_end = gap
 
-            gaps = np.where(df.START.to_numpy()[1:] - df.END.to_numpy()[:-1] > 0)[0]
-            # print(ch, gaps)
+            if prev_end < len(pt):
+                chunks.append(pt.iloc[prev_end:])
 
-            if len(gaps) > 0:
-                assert len(gaps) == 1, 'Found a chromosome with >1 gaps between bins'
-                gap = gaps[0] + 1
+            for i, chunk in enumerate(chunks):
+                track = np.empty((len(sample_labels) * 2, len(chunk)))
+                track[0::2] = chunk.BAF.values.T
+                track[1::2] = chunk.RD.values.T
+                tracks.append(track)
+                chr_labels.append(f'{ch}_section{i}')
 
-                df_p = df.iloc[:gap]
-                df_q = df.iloc[gap:]
-
-                p_arrs.append(df_p.BAF.to_numpy())
-                p_arrs.append(df_p.RD.to_numpy())
-
-                q_arrs.append(df_q.BAF.to_numpy())
-                q_arrs.append(df_q.RD.to_numpy())
-            else:
-                df_p = df
-                p_arrs.append(df_p.BAF.to_numpy())
-                p_arrs.append(df_p.RD.to_numpy())
-
-        if len(q_arrs) > 0:
-            tracks.append(np.array(p_arrs))
-            chr_labels.append(str(ch) + '_p')
-
-            tracks.append(np.array(q_arrs))
-            chr_labels.append(str(ch) + '_q')
         else:
-            tracks.append(np.array(p_arrs))
-            chr_labels.append(str(ch) + '_p')
+            p_arrs = []
+            q_arrs = []
 
-        populated_labels = True
+            for sample, df in df0.groupby('SAMPLE'):
+                if not populated_labels:
+                    sample_labels.append(sample)
+
+                gaps = np.where(df.START.to_numpy()[1:] - df.END.to_numpy()[:-1] > 0)[0]
+                # print(ch, gaps)
+
+                if len(gaps) > 0:
+                    assert len(gaps) == 1, 'Found a chromosome with >1 gaps between bins'
+                    gap = gaps[0] + 1
+
+                    df_p = df.iloc[:gap]
+                    df_q = df.iloc[gap:]
+
+                    p_arrs.append(df_p.BAF.to_numpy())
+                    p_arrs.append(df_p.RD.to_numpy())
+
+                    q_arrs.append(df_q.BAF.to_numpy())
+                    q_arrs.append(df_q.RD.to_numpy())
+                else:
+                    df_p = df
+                    p_arrs.append(df_p.BAF.to_numpy())
+                    p_arrs.append(df_p.RD.to_numpy())
+
+            if len(q_arrs) > 0:
+                tracks.append(np.array(p_arrs))
+                chr_labels.append(str(ch) + '_p')
+
+                tracks.append(np.array(q_arrs))
+                chr_labels.append(str(ch) + '_q')
+            else:
+                tracks.append(np.array(p_arrs))
+                chr_labels.append(str(ch) + '_p')
+
+            populated_labels = True
 
     return (
         tracks,
