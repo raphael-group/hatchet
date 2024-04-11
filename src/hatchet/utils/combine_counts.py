@@ -753,6 +753,7 @@ def run_chromosome(
                         total_counts=counts,
                         snp_positions=arm_positions,
                         snp_counts=arm_snp_counts,
+                        chromosome=chromosome,
                         min_snp_reads=min_snp_reads,
                         min_total_reads=min_total_reads,
                         nonormalFlag=nonormalFlag,
