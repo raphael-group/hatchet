@@ -36,7 +36,7 @@ def main(args=None):
     nonormalFlag = args['nonormalFlag']
     ponfile = args['ponfile']
     referencefasta = args['referencefasta']
-    sex = args['sex']
+    XX = args['XX']
 
     n_workers = min(len(chromosomes), threads)
 
@@ -77,11 +77,11 @@ def main(args=None):
     # check if isX true for any of the chromosomes
     if any(isX.values()):
         sp.log(
-            msg='Determining sex for handling X chromosome\n',
+            msg='Determining the allosomes for handling X chromosome\n',
             level='INFO',
         )
         # X chromosome is present. We must determine sex of samples if not provided already.
-        if sex == 'auto':
+        if XX == 'auto':
             # if read counts for Y chromosome is not provided, we cannot determine sex.
             # We assume the sample is from a female
             if not any(isY.values()):
@@ -103,13 +103,13 @@ def main(args=None):
                 else:
                     xy = total_x_reads / total_y_reads <= 50
 
-        elif sex == 'xx':
+        elif XX == 'True':
             xy = False
-        elif sex == 'xy':
+        elif XX == 'False':
             xy = True
 
         sp.log(
-            msg='Sex determined to be ' + ('male' if xy else 'female') + '\n',
+            msg='Allosomes are determined as ' + ('XY' if xy else 'XX') + '\n',
             level='INFO',
         )
     else:
@@ -137,7 +137,7 @@ def main(args=None):
             nonormalFlag,
             args['segfile'],
         )
-        for ch in chromosomes if not ch.endswith('Y')
+        for ch in chromosomes if not ch.endswith('Y') and not (ch.endswith('X') and xy)
     ]
     # dispatch workers
     """

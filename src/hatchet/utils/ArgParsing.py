@@ -795,11 +795,12 @@ def parse_combine_counts_args(args=None):
     )
     parser.add_argument(
         '-x',
-        '--sex',
+        '--XX',
         required=False,
         type=str,
-        default=config.combine_counts.sex,
-        help='sex of the sample: either XX, XY, or auto (automatic inference). Default: auto',
+        default=config.combine_counts.xx,
+        help='sex chromosome equals to XX or not for the sample: '
+        'either True, False, or auto (automatic inference). Default: auto',
     )
     args = parser.parse_args(args)
 
@@ -889,10 +890,10 @@ def parse_combine_counts_args(args=None):
         os.path.exists(outdir),
         f'Directory for output file does not exist: <{outdir}>',
     )
-    sex = args.sex.lower()
+    XX = args.XX.lower()
     ensure(
-        sex in ('xx', 'xy', 'auto'),
-        f'Invalid sex: {args.sex}. Supported values are "XX", "XY", and "auto".',
+        XX in ('True', 'False', 'auto'),
+        f'Invalid XX genotypeargument: {args.XX}. Supported values are "True", "False", and "auto".',
     )
 
     return {
@@ -916,7 +917,7 @@ def parse_combine_counts_args(args=None):
         'nonormalFlag': nonormalFlag,
         'ponfile': args.ponfile,
         'segfile': segfile,
-        'sex': sex,
+        'XX': XX,
     }
 
 
