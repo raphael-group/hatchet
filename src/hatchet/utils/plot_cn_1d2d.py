@@ -417,7 +417,7 @@ def plot_genome(
             axes[idx * 2 + 1].set_ylim([minBAF - 0.02, maxBAF + 0.02])
 
         axes[idx * 2 + 1].set_xlim([0, chr_ends[-1]])
-        axes[idx * 2 + 1].set_ylabel('Mirrored haplotype BAF')
+        axes[idx * 2 + 1].set_ylabel('Minor haplotype BAF')
 
         axes[idx * 2 + 0].vlines(
             chr_ends[1:-1],
@@ -662,7 +662,7 @@ def plot_clusters(
 
         my_ax.set_ylabel('Fractional Copy Number')
         if idx == len(samples) - 1 or save_samples:
-            my_ax.set_xlabel('Mirrored haplotype BAF')
+            my_ax.set_xlabel('Minor haplotype BAF')
 
         if save_samples:
             plt.title(sample)

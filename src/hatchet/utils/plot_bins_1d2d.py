@@ -91,7 +91,7 @@ def plot_2d(
     for s, df in bbc.groupby('SAMPLE'):
         plt.figure(figsize=figsize)
         plt.scatter(df.BAF, df.RD, c=df.CLUSTER, cmap=mymap, s=1, alpha=alpha)
-        plt.xlabel('Mirrored BAF')
+        plt.xlabel('Minor haplotype BAF')
         plt.ylabel('Read-depth ratio')
 
         if ylim is not None:
