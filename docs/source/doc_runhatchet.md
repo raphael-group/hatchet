@@ -68,7 +68,7 @@ Both `mincov` and `maxcov` specify the minimum and maximum sequencing depth for 
 
 ***
 
-## genotype-snps
+## [genotype-snps](doc_genotype_snps.md)
 <a name="genotype-snps"></a>
 
 ```shell

@@ -40,7 +40,7 @@ includes a specific demo which represent a guided and executable example on exam
 
 | Name | Description | Script | Demo | Variations |
 |------|-------------|--------|------|------------|
-| GATK4-CNV | Custom pipeline for segmented files from GATK4 CNV pipeline | [custom-gatk4-cnv.sh](custom-gatk4-cnv.sh) | [demo-gatk4-cnv.sh](custom/GATK4-CNV/demo-gatk4-cnv.html) | This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet (`count-reads`, `count-alleles`, and `combine-counts`) are not needed; for this reason, the following depdencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case. |
+| GATK4-CNV | Custom pipeline for segmented files from GATK4 CNV pipeline | [custom-gatk4-cnv.sh](custom-gatk4-cnv.sh) | [demo-gatk4-cnv.sh](custom/GATK4-CNV/demo-gatk4-cnv.html) | This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet (`count-reads`, `count-alleles`, and `combine-counts`) are not needed; for this reason, the following dependencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case. |
 
 ## Detailed steps
 <a name="detailedsteps"></a>
@@ -63,7 +63,7 @@ Additionally, this version of HATCHet uses a new locality-aware clustering modul
 | Order | Step | Old Name | Description |
 |-------|------|----------|-------------|
 | (1)   | [*genotype-snps*](doc_genotype_snps.html)   | deBAF    | This step calls heterozygous germline SNPs from the matched-normal sample. |
-| (2)   | [*count-alleles*](doc_count_alleles.html)   | deBAF    | This step counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample. |
+| (2)   | [*count-alleles*](doc_count_alleles.html)   | deBAF    | This step counts the number of reads covering both the alleles of each identified heterozygous SNP in every tumor sample. |
 | (3)   | [*count-reads*](doc_count_reads.html)       | N/A   | This step splits the human reference genome into very small regions (representing candidate bins) according to germline SNP positions, and counts the number of total reads aligned to each region in each of the tumor samples and in the matched normal sample. |
 | (4)   | [*phase-snps*](doc_phase_snps.html)       | N/A   | This **optional** step uses reference-based phasing to group together germline SNPs that are likely on the same haplotype. This improves the quality of BAF estimates for balanced regions of the genome. |
 | (5)   | [*combine-counts*](doc_combine_counts.html) | N/A   | This step constructs genomic bins with variable sizes, and combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin. |
@@ -76,11 +76,11 @@ Additionally, this version of HATCHet uses a new locality-aware clustering modul
 ## Recommendations and quality control
 <a name="recommendations"></a>
 
-All the components of HATCHet's pipeline use some basic parameters that allow to deal with data characterized by different features. The default values of these parameters allow one to succesfully apply HATCHet on most datasets. However, special or noisy datasets may require to tune some parameters. The user can deal with these cases by following the recommendations reported here, reading the descriptions of the various steps, and using the informative plots to verify the results. In the following guides and recommentations, we guide the user in the interpration of HATCHet's inference, we explain how to perform quality control to guarantee the best-quality results, and we describe how the user can control and tune some of the parameters to obtain the best-fitting results. We thus split the recommendations into distinct topics with dedicated descriptions.
+All the components of HATCHet's pipeline use some basic parameters that allow to deal with data characterized by different features. The default values of these parameters allow one to successfully apply HATCHet on most datasets. However, special or noisy datasets may require to tune some parameters. The user can deal with these cases by following the recommendations reported here, reading the descriptions of the various steps, and using the informative plots to verify the results. In the following guides and recommendations, we guide the user in the interpretation of HATCHet's inference, we explain how to perform quality control to guarantee the best-quality results, and we describe how the user can control and tune some of the parameters to obtain the best-fitting results. We thus split the recommendations into distinct topics with dedicated descriptions.
 
 | Recommendation | Description |
 |----------------|-------------|
 | [Analyze HATCHet inference](recommendation_inference.html) | Interpret HATCHet's inference, quality and error control, and investigate alternative solutions. |
-| [Analyze global clustering](recommendation_clustering.html) | Interprent global clustering, quality and error control, and parameter tuning |
+| [Analyze global clustering](recommendation_clustering.html) | Interpret global clustering, quality and error control, and parameter tuning |
 | [Analyze different type of data](recommendation_datatype.html) | Tuning parameters to better analyzing different type of data as those from WES |
 | [Improve running time](recommendation_runtime.html)| Tips for improving running time of the whole pipeline |

@@ -6,7 +6,7 @@ This step constructs variable-length bins that ensure that each bin has at least
 
 `combine-counts` takes in input the output from `count-reads` (i.e., two gzipped files `ch.total.gz` and `ch.thresholds.gz` for each chromosome `ch`, ). Use the `-A, --array` argument to specify a directory containing these input files.
 
-It also requires (specified by the flag `-b`, `--baffile`) a tab-separated file specifying the allele counts for heterzygous germline SNPs from all tumor samples. The tab separated file would typically be produced by the `count-alleles` command and has the following fields:
+It also requires (specified by the flag `-b`, `--baffile`) a tab-separated file specifying the allele counts for heterozygous germline SNPs from all tumor samples. The tab separated file would typically be produced by the `count-alleles` command and has the following fields:
 
 | Field | Description |
 |-------|-------------|

@@ -61,13 +61,13 @@ If your clusters do not appear to be cohesive, try lowering the maximum number o
 | `-K`, `--initclusters` | Maximum number of clusters | The parameter specifies the maximum number of clusters to infer, i.e., the maximum number of GMM components | 50 |
 | `-c`, `--concentration` | Concentration parameter for clustering | This parameter determines how much confidence the GMM has in different types of clusterings. Higher values (e.g., 10 or 100)  favor fewer clusters, and smaller values (e.g., 0.01 or 0.001) favor more clusters. For experts, this is the alpha parameter for the Dirichlet process prior. | 1/K |
 
-3. cluster-bins-gmm offers a bootstraping approach that allows a succesfull clustering even when there is a limited number genomic bins that are considred. The bootstraping approach generates sinthetic (i.e. used only for clustering) bins based on the data of the given bins. The bootstraping is controlled by the following parameters.
+3. cluster-bins-gmm offers a bootstraping approach that allows a successful clustering even when there is a limited number genomic bins that are considered. The bootstraping approach generates synthetic (i.e. used only for clustering) bins based on the data of the given bins. The bootstraping is controlled by the following parameters.
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-u`, `--bootclustering` | Number of sinthetic bins to generate | Sinthetic bins can be generated based on the RDR and BAF of given bins and are added only to the clustering to improve it when the total number of bins is low (e.g. when considering data from WES) | 0, not used |
-| `-dR`,`--ratiodeviation` | Standard deviation for generate RDR of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
-| `-dB`,`--bafdeviation` | Standard deviation for generate BAF of sinthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
+| `-u`, `--bootclustering` | Number of synthetic bins to generate | synthetic bins can be generated based on the RDR and BAF of given bins and are added only to the clustering to improve it when the total number of bins is low (e.g. when considering data from WES) | 0, not used |
+| `-dR`,`--ratiodeviation` | Standard deviation for generate RDR of synthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
+| `-dB`,`--bafdeviation` | Standard deviation for generate BAF of synthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
 | `-s`, `--seed` | Random seed | The value is used to seed the random generation of RDR and BAF of synthetic bins | 0 |
 
 4. cluster-bins-gmm offers a basic iterative process to merge clusters according to given tolerances. This feature can be used to refine the results of the GMM clustering and merge distinct clusters that are not sufficiently distinguished. This process can be controlled by the following parameters.
@@ -81,5 +81,5 @@ If your clusters do not appear to be cohesive, try lowering the maximum number o
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-v`, `--verbose`  | Verbose logging flag | When enabled, combine-counts outputs a verbose log of the executiong | Not used |
+| `-v`, `--verbose`  | Verbose logging flag | When enabled, combine-counts outputs a verbose log of the executing | Not used |
 | `-r`, `--disablebar` | Disabling progress-bar flag | When enabled, the output progress bar is disabled | Not used |
