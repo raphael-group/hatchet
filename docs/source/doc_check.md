@@ -6,7 +6,7 @@ All checks can be run simultaneously via `hatchet check`, or an individual comma
 
 The check for `compute-cn` runs the step on a set of small data files (.bbc/.seg) pre-packaged with HATCHet, and is a quick way to verify if your solver is working correctly.
 If you are unable to run this command, it likely indicates a licensing issue with default (Gurobi) solver. To use alternative solvers, see the
-[Using a different Pyomo-supported solver](README.html#usingasolver_other) section of the README for more details.
+[Using a different Pyomo-supported solver](README.md#usingasolver_other) section of the README for more details.
 
 ## Input
 
