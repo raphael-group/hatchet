@@ -82,7 +82,7 @@ GATK best practices suggest that the maximum should be at least twice the expect
 Observe that WES generally requires higher thresholds (e.g. 100 and 3000).
 Also, an increasing in the minimum threshold allow to improve the quality of the estimated BAF (computed in the next step), while a decreasing  it allows us to consider more SNPs.
 
-## [count-alleles](doc_count_alleles.html)
+## [count-alleles](doc_count_alleles.md)
 <a name="count-alleles"></a>
 
 ```shell
@@ -98,7 +98,7 @@ Minimum and maximum thresholds for the read counts of germline SNPs are again sp
 Several simple parameters are also specified including: number of parallel threads, output filenames, and the log filename of this step.
 
 
-## [count-reads](doc_count_reads.html)
+## [count-reads](doc_count_reads.md)
 <a name="count-reads"></a>
 
 ```shell
@@ -110,7 +110,7 @@ python3 -m hatchet count-reads -N ${NORMAL} -T ${BAMS} -S ${ALLNAMES} -b ${BAF}t
 Other simple parameters are also specified including number of parallel threads, output filenames, and the log filename of this step.
 
 
-## [combine-counts](doc_combine_counts.html)
+## [combine-counts](doc_combine_counts.md)
 <a name="combine-counts"></a>
 
 ```shell
@@ -123,7 +123,7 @@ combine-counts constructs genomic bins such that in all samples, each bin has at
 
 See the [script](script/README.md) directory for a guide on how to run HATCHet with phasing. If a phased VCF file is supplied via `-p, --phase ${PHASE}` (e.g., `-p phase/phased.vcf.gz`), SNPs are merged into blocks before BAF inference. Each block contains at most `${max_spb}` such that no two SNPs in the same block are further apart than `${max_blocksize}`, and such that no two adjacent SNPs have significantly different marginal BAF estimates (at significance level `${alpha}` -- higher `${alpha}` corresponds to less trust in the phasing results). Then, blocks are passed to the EM which determines the relative phase of each block.
 
-## [cluster-bins](doc_cluster_bins.html)
+## [cluster-bins](doc_cluster_bins.md)
 <a name="cluster-bins"></a>
 
 ```shell
@@ -142,7 +142,7 @@ The plots from `plot-bins` are helpful to evaluate clusterings and tune paramete
 
 Other parameters are used to specify the output files containing the cluster information (`${BBC}bulk.seg`) and the clustered genomic bins (`${BBC}bulk.bbc`).
 
-## [plot-bins](doc_plot_bins.html)
+## [plot-bins](doc_plot_bins.md)
 <a name="plot-bins"></a>
 
 ```shell
@@ -157,7 +157,7 @@ python3 -m hatchet plot-bins -c CBB ../${BBC}bulk.bbc -tS 0.01
 plot-bins produces informative plots which are described [here](doc_plot_bins.md).
 Many of these plots can be very useful to assess the performance of the various steps of HATCHet, especially in the case of noisy datasets.
 
-## [compute-cn](doc_compute_cn.html)
+## [compute-cn](doc_compute_cn.md)
 <a name="compute-cn"></a>
 
 ```shell
@@ -183,7 +183,7 @@ The details of these parameters are the following:
   - Confidence in the presence of a single tumor clone `g`. This value determines the confidence in having a single tumor clone in several of the given samples. The user can investigate the hypothesis that a single tumor clone is present by increasing the confidence, e.g. using values of `0.4, 0.5, ...`. Vice versa, the confidence is lowered by decreasing these values. For example, one can do that to investigate the presence of tumor clones with small CNAs or small proportions.
   - Sensitivity `l`. This value determines the sensitivity of the method. Lower values correspond to higher sensitivities which allow to consider solutions with a higher number of clones. The user can decrease this value for investigating the presence of more tumor clones, especially tumor clones with small different CNAs or present in small proportions.
 
-## [plot-cn](doc_plot_cn.html)
+## [plot-cn](doc_plot_cn.md)
 <a name="plot-cn"></a>
 
 ```shell
