@@ -65,7 +65,7 @@ If your clusters do not appear to be cohesive, try lowering the maximum number o
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-u`, `--bootclustering` | Number of synthetic bins to generate | synthetic bins can be generated based on the RDR and BAF of given bins and are added only to the clustering to improve it when the total number of bins is low (e.g. when considering data from WES) | 0, not used |
+| `-u`, `--bootclustering` | Number of synthetic bins to generate | Synthetic bins can be generated based on the RDR and BAF of given bins and are added only to the clustering to improve it when the total number of bins is low (e.g. when considering data from WES) | 0, not used |
 | `-dR`,`--ratiodeviation` | Standard deviation for generate RDR of synthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
 | `-dB`,`--bafdeviation` | Standard deviation for generate BAF of synthetic bins | The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this | 0.02 |
 | `-s`, `--seed` | Random seed | The value is used to seed the random generation of RDR and BAF of synthetic bins | 0 |
