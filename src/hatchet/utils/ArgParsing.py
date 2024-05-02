@@ -792,6 +792,9 @@ def parse_combine_counts_args(args=None):
     )
     if args.totalcounts is not None and not isfile(args.totalcounts):
         raise ValueError(error('The specified file for total read counts does not exist!'))
+
+    if args.phase == 'None':
+        args.phase = None
     ensure(
         (args.phase is None) or isfile(args.phase),
         'The specified phasing file does not exist!',
