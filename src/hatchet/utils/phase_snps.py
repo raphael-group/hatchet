@@ -247,8 +247,8 @@ class Phaser(Worker):
         # e.g. small contigs variably present among the assemblies
 
         cmd1 = (
-            f'{self.picard} LiftoverVcf -I {infile} -O {tmpfile} -CHAIN {chain} -R {refgen} -REJECT {rejfile} '
-            '--WARN_ON_MISSING_CONTIG true'
+            f'{self.picard} LiftoverVcf I={infile} O={tmpfile} CHAIN={chain} R={refgen} REJECT={rejfile} '
+            'WARN_ON_MISSING_CONTIG=true'
         )
         # need to change 'chr' notation depending on liftover direction
         c = chromosome if not ch else f'chr{chromosome}'
