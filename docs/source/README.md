@@ -139,7 +139,7 @@ you can use any Pyomo-supported solver by setting the environment variable `HATC
 `glpk`, or any other Pyomo-supported solver. For example, `export HATCHET_COMPUTE_CN_SOLVER=cbc`.
 
 Alternatively, you can set the key `solver` key in the `compute_cn`
-section of your `hatchet.ini` (if using the [hatchet run](doc_runhatchet.html) command) to a specific Pyomo-supported
+section of your `hatchet.ini` (if using the [hatchet run](doc_runhatchet.md) command) to a specific Pyomo-supported
 solver. Make sure the relevant solver binaries are in your `$PATH`, otherwise Pyomo will not be able to find them
 correctly.
 
@@ -173,14 +173,14 @@ HATCHet requires 3 input data files:
 The repository includes all the components that are required to cover every step of the entire HATCHet's pipeline, starting from the processing of raw data reported in a BAM file through the analysis of the final results.
 We provide:
 
-- <a name="fullpipelineandtutorial"></a> A script representing the [full pipeline](doc_fullpipeline.html#fullpipelineandtutorial) of HATCHet, and we describe in details the whole script through a tutorial with instructions for usage.
-- <a name="demos"></a> [Demos](doc_fullpipeline.html#demos) that correspond to guided executions of HATCHet on some examples, and explain in detail the usage of HATCHet when considering standard datasets, real datasets with high noise, and different kind of data.
-- <a name="custompipelines"></a> [Custom pipelines](doc_fullpipeline.html#custompipelines) which adapt the full HATCHet's pipeline to special conditions or integrates pre-processed data belonging to different pipelines.
+- <a name="fullpipelineandtutorial"></a> A script representing the [full pipeline](doc_fullpipeline.md#fullpipelineandtutorial) of HATCHet, and we describe in details the whole script through a tutorial with instructions for usage.
+- <a name="demos"></a> [Demos](doc_fullpipeline.md#demos) that correspond to guided executions of HATCHet on some examples, and explain in detail the usage of HATCHet when considering standard datasets, real datasets with high noise, and different kind of data.
+- <a name="custompipelines"></a> [Custom pipelines](doc_fullpipeline.md#custompipelines) which adapt the full HATCHet's pipeline to special conditions or integrates pre-processed data belonging to different pipelines.
 
   The implementation of HATCHet is highly modular and one can replace any HATCHet's module with any other method to obtain the required results (especially for the pre-processing modules).
-As such, we also provide here an overview of the entire pipeline and we describe the <a name="detailedsteps"></a> [details of each step](doc_fullpipeline.html#detailedsteps) in a dedicated section of the manual.
+As such, we also provide here an overview of the entire pipeline and we describe the <a name="detailedsteps"></a> [details of each step](doc_fullpipeline.md#detailedsteps) in a dedicated section of the manual.
 
-- <a name="recommendations"></a> [Recommendations](doc_fullpipeline.html#recommendations), especially for noisy datasets or with different features, to guide the user in the interpretation of HATCHet's inference. We explain how to perform quality control to guarantee the best-quality results, and describe how the user can control and tune some of the parameters to obtain the best-fitting results.
+- <a name="recommendations"></a> [Recommendations](doc_fullpipeline.md#recommendations), especially for noisy datasets or with different features, to guide the user in the interpretation of HATCHet's inference. We explain how to perform quality control to guarantee the best-quality results, and describe how the user can control and tune some of the parameters to obtain the best-fitting results.
 
 ## Current issues
 <a name="currentissues"></a>

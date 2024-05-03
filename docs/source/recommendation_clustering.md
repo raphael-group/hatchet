@@ -4,7 +4,7 @@ The global clustering performed along the genome and jointly across samples is a
 
 The module `cluster-bins` incorporates genomic position to improve clustering using a Gaussian hidden Markov model (GHMM), as opposed to the position-agnostic Gaussian mixture model (GMM) used in `cluster-bins-gmm` and described in the original HATCHet publication. This page describes how to tune the parameters of `cluster-bins` -- for recommendations on `cluster-bins-gmm`, see [this page](recommendation_old_clustering.md) instead.
 
-The user should validate the results of the clustering, especially in noisy or suspicious cases, through the cluster figures produced by [plot-bins](doc_plot_bins.html) and [plot-bins-1d2d](doc_plot_bins_1d2d.html). More specifically, we suggest the following criteria to evaluate the clustering:
+The user should validate the results of the clustering, especially in noisy or suspicious cases, through the cluster figures produced by [plot-bins](doc_plot_bins.md) and [plot-bins-1d2d](doc_plot_bins_1d2d.md). More specifically, we suggest the following criteria to evaluate the clustering:
 
 1. Every pair of clusters should be clearly distinct in terms of RDR or BAF in at least one sample, and
 2. Each cluster should contain regions with similar values of RDR and BAF in all samples

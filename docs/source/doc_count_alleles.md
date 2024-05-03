@@ -1,6 +1,6 @@
 # count-alleles
 
-Given one or more BAM files and lists of heterozygous SNP positions, this step of HATCHet counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample.
+Given one or more BAM files and lists of heterozygous SNP positions, this step of HATCHet counts the number of reads covering both the alleles of each identified heterozygous SNP in every tumor sample.
 
 ## Input
 
@@ -39,12 +39,12 @@ count-alleles has some main parameters; the main values of these parameters allo
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-S`, `--samples` | White-space separater list of a names | The first name is used for the matched-normal sample, while the others are for the tumor samples and they match the same order of the corresponding BAM files | File names are used |
-| `-st`, `--samtools` | Path to `bin` directory of SAMtools | The path to this direcoty needs to be specified when it is not included in `$PATH` | Path is expected in the enviroment variable `$PATH` |
-| `-bt`, `--bcftools` | Path to `bin` directory of BCFtools | The path to this direcoty needs to be specified when it is not included in `$PATH` | Path is expected in the enviroment variable `$PATH` |
+| `-S`, `--samples` | White-space separator list of a names | The first name is used for the matched-normal sample, while the others are for the tumor samples and they match the same order of the corresponding BAM files | File names are used |
+| `-st`, `--samtools` | Path to `bin` directory of SAMtools | The path to this directory needs to be specified when it is not included in `$PATH` | Path is expected in the environment variable `$PATH` |
+| `-bt`, `--bcftools` | Path to `bin` directory of BCFtools | The path to this directory needs to be specified when it is not included in `$PATH` | Path is expected in the environment variable `$PATH` |
 | `-c`, `--mincov` | Minimum coverage | Minimum number of reads that have to cover a variant to be called, the value can be increased when considering a dataset with high depth (>60x) | 8 |
 | `-C`, `--maxcov` | Maximum coverage | Maximum number of reads that have to cover a variant to be called, the typically suggested value should be twice higher than expected coverage to avoid sequencing and mapping artifacts | 300 |
-| `-j`, `--processes` | Number of parallele jobs | Parallel jobs are used to consider the chromosomes in different samples on parallel. The higher the number the better the running time | 22 |
+| `-j`, `--processes` | Number of parallel jobs | Parallel jobs are used to consider the chromosomes in different samples on parallel. The higher the number the better the running time | 22 |
 
 
 ## Optional parameters
@@ -53,7 +53,7 @@ count-alleles has some optional parameters; changes in the default values of the
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-v`, `--verbose`  | Verbose logging flag | When enabled, count-alleles outputs a verbose log of the executiong | Not used |
+| `-v`, `--verbose`  | Verbose logging flag | When enabled, count-alleles outputs a verbose log of the executing | Not used |
 | `-g`, `--gamma` | Level of confidence for selecting germline heterozygous SNPs | This value is the level of confidence used for the binomial model used to assess whether a called SNPs is in fact germline heterozygous | 0.05 |
 | `-q`, `--readquality` | Threshold for phred-score quality of sequencing reads | The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of sequencing reads | 20 |
 | `-Q`, `--basequality` | Threshold for phred-score quality of sequenced nucleotide bases | The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of sequenced nucleotide bases | 20 |

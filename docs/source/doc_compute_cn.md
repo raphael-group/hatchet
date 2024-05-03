@@ -86,15 +86,15 @@ This heuristic can be controlled by the following parameters:
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-c`, `--clonal` | The required clusters and corresponding copy number states | User can directly specifies the required clusters and the corresponding copy number states to compute the allele-specific fractional copy number states. These must be speficied in the format `IDX-1:A-1:B-1, ..., IDX-M:A-M:B-M` where `IDX-S` is the name of cluster `S` and `(A-S, B-S)` is the corresponding copy-number state. Moreover, user can specify addittional clusters and copy numbers beyond the required ones. The copy-numbers for these clusters will be fixed during the computation. This can be an usefule feature for especially noisy datasets. | None |
+| `-c`, `--clonal` | The required clusters and corresponding copy number states | User can directly specifies the required clusters and the corresponding copy number states to compute the allele-specific fractional copy number states. These must be specified in the format `IDX-1:A-1:B-1, ..., IDX-M:A-M:B-M` where `IDX-S` is the name of cluster `S` and `(A-S, B-S)` is the corresponding copy-number state. Moreover, user can specify additional clusters and copy numbers beyond the required ones. The copy-numbers for these clusters will be fixed during the computation. This can be an useful feature for especially noisy datasets. | None |
 | `-ts`, `--minsize` | Threshold for size of clusters | The minimum size of the clusters to consider for the heuristic that identifies clonal clusters. The non-selected clusters will not be considered as potential tumor-clonal clusters. The threshold must be expressed as a fraction of the entire genome. | 0.02, e.g. `2%` of genome |
 | `-tc`, `--minchrs` | Threshold for number of chromosomes | The minimum number of chromosomes covered by the clusters to consider for the heuristic that identifies clonal clusters. The non-selected clusters will not be considered as potential tumor-clonal clusters. | 1 |
 | `-td`, `--maxneutralshift` | Maximum BAF shift allowed for diploid cluster | The maximum expected shift from 0.5 for BAF for a diploid or tetraploid cluster (i.e. with copy-number states (1, 1) or (2, 2)). This threshold is used for two goals to identify the diploid or tetraploid cluster. | 0.1 |
 | `-tR`, `--toleranceRDR` | Maximum RDR tolerance | The maximum RDR tolerance used by the heuristic when estimating the position of all clonal clusters | 0.04 |
 | `-tB`, `--toleranceBAF` | Maximum BAF tolerance | The maximum BAF tolerance used by the heuristic when estimating the position of all clonal clusters | 0.03 |
 | `--merge` | Activate merging of clusters | When activated, the heuristic will merge together clusters that appear to have the same values of RDR and BAF, according to the values below. This procedure can help the heuristic by refining the clustering and merging clusters that are likely to have the same copy-number states and unlikely to be clonal. | False, not used |
-| `-mR`, `--mergeRDR` | RDR merging threhsold | The maximum difference in RDR considered by the merging procedure | 0 |
-| `-mB`, `--mergeBAF` | BAF merging threhsold | The maximum difference in BAF considered by the merging procedure | 0 |
+| `-mR`, `--mergeRDR` | RDR merging threshold | The maximum difference in RDR considered by the merging procedure | 0 |
+| `-mB`, `--mergeBAF` | BAF merging threshold | The maximum difference in BAF considered by the merging procedure | 0 |
 
 ## Simultaneous factorization
 
@@ -107,7 +107,7 @@ hatchet solves a constrained and distance-based variant of the factorization tha
 | `-eD`, `--diploidcmax` | Maximum copy number with no WGD | The value of maximum copy number that is considered when assuming no WGD. When `0`-value is specified the maximum copy number is directly inferred from the data by rounding the maximum fractional copy number | 8 |
 | `-eT`, `--tetraploidcmax` | Maximum copy number with a WGD | The value of maximum copy number that is considered when assuming there is a WGD. When `0`-value is specified the maximum copy number is directly inferred from the data by rounding the maximum fractional copy number | 8 |
 | `-u`, `--minprop` | Minimum clone proportion | In every sample, each clone either is non present (clone proportion equal to 0.0) or has a clone proportion higher than this threshold | 0.03 |
-| `-f`, `--noampdel` | Activate clone evolutionary contraints | User can decide whether to enable or not constrained about the evolution of tumor clones. These constrained force each allele to be either amplified or deleted across all tumor clones | Activated |
+| `-f`, `--noampdel` | Activate clone evolutionary constraints | User can decide whether to enable or not constrained about the evolution of tumor clones. These constrained force each allele to be either amplified or deleted across all tumor clones | Activated |
 | `-d`, `--cnstates` | Maximum number of distinct copy-number states per cluster | When enabled, the maximum number of distinct copy-number states per cluster is fixed. This option is deprecated | Not used |
 
 HATCHet implements two methods to solve the constrained and distance-based simultaneous factorization: (1) a integer-linear programming (ILP) and (2) a coordinate-descent method (CD).
