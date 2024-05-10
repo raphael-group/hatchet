@@ -511,8 +511,8 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
 
         # Check that sample indexing lines up
         my_snps = bin_snps[bin_snps.SAMPLE == sample]
-        assert np.array_equal(my_snps.ALT, alts[i])
-        assert np.array_equal(my_snps.REF, refs[i])
+        assert np.array_equal(my_snps.ALT.values, alts[i])
+        assert np.array_equal(my_snps.REF.values, refs[i])
 
         alpha = np.sum(np.choose(phases, [refs[i], alts[i]]))
         beta = np.sum(np.choose(phases, [alts[i], refs[i]]))
