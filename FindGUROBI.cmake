@@ -18,7 +18,7 @@ if(EXISTS ${GUROBI_HOME} )
     string(STRIP ${GUROBI_VER} GUROBI_VER )
     message( "-- The retrieved version of Gurobi is: " ${GUROBI_VER} )
 
-    string(SUBSTRING ${GUROBI_VER} 0 2 GUROBI_VER_LIB)
+    string(SUBSTRING ${GUROBI_VER} 0 3 GUROBI_VER_LIB)
 
     message( "-- The retrieved name of version-specific library is " gurobi ${GUROBI_VER_LIB} )
 
