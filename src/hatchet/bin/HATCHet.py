@@ -1272,7 +1272,6 @@ def get_purities(seg_file, purities):
                 minpur = 0
             else:
                 minpur = (1 - minbaf) / ((4 * minrd - 1) * minbaf + 1)
-                minpur = (1 - minbaf) / (5 * minbaf + 1)
             lbs.append(minpur)
             ubs.append(1)
             sys.stderr.write(log(f"Purity lower bound for sample {sample} is {minpur}\n"))

@@ -299,7 +299,10 @@ def bb(bbc, clusters, args, out):
 
             # Calculate the point density
             xy = np.vstack([rdratio, baf])
-            z = gaussian_kde(xy)(xy)
+            try:
+                z = gaussian_kde(xy)(xy)
+            except:
+                return
 
             # Sort the points by density, so that the densest points are plotted last
             idx = z.argsort()
