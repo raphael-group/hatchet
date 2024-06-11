@@ -186,29 +186,54 @@ class HetSNPSelector(Worker):
     def selectHets(self, samplename, chromosome):
         # query the genotype file for heterozygous SNPs. no need for recounting alleles for normal
         vcffile = self.snplist[chromosome]
-        cmd_query = "{} query -f '%CHROM\\t%POS\\t%REF,%ALT\\t%AD\\n' -i 'SUM(FMT/AD)<={} & SUM(FMT/AD)>={} & FMT/GT[0]==\"0/1\"' {}".format(
+        cmd_query = '{} query -f \'%CHROM\\t%POS\\t%REF,%ALT\\t%AD\\n\' -i \'SUM(FMT/AD)<={} & SUM(FMT/AD)>={} & (FMT/GT[0]=="0/1" | FMT/GT[0]=="1|0") | FMT/GT[0]=="0|1"\' {}'.format(
             self.bcftools, self.dp, self.mincov, vcffile
         )
         errname = os.path.join(self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome))
-        with open(errname, 'w') as err:
-            query = pr.Popen(
-                shlex.split(cmd_query),
-                stdout=pr.PIPE,
-                stderr=err,
-                universal_newlines=True,
-            )
-            stdout, _ = query.communicate()
-            codes = map(lambda p: p.wait(), [query])
-        if any(c != 0 for c in codes):
-            raise ValueError(
-                error(
-                    'Allele counting failed on {} of {}, please check errors in {}!'.format(
-                        chromosome, samplename, errname
+        try:
+            with open(errname, 'w') as err:
+                query = pr.Popen(
+                    shlex.split(cmd_query),
+                    stdout=pr.PIPE,
+                    stderr=err,
+                    universal_newlines=True,
+                )
+                stdout, _ = query.communicate()
+                codes = map(lambda p: p.wait(), [query])
+            if any(c != 0 for c in codes):
+                raise ValueError(
+                    error(
+                        'Allele counting failed on {} of {}, please check errors in {}!'.format(
+                            chromosome, samplename, errname
+                        )
                     )
                 )
+            else:
+                os.remove(errname)
+        except ValueError:
+            cmd_query = '{} query -f \'%CHROM\\t%POS\\t%REF,%ALT\\t[%AD]\\n\' -i \'SUM(FMT/AD)<={} & SUM(FMT/AD)>={} & (FMT/GT[0]=="0/1" | FMT/GT[0]=="1|0") | FMT/GT[0]=="0|1"\' {}'.format(
+                self.bcftools, self.dp, self.mincov, vcffile
             )
-        else:
-            os.remove(errname)
+            with open(errname, 'w') as err:
+                query = pr.Popen(
+                    shlex.split(cmd_query),
+                    stdout=pr.PIPE,
+                    stderr=err,
+                    universal_newlines=True,
+                )
+                stdout, _ = query.communicate()
+                codes = map(lambda p: p.wait(), [query])
+                if any(c != 0 for c in codes):
+                    raise ValueError(
+                        error(
+                            'Allele counting failed on {} of {}, please check errors in {}!'.format(
+                                chromosome, samplename, errname
+                            )
+                        )
+                    )
+                else:
+                    os.remove(errname)
+
         return count_alleles_from_stdout(stdout, samplename)
 
 

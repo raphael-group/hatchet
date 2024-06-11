@@ -296,6 +296,11 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
             low_memory=False,
             dtype={'CHR': object, 'POS': np.uint32},
         )
+        # if the last column in phase file has other information,
+        # take the GT part, which is the first elements split by colon
+        # (e.g., GT:AD:DP:GQ:PL). This is needed for ONT data and
+        # does not have any effect on Illumina shapeit phased data
+        phases.PHASE = phases.PHASE.astype(str).apply(lambda x: x.split(":")[0])
         phases['FLIP'] = phases.PHASE.str.contains('1|0', regex=False).astype(np.int8)  # noqa: W605
         phases['NOFLIP'] = phases.PHASE.str.contains('0|1', regex=False).astype(np.int8)  # noqa: W605
 
@@ -337,6 +342,7 @@ def adaptive_bins_arm(
     min_snp_reads=2000,
     min_total_reads=5000,
     nonormalFlag=False,
+    use_averages_rd=False
 ):
     """
     Compute adaptive bins for a single chromosome arm.
@@ -410,20 +416,28 @@ def adaptive_bins_arm(
             snp_positions[j - 1],
             snp_thresholds[i],
         )
-
+        
         # adding total reads
-        bin_total += total_counts[i - 1, even_index]
+        if use_averages_rd:
+            bin_total += total_counts[i - 1, odd_index]
+        else:
+            bin_total += total_counts[i - 1, even_index]
 
-        if np.all(bin_snp >= min_snp_reads) and np.all(bin_total - total_counts[i, odd_index] >= min_total_reads):
+        if use_averages_rd:
+            rdcondition = np.all(bin_total >= min_total_reads)
+        else:
+            rdcondition = np.all(bin_total - total_counts[i, odd_index] >= min_total_reads)
 
+        if np.all(bin_snp >= min_snp_reads) and rdcondition:
             # end this bin
             starts.append(my_start)
             ends.append(next_threshold)
 
             bss.append(bin_snp)
 
-            # to get the total reads, subtract the number of reads covering the threshold position
-            bin_total -= total_counts[i, odd_index]
+            if not use_averages_rd:
+                # to get the total reads, subtract the number of reads covering the threshold position
+                bin_total -= total_counts[i, odd_index]
             totals.append(bin_total)
 
             # compute RDR

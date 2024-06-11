@@ -4,7 +4,6 @@ import shlex
 import subprocess as pr
 import shutil
 import tempfile
-import gzip as gzz
 
 from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 from distutils.dir_util import copy_tree

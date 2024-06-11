@@ -11,6 +11,7 @@ commands = (
     'compute-cn',
     'plot-cn',
     'run',
+    'run-ont',
     'check',
     'download-panel',
     'phase-snps',

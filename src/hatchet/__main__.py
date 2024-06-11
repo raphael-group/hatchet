@@ -25,6 +25,7 @@ from hatchet.utils.plot_cn import main as plot_cn  # noqa: F401
 from hatchet.utils.plot_cn_1d2d import main as plot_cn_1d2d  # noqa: F401
 
 from hatchet.utils.run import main as run  # noqa: F401
+from hatchet.utils.run_lr import main as run_ont  # noqa: F401
 from hatchet.utils.download_panel import main as download_panel  # noqa: F401
 from hatchet.utils.phase_snps import main as phase_snps  # noqa: F401
 
