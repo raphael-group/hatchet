@@ -163,7 +163,7 @@ class ILPSubset:
         penalty = 0
         for _m in range(self.m):
             cluster_id = self.f_a.index[_m]
-            for _n in range(self.n):
+            for _n in range(1, self.n):
                 bM[(_m, _n)] = pe.Var(bounds=(0, ub), domain=pe.Reals)
                 model.add_component(f'bM_{_m + 1}_{_n + 1}', bM[(_m, _n)])
                 aMb[(_m, _n)] = pe.Var(bounds=(0, ub), domain=pe.Reals)
