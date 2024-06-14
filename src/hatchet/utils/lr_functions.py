@@ -180,7 +180,7 @@ def combine_counts(args, haplotype_file):
                     end = ends[i]
                     total = df2.TOTAL.sum()
                     bcount = get_b_count(df2)
-                    bcount = min(bcount, total - bcount)
+                    #bcount = min(bcount, total - bcount)
                     haplostring = get_haplostring(df2)
                     log(msg=f'{ch} {sample} {start} {end} {total} {bcount} {bcount/total}\n', level='STEP')
                     rows.append(
