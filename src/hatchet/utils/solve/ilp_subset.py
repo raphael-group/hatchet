@@ -149,15 +149,15 @@ class ILPSubset:
             return self.u
 
     def large_cn_penalty(self, model, beta, ub):
-        cA = self.cA
-        cB = self.cB
         w = self.w
         if self.mode == 'UARCH':
             cA = self._fixed_cA
             cB = self._fixed_cB
+            u = self.u
         else:
             cA = self.cA
             cB = self.cB
+            u = self._fixed_u
         bM = {}
         aMb = {}
         penalty = 0
@@ -173,8 +173,8 @@ class ILPSubset:
                 model.constraints.add(1 - cB[_m][_n] <= bM[(_m, _n)])
                 model.constraints.add(cA[_m][_n] - cB[_m][_n] <= aMb[(_m, _n)])
                 model.constraints.add(cB[_m][_n] - cA[_m][_n] <= aMb[(_m, _n)])
-
-                penalty += (w[cluster_id] / sum(self.w)) * beta * (bM[(_m, _n)] + 0.5 * aMb[(_m, _n)])
+                for _k in range(self.k):
+                    penalty += (w[cluster_id] / sum(self.w)) * beta * u[_n][_k] * (bM[(_m, _n)] + 0.5 * aMb[(_m, _n)])
 
         return penalty
 
