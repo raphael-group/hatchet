@@ -1,9 +1,21 @@
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import subprocess
+import tempfile
+import gzip
 import numpy as np
 import pandas as pd
-from hatchet.utils.ArgParsing import parse_combine_counts_args, parse_genotype_snps_arguments
+from hatchet.utils.ArgParsing import (
+    parse_combine_counts_args,
+    parse_count_reads_args,
+    parse_genotype_snps_arguments,
+)
 from hatchet.utils.Supporting import log, logArgs
-from hatchet.utils.combine_counts import adaptive_bins_arm, read_snps, read_total_and_thresholds
+from hatchet.utils.combine_counts import (
+    adaptive_bins_arm,
+    read_snps,
+    read_total_and_thresholds,
+)
 
 
 def genotype_snps(args):
@@ -23,7 +35,11 @@ def genotype_snps(args):
 
     for chrom in args['chromosomes']:
         log(
-            msg=('Extracting chromosome {} from genotype file...\n'.format(chrom),),
+            msg=(
+                'Extracting chromosome {} from genotype file...\n'.format(
+                    chrom
+                ),
+            ),
             level='STEP',
         )
 
@@ -84,7 +100,9 @@ def phase_snps(args):
 
 def get_b_count(df):
     # Select REF if FLIP == 1, otherwise select ALT, then sum the selected values
-    sel = df.apply(lambda row: row['REF'] if row['FLIP'] == 1 else row['ALT'], axis=1)
+    sel = df.apply(
+        lambda row: row['REF'] if row['FLIP'] == 1 else row['ALT'], axis=1
+    )
     total_sum = sel.sum()
     return total_sum
 
@@ -93,7 +111,92 @@ def get_haplostring(df):
     return ''.join(list(df['FLIP'].astype(int).astype(str)))
 
 
-def combine_counts(args, haplotype_file):
+def count_reads_lr(args):
+
+    args = parse_count_reads_args(args)
+    logArgs(args, 80)
+
+    bams = args['bams']
+    names = args['names']
+
+    if not args['nonormal']:
+        tbams, tnames = zip(*sorted(zip(*(bams[1:], names[1:])), key=lambda x: x[1]))
+        bams = [bams[0]] + list(tbams)
+        names = [names[0]] + list(tnames)
+
+    chromosomes = args['chromosomes']
+    processes = args['j']
+    outdir = args['outdir']
+    mosdepth = args['mosdepth']
+    tabix = args['tabix']
+    readquality = args['readquality']
+
+    def run_mosdepth(bam, name, outdir, mosdepth, chromosomes, readquality):
+        output_prefix = os.path.join(outdir, name)
+        cmd = [
+            mosdepth,
+            "-n",
+            "--fast-mode",
+            "-t", "1",
+            "-b", "500",
+            "-Q", str(readquality),
+            "-c", ",".join(chromosomes),
+            output_prefix,
+            bam
+        ]
+        subprocess.run(cmd, check=True)
+        return f"{output_prefix}.regions.bed.gz"
+
+    def process_bed_file(bed_file, name, outdir):
+        output_file = os.path.join(outdir, f"{name}_with_sample.bed")
+        with open(output_file, 'w') as out_f:
+            with subprocess.Popen(["zcat", bed_file], stdout=subprocess.PIPE, text=True) as proc:
+                for line in proc.stdout:
+                    chrom, start, end, depth = line.strip().split('\t')
+                    out_f.write(f"{chrom}\t{start}\t{end}\t{depth}\t{name}\n")
+        return output_file
+
+    def split_and_compress_by_chromosome(combined_bed, outdir, chromosomes, tabix):
+        chrom_files = {chrom: open(os.path.join(outdir, f"{chrom}.bed"), 'w') for chrom in chromosomes}
+        
+        with open(combined_bed, 'r') as f:
+            for line in f:
+                chrom = line.split('\t')[0]
+                if chrom in chrom_files:
+                    chrom_files[chrom].write(line)
+        
+        for chrom, file in chrom_files.items():
+            file.close()
+            output_gz = f"{file.name}.gz"
+            subprocess.run(["bgzip", "-f", file.name], check=True)
+            subprocess.run([tabix, "-p", "bed", output_gz], check=True)
+
+    # 1. Compute average depth using mosdepth
+    mosdepth_outputs = {}
+    for bam, name in zip(bams, names):
+        mosdepth_outputs[name] = run_mosdepth(bam, name, outdir, mosdepth, chromosomes, readquality)
+
+    # 2. Combine the resulting bed files and add sample name column
+    processed_bed_files = []
+    for name, bed_file in mosdepth_outputs.items():
+        processed_bed_files.append(process_bed_file(bed_file, name, outdir))
+
+    # Combine all processed bed files
+    combined_bed = os.path.join(outdir, "combined_samples.bed")
+    with open(combined_bed, 'w') as outfile:
+        for bed_file in processed_bed_files:
+            with open(bed_file, 'r') as infile:
+                outfile.write(infile.read())
+            os.remove(bed_file)  # Remove individual processed bed files
+
+    # 3. Split the combined bed file by chromosome, compress, and index
+    split_and_compress_by_chromosome(combined_bed, outdir, chromosomes, tabix)
+
+    # Clean up the combined bed file
+    os.remove(combined_bed)
+
+
+def combine_counts(args, haplotype_file, mosdepth_files):
     log(msg='# Parsing and checking input arguments\n', level='STEP')
     args = parse_combine_counts_args(args)
     logArgs(args, 80)
@@ -118,35 +221,77 @@ def combine_counts(args, haplotype_file):
     rd_array = args['array']
 
     def read_ranges_from_file(filename):
-        '''
+        """
         Reads haplotype blocks from gtf file
-        '''
-        df = pd.read_csv(filename, sep='\t', header=None, comment='#',
-                        names=['CHR', 'source', 'feature', 'START', 'END', 'score', 'strand', 'frame', 'attribute'])
+        """
+        df = pd.read_csv(
+            filename,
+            sep='\t',
+            header=None,
+            comment='#',
+            names=[
+                'CHR',
+                'source',
+                'feature',
+                'START',
+                'END',
+                'score',
+                'strand',
+                'frame',
+                'attribute',
+            ],
+        )
         ranges = df[['CHR', 'START', 'END']]
         return ranges
-    
+
     # Read ranges from the haplotype file
     haplotype_blocks = read_ranges_from_file(haplotype_file)
 
+    bed_mosdepths = []
+    for sname, sbed_file in zip(all_names, mosdepth_files):
+        with gzip.open(sbed_file, 'rt') as f:
+            bed_data = pd.read_csv(f, sep='\t', names=['CHR', 'START', 'END', 'AVG_DEPTH'])
+            bed_data['sample'] = sname
+            bed_mosdepths.append((sname, bed_data))
+
     rows = []
     for ch in chromosomes:
-        positions, snp_counts, snpsv = read_snps(baffile, ch, all_names, phasefile=phase)
-        total_counts, complete_thresholds = read_total_and_thresholds(ch, rd_array, False)
+        positions, snp_counts, snpsv = read_snps(
+            baffile, ch, all_names, phasefile=phase
+        )
+        total_counts, complete_thresholds = read_total_and_thresholds(
+            ch, rd_array, False
+        )
         blocks = haplotype_blocks[haplotype_blocks.CHR == ch]
 
+        mosdepth_ch = [(n, mos[mos.CHR == ch]) for n, mos in bed_mosdepths]
+
         for index, row in blocks.iterrows():
-            block_snps_idx = np.where((positions >= row.START) & (positions <= row.END))[0]
+            mos_block = [(n, mos[mos.START > row.START - 1000])for n, mos in mosdepth_ch]
+            mos_block = [(n, mos[mos.END < row.END + 1000])for n, mos in mos_block]
+
+            block_snps_idx = np.where(
+                (positions >= row.START) & (positions <= row.END)
+            )[0]
             block_snp_pos = positions[block_snps_idx]
             block_snp_counts = snp_counts[block_snps_idx]
             if len(block_snp_counts) == 0:
                 continue
-            block_thr_idx = np.where((complete_thresholds >= block_snp_pos[0]) & (complete_thresholds <= block_snp_pos[-1]))[0]
-            if len(block_snps_idx) > len(block_thr_idx) + 1 or len(block_thr_idx) == 0:
+            block_thr_idx = np.where(
+                (complete_thresholds >= block_snp_pos[0])
+                & (complete_thresholds <= block_snp_pos[-1])
+            )[0]
+            if (
+                len(block_snps_idx) > len(block_thr_idx) + 1
+                or len(block_thr_idx) == 0
+            ):
                 # centromere loci
                 continue
-            log(msg=f'snpcount {len(block_snps_idx)} thrcount {len(block_thr_idx)}\n', level='STEP')
-            
+            log(
+                msg=f'snpcount {len(block_snps_idx)} thrcount {len(block_thr_idx)}\n',
+                level='STEP',
+            )
+
             # thresholds must begin and end outside the boundaries:
             block_thr_idx = np.insert(block_thr_idx, 0, block_thr_idx[0] - 1)
             block_thr_idx = np.append(block_thr_idx, block_thr_idx[-1] + 1)
@@ -163,13 +308,16 @@ def combine_counts(args, haplotype_file):
                 min_snp_reads=msr,
                 min_total_reads=1,
                 nonormalFlag=nonormalFlag,
-                use_averages_rd=True
+                mos_block=mos_block,
             )
 
             starts = bins[0]
             ends = bins[1]
-
-            dfs = [snpsv[(snpsv.POS >= starts[i]) & (snpsv.POS <= ends[i])] for i in range(len(starts))]
+       
+            dfs = [
+                snpsv[(snpsv.POS >= starts[i]) & (snpsv.POS <= ends[i])]
+                for i in range(len(starts))
+            ]
             dfs = [df.dropna(subset=['FLIP']) for df in dfs]
 
             for i, df in enumerate(dfs):
@@ -180,13 +328,16 @@ def combine_counts(args, haplotype_file):
                     end = ends[i]
                     total = df2.TOTAL.sum()
                     bcount = get_b_count(df2)
-                    #bcount = min(bcount, total - bcount)
+                    # bcount = min(bcount, total - bcount)
                     haplostring = get_haplostring(df2)
-                    log(msg=f'{ch} {sample} {start} {end} {total} {bcount} {bcount/total}\n', level='STEP')
+                    log(
+                        msg=f'{ch} {sample} {start} {end} {total} {bcount} {bcount/total}\n',
+                        level='STEP',
+                    )
                     rows.append(
                         [
                             ch,
-                            "unit",
+                            'unit',
                             start,
                             end,
                             sample,
@@ -196,10 +347,10 @@ def combine_counts(args, haplotype_file):
                             len(df2),
                             bcount,
                             total,
-                            "",
-                            "",
-                            "",
-                            "",
+                            '',
+                            '',
+                            '',
+                            '',
                             bcount / total,
                         ]
                     )
@@ -232,14 +383,15 @@ def combine_counts(args, haplotype_file):
         big_bb['CORRECTED_READS'] = np.NAN
         # For each sample, correct read counts to account for differences in coverage (as in HATCHet)
         # (i.e., multiply read counts by total-reads-normal/total-reads-sample)
-        rc = pd.read_table(args['totalcounts'], header=None, names=['SAMPLE', '#READS'])
+        rc = pd.read_table(
+            args['totalcounts'], header=None, names=['SAMPLE', '#READS']
+        )
         normal_name = all_names[0]
         nreads_normal = rc[rc.SAMPLE == normal_name].iloc[0]['#READS']
         if nonormalFlag:
             for sample, df in big_bb.groupby('SAMPLE'):
-                big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = (
-                    df['TOTAL_READS'] / (df['END'] - df['START']) / np.mean(df['TOTAL_READS'] / (df['END'] - df['START']))
-                )
+                mean_rd = np.mean(df['RD'])
+                big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = df['RD'] / mean_rd
         else:
             for sample in rc.SAMPLE.unique():
                 if sample == normal_name:
@@ -249,38 +401,30 @@ def combine_counts(args, haplotype_file):
                 my_bb = big_bb[big_bb.SAMPLE == sample]
 
                 # Correct the tumor reads propotionally to the total reads in corresponding samples
-                big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] = (my_bb.TOTAL_READS * correction).astype(np.int64)
+                big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = my_bb.RD * correction
 
-                # Recompute RDR according to the corrected tumor reads
-                big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = (
-                    big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS']
-                    / big_bb.loc[big_bb.SAMPLE == sample, 'NORMAL_READS']
-                )
-
-            if 'NORMAL_READS' not in big_bb:
-                log('# NOTE: adding NORMAL_READS column to bb file', level='INFO')
-                big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(np.uint32)
-                
         big_bb.END = big_bb.END + 1
         big_bb.to_csv(outfile, index=False, sep='\t')
 
     exit(0)
 
     # Query command to extract CHROM, POS, and GT fields from the VCF
-    query_command = [
-        'bcftools', 'query',
-        '-f', '%CHROM\t%POS\t[%GT]\n',
-        phase
-    ]
+    query_command = ['bcftools', 'query', '-f', '%CHROM\t%POS\t[%GT]\n', phase]
 
-    process = subprocess.Popen(query_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(
+        query_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     stdout, stderr = process.communicate()
 
     if process.returncode != 0:
-        raise Exception(f"Error executing bcftools query: {stderr.decode('utf-8')}")
+        raise Exception(
+            f"Error executing bcftools query: {stderr.decode('utf-8')}"
+        )
 
     # Parse stdout into a pandas dataframe
-    data = [line.split() for line in stdout.decode('utf-8').strip().split('\n')]
+    data = [
+        line.split() for line in stdout.decode('utf-8').strip().split('\n')
+    ]
     all_phase = pd.DataFrame(data, columns=['CHR', 'POS', 'GT'])
 
     # Split GT column into A and B columns
@@ -291,10 +435,26 @@ def combine_counts(args, haplotype_file):
     log(msg=all_phase.head(), level='STEP')
 
     def read_ranges_from_file(filename):
-        df = pd.read_csv(filename, sep='\t', header=None, comment='#',
-                        names=['CHR', 'source', 'feature', 'START', 'END', 'score', 'strand', 'frame', 'attribute'])
+        df = pd.read_csv(
+            filename,
+            sep='\t',
+            header=None,
+            comment='#',
+            names=[
+                'CHR',
+                'source',
+                'feature',
+                'START',
+                'END',
+                'score',
+                'strand',
+                'frame',
+                'attribute',
+            ],
+        )
         ranges = df[['CHR', 'START', 'END']]
         return ranges
+
     # Read ranges from the haplotype file
     haplotype_blocks = read_ranges_from_file(haplotype_file)
 
@@ -318,10 +478,10 @@ def combine_counts(args, haplotype_file):
             # Get current range
             start = int(haplotype_blocks.loc[ranges_index, 'START'])
             end = int(haplotype_blocks.loc[ranges_index, 'END'])
-            
+
             # Get current POS
             pos = int(all_phase.loc[all_phases_index, 'POS'])
-            
+
             if start <= pos <= end:
                 # If POS is within the current range, add the index to the list
                 current_range_indices.append(all_phases_index)
@@ -352,56 +512,91 @@ def combine_counts(args, haplotype_file):
 
     # Function to read the ranges from the haplotype file using pandas
     def read_ranges_from_file(filename):
-        df = pd.read_csv(filename, sep='\t', header=None, comment='#', 
-                        names=['chrom', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame', 'attribute'])
-        ranges = df[['chrom', 'start', 'end']].head(10).apply(tuple, axis=1).tolist()
+        df = pd.read_csv(
+            filename,
+            sep='\t',
+            header=None,
+            comment='#',
+            names=[
+                'chrom',
+                'source',
+                'feature',
+                'start',
+                'end',
+                'score',
+                'strand',
+                'frame',
+                'attribute',
+            ],
+        )
+        ranges = (
+            df[['chrom', 'start', 'end']]
+            .head(10)
+            .apply(tuple, axis=1)
+            .tolist()
+        )
         return ranges
 
     # Function to process the input VCF and extract the concatenated GT sequences for all ranges
     def process_vcf(input_vcf, ranges):
         # Sort ranges by chromosome and start position for efficient processing
         # ranges.sort()
-        
+
         # Dictionary to store concatenated sequences for each range
         results = {range_: '' for range_ in ranges}
-        
+
         # Query command to extract CHROM, POS, and GT fields from the VCF
         query_command = [
-            'bcftools', 'query',
-            '-f', '%CHROM\t%POS\t%GT\n',
-            input_vcf
+            'bcftools',
+            'query',
+            '-f',
+            '%CHROM\t%POS\t%GT\n',
+            input_vcf,
         ]
-        
-        process = subprocess.Popen(query_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        process = subprocess.Popen(
+            query_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         stdout, stderr = process.communicate()
-        
+
         if process.returncode != 0:
             print(f'Error: {stderr.decode()}')
             return None
-        
+
         # Process the output to extract the first elements of GT within the specified ranges
         current_range_index = 0
         range_count = len(ranges)
-        
+
         for line in stdout.decode().strip().split('\n'):
             chrom, pos, gt = line.split('\t')
             pos = int(pos)
-            
+
             # Only process GT values that are 0|1 or 1|0
-            if gt not in {"0|1", "1|0"}:
+            if gt not in {'0|1', '1|0'}:
                 continue
-            
+
             # Check if the current position falls within the current range
-            while current_range_index < range_count and (chrom > ranges[current_range_index][0] or (chrom == ranges[current_range_index][0] and pos > ranges[current_range_index][2])):
+            while current_range_index < range_count and (
+                chrom > ranges[current_range_index][0]
+                or (
+                    chrom == ranges[current_range_index][0]
+                    and pos > ranges[current_range_index][2]
+                )
+            ):
                 current_range_index += 1
-            
+
             if current_range_index >= range_count:
                 break
-            
+
             # If the position is within the range, add the first element of GT to the results
-            if ranges[current_range_index][0] == chrom and ranges[current_range_index][1] <= pos <= ranges[current_range_index][2]:
+            if (
+                ranges[current_range_index][0] == chrom
+                and ranges[current_range_index][1]
+                <= pos
+                <= ranges[current_range_index][2]
+            ):
                 results[ranges[current_range_index]] += gt.split('|')[0]
-        
+
         return results
 
     # Read ranges from the haplotype file

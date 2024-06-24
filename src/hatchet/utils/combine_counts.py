@@ -342,7 +342,8 @@ def adaptive_bins_arm(
     min_snp_reads=2000,
     min_total_reads=5000,
     nonormalFlag=False,
-    use_averages_rd=False
+    use_averages_rd=False,
+    mos_block=None,
 ):
     """
     Compute adaptive bins for a single chromosome arm.
@@ -441,10 +442,25 @@ def adaptive_bins_arm(
             totals.append(bin_total)
 
             # compute RDR
-            if nonormalFlag:
-                rdrs.append(bin_total[0:] / bin_total[0:])
+            if mos_block:
+                s = starts[-1]
+                e = ends[-1]
+                mos_intersect = [(n, mos[mos.START > s - 1000])for n, mos in mos_block]
+                mos_intersect = [(n, mos[mos.END < e + 1000])for n, mos in mos_intersect]
+                norm = np.mean(mos_intersect[0][1]['AVG_DEPTH'])
+                rdrs_bin = []
+                if nonormalFlag:
+                    for _n, _mos_int in mos_intersect:
+                        rdrs_bin.append(np.mean(_mos_int['AVG_DEPTH']))
+                else:
+                    for _n, _mos_int in mos_intersect[1:]:
+                        rdrs_bin.append(np.mean(_mos_int['AVG_DEPTH']) / norm)
+                rdrs.append(np.array(rdrs_bin))
             else:
-                rdrs.append(bin_total[1:] / bin_total[0])
+                if nonormalFlag:
+                    rdrs.append(bin_total[0:] / bin_total[0:])
+                else:
+                    rdrs.append(bin_total[1:] / bin_total[0])
 
             # and start a new one
             bin_total = np.zeros(n_samples)

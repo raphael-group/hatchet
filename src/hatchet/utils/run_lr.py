@@ -131,30 +131,26 @@ def main(args=None):
         if config.run.count_reads:
 
             os.makedirs(f'{output}/rdr', exist_ok=True)
-            count_reads(
-                args=['-N', config.run.normal, '-T']
-                + config.run.bams.split()
-                + ['-S']
-                + ('normal ' + config.run.samples).split()
-                + [
-                    '-V',
-                    config.genotype_snps.reference_version,
-                    '-b',
-                    f'{output}/baf/tumor.1bed',
-                    '-O',
-                    f'{output}/rdr',
-                    '--segfile',
-                    config.count_reads.segfile,
-                    '--chromosomes',
-                ]
-                + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
-                + extra_args
-            )
+            params = [
+                '-N', config.run.normal, '-T',
+                *config.run.bams.split(),
+                '-S',
+                *('normal ' + config.run.samples).split(),
+                '-V', config.genotype_snps.reference_version,
+                '-b', f'{output}/baf/tumor.1bed',
+                '-O', f'{output}/rdr',
+                '--segfile', config.count_reads.segfile,
+                '--chromosomes',
+                *(chromosomes or []),  # important to keep this as a list here to allow proper argparse parsing
+                *extra_args
+            ]
+            count_reads(args=params)
 
         # ----------------------------------------------------
 
         if config.run.combine_counts:
             haplotype_file = config.run.ont_haplotype_file
+            mosdepth_files = config.run.ont_mosdepth_files.split()
             if not os.path.exists(haplotype_file):
                 raise RuntimeError(
                     (
@@ -201,64 +197,19 @@ def main(args=None):
                     )
                 )
 
-            combine_counts(args, haplotype_file)
+            combine_counts(args, haplotype_file, mosdepth_files)
 
     else:
         # ----------------------------------------------------
         # ----------------------------------------------------
         # Old fixed-width binning
 
-        if config.run.count_reads:
-            os.makedirs(f'{output}/rdr', exist_ok=True)
-            count_reads_fw(
-                args=[
-                    '-N',
-                    config.run.normal,
-                    '-g',
-                    config.run.reference,
-                    '-T',
-                ]
-                + config.run.bams.split()
-                + ['-b', config.count_reads_fw.size, '-S']
-                + ('Normal ' + config.run.samples).split()
-                + [
-                    '-O',
-                    f'{output}/rdr/normal.1bed',
-                    '-o',
-                    f'{output}/rdr/tumor.1bed',
-                    '-t',
-                    f'{output}/rdr/total.tsv',
-                    '--chromosomes',
-                ]
-                + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
-                + extra_args
+        # throw an exception with the error message saying that fixed_width is not supported with long reads
+        raise RuntimeError(
+            (
+                'Fixed-width binning is not supported with long reads. Please use the adaptive binning method.'
             )
-
-        # ----------------------------------------------------
-
-        if config.run.combine_counts:
-            _stdout = sys.stdout
-            sys.stdout = StringIO()
-
-            combine_counts_fw(
-                args=[
-                    '-c',
-                    f'{output}/rdr/normal.1bed',
-                    '-C',
-                    f'{output}/rdr/tumor.1bed',
-                    '-B',
-                    f'{output}/baf/tumor.1bed',
-                    '-t',
-                    f'{output}/rdr/total.tsv',
-                ]
-            )
-            out = sys.stdout.getvalue()
-            sys.stdout.close()
-            sys.stdout = _stdout
-
-            os.makedirs(f'{output}/bb', exist_ok=True)
-            with open(f'{output}/bb/bulk.bb', 'w') as f:
-                f.write(out)
+        )
 
     if config.run.cluster_bins:
         os.makedirs(f'{output}/bbc', exist_ok=True)

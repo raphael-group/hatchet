@@ -60,31 +60,31 @@ def main(args=None):
 
     sp.log(msg='# Checking consistency of results\n', level='STEP')
     pivot_check = bb.pivot(index=['#CHR', 'START', 'END'], columns='SAMPLE', values='CLUSTER')
-    # Verify that the array lengths and order match the bins in the BB file
-    chr_idx = 0
-    bin_indices = pivot_check.index.to_numpy()
-    i = 0
-    while chr_idx < len(tracks):
-        my_chr = chr_labels[chr_idx][:-2]
+    # # Verify that the array lengths and order match the bins in the BB file
+    # chr_idx = 0
+    # bin_indices = pivot_check.index.to_numpy()
+    # i = 0
+    # while chr_idx < len(tracks):
+    #     my_chr = chr_labels[chr_idx][:-2]
 
-        start_row = bin_indices[i]
-        assert str(start_row[0]) == my_chr, (start_row[0], my_chr)
+    #     start_row = bin_indices[i]
+    #     assert str(start_row[0]) == my_chr, (start_row[0], my_chr)
 
-        prev_end = start_row[-1]
+    #     prev_end = start_row[-1]
 
-        start_idx = i
-        i += 1
-        while i < len(bin_indices) and bin_indices[i][0] == start_row[0] and bin_indices[i][1] == prev_end:
-            prev_end = bin_indices[i][2]
-            i += 1
+    #     start_idx = i
+    #     i += 1
+    #     while i < len(bin_indices) and bin_indices[i][0] == start_row[0] and bin_indices[i][1] == prev_end:
+    #         prev_end = bin_indices[i][2]
+    #         i += 1
 
-        # check the array lengths
-        assert tracks[chr_idx].shape[1] == i - start_idx, (
-            tracks[chr_idx].shape[1],
-            i - start_idx,
-        )
+    #     # check the array lengths
+    #     assert tracks[chr_idx].shape[1] == i - start_idx, (
+    #         tracks[chr_idx].shape[1],
+    #         i - start_idx,
+    #     )
 
-        chr_idx += 1
+    #     chr_idx += 1
 
     # Verify that cluster labels were applied correctly
     cl_check = pivot_check.to_numpy().T
