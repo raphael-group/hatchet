@@ -771,6 +771,14 @@ def parse_combine_counts_args(args=None):
         help='Use single-sample EM BAF inference (instead of multi-sample)',
     )
     parser.add_argument(
+        '-g',
+        '--gc_correct',
+        action='store_true',
+        default=config.combine_counts.gc_correct,
+        required=False,
+        help='Use single-sample EM BAF inference (instead of multi-sample)',
+    )
+    parser.add_argument(
         '-z',
         '--not_compressed',
         action='store_true',
@@ -918,6 +926,7 @@ def parse_combine_counts_args(args=None):
         'ponfile': args.ponfile,
         'segfile': segfile,
         'XX': XX,
+        'gc_correct': args.gc_correct,
     }
 
 

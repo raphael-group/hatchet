@@ -399,12 +399,16 @@ def combine_counts(args, haplotype_file, mosdepth_files):
 
             # Correct the tumor reads propotionally to the total reads in corresponding samples
             big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = my_bb.RD * correction
-
-    log(
-        msg='# Performing GC bias correction on read depth signal\n',
-        level='STEP',
-    )
-    big_bb = rd_gccorrect(big_bb, referencefasta)
+    if args['gc_correct']:
+        log(
+            msg='# In long read sequencing pipeline, GC correction for RD is not recommended\n',
+            level='WARN',
+        )
+        log(
+            msg='# Performing GC bias correction on read depth signal\n',
+            level='STEP',
+        )
+        big_bb = rd_gccorrect(big_bb, referencefasta)
     big_bb.END = big_bb.END + 1
     big_bb.to_csv(outfile, index=False, sep='\t')
     return

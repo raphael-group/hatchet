@@ -204,16 +204,16 @@ def main(args=None):
             level='STEP',
         )
         big_bb = pon_normalize_rdr(big_bb, args['ponfile'])
+    if args['gc_correct']:
+        sp.log(
+            msg='# Performing GC bias correction on read depth signal\n',
+            level='STEP',
+        )
 
-    sp.log(
-        msg='# Performing GC bias correction on read depth signal\n',
-        level='STEP',
-    )
-
-    # autosomes = set([ch for ch in big_bb['CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
-    # autosomal_bb = big_bb[big_bb['CHR'].isin(autosomes)].copy()
-    # autosomal_bb = rd_gccorrect(autosomal_bb, referencefasta)
-    big_bb = rd_gccorrect(big_bb, referencefasta)
+        # autosomes = set([ch for ch in big_bb['CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
+        # autosomal_bb = big_bb[big_bb['CHR'].isin(autosomes)].copy()
+        # autosomal_bb = rd_gccorrect(autosomal_bb, referencefasta)
+        big_bb = rd_gccorrect(big_bb, referencefasta)
 
     if xy and any(isX.values()):
         x_ch = next((ch for ch in chromosomes if isX[ch]), None)
