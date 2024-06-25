@@ -14,6 +14,7 @@ from hatchet.utils.combine_counts import (
     read_snps,
     read_total_and_thresholds,
 )
+from hatchet.utils.rd_gccorrect import rd_gccorrect
 
 
 def genotype_snps(args):
@@ -335,10 +336,10 @@ def combine_counts(args, haplotype_file, mosdepth_files):
                     bcount = get_b_count(df2)
                     # bcount = min(bcount, total - bcount)
                     haplostring = get_haplostring(df2)
-                    log(
-                        msg=f'{ch} {sample} {start} {end} {total} {bcount} {bcount/total}\n',
-                        level='STEP',
-                    )
+                    # log(
+                    #     msg=f'{ch} {sample} {start} {end} {total} {bcount} {bcount/total}\n',
+                    #     level='STEP',
+                    # )
                     bin_row = [
                         ch,
                         'unit',
@@ -399,6 +400,11 @@ def combine_counts(args, haplotype_file, mosdepth_files):
             # Correct the tumor reads propotionally to the total reads in corresponding samples
             big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = my_bb.RD * correction
 
+    log(
+        msg='# Performing GC bias correction on read depth signal\n',
+        level='STEP',
+    )
+    big_bb = rd_gccorrect(big_bb, referencefasta)
     big_bb.END = big_bb.END + 1
     big_bb.to_csv(outfile, index=False, sep='\t')
     return
