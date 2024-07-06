@@ -197,7 +197,7 @@ def main(args=None):
                     )
                 )
 
-            combine_counts(args, haplotype_file, mosdepth_files)
+            combine_counts(args, haplotype_file, mosdepth_files, config.run.bams)
 
     else:
         # ----------------------------------------------------

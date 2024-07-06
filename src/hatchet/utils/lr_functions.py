@@ -1,8 +1,10 @@
+from collections import defaultdict
 import os
 import subprocess
 import gzip
 import numpy as np
 import pandas as pd
+import pysam
 from hatchet.utils.ArgParsing import (
     parse_combine_counts_args,
     parse_count_reads_args,
@@ -91,17 +93,6 @@ def phase_snps(args):
     ]
     process = subprocess.Popen(command)
     process.wait()  # Wait for the process to complete
-
-
-def get_b_count(df):
-    # Select REF if FLIP == 1, otherwise select ALT, then sum the selected values
-    sel = df.apply(lambda row: row['REF'] if row['FLIP'] == 1 else row['ALT'], axis=1)
-    total_sum = sel.sum()
-    return total_sum
-
-
-def get_haplostring(df):
-    return ''.join(list(df['FLIP'].astype(int).astype(str)))
 
 
 def count_reads_lr(args):
@@ -193,7 +184,43 @@ def count_reads_lr(args):
     os.remove(combined_bed)
 
 
-def combine_counts(args, haplotype_file, mosdepth_files):
+class CountTarget(object):
+    def __init__(self, alignment_path: str, chromosome: str, start: int = 0, end: int = 0):
+        self.alignment_path = alignment_path
+        self.chromosome = chromosome
+        self.start = start
+        self.end = end
+    alignment_path: str
+    chromosome: str
+    start: int
+    end: int
+
+
+def get_b_count_from_bam(target: CountTarget):
+    alignment = pysam.AlignmentFile(target.alignment_path, "rb")
+    read: pysam.AlignedSegment
+    tag_counts = defaultdict(int)
+    for read in alignment.fetch(contig=target.chromosome, start=target.start, end=target.end):
+        if read.is_secondary or not read.has_tag('PS') or not read.has_tag('HP'):
+            continue
+        hp_tag = read.get_tag('HP')
+        tag_counts[hp_tag] += 1
+    alignment.close()
+    return tag_counts[1] * 1.0 , (tag_counts[1] + tag_counts[2])
+
+
+def get_b_count(df):
+    # Select REF if FLIP == 1, otherwise select ALT, then sum the selected values
+    sel = df.apply(lambda row: row['REF'] if row['FLIP'] == 1 else row['ALT'], axis=1)
+    total_sum = sel.sum()
+    return total_sum
+
+
+def get_haplostring(df):
+    return ''.join(list(df['FLIP'].astype(int).astype(str)))
+
+
+def combine_counts(args, haplotype_file, mosdepth_files, bams):
     log(msg='# Parsing and checking input arguments\n', level='STEP')
     args = parse_combine_counts_args(args)
     logArgs(args, 80)
@@ -216,6 +243,9 @@ def combine_counts(args, haplotype_file, mosdepth_files):
     referencefasta = args['referencefasta']
     XX = args['XX']
     rd_array = args['array']
+
+    bams = bams.split()
+    bam_path_for_samples = dict(zip([name for name in all_names if name != 'normal'], bams))
 
     def read_ranges_from_file(filename):
         """
@@ -333,7 +363,12 @@ def combine_counts(args, haplotype_file, mosdepth_files):
                     start = starts[i]
                     end = ends[i]
                     total = df2.TOTAL.sum()
-                    bcount = get_b_count(df2)
+                    ctg = CountTarget(
+                        alignment_path=bam_path_for_samples[sample],
+                        chromosome=ch,
+                        start=start,
+                        end=end,)
+                    bcount, total = get_b_count_from_bam(ctg)
                     # bcount = min(bcount, total - bcount)
                     haplostring = get_haplostring(df2)
                     # log(
