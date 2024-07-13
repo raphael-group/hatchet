@@ -800,7 +800,7 @@ def parse_combine_counts_args(args=None):
         type=str,
         default=config.combine_counts.xx,
         help='sex chromosome equals to XX or not for the sample: '
-        'either True, False, or auto (automatic inference). Default: auto',
+        'either "True", "False", or "auto" (automatic inference). Default: "auto"',
     )
     args = parser.parse_args(args)
 
@@ -892,7 +892,7 @@ def parse_combine_counts_args(args=None):
     )
     XX = args.XX.lower()
     ensure(
-        XX in ('True', 'False', 'auto'),
+        XX in ('true', 'false', 'auto'),
         f'Invalid XX genotypeargument: {args.XX}. Supported values are "True", "False", and "auto".',
     )
 

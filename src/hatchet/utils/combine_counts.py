@@ -103,9 +103,9 @@ def main(args=None):
                 else:
                     xy = total_x_reads / total_y_reads <= 50
 
-        elif XX == 'True':
+        elif XX == 'true':
             xy = False
-        elif XX == 'False':
+        elif XX == 'false':
             xy = True
 
         sp.log(

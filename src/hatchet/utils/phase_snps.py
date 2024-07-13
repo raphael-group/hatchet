@@ -135,14 +135,16 @@ def print_log(path, chromosomes):
                 phased_snps = int(l.split()[1])
         print(c, phased_snps, snps, float(phased_snps / snps), file=out, sep='\t')
 
-
 def concat(vcfs, outdir, bcftools):
     infiles = ' '.join(vcfs)
     outfile = os.path.join(outdir, 'phased.vcf.gz')
-    run(
-        f'{bcftools} concat --output-type z --output {outfile} {infiles}',
-        stdouterr_filepath=os.path.join(outdir, 'concat.log'),
-    )
+    if len(vcfs) > 0:
+        run(
+            f'{bcftools} concat --output-type z --output {outfile} {infiles}',
+            stdouterr_filepath=os.path.join(outdir, 'concat.log'),
+        )
+    else:
+        run(f'touch {outfile}')
     return outfile
 
 
