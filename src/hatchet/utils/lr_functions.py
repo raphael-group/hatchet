@@ -332,23 +332,29 @@ def combine_counts(args, haplotype_file, mosdepth_files):
                 for sample, df2 in df.groupby('SAMPLE'):
                     start = starts[i]
                     end = ends[i]
-                    total = df2.TOTAL.sum()
-                    bcount = get_b_count(df2)
+                    total = int(df2.TOTAL.sum())
+                    bcount = int(get_b_count(df2))
                     # bcount = min(bcount, total - bcount)
                     haplostring = get_haplostring(df2)
                     # log(
                     #     msg=f'{ch} {sample} {start} {end} {total} {bcount} {bcount/total}\n',
                     #     level='STEP',
                     # )
+                    if np.isnan(bins[3][i][0])) or (bins[2][i][1] == 0 and bins[2][i][0] == 0):
+                        # rd cannot be computed since there are no reads in tumor or normal
+                        continue
+                    tot_reads = round(min(20*bins[2][i][0],bins[2][i][1]))
+                    rd = int(min(20, bins[3][i][0]))
+                    nor_reads = int(bins[2][i][0])
                     bin_row = [
                         ch,
                         'unit',
                         start,
                         end,
                         sample,
-                        bins[3][i][0],
-                        bins[2][i][1],
-                        bins[2][i][0],
+                        rd,
+                        tot_reads,
+                        nor_reads,
                         len(df2),
                         bcount,
                         total,
