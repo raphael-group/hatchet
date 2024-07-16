@@ -340,7 +340,7 @@ def combine_counts(args, haplotype_file, mosdepth_files):
                     #     msg=f'{ch} {sample} {start} {end} {total} {bcount} {bcount/total}\n',
                     #     level='STEP',
                     # )
-                    if np.isnan(bins[3][i][0])) or (bins[2][i][1] == 0 and bins[2][i][0] == 0):
+                    if np.isnan(bins[3][i][0]) or (bins[2][i][1] == 0 and bins[2][i][0] == 0):
                         # rd cannot be computed since there are no reads in tumor or normal
                         continue
                     tot_reads = round(min(20*bins[2][i][0],bins[2][i][1]))
