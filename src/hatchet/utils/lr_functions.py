@@ -206,7 +206,7 @@ def get_b_count_from_bam(target: CountTarget):
         hp_tag = read.get_tag('HP')
         tag_counts[hp_tag] += 1
     alignment.close()
-    return tag_counts[1] * 1.0 , (tag_counts[1] + tag_counts[2])
+    return tag_counts[1] , (tag_counts[1] + tag_counts[2])
 
 
 def get_b_count(df):
@@ -445,5 +445,9 @@ def combine_counts(args, haplotype_file, mosdepth_files, bams):
         )
         big_bb = rd_gccorrect(big_bb, referencefasta)
     big_bb.END = big_bb.END + 1
+    # convert these columns to int (no trailing .0)
+    columns_to_convert = ['NORMAL_READS', 'SNPS', 'BCOUNT', 'TOTAL_SNP_READS']
+    for column in columns_to_convert:
+        big_bb[column] = big_bb[column].astype(int)
     big_bb.to_csv(outfile, index=False, sep='\t')
     return
