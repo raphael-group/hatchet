@@ -717,7 +717,10 @@ def run_chromosome(
                     axis=0,
                 ).astype(np.uint64)
                 positions = np.concatenate([positions_p, positions_q])
-                snp_counts = np.zeros((len(positions), len(all_names)), dtype=np.int8)
+                if nonormalFlag:
+                    snp_counts = np.zeros((len(positions), len(all_names)), dtype=np.int8)
+                else:
+                    snp_counts = np.zeros((len(positions), len(all_names) - 1), dtype=np.int8)
                 snpsv = None
 
             else:
