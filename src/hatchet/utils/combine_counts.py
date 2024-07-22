@@ -233,8 +233,10 @@ def main(args=None):
     if xy and any(isX.values()):
         x_ch = next((ch for ch in chromosomes if isX[ch]), None)
         # set BAF to 0.5 for X chromosome
-        # also double the RD
+        # also double the RD if no matched normal and XY is true
         big_bb.loc[big_bb.CHR == x_ch, 'BAF'] = 0.5
+        if nonormalFlag:
+            big_bb.loc[big_bb.CHR == x_ch, 'RD'] = 2 * big_bb.loc[big_bb.CHR == x_ch, 'RD']
 
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     # autosomal_bb.END = autosomal_bb.END + 1
