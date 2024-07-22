@@ -37,6 +37,7 @@ def main(args=None):
     ponfile = args['ponfile']
     referencefasta = args['referencefasta']
     XX = args['XX']
+    forceusechrx = args['forceusechrx']
 
     n_workers = min(len(chromosomes), threads)
 
@@ -85,6 +86,15 @@ def main(args=None):
             # if read counts for Y chromosome is not provided, we cannot determine sex.
             # We assume the sample is from a female
             if not any(isY.values()):
+                sp.log(
+                    msg='Allosomes cannot be determined because read counts for'
+                    ' Y chromosome is not determined. Therefore HATCHet will assume that '
+                    'the individual may be XY. Unless forceusechrx is true, the default '
+                    'behavior is to exclude X chromosome from the analysis. If the sex '
+                    'is surely female, set XX variable to "True" or include chrY in the '
+                    'chromosomes list in the config and rerun upstream steps.\n',
+                    level='WARNING',
+                )
                 xy = False
             else:
                 # find total read counts for X and Y chromosomes.
@@ -117,6 +127,11 @@ def main(args=None):
         # it does not matter what sex is given
         xy = False
     # form parameters for each worker
+    # remove Y chromosome
+    validchs = [ch for ch in chromosomes if not ch.endswith('Y')]
+    # remove X chromosome if forceusechrx is false and XY is true
+    if xy and not forceusechrx:
+        validchs = [ch for ch in validchs if not ch.endswith('X')]
     params = [
         (
             baffile,
@@ -137,7 +152,7 @@ def main(args=None):
             nonormalFlag,
             args['segfile'],
         )
-        for ch in chromosomes if not ch.endswith('Y') and not (ch.endswith('X') and xy)
+        for ch in validchs
     ]
     # dispatch workers
     """

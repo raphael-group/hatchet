@@ -802,6 +802,15 @@ def parse_combine_counts_args(args=None):
         help='sex chromosome equals to XX or not for the sample: '
         'either "True", "False", or "auto" (automatic inference). Default: "auto"',
     )
+    parser.add_argument(
+        '--forceusechrx',
+        action='store_true',
+        default=config.combine_counts.forceusechrx,
+        required=False,
+        help='Force using chrX in the analysis, even if the sex chromosomes are XY.'
+        'In this case, copy numbers for X chromosomes will have only one allele.'
+        '{{1,1}} state should be interpreted as {{1,}}.',
+    )
     args = parser.parse_args(args)
 
     ensure(os.path.exists(args.baffile), f'BAF file not found: {args.baffile}')
@@ -918,6 +927,7 @@ def parse_combine_counts_args(args=None):
         'ponfile': args.ponfile,
         'segfile': segfile,
         'XX': XX,
+        'forceusechrx': args.forceusechrx,
     }
 
 
