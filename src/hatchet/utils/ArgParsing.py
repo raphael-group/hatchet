@@ -572,9 +572,10 @@ def parse_count_reads_args(args=None):
         ensure(isfile(bamfile), 'The specified tumor BAM file does not exist')
     # also make sure the bam index files are present too
     for bamfile in bams:
+        log(msg=f"{bamfile} is the bamfile\n", level='INFO')
         ensure(
-            isfile(bamfile + '.bai') or isfile(bamfile.replace('.bam', '.bai')),
-            'The specified tumor BAM file does not exist',
+                isfile(bamfile + '.bai') or isfile(bamfile[::-1].replace('mab.', 'iab.',1)[::-1]),
+            'The specified tumor BAM file does not have an index',
         )
 
     names = args.samples
