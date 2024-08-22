@@ -334,10 +334,12 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
 
     # Remove SNPs that are absent in any sample
     snp_counts = snp_counts.dropna(axis=0)
+    snp_counts = snp_counts[list(all_names)]
     snpsv = snpsv[~snpsv.POS.isin(missing_pos[missing_pos].index)]
 
     # Pivot table for dataframe should match counts array and have no missing entries
     check_pivot = snpsv.pivot(index='POS', columns='SAMPLE', values='TOTAL')
+    check_pivot = check_pivot[list(all_names)]
     assert np.array_equal(check_pivot, snp_counts), 'SNP file reading failed'
     assert not np.any(check_pivot.isna()), 'SNP file reading failed'
     assert np.array_equal(all_names, list(snp_counts.columns))   # make sure that sample order is the same
