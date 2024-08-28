@@ -332,7 +332,7 @@ def plot_genome(
             maxFCN = np.max(bbc_.RD * gamma)
 
         if limits_valid(baf_ylim):
-            minBAF, _ = baf_ylim
+            minBAF, maxBAF = baf_ylim
         else:
             minBAF = np.min(bbc_.BAF)
             maxBAF = np.max(bbc_.BAF)
