@@ -1092,13 +1092,22 @@ def findClonalClusters(fseg, neutral, size, tB, tR, samples, v):
             sys.stderr.write(debug('### Potential clonal cluster {} with copy numbers {}\n'.format(cluster, options)))
 
         regPurity = lambda v: 1.0 if 1.0 <= v <= 1.05 else (0.0 if -0.05 <= v <= 0.0 else v)
-        calcPurity = lambda d, c, r: regPurity(float(2 * d - 2 * r) / float(2 * r + 2 * d - c * d))
+
+        def calcPurity(d, c, r):
+            num = float(2 * d - 2 * r)
+            denom = float(2 * r + 2 * d - c * d)
+            if denom == 0:
+                raise ValueError(f"Purity denominator is 0: d={d}, c={c}, r={r}, num={num}, denom={denom}")
+            return regPurity( num/ denom)
         calcScalingFactor = lambda p, d: float(2.0 + 2.0 * p) / float(d)
         calcFraction = lambda p, cn: float(2.0 * (1.0 - p) + sum(cn) * p)
         calcRDR = lambda p, cn, s: calcFraction(p, cn) / float(s)
         calcBAF = lambda p, cn: float(1.0 * (1.0 - p) + min(cn) * p) / calcFraction(p, cn)
 
         for opt in options:
+            if sum(opt) == 2 and any([fseg[cluster][p]['rdr'] == 0 for p in samples]):
+                # Avoid division by 0 in this case by skipping (shouldn't happen often because RDR=0 is very strange)
+                continue
             purity = {p: calcPurity(fseg[neutral][p]['rdr'], sum(opt), fseg[cluster][p]['rdr']) for p in samples}
             if False in set(0.0 <= purity[p] <= 1.0 for p in samples):
                 continue
