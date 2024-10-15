@@ -15,8 +15,7 @@ class ConfigSection(object):
         self.d = {}  # key value dict where the value is typecast to int/float/str
 
         for k, v in section_proxy.items():
-
-            if v in ('True', 'False'):
+            if v in ("True", "False"):
                 self.d[k] = eval(v)
                 continue
 
@@ -29,7 +28,7 @@ class ConfigSection(object):
                     # We interpret a missing value as None, and a "" as the empty string
                     if v.startswith('"') and v.endswith('"'):
                         v = v[1:-1]
-                    elif v == '':
+                    elif v == "":
                         v = None
                     self.d[k] = v
                 else:
@@ -38,15 +37,17 @@ class ConfigSection(object):
                 self.d[k] = v
 
     def __setattr__(self, key, value):
-        if key in ('config', 'name', 'd'):
+        if key in ("config", "name", "d"):
             return super(ConfigSection, self).__setattr__(key, value)
         else:
             self.d[key] = value
 
     def __getattr__(self, item):
-        if item not in ('config', 'name', 'd'):
+        if item not in ("config", "name", "d"):
             # If an environment variable exists with name <CONFIG_NAME>_<SECTION>_<ITEM>, use it
-            env_varname = '_'.join([str(x).upper() for x in [self.config.name, self.name, item]])
+            env_varname = "_".join(
+                [str(x).upper() for x in [self.config.name, self.name, item]]
+            )
             env_var = os.getenv(env_varname)
             return env_var or self.d[item]
 
@@ -57,7 +58,7 @@ class ConfigSection(object):
 class Config(object):
     def __init__(self, name, filenames):
         self.name = name
-        self.config = configparser.ConfigParser(inline_comment_prefixes='#')
+        self.config = configparser.ConfigParser(inline_comment_prefixes="#")
         self.init_from_files(filenames)
 
     def init_from_files(self, filenames):

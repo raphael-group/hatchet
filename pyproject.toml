@@ -76,3 +76,8 @@ addopts = "-rA"
 testpaths = [
     "tests"
 ]
+
+[tool.ruff.lint]
+# E731: Too many uses of lambdas throughout the codebase currently
+# E741: We're using variable names that are too short ('l' etc).
+ignore = ["E731", "E741"]

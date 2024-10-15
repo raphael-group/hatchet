@@ -9,7 +9,7 @@ import hatchet.utils.Supporting as sp
 def tcount(samtools, samples, chromosomes, num_workers, q, verbose=False):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
-    counter = Value('i', 0)
+    counter = Value("i", 0)
     progress_bar = pb.ProgressBar(
         total=len(samples) * len(chromosomes),
         length=40,
@@ -31,7 +31,8 @@ def tcount(samtools, samples, chromosomes, num_workers, q, verbose=False):
 
     # Setting up the workers
     workers = [
-        TotalCounter(tasks, results, progress_bar, samtools, q, verbose) for i in range(min(num_workers, jobs_count))
+        TotalCounter(tasks, results, progress_bar, samtools, q, verbose)
+        for i in range(min(num_workers, jobs_count))
     ]
 
     # Add a poison pill for each worker
@@ -83,7 +84,9 @@ class TotalCounter(Process):
 
             self.progress_bar.progress(
                 advance=False,
-                msg='{} starts on {} for {}'.format(self.name, next_task[1], next_task[2]),
+                msg="{} starts on {} for {}".format(
+                    self.name, next_task[1], next_task[2]
+                ),
             )
             count = self.binChr(
                 bamfile=next_task[0],
@@ -92,7 +95,9 @@ class TotalCounter(Process):
             )
             self.progress_bar.progress(
                 advance=True,
-                msg='{} ends on {} for {}'.format(self.name, next_task[1], next_task[2]),
+                msg="{} ends on {} for {}".format(
+                    self.name, next_task[1], next_task[2]
+                ),
             )
             self.task_queue.task_done()
             self.result_queue.put(count)
@@ -102,9 +107,13 @@ class TotalCounter(Process):
         popen = subprocess.Popen
         pipe = subprocess.PIPE
         split = shlex.split
-        cmd = '{} view {} -c -q {} {}'.format(self.samtools, bamfile, self.q, chromosome)
-        stdout, stderr = popen(split(cmd), stdout=pipe, stderr=pipe, universal_newlines=True).communicate()
-        if stderr != '':
+        cmd = "{} view {} -c -q {} {}".format(
+            self.samtools, bamfile, self.q, chromosome
+        )
+        stdout, stderr = popen(
+            split(cmd), stdout=pipe, stderr=pipe, universal_newlines=True
+        ).communicate()
+        if stderr != "":
             self.progress_bar.progress(
                 advance=False,
                 msg='{}{}: samtools warns "{}"on (sample={}, chromosome={}){}'.format(

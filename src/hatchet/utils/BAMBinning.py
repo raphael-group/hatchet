@@ -17,7 +17,7 @@ def bin(
 ):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
-    counter = Value('i', 0)
+    counter = Value("i", 0)
     progress_bar = pb.ProgressBar(
         total=len(samples) * len(chromosomes),
         length=40,
@@ -104,7 +104,9 @@ class Binner(Process):
 
             self.progress_bar.progress(
                 advance=False,
-                msg='{} starts on {} for {})'.format(self.name, next_task[1], next_task[2]),
+                msg="{} starts on {} for {})".format(
+                    self.name, next_task[1], next_task[2]
+                ),
             )
             bins = self.binChr(
                 bamfile=next_task[0],
@@ -113,7 +115,9 @@ class Binner(Process):
             )
             self.progress_bar.progress(
                 advance=True,
-                msg='{} ends on {} for {})'.format(self.name, next_task[1], next_task[2]),
+                msg="{} ends on {} for {})".format(
+                    self.name, next_task[1], next_task[2]
+                ),
             )
             self.task_queue.task_done()
             self.result_queue.put(bins)
@@ -121,7 +125,7 @@ class Binner(Process):
 
     def binChr(self, bamfile, samplename, chromosome):
         read_callback = lambda r: r.mapping_quality >= self.q
-        sam = pysam.AlignmentFile(bamfile, 'rb')
+        sam = pysam.AlignmentFile(bamfile, "rb")
         bins = deque()
         for start, end in self.regions[chromosome]:
             while start < end:

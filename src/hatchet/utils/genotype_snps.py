@@ -12,36 +12,36 @@ import hatchet.utils.ProgressBar as pb
 def main(args=None):
     log(
         msg=(
-            '# Parsing the input arguments, checking the consistency of given files, and extracting required ',
-            'information\n',
+            "# Parsing the input arguments, checking the consistency of given files, and extracting required ",
+            "information\n",
         ),
-        level='STEP',
+        level="STEP",
     )
     args = parse_genotype_snps_arguments(args)
     logArgs(args, 80)
 
-    log(msg='# Inferring SNPs from the normal sample\n', level='STEP')
+    log(msg="# Inferring SNPs from the normal sample\n", level="STEP")
     snps = call(
-        bcftools=args['bcftools'],
-        reference=args['reference'],
-        samples=[args['normal']],
-        chromosomes=args['chromosomes'],
-        num_workers=args['j'],
-        q=args['q'],
-        Q=args['Q'],
-        mincov=args['mincov'],
-        dp=args['maxcov'],
-        E=args['E'],
-        snplist=args['snps'],
-        outdir=args['outputsnps'],
-        verbose=args['verbose'],
+        bcftools=args["bcftools"],
+        reference=args["reference"],
+        samples=[args["normal"]],
+        chromosomes=args["chromosomes"],
+        num_workers=args["j"],
+        q=args["q"],
+        Q=args["Q"],
+        mincov=args["mincov"],
+        dp=args["maxcov"],
+        E=args["E"],
+        snplist=args["snps"],
+        outdir=args["outputsnps"],
+        verbose=args["verbose"],
     )
 
-    log(msg='# Counting number of identified SNPs\n', level='STEP')
+    log(msg="# Counting number of identified SNPs\n", level="STEP")
 
     def count(f):
-        cmd_bcf = "{} query -f '%CHROM,%POS\n' {}".format(args['bcftools'], f)
-        cmd_wcl = 'wc -l'
+        cmd_bcf = "{} query -f '%CHROM,%POS\n' {}".format(args["bcftools"], f)
+        cmd_wcl = "wc -l"
         bcf = pr.Popen(
             shlex.split(cmd_bcf),
             stdout=pr.PIPE,
@@ -55,23 +55,25 @@ def main(args=None):
             stderr=pr.PIPE,
             universal_newlines=True,
         ).communicate()[0]
-        number = ''.join([_l for _l in number if _l.isdigit()])
+        number = "".join([_l for _l in number if _l.isdigit()])
         return int(number) if len(number) > 0 else 0
 
     number_snps = sum(count(f) for f in snps)
 
     if number_snps == 0:
-        raise ValueError(error('No SNPs found in the normal!\n'))
+        raise ValueError(error("No SNPs found in the normal!\n"))
     else:
         log(
-            msg='{} SNPs have been identified in total\n'.format(number_snps),
-            level='INFO',
+            msg="{} SNPs have been identified in total\n".format(number_snps),
+            level="INFO",
         )
 
-    log(msg='# SNP Calling is concluded\n', level='STEP')
+    log(msg="# SNP Calling is concluded\n", level="STEP")
     log(
-        msg='## Called SNPs have been written per chromosome in:\n{}\n'.format('\n'.join(snps)),
-        level='INFO',
+        msg="## Called SNPs have been written per chromosome in:\n{}\n".format(
+            "\n".join(snps)
+        ),
+        level="INFO",
     )
 
 
@@ -92,7 +94,7 @@ def call(
 ):
     # Define a Lock and a shared value for log printing through ProgressBar
     err_lock = Lock()
-    counter = Value('i', 0)
+    counter = Value("i", 0)
     progress_bar = pb.ProgressBar(
         total=len(samples) * len(chromosomes),
         length=40,
@@ -200,7 +202,9 @@ class Caller(Process):
 
             self.progress_bar.progress(
                 advance=False,
-                msg='{} starts on {} for {})'.format(self.name, next_task[1], next_task[2]),
+                msg="{} starts on {} for {})".format(
+                    self.name, next_task[1], next_task[2]
+                ),
             )
             snps = self.callSNPs(
                 bamfile=next_task[0],
@@ -209,22 +213,28 @@ class Caller(Process):
             )
             self.progress_bar.progress(
                 advance=True,
-                msg='{} ends on {} for {})'.format(self.name, next_task[1], next_task[2]),
+                msg="{} ends on {} for {})".format(
+                    self.name, next_task[1], next_task[2]
+                ),
             )
             self.task_queue.task_done()
             self.result_queue.put(snps)
         return
 
     def callSNPs(self, bamfile, samplename, chromosome):
-        errname = os.path.join(self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome))
+        errname = os.path.join(
+            self.outdir, "{}_{}_bcftools.log".format(samplename, chromosome)
+        )
 
-        outfile = os.path.join(self.outdir, '{}.vcf.gz'.format(chromosome))
+        outfile = os.path.join(self.outdir, "{}.vcf.gz".format(chromosome))
 
         if self.snplist is not None:
-            cmd_tgt = "{} query -f '%CHROM\t%POS\n' -r {} {}".format(self.bcftools, chromosome, self.snplist)
-            cmd_gzip = 'gzip -9 -'
-            tgtfile = os.path.join(self.outdir, 'target_{}.pos.gz'.format(chromosome))
-            with open(tgtfile, 'w') as tout, open(errname, 'w') as err:
+            cmd_tgt = "{} query -f '%CHROM\t%POS\n' -r {} {}".format(
+                self.bcftools, chromosome, self.snplist
+            )
+            cmd_gzip = "gzip -9 -"
+            tgtfile = os.path.join(self.outdir, "target_{}.pos.gz".format(chromosome))
+            with open(tgtfile, "w") as tout, open(errname, "w") as err:
                 tgt = pr.Popen(
                     shlex.split(cmd_tgt),
                     stdout=pr.PIPE,
@@ -242,7 +252,7 @@ class Caller(Process):
             if any(c != 0 for c in codes):
                 raise ValueError(
                     error(
-                        'SNP Calling failed on {} of {}, please check errors in {}!'.format(
+                        "SNP Calling failed on {} of {}, please check errors in {}!".format(
                             chromosome, samplename, errname
                         )
                     )
@@ -250,21 +260,23 @@ class Caller(Process):
             else:
                 os.remove(errname)
 
-        cmd_mpileup = '{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}'.format(
+        cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}".format(
             self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp
         )
 
         if self.snplist is not None:
             assert os.path.isfile(tgtfile)
-            cmd_mpileup += ' -T {}'.format(tgtfile)
+            cmd_mpileup += " -T {}".format(tgtfile)
         else:
-            cmd_mpileup += ' -r {}'.format(chromosome)
+            cmd_mpileup += " -r {}".format(chromosome)
         if self.E:
-            cmd_mpileup += ' -E'
-        cmd_call = '{} call -mv -Ou'.format(self.bcftools)
-        cmd_filter = "{} view -i 'FMT/DP>={}' -Oz -o {}".format(self.bcftools, self.mincov, outfile)
+            cmd_mpileup += " -E"
+        cmd_call = "{} call -mv -Ou".format(self.bcftools)
+        cmd_filter = "{} view -i 'FMT/DP>={}' -Oz -o {}".format(
+            self.bcftools, self.mincov, outfile
+        )
 
-        with open(errname, 'w') as err:
+        with open(errname, "w") as err:
             pcss = []
             mpileup = pr.Popen(
                 shlex.split(cmd_mpileup),
@@ -292,9 +304,9 @@ class Caller(Process):
             codes = [p.wait() for p in pcss]
         if any(c != 0 for c in codes):
             raise ValueError(
-                error('SNP Calling failed on {} of {}, please check errors in {}!').format(
-                    chromosome, samplename, errname
-                )
+                error(
+                    "SNP Calling failed on {} of {}, please check errors in {}!"
+                ).format(chromosome, samplename, errname)
             )
         else:
             os.remove(errname)
@@ -303,5 +315,5 @@ class Caller(Process):
         return outfile
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

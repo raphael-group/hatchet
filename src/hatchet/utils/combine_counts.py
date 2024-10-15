@@ -15,24 +15,24 @@ from hatchet.utils.rd_gccorrect import rd_gccorrect
 
 
 def main(args=None):
-    sp.log(msg='# Parsing and checking input arguments\n', level='STEP')
+    sp.log(msg="# Parsing and checking input arguments\n", level="STEP")
     args = parse_combine_counts_args(args)
     sp.logArgs(args, 80)
 
-    baffile = args['baffile']
-    threads = args['processes']
-    chromosomes = args['chromosomes']
-    outfile = args['outfile']
-    all_names = args['sample_names']
-    msr = args['min_snp_reads']
-    mtr = args['min_total_reads']
-    use_chr = args['use_chr']
-    phase = args['phase']
-    blocksize = args['blocksize']
-    max_snps_per_block = args['max_snps_per_block']
-    test_alpha = args['test_alpha']
-    multisample = args['multisample']
-    referencefasta = args['referencefasta']
+    baffile = args["baffile"]
+    threads = args["processes"]
+    chromosomes = args["chromosomes"]
+    outfile = args["outfile"]
+    all_names = args["sample_names"]
+    msr = args["min_snp_reads"]
+    mtr = args["min_total_reads"]
+    use_chr = args["use_chr"]
+    phase = args["phase"]
+    blocksize = args["blocksize"]
+    max_snps_per_block = args["max_snps_per_block"]
+    test_alpha = args["test_alpha"]
+    multisample = args["multisample"]
+    referencefasta = args["referencefasta"]
 
     n_workers = min(len(chromosomes), threads)
 
@@ -41,22 +41,22 @@ def main(args=None):
         centromeres = pd.read_table(
             centromeres,
             header=None,
-            names=['CHR', 'START', 'END', 'NAME', 'gieStain'],
+            names=["CHR", "START", "END", "NAME", "gieStain"],
         )
     chr2centro = {}
     for ch in centromeres.CHR.unique():
         my_df = centromeres[centromeres.CHR == ch]
-        assert (my_df.gieStain == 'acen').all()
+        assert (my_df.gieStain == "acen").all()
         # Each centromere should consist of 2 adjacent segments
         assert len(my_df == 2)
         assert my_df.START.max() == my_df.END.min()
         if use_chr:
-            if ch.startswith('chr'):
+            if ch.startswith("chr"):
                 chr2centro[ch] = my_df.START.min(), my_df.END.max()
             else:
-                chr2centro['chr' + ch] = my_df.START.min(), my_df.END.max()
+                chr2centro["chr" + ch] = my_df.START.min(), my_df.END.max()
         else:
-            if ch.startswith('chr'):
+            if ch.startswith("chr"):
                 chr2centro[ch[3:]] = my_df.START.min(), my_df.END.max()
             else:
                 chr2centro[ch] = my_df.START.min(), my_df.END.max()
@@ -64,11 +64,13 @@ def main(args=None):
     for ch in chromosomes:
         if ch not in chr2centro:
             raise ValueError(
-                sp.error(f'Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument.')
+                sp.error(
+                    f"Chromosome {ch} not found in centromeres file. Inspect file provided as -C argument."
+                )
             )
 
-    isX = {ch: ch.endswith('X') for ch in chromosomes}
-    isY = {ch: ch.endswith('Y') for ch in chromosomes}
+    isX = {ch: ch.endswith("X") for ch in chromosomes}
+    isY = {ch: ch.endswith("Y") for ch in chromosomes}
 
     # form parameters for each worker
     params = [
@@ -76,12 +78,12 @@ def main(args=None):
             baffile,
             all_names,
             ch,
-            outfile + f'.{ch}',
+            outfile + f".{ch}",
             chr2centro[ch][0],
             chr2centro[ch][1],
             msr,
             mtr,
-            args['array'],
+            args["array"],
             isX[ch] or isY[ch],
             multisample,
             phase,
@@ -100,125 +102,136 @@ def main(args=None):
         p.map(run_chromosome_wrapper, params)
 
     sp.log(
-        msg='# Merging per-chromosome bb files and correcting read counts\n',
-        level='STEP',
+        msg="# Merging per-chromosome bb files and correcting read counts\n",
+        level="STEP",
     )
     # merge all BB files together to get the one remaining BB file
     outfiles = [a[3] for a in params]
-    bbs = [pd.read_table(bb, dtype={'#CHR': str}) for bb in outfiles]
+    bbs = [pd.read_table(bb, dtype={"#CHR": str}) for bb in outfiles]
     big_bb = pd.concat(bbs)
-    big_bb = big_bb.sort_values(by=['#CHR', 'START', 'SAMPLE'])
+    big_bb = big_bb.sort_values(by=["#CHR", "START", "SAMPLE"])
 
-    big_bb['CORRECTED_READS'] = np.NAN
+    big_bb["CORRECTED_READS"] = np.NAN
 
     # For each sample, correct read counts to account for differences in coverage (as in HATCHet)
     # (i.e., multiply read counts by total-reads-normal/total-reads-sample)
-    rc = pd.read_table(args['totalcounts'], header=None, names=['SAMPLE', '#READS'])
+    rc = pd.read_table(args["totalcounts"], header=None, names=["SAMPLE", "#READS"])
     normal_name = all_names[0]
-    nreads_normal = rc[rc.SAMPLE == normal_name].iloc[0]['#READS']
+    nreads_normal = rc[rc.SAMPLE == normal_name].iloc[0]["#READS"]
     for sample in rc.SAMPLE.unique():
         if sample == normal_name:
             continue
-        nreads_sample = rc[rc.SAMPLE == sample].iloc[0]['#READS']
+        nreads_sample = rc[rc.SAMPLE == sample].iloc[0]["#READS"]
         correction = nreads_normal / nreads_sample
         my_bb = big_bb[big_bb.SAMPLE == sample]
 
         # Correct the tumor reads propotionally to the total reads in corresponding samples
-        big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] = (my_bb.TOTAL_READS * correction).astype(np.int64)
+        big_bb.loc[big_bb.SAMPLE == sample, "CORRECTED_READS"] = (
+            my_bb.TOTAL_READS * correction
+        ).astype(np.int64)
 
         # Recompute RDR according to the corrected tumor reads
-        big_bb.loc[big_bb.SAMPLE == sample, 'RD'] = (
-            big_bb.loc[big_bb.SAMPLE == sample, 'CORRECTED_READS'] / big_bb.loc[big_bb.SAMPLE == sample, 'NORMAL_READS']
+        big_bb.loc[big_bb.SAMPLE == sample, "RD"] = (
+            big_bb.loc[big_bb.SAMPLE == sample, "CORRECTED_READS"]
+            / big_bb.loc[big_bb.SAMPLE == sample, "NORMAL_READS"]
         )
 
-    if 'NORMAL_READS' not in big_bb:
-        sp.log('# NOTE: adding NORMAL_READS column to bb file', level='INFO')
-        big_bb['NORMAL_READS'] = (big_bb.CORRECTED_READS / big_bb.RD).astype(np.uint32)
+    if "NORMAL_READS" not in big_bb:
+        sp.log("# NOTE: adding NORMAL_READS column to bb file", level="INFO")
+        big_bb["NORMAL_READS"] = (big_bb.CORRECTED_READS / big_bb.RD).astype(np.uint32)
 
     sp.log(
-        msg='# Performing GC bias correction on read depth signal\n',
-        level='STEP',
+        msg="# Performing GC bias correction on read depth signal\n",
+        level="STEP",
     )
 
-    autosomes = set([ch for ch in big_bb['#CHR'] if not (ch.endswith('X') or ch.endswith('Y'))])
-    autosomal_bb = big_bb[big_bb['#CHR'].isin(autosomes)].copy()
+    autosomes = set(
+        [ch for ch in big_bb["#CHR"] if not (ch.endswith("X") or ch.endswith("Y"))]
+    )
+    autosomal_bb = big_bb[big_bb["#CHR"].isin(autosomes)].copy()
 
     # perform GC bias correction
     autosomal_bb = rd_gccorrect(autosomal_bb, referencefasta)
 
     # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
     autosomal_bb.END = autosomal_bb.END + 1
-    autosomal_bb.to_csv(outfile, index=False, sep='\t')
+    autosomal_bb.to_csv(outfile, index=False, sep="\t")
 
     big_bb.END = big_bb.END + 1
-    big_bb.to_csv(outfile + '.withXY', index=False, sep='\t')
+    big_bb.to_csv(outfile + ".withXY", index=False, sep="\t")
 
     # Remove intermediate BB files
     [os.remove(f) for f in outfiles]
 
-    sp.log(msg='# Done\n', level='STEP')
+    sp.log(msg="# Done\n", level="STEP")
 
 
 def read_snps(baf_file, ch, all_names, phasefile=None):
     """
     Read and validate SNP data for this patient (TSV table output from HATCHet deBAF.py).
     """
-    all_names = all_names[1:]   # remove normal sample -- not looking for SNP counts from normal
+    all_names = all_names[
+        1:
+    ]  # remove normal sample -- not looking for SNP counts from normal
 
     # Read in HATCHet BAF table
     all_snps = pd.read_table(
         baf_file,
-        names=['CHR', 'POS', 'SAMPLE', 'ALT', 'REF'],
+        names=["CHR", "POS", "SAMPLE", "ALT", "REF"],
         dtype={
-            'CHR': object,
-            'POS': np.uint32,
-            'SAMPLE': object,
-            'ALT': np.uint32,
-            'REF': np.uint32,
+            "CHR": object,
+            "POS": np.uint32,
+            "SAMPLE": object,
+            "ALT": np.uint32,
+            "REF": np.uint32,
         },
     )
 
     # Keep only SNPs on this chromosome
-    snps = all_snps[all_snps.CHR == ch].sort_values(by=['POS', 'SAMPLE'])
+    snps = all_snps[all_snps.CHR == ch].sort_values(by=["POS", "SAMPLE"])
     snps = snps.reset_index(drop=True)
 
     if len(snps) == 0:
         raise ValueError(
-            sp.error(f'Chromosome {ch} not found in SNPs file (chromosomes in file: {all_snps.CHR.unique()})')
+            sp.error(
+                f"Chromosome {ch} not found in SNPs file (chromosomes in file: {all_snps.CHR.unique()})"
+            )
         )
 
     n_samples = len(all_names)
     if n_samples != len(snps.SAMPLE.unique()):
         raise ValueError(
-            sp.error(f'Expected {n_samples} samples, found {len(snps.SAMPLE.unique())} samples in SNPs file.')
+            sp.error(
+                f"Expected {n_samples} samples, found {len(snps.SAMPLE.unique())} samples in SNPs file."
+            )
         )
 
     if set(all_names) != set(snps.SAMPLE.unique()):
         raise ValueError(
             sp.error(
-                f'Expected sample names did not match sample names in SNPs file.\n\
-                Expected: {sorted(all_names)}\n  Found:{sorted(snps.SAMPLE.unique())}'
+                f"Expected sample names did not match sample names in SNPs file.\n\
+                Expected: {sorted(all_names)}\n  Found:{sorted(snps.SAMPLE.unique())}"
             )
         )
 
     # Add total counts column
     snpsv = snps.copy()
-    snpsv['TOTAL'] = snpsv.ALT + snpsv.REF
+    snpsv["TOTAL"] = snpsv.ALT + snpsv.REF
 
     if phasefile is not None:
         # Read in phasing output
         phases = pd.read_table(
             phasefile,
-            compression='gzip',
-            comment='#',
-            names='CHR\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tPHASE'.split(),
-            usecols=['CHR', 'POS', 'PHASE'],
+            compression="gzip",
+            comment="#",
+            names="CHR\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tPHASE".split(),
+            usecols=["CHR", "POS", "PHASE"],
             quoting=3,
             low_memory=False,
-            dtype={'CHR': object, 'POS': np.uint32},
+            dtype={"CHR": object, "POS": np.uint32},
         )
-        phases['FLIP'] = phases.PHASE.str.contains('1|0', regex=False).astype(np.int8)  # noqa: W605
-        phases['NOFLIP'] = phases.PHASE.str.contains('0|1', regex=False).astype(np.int8)  # noqa: W605
+        phases["FLIP"] = phases.PHASE.str.contains("1|0", regex=False).astype(np.int8)  # noqa: W605
+        phases["NOFLIP"] = phases.PHASE.str.contains("0|1", regex=False).astype(np.int8)  # noqa: W605
 
         # Drop entries without phasing output
         phases = phases[phases.FLIP + phases.NOFLIP > 0]
@@ -227,13 +240,13 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
         phases = phases.drop_duplicates()
 
         # For duplicate entries with the same (CHR, POS) but different phase, drop all
-        phases = phases.drop_duplicates(subset=['CHR', 'POS'], keep=False)
+        phases = phases.drop_duplicates(subset=["CHR", "POS"], keep=False)
 
         # Merge tables: keep only those SNPs for which we have phasing output
-        snpsv = pd.merge(snpsv, phases, on=['CHR', 'POS'], how='left')
+        snpsv = pd.merge(snpsv, phases, on=["CHR", "POS"], how="left")
 
     # Create counts array and find SNPs that are not present in all samples
-    snp_counts = snpsv.pivot(index='POS', columns='SAMPLE', values='TOTAL')
+    snp_counts = snpsv.pivot(index="POS", columns="SAMPLE", values="TOTAL")
     missing_pos = snp_counts.isna().any(axis=1)
 
     # Remove SNPs that are absent in any sample
@@ -241,10 +254,12 @@ def read_snps(baf_file, ch, all_names, phasefile=None):
     snpsv = snpsv[~snpsv.POS.isin(missing_pos[missing_pos].index)]
 
     # Pivot table for dataframe should match counts array and have no missing entries
-    check_pivot = snpsv.pivot(index='POS', columns='SAMPLE', values='TOTAL')
-    assert np.array_equal(check_pivot, snp_counts), 'SNP file reading failed'
-    assert not np.any(check_pivot.isna()), 'SNP file reading failed'
-    assert np.array_equal(all_names, list(snp_counts.columns))   # make sure that sample order is the same
+    check_pivot = snpsv.pivot(index="POS", columns="SAMPLE", values="TOTAL")
+    assert np.array_equal(check_pivot, snp_counts), "SNP file reading failed"
+    assert not np.any(check_pivot.isna()), "SNP file reading failed"
+    assert np.array_equal(
+        all_names, list(snp_counts.columns)
+    )  # make sure that sample order is the same
 
     return np.array(snp_counts.index), np.array(snp_counts), snpsv
 
@@ -323,8 +338,9 @@ def adaptive_bins_arm(
         # adding total reads
         bin_total += total_counts[i - 1, even_index]
 
-        if np.all(bin_snp >= min_snp_reads) and np.all(bin_total - total_counts[i, odd_index] >= min_total_reads):
-
+        if np.all(bin_snp >= min_snp_reads) and np.all(
+            bin_total - total_counts[i, odd_index] >= min_total_reads
+        ):
             # end this bin
             starts.append(my_start)
             ends.append(next_threshold)
@@ -346,22 +362,29 @@ def adaptive_bins_arm(
     # handle the case of 1 bin
     if len(ends) == 0:
         sp.log(
-            msg='WARNING: found only 1 bin in chromosome arm, may not meet MSR and MTR\t',
-            level='WARN',
+            msg="WARNING: found only 1 bin in chromosome arm, may not meet MSR and MTR\t",
+            level="WARN",
         )
         assert len(starts) == 0
         starts.append(snp_thresholds[0])
         ends.append(snp_thresholds[-1])
 
-        bin_total = np.sum(total_counts[:, even_index], axis=0) - total_counts[-1, odd_index]
+        bin_total = (
+            np.sum(total_counts[:, even_index], axis=0) - total_counts[-1, odd_index]
+        )
         totals.append(bin_total)
         rdrs.append(bin_total[1:] / bin_total[0])
 
     # add whatever excess at the end to the last bin
     if ends[-1] < snp_thresholds[-1]:
         # combine the last complete bin with the remainder
-        last_start_idx = np.where((snp_thresholds == starts[-1] - 1) | (snp_thresholds == starts[-1]))[0][0]
-        bin_total = np.sum(total_counts[last_start_idx:, even_index], axis=0) - total_counts[-1, odd_index]
+        last_start_idx = np.where(
+            (snp_thresholds == starts[-1] - 1) | (snp_thresholds == starts[-1])
+        )[0][0]
+        bin_total = (
+            np.sum(total_counts[last_start_idx:, even_index], axis=0)
+            - total_counts[-1, odd_index]
+        )
         totals[-1] = bin_total
         rdrs[-1] = bin_total[1:] / bin_total[0]
         ends[-1] = snp_thresholds[-1]
@@ -386,17 +409,24 @@ def EM(totals_in, alts_in, start, tol=1e-6):
 
             # E-step
             assert 0 + tol < baf < 1 - tol, (baf, totals, alts, start)
-            M = (totals - 2.0 * alts) * np.log(baf) + (2.0 * alts - totals) * np.log(1.0 - baf)
+            M = (totals - 2.0 * alts) * np.log(baf) + (2.0 * alts - totals) * np.log(
+                1.0 - baf
+            )
             M = np.exp(np.clip(a=M, a_min=-100, a_max=100))
             phases = np.reciprocal(1 + M)
 
             # M-step
-            baf = float(np.sum(totals * (1 - phases) + alts * (2.0 * phases - 1))) / float(np.sum(totals))
+            baf = float(
+                np.sum(totals * (1 - phases) + alts * (2.0 * phases - 1))
+            ) / float(np.sum(totals))
 
         assert 0 + tol < baf < 1 - tol, (baf, totals, alts, start)
         lpmf = binom.logpmf
         log_likelihood = float(
-            np.sum(phases * lpmf(k=alts, n=totals, p=baf) + (1 - phases) * lpmf(k=alts, n=totals, p=1 - baf))
+            np.sum(
+                phases * lpmf(k=alts, n=totals, p=baf)
+                + (1 - phases) * lpmf(k=alts, n=totals, p=1 - baf)
+            )
         )
         return baf, phases, log_likelihood
 
@@ -415,11 +445,17 @@ def apply_EM(totals_in, alts_in):
     )
 
 
-def compute_baf_wrapper(bin_snps, blocksize, max_snps_per_block, test_alpha, multisample):
+def compute_baf_wrapper(
+    bin_snps, blocksize, max_snps_per_block, test_alpha, multisample
+):
     if multisample:
-        return compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha)
+        return compute_baf_task_multi(
+            bin_snps, blocksize, max_snps_per_block, test_alpha
+        )
     else:
-        return compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha)
+        return compute_baf_task_single(
+            bin_snps, blocksize, max_snps_per_block, test_alpha
+        )
 
 
 def compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha):
@@ -432,7 +468,7 @@ def compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha)
     samples = sorted(bin_snps.SAMPLE.unique())
     result = {}
 
-    phasing = 'PHASE' in bin_snps.columns
+    phasing = "PHASE" in bin_snps.columns
     if phasing:
         # TODO: select the highest coverage sample to use for constructing phase blocks?
         # or maybe use all samples for BAF test?
@@ -443,7 +479,7 @@ def compute_baf_task_single(bin_snps, blocksize, max_snps_per_block, test_alpha)
                 max_snps_per_block=max_snps_per_block,
                 alpha=test_alpha,
             )
-            for _, d in bin_snps.groupby('SAMPLE')
+            for _, d in bin_snps.groupby("SAMPLE")
         ]
         phase_data = merge_phasing(bin_snps, all_phase_data)
 
@@ -473,7 +509,7 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
     samples = sorted(bin_snps.SAMPLE.unique())
     result = {}
 
-    phasing = 'PHASE' in bin_snps.columns
+    phasing = "PHASE" in bin_snps.columns
     if phasing:
         # TODO: select the highest coverage sample to use for constructing phase blocks?
         # or maybe use all samples for BAF test?
@@ -484,19 +520,21 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
                 max_snps_per_block=max_snps_per_block,
                 alpha=test_alpha,
             )
-            for _, d in bin_snps.groupby('SAMPLE')
+            for _, d in bin_snps.groupby("SAMPLE")
         ]
         phase_data = merge_phasing(bin_snps, all_phase_data)
 
         bin_snps = collapse_blocks(bin_snps, *phase_data, bin_snps.iloc[0].CHR)
 
-        alts = bin_snps.pivot(index='SAMPLE', columns='START', values='ALT').to_numpy()
-        refs = bin_snps.pivot(index='SAMPLE', columns='START', values='REF').to_numpy()
-        n_snps = (bin_snps['#SNPS'].sum() / len(bin_snps.SAMPLE.unique())).astype(np.uint32)
+        alts = bin_snps.pivot(index="SAMPLE", columns="START", values="ALT").to_numpy()
+        refs = bin_snps.pivot(index="SAMPLE", columns="START", values="REF").to_numpy()
+        n_snps = (bin_snps["#SNPS"].sum() / len(bin_snps.SAMPLE.unique())).astype(
+            np.uint32
+        )
 
     else:
-        alts = bin_snps.pivot(index='SAMPLE', columns='POS', values='ALT').to_numpy()
-        refs = bin_snps.pivot(index='SAMPLE', columns='POS', values='REF').to_numpy()
+        alts = bin_snps.pivot(index="SAMPLE", columns="POS", values="ALT").to_numpy()
+        refs = bin_snps.pivot(index="SAMPLE", columns="POS", values="REF").to_numpy()
         n_snps = alts.shape[1]
 
     runs = {b: multisample_em(alts, refs, b) for b in np.arange(0.05, 0.5, 0.05)}
@@ -524,14 +562,18 @@ def compute_baf_task_multi(bin_snps, blocksize, max_snps_per_block, test_alpha):
 
 
 def multisample_em(alts, refs, start, tol=10e-6):
-    assert refs.shape == alts.shape, 'Alternate and reference count arrays must have the same shape'
-    assert 0 < start <= 0.5, 'Initial estimate must be in (0, 0.5]'
+    assert (
+        refs.shape == alts.shape
+    ), "Alternate and reference count arrays must have the same shape"
+    assert 0 < start <= 0.5, "Initial estimate must be in (0, 0.5]"
 
     totals = alts + refs
 
     n_samples, n_snps = alts.shape
     totals_sum = np.sum(totals, axis=1)
-    assert np.all(totals_sum > 0), 'Every bin must have >0 SNP-covering reads in each sample!'
+    assert np.all(
+        totals_sum > 0
+    ), "Every bin must have >0 SNP-covering reads in each sample!"
 
     e_arr = np.zeros((2, n_snps))
 
@@ -687,7 +729,7 @@ def phase_blocks_sequential(df, blocksize=50e3, max_snps_per_block=10, alpha=0):
         ### Use binomial test to split adjacent SNPs with very different phased BAFs
         # (further dividing the segments identified above)
         # identify indices of adj SNPs that are significantly different
-        df_merged = pd.concat([df, df.shift(-1).add_prefix('next_')], axis=1)
+        df_merged = pd.concat([df, df.shift(-1).add_prefix("next_")], axis=1)
         # no_merge is the left index of each such pair
         no_merge = np.where(
             df_merged[:-1].apply(
@@ -746,7 +788,7 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
     # First, merge blocks for those SNPs that are in the same block
 
     rows = []
-    for sample, df0 in df.groupby('SAMPLE'):
+    for sample, df0 in df.groupby("SAMPLE"):
         i = 0
         j = 0
         while i < len(df0):
@@ -763,8 +805,12 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
                 my_snps = df0.iloc[block]
                 start = my_snps.POS.min()
                 end = my_snps.POS.max()
-                alt = np.sum(my_snps.FLIP * my_snps.REF + (1 - my_snps.FLIP) * my_snps.ALT).astype(np.uint64)
-                ref = np.sum(my_snps.FLIP * my_snps.ALT + (1 - my_snps.FLIP) * my_snps.REF).astype(np.uint64)
+                alt = np.sum(
+                    my_snps.FLIP * my_snps.REF + (1 - my_snps.FLIP) * my_snps.ALT
+                ).astype(np.uint64)
+                ref = np.sum(
+                    my_snps.FLIP * my_snps.ALT + (1 - my_snps.FLIP) * my_snps.REF
+                ).astype(np.uint64)
                 total = np.sum(my_snps.TOTAL)
                 n_snps = len(my_snps)
                 rows.append([ch, start, end, sample, alt, ref, total, n_snps])
@@ -772,16 +818,16 @@ def collapse_blocks(df, blocks, singletons, orphans, ch):
     return pd.DataFrame(
         rows,
         columns=[
-            'CHR',
-            'START',
-            'END',
-            'SAMPLE',
-            'ALT',
-            'REF',
-            'TOTAL',
-            '#SNPS',
+            "CHR",
+            "START",
+            "END",
+            "SAMPLE",
+            "ALT",
+            "REF",
+            "TOTAL",
+            "#SNPS",
         ],
-    ).sort_values(by=['CHR', 'START', 'SAMPLE'])
+    ).sort_values(by=["CHR", "START", "SAMPLE"])
 
 
 def merge_data(bins, dfs, bafs, sample_names, chromosome):
@@ -796,7 +842,7 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
     """
 
     rows = []
-    sample_names = sample_names[1:]   # ignore the normal sample (first in the list)
+    sample_names = sample_names[1:]  # ignore the normal sample (first in the list)
     for i in range(len(bins[0])):
         start = bins[0][i]
         end = bins[1][i]
@@ -811,7 +857,9 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
                 dfs[i].POS.min(),
                 dfs[i].POS.max(),
             )
-            snpcounts_from_df = dfs[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0)
+            snpcounts_from_df = (
+                dfs[i].pivot(index="POS", columns="SAMPLE", values="TOTAL").sum(axis=0)
+            )
 
         for j in range(len(sample_names)):
             sample = sample_names[j]
@@ -845,27 +893,27 @@ def merge_data(bins, dfs, bafs, sample_names, chromosome):
     return pd.DataFrame(
         rows,
         columns=[
-            '#CHR',
-            'START',
-            'END',
-            'SAMPLE',
-            'RD',
-            '#SNPS',
-            'COV',
-            'ALPHA',
-            'BETA',
-            'BAF',
-            'TOTAL_READS',
-            'NORMAL_READS',
+            "#CHR",
+            "START",
+            "END",
+            "SAMPLE",
+            "RD",
+            "#SNPS",
+            "COV",
+            "ALPHA",
+            "BETA",
+            "BAF",
+            "TOTAL_READS",
+            "NORMAL_READS",
         ],
     )
 
 
 def get_chr_end(stem, chromosome):
-    fname = os.path.join(stem, chromosome + '.thresholds.gz')
-    zcat = subprocess.Popen(('zcat', fname), stdout=subprocess.PIPE)
-    tail = subprocess.Popen(('tail', '-1'), stdin=zcat.stdout, stdout=subprocess.PIPE)
-    last_start = int(tail.stdout.read().decode('utf-8').strip())
+    fname = os.path.join(stem, chromosome + ".thresholds.gz")
+    zcat = subprocess.Popen(("zcat", fname), stdout=subprocess.PIPE)
+    tail = subprocess.Popen(("tail", "-1"), stdin=zcat.stdout, stdout=subprocess.PIPE)
+    last_start = int(tail.stdout.read().decode("utf-8").strip())
 
     return last_start
 
@@ -913,22 +961,32 @@ def segmented_piecewise(X, pieces=2):
                     best_tprime = tprime
 
             A[t, p] = best_cost
-            backpoint[t, p] = best_tprime   # if this throws a TypeError for int(None), then X may have NaNs
+            backpoint[t, p] = (
+                best_tprime  # if this throws a TypeError for int(None), then X may have NaNs
+            )
     return A, backpoint
 
 
 def correct_haplotypes(
-    orig_bafs, min_prop_switch=0.01, n_segments=20, min_switch_density=0.1, min_mean_baf=0.48, minmax_al_imb=0.02
+    orig_bafs,
+    min_prop_switch=0.01,
+    n_segments=20,
+    min_switch_density=0.1,
+    min_mean_baf=0.48,
+    minmax_al_imb=0.02,
 ):
     n_bins = orig_bafs.shape[0]
     if n_bins == 1:
-        sp.log(msg='Only one bin in the chromosome arm, skipping correction.\n', level='INFO')
+        sp.log(
+            msg="Only one bin in the chromosome arm, skipping correction.\n",
+            level="INFO",
+        )
         return orig_bafs, None
     elif n_bins < n_segments:
         # Assume that with this few bins, there is only 1 segment
         sp.log(
-            msg=f'Only {orig_bafs.shape[0]} bins < {n_segments} segments parameter, using 1 segment instead.\n',
-            level='INFO',
+            msg=f"Only {orig_bafs.shape[0]} bins < {n_segments} segments parameter, using 1 segment instead.\n",
+            level="INFO",
         )
         n_segments = 1
 
@@ -937,7 +995,8 @@ def correct_haplotypes(
 
     if len(imb_samples) == 0:
         sp.log(
-            msg=f'No sample with avg. allelic imbalance above [{minmax_al_imb}], skipping correction.\n', level='INFO'
+            msg=f"No sample with avg. allelic imbalance above [{minmax_al_imb}], skipping correction.\n",
+            level="INFO",
         )
         return orig_bafs, None
 
@@ -946,18 +1005,29 @@ def correct_haplotypes(
     # Look for haplotype switches
     above_mid = bafs > 0.5
     is_alternating = np.concatenate(
-        [np.zeros((1, bafs.shape[1]), dtype=bool), np.logical_xor(above_mid[1:], above_mid[:-1])]
+        [
+            np.zeros((1, bafs.shape[1]), dtype=bool),
+            np.logical_xor(above_mid[1:], above_mid[:-1]),
+        ]
     )
     haplotype_switches = np.where(np.all(is_alternating, axis=1))[0]
     prop_switched = len(haplotype_switches) / len(is_alternating)
-    sp.log(msg=f'Found haplotype switches in {prop_switched *100 : .2f}% of bins\n', level='INFO')
+    sp.log(
+        msg=f"Found haplotype switches in {prop_switched *100 : .2f}% of bins\n",
+        level="INFO",
+    )
 
     if prop_switched > min_prop_switch:
         # If sufficient switches are found, run segmentation to identify segments w/ many switches
 
-        sp.log(msg=f'Checking haplotype switching using [{n_segments}] segments\n', level='INFO')
+        sp.log(
+            msg=f"Checking haplotype switching using [{n_segments}] segments\n",
+            level="INFO",
+        )
         # Segment using the mean BAFs only - faster and more reliable than using all samples
-        A, bp = segmented_piecewise(np.mean(bafs, axis=1).reshape(-1, 1), pieces=n_segments)
+        A, bp = segmented_piecewise(
+            np.mean(bafs, axis=1).reshape(-1, 1), pieces=n_segments
+        )
 
         ts = backtrack(bp[:, :n_segments])
 
@@ -974,16 +1044,29 @@ def correct_haplotypes(
         # (note that mean(BAF_i) across samples i is always <= 0.5 by def. from EM function)
         switch_densities = np.array(
             [
-                len(haplotype_switches[(haplotype_switches >= ts[i]) & (haplotype_switches < ts[i + 1])])
+                len(
+                    haplotype_switches[
+                        (haplotype_switches >= ts[i]) & (haplotype_switches < ts[i + 1])
+                    ]
+                )
                 / (ts[i + 1] - ts[i])
                 for i in range(len(ts) - 1)
             ]
         )
-        segment_means = np.array([(np.mean(s) if len(s) > 0 else 0.5) for s in segments])
+        segment_means = np.array(
+            [(np.mean(s) if len(s) > 0 else 0.5) for s in segments]
+        )
 
         # ALSO only correct segments with allelic imbalance at least <min_al_imb> in at least 1 sample
         segment_imbalances = np.array(
-            [(np.max(np.abs(0.5 - np.mean(np.minimum(s, 1 - s), axis=0))) if len(s) > 0 else 0) for s in segments]
+            [
+                (
+                    np.max(np.abs(0.5 - np.mean(np.minimum(s, 1 - s), axis=0)))
+                    if len(s) > 0
+                    else 0
+                )
+                for s in segments
+            ]
         )
 
         """
@@ -996,18 +1079,26 @@ def correct_haplotypes(
 
         bad_segments = np.where(
             np.logical_and(
-                np.logical_and(switch_densities >= min_switch_density, segment_means >= min_mean_baf),
+                np.logical_and(
+                    switch_densities >= min_switch_density,
+                    segment_means >= min_mean_baf,
+                ),
                 segment_imbalances >= minmax_al_imb,
             )
         )[0]
 
-        sp.log(msg=f'Identified {len(bad_segments)} segments with haplotype switching\n', level='INFO')
+        sp.log(
+            msg=f"Identified {len(bad_segments)} segments with haplotype switching\n",
+            level="INFO",
+        )
         final_segments = []
 
         for s_idx in range(len(segments)):
             if s_idx in bad_segments:
                 seg = segments[s_idx].copy()
-                assert len(seg) > 0, 'Haplotype switch correction flagged a length-0 segment'
+                assert (
+                    len(seg) > 0
+                ), "Haplotype switch correction flagged a length-0 segment"
 
                 # Identify the sample with the most extreme allelic imbalance for this segment
                 minseg = np.minimum(seg, 1 - seg)
@@ -1033,8 +1124,8 @@ def correct_haplotypes(
         return np.concatenate(final_segments), ts
     else:
         sp.log(
-            msg=f'Insufficient haplotype switching detected (<[{min_prop_switch}]), skipping correction.\n',
-            level='INFO',
+            msg=f"Insufficient haplotype switching detected (<[{min_prop_switch}]), skipping correction.\n",
+            level="INFO",
         )
         return orig_bafs, None
 
@@ -1063,33 +1154,39 @@ def run_chromosome(
     try:
         if os.path.exists(outfile):
             sp.log(
-                msg=f'Output file already exists, skipping chromosome {chromosome}\n',
-                level='INFO',
+                msg=f"Output file already exists, skipping chromosome {chromosome}\n",
+                level="INFO",
             )
             return
 
         sp.log(
-            msg=f'Loading intermediate files for chromosome {chromosome}\n',
-            level='INFO',
+            msg=f"Loading intermediate files for chromosome {chromosome}\n",
+            level="INFO",
         )
-        total_counts = np.loadtxt(os.path.join(arraystem, f'{chromosome}.total'), dtype=np.uint32)
+        total_counts = np.loadtxt(
+            os.path.join(arraystem, f"{chromosome}.total"), dtype=np.uint32
+        )
         complete_thresholds = np.loadtxt(
-            os.path.join(arraystem, f'{chromosome}.thresholds'),
+            os.path.join(arraystem, f"{chromosome}.thresholds"),
             dtype=np.uint32,
         )
 
         # TODO: identify whether XX or XY, and only avoid SNPs/BAFs for XY
         if xy:
             sp.log(
-                msg='Running on sex chromosome -- ignoring SNPs \n',
-                level='INFO',
+                msg="Running on sex chromosome -- ignoring SNPs \n",
+                level="INFO",
             )
             min_snp_reads = 0
 
             # TODO: do this procedure only for XY individuals
             ### construct dummy SNP positions and all-0 snpcounts array for binning
-            before_centromere = complete_thresholds[complete_thresholds <= centromere_start]
-            after_centromere = complete_thresholds[complete_thresholds >= centromere_end]
+            before_centromere = complete_thresholds[
+                complete_thresholds <= centromere_start
+            ]
+            after_centromere = complete_thresholds[
+                complete_thresholds >= centromere_end
+            ]
             positions_p = np.mean(
                 np.vstack([before_centromere[:-1], before_centromere[1:]]),
                 axis=0,
@@ -1105,13 +1202,17 @@ def run_chromosome(
         else:
             # sp.log(msg=f"Reading SNPs file for chromosome {chromosome}\n", level = "INFO")
             # Load SNP positions and counts for this chromosome
-            positions, snp_counts, snpsv = read_snps(baffile, chromosome, all_names, phasefile=phasefile)
+            positions, snp_counts, snpsv = read_snps(
+                baffile, chromosome, all_names, phasefile=phasefile
+            )
 
-        sp.log(msg=f'Binning p arm of chromosome {chromosome}\n', level='INFO')
+        sp.log(msg=f"Binning p arm of chromosome {chromosome}\n", level="INFO")
         if len(np.where(positions <= centromere_start)[0]) > 0:
             # There may not be a SNP between the centromere end and the next SNP threshold
             # Goal for p arm is to END at the FIRST threshold that is AFTER the LAST SNP BEFORE the centromere
-            last_snp_before_centromere = positions[np.where(positions < centromere_start)[0][-1]]
+            last_snp_before_centromere = positions[
+                np.where(positions < centromere_start)[0][-1]
+            ]
             last_threshold_before_centromere = complete_thresholds[
                 np.where(complete_thresholds > last_snp_before_centromere)[0][0]
             ]
@@ -1144,12 +1245,18 @@ def run_chromosome(
                 dfs_p = None
                 bafs_p = None
             else:
-                dfs_p = [snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])] for i in range(len(starts_p))]
+                dfs_p = [
+                    snpsv[(snpsv.POS >= starts_p[i]) & (snpsv.POS <= ends_p[i])]
+                    for i in range(len(starts_p))
+                ]
 
                 if len(dfs_p) > 1:
                     for i in range(len(dfs_p)):
                         assert np.all(
-                            dfs_p[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0) >= min_snp_reads
+                            dfs_p[i]
+                            .pivot(index="POS", columns="SAMPLE", values="TOTAL")
+                            .sum(axis=0)
+                            >= min_snp_reads
                         ), i
 
                 bafs_p = [
@@ -1165,31 +1272,35 @@ def run_chromosome(
 
             bb_p = merge_data(bins_p, dfs_p, bafs_p, all_names, chromosome)
 
-            bafs_p = bb_p.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
+            bafs_p = bb_p.pivot(
+                index=["#CHR", "START"], columns="SAMPLE", values="BAF"
+            ).to_numpy()
             if bafs_p.shape[0] > 2:
-                sp.log(msg='Correcting haplotype switches on p arm...\n', level='STEP')
+                sp.log(msg="Correcting haplotype switches on p arm...\n", level="STEP")
                 # TODO: pass through other parameters to correct_haplotypes
                 corrected_bafs_p, _ = correct_haplotypes(bafs_p)
 
                 sp.log(
-                    msg=f'{len(bb_p)}, {len(bb_p.SAMPLE.unique())}, \
-                        {bafs_p.shape}, {corrected_bafs_p.shape} {corrected_bafs_p.flatten().shape}\n',
-                    level='DEBUG',
+                    msg=f"{len(bb_p)}, {len(bb_p.SAMPLE.unique())}, \
+                        {bafs_p.shape}, {corrected_bafs_p.shape} {corrected_bafs_p.flatten().shape}\n",
+                    level="DEBUG",
                 )
 
                 # flatten these results out and put them back into the BAF array
-                bb_p['ORIGINAL_BAF'] = bb_p.BAF
-                bb_p['BAF'] = corrected_bafs_p.flatten()
+                bb_p["ORIGINAL_BAF"] = bb_p.BAF
+                bb_p["BAF"] = corrected_bafs_p.flatten()
         else:
-            sp.log(msg=f'No SNPs found in p arm for {chromosome}\n', level='INFO')
+            sp.log(msg=f"No SNPs found in p arm for {chromosome}\n", level="INFO")
             bb_p = None
 
-        sp.log(msg=f'Binning q arm of chromosome {chromosome}\n', level='INFO')
+        sp.log(msg=f"Binning q arm of chromosome {chromosome}\n", level="INFO")
 
         if len(np.where(positions >= centromere_end)[0]) > 0:
             # There may not be a SNP between the centromere end and the next SNP threshold
             # Goal for q arm is to start at the latest threshold that is before the first SNP after the centromere
-            first_snp_after_centromere = positions[np.where(positions > centromere_end)[0][0]]
+            first_snp_after_centromere = positions[
+                np.where(positions > centromere_end)[0][0]
+            ]
             first_threshold_after_centromere = complete_thresholds[
                 np.where(complete_thresholds < first_snp_after_centromere)[0][-1]
             ]
@@ -1219,12 +1330,18 @@ def run_chromosome(
                 bafs_q = None
             else:
                 # Partition SNPs for BAF inference
-                dfs_q = [snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])] for i in range(len(starts_q))]
+                dfs_q = [
+                    snpsv[(snpsv.POS >= starts_q[i]) & (snpsv.POS <= ends_q[i])]
+                    for i in range(len(starts_q))
+                ]
 
                 if len(dfs_q) > 1:
                     for i in range(len(dfs_q)):
                         assert np.all(
-                            dfs_q[i].pivot(index='POS', columns='SAMPLE', values='TOTAL').sum(axis=0) >= min_snp_reads
+                            dfs_q[i]
+                            .pivot(index="POS", columns="SAMPLE", values="TOTAL")
+                            .sum(axis=0)
+                            >= min_snp_reads
                         ), i
 
                 # Infer BAF
@@ -1241,31 +1358,35 @@ def run_chromosome(
 
             bb_q = merge_data(bins_q, dfs_q, bafs_q, all_names, chromosome)
 
-            bafs_q = bb_q.pivot(index=['#CHR', 'START'], columns='SAMPLE', values='BAF').to_numpy()
+            bafs_q = bb_q.pivot(
+                index=["#CHR", "START"], columns="SAMPLE", values="BAF"
+            ).to_numpy()
             if bafs_q.shape[0] > 2:
-                sp.log(msg='Correcting haplotype switches on q arm...\n', level='STEP')
+                sp.log(msg="Correcting haplotype switches on q arm...\n", level="STEP")
                 # TODO: pass through other parameters to correct_haplotypes
                 corrected_bafs_q, _ = correct_haplotypes(bafs_q)
 
                 # flatten these results out and put them back into the BAF array
-                bb_q['ORIGINAL_BAF'] = bb_q.BAF
-                bb_q['BAF'] = corrected_bafs_q.flatten()
+                bb_q["ORIGINAL_BAF"] = bb_q.BAF
+                bb_q["BAF"] = corrected_bafs_q.flatten()
         else:
-            sp.log(msg=f'No SNPs found in q arm for {chromosome}\n', level='INFO')
+            sp.log(msg=f"No SNPs found in q arm for {chromosome}\n", level="INFO")
             bb_q = None
 
         if bb_p is None and bb_q is None:
-            raise ValueError(sp.error(f'No SNPs found on either arm of chromosome {chromosome}!'))
+            raise ValueError(
+                sp.error(f"No SNPs found on either arm of chromosome {chromosome}!")
+            )
 
         bb = pd.concat([bb_p, bb_q])
-        bb.to_csv(outfile, index=False, sep='\t')
+        bb.to_csv(outfile, index=False, sep="\t")
         # np.savetxt(outfile + '.totalcounts', total_counts)
         # np.savetxt(outfile + '.thresholds', complete_thresholds)
 
-        sp.log(msg=f'Done chromosome {chromosome}\n', level='INFO')
+        sp.log(msg=f"Done chromosome {chromosome}\n", level="INFO")
     except Exception as e:
-        sp.log(msg=f'Error in chromosome {chromosome}:', level='ERROR')
-        sp.log(msg=str(e), level='ERROR')
+        sp.log(msg=f"Error in chromosome {chromosome}:", level="ERROR")
+        sp.log(msg=str(e), level="ERROR")
         traceback.print_exc()
         raise e
 
@@ -1274,5 +1395,5 @@ def run_chromosome_wrapper(param):
     run_chromosome(*param)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

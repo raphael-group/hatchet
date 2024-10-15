@@ -54,7 +54,6 @@ class Worker:
         raise NotImplementedError
 
     def run(self, work, n_instances=None, show_progress=True):
-
         n_work = len(work)
         if n_instances is None:
             n_instances = min(cpu_count(), n_work)
@@ -66,7 +65,7 @@ class Worker:
                 total=n_work,
                 length=40,
                 lock=Lock(),
-                counter=Value('i', 0),
+                counter=Value("i", 0),
                 verbose=True,
             )
         else:
@@ -83,7 +82,10 @@ class Worker:
             task_queue.put(None)
 
         result_queue = Queue()
-        handlers = [TaskHandler(self, task_queue, result_queue, progress_bar) for _ in range(n_instances)]
+        handlers = [
+            TaskHandler(self, task_queue, result_queue, progress_bar)
+            for _ in range(n_instances)
+        ]
 
         for h in handlers:
             h.start()
@@ -94,8 +96,8 @@ class Worker:
             results = [None] * n_work
             for work_i, result in [result_queue.get() for _ in range(n_work)]:
                 if isinstance(result, Exception):
-                    error_string = ''.join(getattr(result, 'error', []))
-                    raise result.__class__(f'WORK {work_i} FAILED\n\n{error_string}')
+                    error_string = "".join(getattr(result, "error", []))
+                    raise result.__class__(f"WORK {work_i} FAILED\n\n{error_string}")
                 else:
                     results[work_i] = result
 

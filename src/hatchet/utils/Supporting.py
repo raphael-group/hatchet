@@ -11,7 +11,7 @@ from string import ascii_uppercase
 
 
 def checksum(filepath):
-    return hashlib.md5(open(filepath, 'rb').read()).hexdigest()
+    return hashlib.md5(open(filepath, "rb").read()).hexdigest()
 
 
 def naturalOrder(text):
@@ -22,13 +22,13 @@ def numericOrder(text):
     if len(digits(text)) > 0:
         return int(digits(text))
     else:
-        if not (text.endswith('X') or text.endswith('Y')):
-            raise ValueError(f'Found chromosome ID that is not numeric or X/Y: {text}')
+        if not (text.endswith("X") or text.endswith("Y")):
+            raise ValueError(f"Found chromosome ID that is not numeric or X/Y: {text}")
         return ascii_uppercase.index(text[-1])
 
 
 def digits(string):
-    return ''.join(x for x in string if x.isdigit())
+    return "".join(x for x in string if x.isdigit())
 
 
 def argmax(d):
@@ -41,11 +41,11 @@ def argmin(d):
 
 def to_tuple(s, n=2, typ=int, error_message=None):
     if error_message is None:
-        error_message = f'Unable to parse {s} into a tuple of type {typ}'
+        error_message = f"Unable to parse {s} into a tuple of type {typ}"
         if n is not None:
-            error_message += f' of length {n}'
+            error_message += f" of length {n}"
 
-    parsed = s.strip().replace(' ', '').replace('(', '').replace(')', '').split(',')
+    parsed = s.strip().replace(" ", "").replace("(", "").replace(")", "").split(",")
 
     try:
         if n is not None:
@@ -67,7 +67,7 @@ def which(program):
         if is_exe(program):
             return program
     else:
-        for path in os.environ['PATH'].split(os.pathsep):
+        for path in os.environ["PATH"].split(os.pathsep):
             path = path.strip('"')
             exe_file = os.path.join(path, program)
             if is_exe(exe_file):
@@ -82,24 +82,24 @@ def url_exists(path):
 
 
 class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    BBLUE = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    BBLUE = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
 
 
 # format strings with 'timestamp' and 'msg' as placeholders
 MSG_FORMAT_STRINGS = {
-    'STEP': bcolors.BOLD + bcolors.HEADER + '[{timestamp}]{msg}' + bcolors.ENDC,
-    'INFO': bcolors.OKGREEN + '{msg}' + bcolors.ENDC,
-    'WARN': bcolors.WARNING + '{msg}' + bcolors.ENDC,
-    'PROGRESS': bcolors.BBLUE + '{msg}' + bcolors.ENDC,
-    'ERROR': bcolors.FAIL + '{msg}' + bcolors.ENDC,
+    "STEP": bcolors.BOLD + bcolors.HEADER + "[{timestamp}]{msg}" + bcolors.ENDC,
+    "INFO": bcolors.OKGREEN + "{msg}" + bcolors.ENDC,
+    "WARN": bcolors.WARNING + "{msg}" + bcolors.ENDC,
+    "PROGRESS": bcolors.BBLUE + "{msg}" + bcolors.ENDC,
+    "ERROR": bcolors.FAIL + "{msg}" + bcolors.ENDC,
 }
 
 
@@ -110,8 +110,8 @@ def log(
     raise_exception=False,
     exception_class=ValueError,
 ):
-    timestamp = '{:%Y-%b-%d %H:%M:%S}'.format(datetime.datetime.now())
-    format_string = MSG_FORMAT_STRINGS.get(level) or '{msg}'
+    timestamp = "{:%Y-%b-%d %H:%M:%S}".format(datetime.datetime.now())
+    format_string = MSG_FORMAT_STRINGS.get(level) or "{msg}"
     formatted_msg = format_string.format(msg=msg, timestamp=timestamp)
 
     if lock is None:
@@ -120,23 +120,23 @@ def log(
         with lock:
             sys.stderr.write(formatted_msg)
 
-    if level == 'ERROR' and raise_exception:
+    if level == "ERROR" and raise_exception:
         raise exception_class(msg)
     else:
         return formatted_msg
 
 
 def logArgs(args, width=40):
-    text = '\n'
+    text = "\n"
     for key in args:
-        text += '\t{}: {}\n'.format(key, args[key])
-    log(msg=text, level='INFO')
+        text += "\t{}: {}\n".format(key, args[key])
+    log(msg=text, level="INFO")
 
 
 def error(msg, raise_exception=False, exception_class=ValueError):
     return log(
         msg,
-        level='ERROR',
+        level="ERROR",
         raise_exception=raise_exception,
         exception_class=exception_class,
     )
@@ -148,7 +148,7 @@ def ensure(pred, msg, exception_class=ValueError):
 
 
 def close(msg):
-    log(msg=msg, level='WARN')
+    log(msg=msg, level="WARN")
     sys.exit(0)
 
 
@@ -166,12 +166,12 @@ def run(
     return_codes = []
 
     # Very commonly used options in our code
-    if 'universal_newlines' not in kwargs:
-        kwargs['universal_newlines'] = True
-    if 'shell' not in kwargs:
-        kwargs['shell'] = True
+    if "universal_newlines" not in kwargs:
+        kwargs["universal_newlines"] = True
+    if "shell" not in kwargs:
+        kwargs["shell"] = True
 
-    f = open(stdouterr_filepath, 'w') if stdouterr_filepath is not None else None
+    f = open(stdouterr_filepath, "w") if stdouterr_filepath is not None else None
     for command in commands:
         p = subprocess.run(command, stdout=f, stderr=f, **kwargs)
         return_codes.append(p.returncode)
@@ -182,7 +182,7 @@ def run(
         if error_msg is None:
             error_msg = 'Command "{command}" did not run successfully.'
         if stdouterr_filepath:
-            error_msg += f' Please check {stdouterr_filepath} for possible hints.'
+            error_msg += f" Please check {stdouterr_filepath} for possible hints."
 
         for command, return_code in zip(commands, return_codes):
             if return_code != 0:
@@ -205,15 +205,19 @@ def download(
     out_basename = os.path.basename(urlparse(url).path)
     out_filepath = os.path.join(dirpath, out_basename)
 
-    if sentinel_file is None or not os.path.exists(os.path.join(dirpath, sentinel_file)):
+    if sentinel_file is None or not os.path.exists(
+        os.path.join(dirpath, sentinel_file)
+    ):
         if overwrite or not os.path.exists(out_filepath):
             with requests.get(url, stream=True) as r:
                 r.raise_for_status()
-                with open(out_filepath, 'wb') as f:
+                with open(out_filepath, "wb") as f:
                     for chunk in r.iter_content(chunk_size=chunk_size):
                         f.write(chunk)
 
-        if (out_basename.endswith('.tar.gz') or out_basename.endswith('.tgz')) and extract:
+        if (
+            out_basename.endswith(".tar.gz") or out_basename.endswith(".tgz")
+        ) and extract:
             t = tarfile.open(out_filepath)
             t.extractall(dirpath)
             t.close()
