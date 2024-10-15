@@ -16,6 +16,12 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Install system depedencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libbz2-dev
+        if: ${{ runner.os == 'Linux' }}
+
       - uses: actions/checkout@v2
         with:
           lfs: true
@@ -149,7 +155,7 @@ jobs:
       - name: Save Pytest Output Data
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ matrix.python }}
           path: tests/out
 
       - name: Convert coverage
