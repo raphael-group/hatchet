@@ -26,6 +26,7 @@ dependencies = [
     "biopython",
     "hmmlearn",
     "matplotlib",
+    "numpy<2",
     "pandas",
     "psutil",
     "pyomo",
