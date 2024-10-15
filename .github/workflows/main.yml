@@ -19,7 +19,7 @@ jobs:
       - name: Install system depedencies
         run: |
           sudo apt-get update
-          sudo apt-get install libbz2-dev
+          sudo apt-get install libbz2-dev liblzma-dev
         if: ${{ runner.os == 'Linux' }}
 
       - uses: actions/checkout@v2
