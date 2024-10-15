@@ -32,13 +32,12 @@ from hatchet.utils.check import main as check  # noqa: F401
 
 
 def print_usage():
-    print('HATCHet v' + hatchet.__version__)
-    print('Usage: hatchet <command> <arguments ..>')
-    print('\nThe following commands are supported:\n ' + '\n '.join(commands))
+    print("HATCHet v" + hatchet.__version__)
+    print("Usage: hatchet <command> <arguments ..>")
+    print("\nThe following commands are supported:\n " + "\n ".join(commands))
 
 
 def main():
-
     if len(sys.argv) < 2:
         print_usage()
         sys.exit(0)
@@ -49,7 +48,7 @@ def main():
     if command in command_aliases:
         msg = (
             f'The HATCHet command "{command}" has been replaced by "{command_aliases[command]}" and will be absent in '
-            f'future releases. Please update your scripts accordingly.'
+            f"future releases. Please update your scripts accordingly."
         )
         warnings.warn(msg, FutureWarning)
     elif command not in commands:
@@ -57,9 +56,9 @@ def main():
         sys.exit(1)
 
     command = command_aliases.get(command, command)
-    command = command.replace('-', '_')
+    command = command.replace("-", "_")
     globals()[command](args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

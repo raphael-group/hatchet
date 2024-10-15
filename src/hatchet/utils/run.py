@@ -24,15 +24,16 @@ from hatchet.utils.Supporting import log, error
 
 
 def main(args=None):
-
-    parser = argparse.ArgumentParser(prog='hatchet run', description='Run HATCHet pipeline')
-    parser.add_argument('inifile', help='.ini file for run configuration')
+    parser = argparse.ArgumentParser(
+        prog="hatchet run", description="Run HATCHet pipeline"
+    )
+    parser.add_argument("inifile", help=".ini file for run configuration")
     args = parser.parse_args(args)
 
     config.read(args.inifile)
 
     output = config.run.output
-    output = output.rstrip('/')
+    output = output.rstrip("/")
     os.makedirs(output, exist_ok=True)
 
     try:
@@ -43,7 +44,7 @@ def main(args=None):
     extra_args = []
     try:
         if config.run.processes is not None:
-            extra_args = ['-j', str(config.run.processes)]
+            extra_args = ["-j", str(config.run.processes)]
     except KeyError:
         pass
 
@@ -55,16 +56,16 @@ def main(args=None):
                 error(
                     (
                         'The step "download_panel" requires that the variable "refpaneldir" indicates the directory in '
-                        'which to store the reference panel.'
+                        "which to store the reference panel."
                     )
                 )
             )
 
         download_panel(
             args=[
-                '-D',
+                "-D",
                 config.download_panel.refpaneldir,
-                '-R',
+                "-R",
                 config.download_panel.refpanel,
             ]
         )
@@ -72,27 +73,27 @@ def main(args=None):
     # ----------------------------------------------------
 
     if config.run.genotype_snps:
-        snps = ''
+        snps = ""
         if config.genotype_snps.snps:
             snps = config.genotype_snps.snps
         elif config.genotype_snps.reference_version:
             snps_mapping = {
                 (
-                    'hg19',
+                    "hg19",
                     True,
-                ): 'https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz',
+                ): "https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/GATK/00-All.vcf.gz",
                 (
-                    'hg19',
+                    "hg19",
                     False,
-                ): 'https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz',
+                ): "https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh37p13/VCF/00-All.vcf.gz",
                 (
-                    'hg38',
+                    "hg38",
                     True,
-                ): 'https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/GATK/00-All.vcf.gz',
+                ): "https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/GATK/00-All.vcf.gz",
                 (
-                    'hg38',
+                    "hg38",
                     False,
-                ): 'https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz',
+                ): "https://ftp.ncbi.nih.gov/snp/organisms/human_9606_b151_GRCh38p7/VCF/00-All.vcf.gz",
             }
 
             if (
@@ -101,8 +102,8 @@ def main(args=None):
             ) not in snps_mapping:
                 raise RuntimeError(
                     (
-                        'Please specify valid values of reference_version and chr_notation. '
-                        f'Valid pairs include: {snps_mapping.keys()}'
+                        "Please specify valid values of reference_version and chr_notation. "
+                        f"Valid pairs include: {snps_mapping.keys()}"
                     )
                 )
             else:
@@ -111,32 +112,34 @@ def main(args=None):
                     config.genotype_snps.chr_notation,
                 ]
 
-        os.makedirs(f'{output}/snps', exist_ok=True)
+        os.makedirs(f"{output}/snps", exist_ok=True)
         genotype_snps(
             args=[
-                '-N',
+                "-N",
                 config.run.normal,
-                '-r',
+                "-r",
                 config.run.reference,
-                '-R',
+                "-R",
                 snps,
-                '-o',
-                f'{output}/snps/',
-                '--chromosomes',
+                "-o",
+                f"{output}/snps/",
+                "--chromosomes",
             ]
-            + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
+            + (
+                chromosomes or []
+            )  # important to keep this as a list here to allow proper argparse parsing
             + extra_args
         )
 
     # ----------------------------------------------------
 
     if config.run.phase_snps:
-        if len(glob.glob(f'{output}/snps/*.vcf.gz')) == 0:
+        if len(glob.glob(f"{output}/snps/*.vcf.gz")) == 0:
             raise ValueError(
                 error(
                     (
-                        'No SNP files were found for phasing. Are there any .vcf.gz files in the snps subdirectory of '
-                        'the output folder? Try running genotype_snps.'
+                        "No SNP files were found for phasing. Are there any .vcf.gz files in the snps subdirectory of "
+                        "the output folder? Try running genotype_snps."
                     )
                 )
             )
@@ -146,49 +149,51 @@ def main(args=None):
                 error(
                     (
                         'The step "phase_snps" requires that the config variable "download_panel.refpaneldir" '
-                        'indicates the directory where the reference panel is located.'
+                        "indicates the directory where the reference panel is located."
                     )
                 )
             )
 
-        os.makedirs(f'{output}/phase', exist_ok=True)
+        os.makedirs(f"{output}/phase", exist_ok=True)
         phase_snps(
             args=[
-                '-D',
+                "-D",
                 config.download_panel.refpaneldir,
-                '-g',
+                "-g",
                 config.run.reference,
-                '-V',
+                "-V",
                 config.genotype_snps.reference_version,
-                '-o',
-                f'{output}/phase/',
-                '-L',
+                "-o",
+                f"{output}/phase/",
+                "-L",
             ]
-            + glob.glob(f'{output}/snps/*.vcf.gz')
-            + (['-N'] if config.genotype_snps.chr_notation else [])
+            + glob.glob(f"{output}/snps/*.vcf.gz")
+            + (["-N"] if config.genotype_snps.chr_notation else [])
             + extra_args
         )
 
     # ----------------------------------------------------
     if config.run.count_alleles:
-        os.makedirs(f'{output}/baf', exist_ok=True)
+        os.makedirs(f"{output}/baf", exist_ok=True)
         count_alleles(
-            args=['-N', config.run.normal, '-T']
+            args=["-N", config.run.normal, "-T"]
             + config.run.bams.split()
-            + ['-S']
-            + ('normal ' + config.run.samples).split()
-            + ['-r', config.run.reference, '-L']
-            + glob.glob(f'{output}/snps/*.vcf.gz')
+            + ["-S"]
+            + ("normal " + config.run.samples).split()
+            + ["-r", config.run.reference, "-L"]
+            + glob.glob(f"{output}/snps/*.vcf.gz")
             + [
-                '-O',
-                f'{output}/baf/normal.1bed',
-                '-o',
-                f'{output}/baf/tumor.1bed',
-                '-l',
-                f'{output}',
-                '--chromosomes',
+                "-O",
+                f"{output}/baf/normal.1bed",
+                "-o",
+                f"{output}/baf/tumor.1bed",
+                "-l",
+                f"{output}",
+                "--chromosomes",
             ]
-            + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
+            + (
+                chromosomes or []
+            )  # important to keep this as a list here to allow proper argparse parsing
             + extra_args
         )
 
@@ -198,22 +203,24 @@ def main(args=None):
         # Variable-width/adaptive binning
 
         if config.run.count_reads:
-            os.makedirs(f'{output}/rdr', exist_ok=True)
+            os.makedirs(f"{output}/rdr", exist_ok=True)
             count_reads(
-                args=['-N', config.run.normal, '-T']
+                args=["-N", config.run.normal, "-T"]
                 + config.run.bams.split()
-                + ['-S']
-                + ('normal ' + config.run.samples).split()
+                + ["-S"]
+                + ("normal " + config.run.samples).split()
                 + [
-                    '-V',
+                    "-V",
                     config.genotype_snps.reference_version,
-                    '-b',
-                    f'{output}/baf/tumor.1bed',
-                    '-O',
-                    f'{output}/rdr',
-                    '--chromosomes',
+                    "-b",
+                    f"{output}/baf/tumor.1bed",
+                    "-O",
+                    f"{output}/rdr",
+                    "--chromosomes",
                 ]
-                + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
+                + (
+                    chromosomes or []
+                )  # important to keep this as a list here to allow proper argparse parsing
                 + extra_args
             )
 
@@ -222,34 +229,34 @@ def main(args=None):
         if config.run.combine_counts:
             _stdout = sys.stdout
             sys.stdout = StringIO()
-            os.makedirs(f'{output}/bb', exist_ok=True)
+            os.makedirs(f"{output}/bb", exist_ok=True)
 
-            phasefile = f'{output}/phase/phased.vcf.gz'
+            phasefile = f"{output}/phase/phased.vcf.gz"
             args = [
-                '-A',
-                f'{output}/rdr',
-                '-b',
-                f'{output}/baf/tumor.1bed',
-                '-t',
-                f'{output}/rdr/total.tsv',
-                '-V',
+                "-A",
+                f"{output}/rdr",
+                "-b",
+                f"{output}/baf/tumor.1bed",
+                "-t",
+                f"{output}/rdr/total.tsv",
+                "-V",
                 config.genotype_snps.reference_version,
-                '-o',
-                f'{output}/bb/bulk.bb',
-                '-r',
+                "-o",
+                f"{output}/bb/bulk.bb",
+                "-r",
                 config.run.reference,
             ] + extra_args
 
             if os.path.exists(phasefile):
                 log(
-                    msg='Found phasing file, including phasing in binning process.\n',
-                    level='INFO',
+                    msg="Found phasing file, including phasing in binning process.\n",
+                    level="INFO",
                 )
-                args = ['-p', f'{output}/phase/phased.vcf.gz'] + args
+                args = ["-p", f"{output}/phase/phased.vcf.gz"] + args
             else:
                 log(
-                    msg=f'NO PHASING FILE FOUND at {phasefile}. Not including phasing in binning process.\n',
-                    level='INFO',
+                    msg=f"NO PHASING FILE FOUND at {phasefile}. Not including phasing in binning process.\n",
+                    level="INFO",
                 )
 
             combine_counts(args)
@@ -260,28 +267,30 @@ def main(args=None):
         # Old fixed-width binning
 
         if config.run.count_reads:
-            os.makedirs(f'{output}/rdr', exist_ok=True)
+            os.makedirs(f"{output}/rdr", exist_ok=True)
             count_reads_fw(
                 args=[
-                    '-N',
+                    "-N",
                     config.run.normal,
-                    '-g',
+                    "-g",
                     config.run.reference,
-                    '-T',
+                    "-T",
                 ]
                 + config.run.bams.split()
-                + ['-b', config.count_reads_fw.size, '-S']
-                + ('Normal ' + config.run.samples).split()
+                + ["-b", config.count_reads_fw.size, "-S"]
+                + ("Normal " + config.run.samples).split()
                 + [
-                    '-O',
-                    f'{output}/rdr/normal.1bed',
-                    '-o',
-                    f'{output}/rdr/tumor.1bed',
-                    '-t',
-                    f'{output}/rdr/total.tsv',
-                    '--chromosomes',
+                    "-O",
+                    f"{output}/rdr/normal.1bed",
+                    "-o",
+                    f"{output}/rdr/tumor.1bed",
+                    "-t",
+                    f"{output}/rdr/total.tsv",
+                    "--chromosomes",
                 ]
-                + (chromosomes or [])  # important to keep this as a list here to allow proper argparse parsing
+                + (
+                    chromosomes or []
+                )  # important to keep this as a list here to allow proper argparse parsing
                 + extra_args
             )
 
@@ -293,101 +302,109 @@ def main(args=None):
 
             combine_counts_fw(
                 args=[
-                    '-c',
-                    f'{output}/rdr/normal.1bed',
-                    '-C',
-                    f'{output}/rdr/tumor.1bed',
-                    '-B',
-                    f'{output}/baf/tumor.1bed',
-                    '-t',
-                    f'{output}/rdr/total.tsv',
+                    "-c",
+                    f"{output}/rdr/normal.1bed",
+                    "-C",
+                    f"{output}/rdr/tumor.1bed",
+                    "-B",
+                    f"{output}/baf/tumor.1bed",
+                    "-t",
+                    f"{output}/rdr/total.tsv",
                 ]
             )
             out = sys.stdout.getvalue()
             sys.stdout.close()
             sys.stdout = _stdout
 
-            os.makedirs(f'{output}/bb', exist_ok=True)
-            with open(f'{output}/bb/bulk.bb', 'w') as f:
+            os.makedirs(f"{output}/bb", exist_ok=True)
+            with open(f"{output}/bb/bulk.bb", "w") as f:
                 f.write(out)
 
     if config.run.cluster_bins:
-        os.makedirs(f'{output}/bbc', exist_ok=True)
+        os.makedirs(f"{output}/bbc", exist_ok=True)
 
         if config.run.loc_clust:
             cluster_bins(
                 args=[
-                    f'{output}/bb/bulk.bb',
-                    '-o',
-                    f'{output}/bbc/bulk.seg',
-                    '-O',
-                    f'{output}/bbc/bulk.bbc',
+                    f"{output}/bb/bulk.bb",
+                    "-o",
+                    f"{output}/bbc/bulk.seg",
+                    "-O",
+                    f"{output}/bbc/bulk.bbc",
                 ]
             )
         else:
             cluster_bins_gmm(
                 args=[
-                    f'{output}/bb/bulk.bb',
-                    '-o',
-                    f'{output}/bbc/bulk.seg',
-                    '-O',
-                    f'{output}/bbc/bulk.bbc',
+                    f"{output}/bb/bulk.bb",
+                    "-o",
+                    f"{output}/bbc/bulk.seg",
+                    "-O",
+                    f"{output}/bbc/bulk.bbc",
                 ]
             )
 
     # ----------------------------------------------------
 
     if config.run.plot_bins:
-        os.makedirs(f'{output}/plots', exist_ok=True)
+        os.makedirs(f"{output}/plots", exist_ok=True)
         plot_bins(
             args=[
-                f'{output}/bbc/bulk.bbc',
-                '--rundir',
-                f'{output}/plots',
-                '--ymin',
-                '0',
-                '--ymax',
-                '3',
+                f"{output}/bbc/bulk.bbc",
+                "--rundir",
+                f"{output}/plots",
+                "--ymin",
+                "0",
+                "--ymax",
+                "3",
             ]
         )
 
-        os.makedirs(f'{output}/plots/1d2d', exist_ok=True)
+        os.makedirs(f"{output}/plots/1d2d", exist_ok=True)
         plot_bins_1d2d(
             args=[
-                '-b',
-                f'{output}/bbc/bulk.bbc',
-                '-s',
-                f'{output}/bbc/bulk.seg',
-                '--outdir',
-                f'{output}/plots/1d2d',
-                '--centers',
-                '--centromeres',
+                "-b",
+                f"{output}/bbc/bulk.bbc",
+                "-s",
+                f"{output}/bbc/bulk.seg",
+                "--outdir",
+                f"{output}/plots/1d2d",
+                "--centers",
+                "--centromeres",
             ]
         )
 
     # ----------------------------------------------------
 
     if config.run.compute_cn:
-        os.makedirs(f'{output}/results', exist_ok=True)
-        hatchet_main(args=['-x', f'{output}/results', '-i', f'{output}/bbc/bulk'] + extra_args)
+        os.makedirs(f"{output}/results", exist_ok=True)
+        hatchet_main(
+            args=["-x", f"{output}/results", "-i", f"{output}/bbc/bulk"] + extra_args
+        )
 
     # ----------------------------------------------------
 
     if config.run.plot_cn:
-        os.makedirs(f'{output}/summary', exist_ok=True)
+        os.makedirs(f"{output}/summary", exist_ok=True)
         plot_cn(
             args=[
-                f'{output}/results/best.bbc.ucn',
-                '--rundir',
-                f'{output}/summary',
+                f"{output}/results/best.bbc.ucn",
+                "--rundir",
+                f"{output}/summary",
             ]
         )
 
-        os.makedirs(f'{output}/summary/1d2d', exist_ok=True)
+        os.makedirs(f"{output}/summary/1d2d", exist_ok=True)
         plot_cn_1d2d(
-            args=[f'{output}/results/best.bbc.ucn', '--outdir', f'{output}/summary/1d2d', '--bysample', '--centromeres']
+            args=[
+                f"{output}/results/best.bbc.ucn",
+                "--outdir",
+                f"{output}/summary/1d2d",
+                "--bysample",
+                "--centromeres",
+            ]
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

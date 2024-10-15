@@ -14,68 +14,72 @@ from hatchet.utils.multiprocessing import Worker
 def main(args=None):
     log(
         msg=(
-            '# Parsing the input arguments, checking the consistency of given files, and extracting required '
-            'information\n'
+            "# Parsing the input arguments, checking the consistency of given files, and extracting required "
+            "information\n"
         ),
-        level='STEP',
+        level="STEP",
     )
     args = ap.parse_count_alleles_arguments(args)
     logArgs(args, 80)
 
     log(
-        msg='# Counting SNPs alleles from the matched-normal sample\n',
-        level='STEP',
+        msg="# Counting SNPs alleles from the matched-normal sample\n",
+        level="STEP",
     )
     snps = counting(
-        bcftools=args['bcftools'],
-        reference=args['reference'],
-        samples=[args['normal']],
-        chromosomes=args['chromosomes'],
-        num_workers=args['j'],
-        snplist=args['snps'],
-        q=args['q'],
-        Q=args['Q'],
-        mincov=args['mincov'],
-        dp=args['maxcov'],
-        E=args['E'],
-        verbose=args['verbose'],
-        outdir=args['outputSnps'],
+        bcftools=args["bcftools"],
+        reference=args["reference"],
+        samples=[args["normal"]],
+        chromosomes=args["chromosomes"],
+        num_workers=args["j"],
+        snplist=args["snps"],
+        q=args["q"],
+        Q=args["Q"],
+        mincov=args["mincov"],
+        dp=args["maxcov"],
+        E=args["E"],
+        verbose=args["verbose"],
+        outdir=args["outputSnps"],
     )
 
-    log(msg='# Selecting heterozygous SNPs\n', level='STEP')
-    hetSNPs = selectHetSNPs(counts=snps, gamma=args['gamma'], maxshift=args['maxshift'])
+    log(msg="# Selecting heterozygous SNPs\n", level="STEP")
+    hetSNPs = selectHetSNPs(counts=snps, gamma=args["gamma"], maxshift=args["maxshift"])
     if not hetSNPs:
-        close('No heterozygous SNPs found in the selected regions of the normal!\n')
+        close("No heterozygous SNPs found in the selected regions of the normal!\n")
 
     log(
-        msg='# Writing the list of selected SNPs, covered and heterozygous in the normal sample\n',
-        level='STEP',
+        msg="# Writing the list of selected SNPs, covered and heterozygous in the normal sample\n",
+        level="STEP",
     )
     # put lists of SNPs in uniquely named temporary dir to prevent concurrent hatchet runs from overwriting
     # each others temp files
-    with tempfile.TemporaryDirectory(dir=args['outputSnps']) as tmpdirname:
+    with tempfile.TemporaryDirectory(dir=args["outputSnps"]) as tmpdirname:
         hetsnpsfiles = {}
-        for chro in args['chromosomes']:
-            hetsnpsfiles[chro] = os.path.join(tmpdirname, 'TMP_{}.tsv'.format(chro))
-            with open(hetsnpsfiles[chro], 'w') as f:
-                if (args['normal'][1], chro) in hetSNPs:
-                    for snp in sorted(hetSNPs[args['normal'][1], chro]):
-                        f.write('{}\t{}\n'.format(chro, snp))
+        for chro in args["chromosomes"]:
+            hetsnpsfiles[chro] = os.path.join(tmpdirname, "TMP_{}.tsv".format(chro))
+            with open(hetsnpsfiles[chro], "w") as f:
+                if (args["normal"][1], chro) in hetSNPs:
+                    for snp in sorted(hetSNPs[args["normal"][1], chro]):
+                        f.write("{}\t{}\n".format(chro, snp))
 
         log(
-            msg='# Writing the allele counts of the normal sample for selected SNPs\n',
-            level='STEP',
+            msg="# Writing the allele counts of the normal sample for selected SNPs\n",
+            level="STEP",
         )
-        handle = open(args['outputNormal'], 'w') if args['outputNormal'] is not None else sys.stdout
-        for chro in args['chromosomes']:
-            if (args['normal'][1], chro) in hetSNPs:
-                for snp in sorted(hetSNPs[args['normal'][1], chro]):
-                    count = hetSNPs[args['normal'][1], chro][snp]
+        handle = (
+            open(args["outputNormal"], "w")
+            if args["outputNormal"] is not None
+            else sys.stdout
+        )
+        for chro in args["chromosomes"]:
+            if (args["normal"][1], chro) in hetSNPs:
+                for snp in sorted(hetSNPs[args["normal"][1], chro]):
+                    count = hetSNPs[args["normal"][1], chro][snp]
                     handle.write(
-                        '{}\t{}\t{}\t{}\t{}\n'.format(
+                        "{}\t{}\t{}\t{}\t{}\n".format(
                             chro,
                             snp,
-                            args['normal'][1],
+                            args["normal"][1],
                             count[0][1],
                             count[1][1],
                         )
@@ -83,57 +87,83 @@ def main(args=None):
         if handle is not sys.stdout:
             handle.close()
 
-        log(msg='# Counting SNPs alleles from tumour samples\n', level='STEP')
+        log(msg="# Counting SNPs alleles from tumour samples\n", level="STEP")
         rcounts = counting(
-            bcftools=args['bcftools'],
-            reference=args['reference'],
-            samples=args['samples'],
-            chromosomes=args['chromosomes'],
-            num_workers=args['j'],
+            bcftools=args["bcftools"],
+            reference=args["reference"],
+            samples=args["samples"],
+            chromosomes=args["chromosomes"],
+            num_workers=args["j"],
             snplist=hetsnpsfiles,
-            q=args['q'],
-            Q=args['Q'],
-            mincov=args['mincov'],
-            dp=args['maxcov'],
-            E=args['E'],
-            verbose=args['verbose'],
-            outdir=args['outputSnps'],
+            q=args["q"],
+            Q=args["Q"],
+            mincov=args["mincov"],
+            dp=args["maxcov"],
+            E=args["E"],
+            verbose=args["verbose"],
+            outdir=args["outputSnps"],
         )
         if not rcounts:
-            close('The selected SNPs are not covered in the tumors!\n')
-        rcounts = {c: dict(map(lambda r: (int(r[2]), dict(r[3])), rcounts[c])) for c in rcounts}
-        het = lambda chro: hetSNPs[args['normal'][1], chro]
+            close("The selected SNPs are not covered in the tumors!\n")
+        rcounts = {
+            c: dict(map(lambda r: (int(r[2]), dict(r[3])), rcounts[c])) for c in rcounts
+        }
+        het = lambda chro: hetSNPs[args["normal"][1], chro]
         form = lambda REF, ALT, T: (
             (REF, T[REF] if REF in T else 0),
             (ALT, T[ALT] if ALT in T else 0),
         )
         counts = {
-            c: {o: form(het(c[1])[o][0][0], het(c[1])[o][1][0], rcounts[c][o]) for o in rcounts[c]} for c in rcounts
+            c: {
+                o: form(het(c[1])[o][0][0], het(c[1])[o][1][0], rcounts[c][o])
+                for o in rcounts[c]
+            }
+            for c in rcounts
         }
 
     log(
-        msg='# Writing the allele counts of tumor samples for selected SNPs\n',
-        level='STEP',
+        msg="# Writing the allele counts of tumor samples for selected SNPs\n",
+        level="STEP",
     )
-    handle = open(args['outputTumors'], 'w') if args['outputTumors'] is not None else sys.stdout
-    for sample in args['samples']:
-        for chro in args['chromosomes']:
+    handle = (
+        open(args["outputTumors"], "w")
+        if args["outputTumors"] is not None
+        else sys.stdout
+    )
+    for sample in args["samples"]:
+        for chro in args["chromosomes"]:
             if (sample[1], chro) in counts:
                 for snp in counts[sample[1], chro]:
                     count = counts[sample[1], chro][snp]
-                    handle.write('{}\t{}\t{}\t{}\t{}\n'.format(chro, snp, sample[1], count[0][1], count[1][1]))
+                    handle.write(
+                        "{}\t{}\t{}\t{}\t{}\n".format(
+                            chro, snp, sample[1], count[0][1], count[1][1]
+                        )
+                    )
     if handle is not sys.stdout:
         handle.close()
 
 
 def selectHetSNPs(counts, gamma, maxshift):
     hetSNPs = {
-        c: [(r[0], r[1], r[2], r[3][0], max(r[3][1:], key=(lambda x: x[1]))) for r in counts[c] if len(r[3]) >= 2]
+        c: [
+            (r[0], r[1], r[2], r[3][0], max(r[3][1:], key=(lambda x: x[1])))
+            for r in counts[c]
+            if len(r[3]) >= 2
+        ]
         for c in counts
     }
-    check = lambda r: isHet(r[3][1], r[4][1], gamma) and checkShift(r[3][1], r[4][1], maxshift)
-    hetSNPs = {c: list(filter(check, hetSNPs[c])) for c in hetSNPs if len(hetSNPs[c]) > 0}
-    return {c: {int(r[2]): (r[3], r[4]) for r in reversed(hetSNPs[c])} for c in hetSNPs if len(hetSNPs[c]) > 0}
+    check = lambda r: isHet(r[3][1], r[4][1], gamma) and checkShift(
+        r[3][1], r[4][1], maxshift
+    )
+    hetSNPs = {
+        c: list(filter(check, hetSNPs[c])) for c in hetSNPs if len(hetSNPs[c]) > 0
+    }
+    return {
+        c: {int(r[2]): (r[3], r[4]) for r in reversed(hetSNPs[c])}
+        for c in hetSNPs
+        if len(hetSNPs[c]) > 0
+    }
 
 
 def isHet(countA, countB, gamma):
@@ -171,7 +201,6 @@ def counting(
     verbose,
     outdir,
 ):
-
     work = []
     for bam in samples:
         for chro in chromosomes:
@@ -221,10 +250,12 @@ class AlleleCounter(Worker):
         self.outdir = outdir
 
     def work(self, bamfile, samplename, chromosome):
-        return self.countAlleles(bamfile=bamfile, samplename=samplename, chromosome=chromosome)
+        return self.countAlleles(
+            bamfile=bamfile, samplename=samplename, chromosome=chromosome
+        )
 
     def countAlleles(self, bamfile, samplename, chromosome):
-        cmd_mpileup = '{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD -q {} -Q {} -d {} -T {}'.format(
+        cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD -q {} -Q {} -d {} -T {}".format(
             self.bcftools,
             bamfile,
             self.reference,
@@ -237,10 +268,12 @@ class AlleleCounter(Worker):
             self.bcftools, self.dp, self.mincov
         )
         if self.E:
-            cmd_mpileup += ' -E'
-        errname = os.path.join(self.outdir, '{}_{}_bcftools.log'.format(samplename, chromosome))
+            cmd_mpileup += " -E"
+        errname = os.path.join(
+            self.outdir, "{}_{}_bcftools.log".format(samplename, chromosome)
+        )
 
-        with open(errname, 'w') as err:
+        with open(errname, "w") as err:
             mpileup = pr.Popen(
                 shlex.split(cmd_mpileup),
                 stdout=pr.PIPE,
@@ -259,14 +292,14 @@ class AlleleCounter(Worker):
         if any(c != 0 for c in codes):
             raise ValueError(
                 error(
-                    'Allele counting failed on {} of {}, please check errors in {}!'.format(
+                    "Allele counting failed on {} of {}, please check errors in {}!".format(
                         chromosome, samplename, errname
                     )
                 )
             )
         else:
             os.remove(errname)
-        alleles = {'A', 'C', 'G', 'T'}
+        alleles = {"A", "C", "G", "T"}
         mkcounts = lambda p, q: list(
             map(
                 lambda y: (y[0], int(y[1])),
@@ -277,10 +310,14 @@ class AlleleCounter(Worker):
             samplename,
             p[0],
             p[1],
-            mkcounts(p[2].split(','), p[3].split(',')),
+            mkcounts(p[2].split(","), p[3].split(",")),
         )
-        return [form(line.strip().split()) for line in stdout.strip().split('\n') if line != '']
+        return [
+            form(line.strip().split())
+            for line in stdout.strip().split("\n")
+            if line != ""
+        ]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

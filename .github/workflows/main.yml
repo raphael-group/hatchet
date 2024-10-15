@@ -12,13 +12,24 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: [3.7, 3.8, 3.9]
+        python: ["3.8", "3.9", "3.10", "3.11", "3.12"]
       fail-fast: false
 
     steps:
+      - name: Install system depedencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libbz2-dev liblzma-dev
+        if: ${{ runner.os == 'Linux' }}
+
       - uses: actions/checkout@v2
         with:
           lfs: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
 
       - name: Upgrade setuptools
         run: |
@@ -38,11 +49,6 @@ jobs:
           (cd gurobi902/linux64/bin && ./grbgetkey -q ${{ secrets.GUROBI_KEYCODE }} --path ${GUROBI_HOME})
           echo "GRB_LICENSE_FILE=${GUROBI_HOME}/gurobi.lic" >> $GITHUB_ENV
         continue-on-error: true
-
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
 
       - name: Install HATCHet with dev dependencies
         run: |
@@ -147,9 +153,9 @@ jobs:
           find tests/out -name "*:*" -exec rename 's|:|-|g' {} \;
 
       - name: Save Pytest Output Data
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ matrix.python }}
           path: tests/out
 
       - name: Convert coverage
@@ -174,6 +180,11 @@ jobs:
         with:
           lfs: true
 
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
       - name: Upgrade setuptools
         run: |
           pip3 install wheel --upgrade
@@ -186,11 +197,6 @@ jobs:
           (cd gurobi902/linux64/src/build && make)
           (cd gurobi902/linux64/lib && ln -f -s ../src/build/libgurobi_c++.a libgurobi_c++.a)
           echo "GUROBI_HOME=$(realpath gurobi902)" >> $GITHUB_ENV
-
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
 
       - name: Install package
         run: |

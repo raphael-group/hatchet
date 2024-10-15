@@ -30,7 +30,7 @@ lhg19 = [
 
 
 def extractChr(ref):
-    return int(''.join([i for i in ref if i.isdigit()]))
+    return int("".join([i for i in ref if i.isdigit()]))
 
 
 def findStart(bamfile, seq, least=0):
@@ -92,11 +92,11 @@ def binChr(bamfile, sample, seq, size, start=0, end=0, least=-1):
         if count > least:
             res.append(
                 {
-                    'sample': sample,
-                    'chromosome': extractChr(seq),
-                    'start': index,
-                    'end': (index + size),
-                    'count': count,
+                    "sample": sample,
+                    "chromosome": extractChr(seq),
+                    "start": index,
+                    "end": (index + size),
+                    "count": count,
                 }
             )
         index += size

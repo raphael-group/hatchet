@@ -21,7 +21,7 @@ import os
 import sys
 import sphinx_rtd_theme
 
-sys.path.insert(0, os.path.abspath('../src'))
+sys.path.insert(0, os.path.abspath("../src"))
 import hatchet  # noqa: E402
 
 # -- General configuration ------------------------------------------------
@@ -34,16 +34,16 @@ import hatchet  # noqa: E402
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.mathjax',
-    'sphinxcontrib.bibtex',
-    'numpydoc',
-    'recommonmark',
-    'sphinx_markdown_tables',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.mathjax",
+    "sphinxcontrib.bibtex",
+    "numpydoc",
+    "recommonmark",
+    "sphinx_markdown_tables",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -53,19 +53,19 @@ templates_path = ['_templates']
 
 # Extra file to copy over to the build directory
 html_extra_path = [
-    '../../script/hatchet.ini',
-    '../../custom/GATK4-CNV/sample1.GATK4.CNV.seg',
-    '../../custom/GATK4-CNV/sample2.GATK4.CNV.seg',
-    '../../custom/GATK4-CNV/custom-gatk4-cnv.sh',
+    "../../script/hatchet.ini",
+    "../../custom/GATK4-CNV/sample1.GATK4.CNV.seg",
+    "../../custom/GATK4-CNV/sample2.GATK4.CNV.seg",
+    "../../custom/GATK4-CNV/custom-gatk4-cnv.sh",
 ]
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = "index"
 
 # General information about the project.
-project = 'HATCHet'
-copyright = '2021, Princeton University'
-author = 'Simone Zaccaria'
+project = "HATCHet"
+copyright = "2021, Princeton University"
+author = "Simone Zaccaria"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -89,7 +89,7 @@ language = None
 exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = "sphinx"
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
@@ -100,12 +100,12 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'hatchet'
+htmlhelp_basename = "hatchet"
 
-autoclass_content = 'both'
+autoclass_content = "both"

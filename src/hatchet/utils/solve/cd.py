@@ -25,7 +25,6 @@ class Worker:
         _cA, _cB = cA, cB  # first hot-start values
 
         while (_iters < max_iters) and (_convergence_iters < max_convergence_iters):
-
             carch = copy(self.ilp)
             carch.fix_u(_u)
             carch.create_model()
@@ -92,7 +91,7 @@ class CoordinateDescent:
 
     def run(
         self,
-        solver_type='gurobi',
+        solver_type="gurobi",
         max_iters=10,
         max_convergence_iters=2,
         n_seed=400,
@@ -125,7 +124,7 @@ class CoordinateDescent:
                     result[obj] = cA, cB, u
 
         if not result:
-            raise RuntimeError('Not a single feasible solution found!')
+            raise RuntimeError("Not a single feasible solution found!")
 
         best = min(result)
         return (best,) + result[best] + (self.ilp.cluster_ids, self.ilp.sample_ids)
