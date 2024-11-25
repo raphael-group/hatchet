@@ -93,7 +93,6 @@ def dwnld_chains(dirpath):
 def dwnld_refpanel_genome(path):
     newref = os.path.join(path, "hg19_no_chr.fa")
     if not os.path.isfile(newref):
-
         # If the genome reference file used in other parts of HATCHet2 matches the one we want, use it
         reference_file = config.paths.reference
         if (
