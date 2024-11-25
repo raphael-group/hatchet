@@ -1,20 +1,20 @@
 # Demo for WES data from a cancer patient
 : ex: set ft=markdown ;:<<'```shell' #
 
-**NOTE**: this demo has not yet been updated for version 1.0 of HATCHet which includes variable-width binning, phasing, and locality-aware clustering.
+**NOTE**: this demo has not yet been updated for version 1.0 of HATCHet22 which includes variable-width binning, phasing, and locality-aware clustering.
 
-The following HATCHet's demo represents a guided example starting from WES (whole-exome sequencing) data from 2 samples of the same patient. WES data are an interesting case to consider as they are typically characterize by a larger variance, especially for RDR. For simplicity, the demo starts from a BB file `demo-wes.bb` (included in this demo at `examples/demo-WES/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. count-reads, count-alleles, and combine-counts) have already been executed by running standard configuration for WES data (bin size of 250kb through -b 250kb of count-reads, and the allele counts for germline heterozygous SNPs have been selected between 30 and 400 through `-c 30 -C 400` of `count-alleles` as the average coverage is 180x).
+The following HATCHet22's demo represents a guided example starting from WES (whole-exome sequencing) data from 2 samples of the same patient. WES data are an interesting case to consider as they are typically characterize by a larger variance, especially for RDR. For simplicity, the demo starts from a BB file `demo-wes.bb` (included in this demo at `examples/demo-WES/`) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. count-reads, count-alleles, and combine-counts) have already been executed by running standard configuration for WES data (bin size of 250kb through -b 250kb of count-reads, and the allele counts for germline heterozygous SNPs have been selected between 30 and 400 through `-c 30 -C 400` of `count-alleles` as the average coverage is 180x).
 
 ## Requirements and set up
 
-The demo requires that HATCHet has been successfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
+The demo requires that HATCHet22 has been successfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
 PY="python3" # This is the full path to the version of PYTHON3 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python3`
 :<<'```shell' # Ignore this line
 ```
 
-The following paths are consequently obtained to point to the required components of HATCHet
+The following paths are consequently obtained to point to the required components of HATCHet22
 
 ```shell
 CLUSTERBINS="${PY} -m hatchet cluster-bins"
@@ -35,14 +35,14 @@ PS4='[\t]'
 
 ## Global clustering
 
-The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluster-bins`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
+The first main step of the demo performs the global clustering of HATCHet22 where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluster-bins`, i.e. theHATCHet2t2's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
 ${CLUSTERBINS} demo-wes.bb -o demo-wes.seg -O demo-wes.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
-For different type of data it is essential to assess the quality of the clustering because this is performed by a Dirichlet process and it is affected by varying degrees of noise. This assesment is particularly important in the case of WES data where the variance is higher than expected, especially for RDR; in fact we often observe that the clusters are much wider in terms of RDR (x-axis) and tend to have a *disc* shape rather than the expected *oval* shape. To do this, we use `plot-bins`, i.e. the HATCHet's component designed for the analysis of the data, and produce the cluster plot using the `CBB` command. To help we use the following options:
+For different type of data it is essential to assess the quality of the clustering because this is performed by a Dirichlet process and it is affected by varying degrees of noise. This assesment is particularly important in the case of WES data where the variance is higher than expected, especially for RDR; in fact we often observe that the clusters are much wider in terms of RDR (x-axis) and tend to have a *disc* shape rather than the expected *oval* shape. To do this, we use `plot-bins`, i.e. the HATCHet22's component designed for the analysis of the data, and produce the cluster plot using the `CBB` command. To help we use the following options:
 - `--xmin 0` and `--xmax 2` allow to zoom in and to focus the figure on the same RDR (y-axis) range for every sample.
 - `-tS 0.005` asks to plot only the clusters which cover at least the `0.5%` of the genome. This is useful to clean the figure and focus on the main components.
 To trace all steps, we also move the figure to `tR015-cbb.pdf`.
@@ -82,9 +82,9 @@ In this clustering the previously-described condition is met and all the differe
 
 ## hatchet's step
 
-In the last step we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
+In the last step we apply `hatchet`, i.e. the component of HATCHet22 which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
 We apply the last step with default parameters and, for simplicity of this demo, we apply only few changes:
-- As the dataset has high variance and noise (see clustering), we consider a minimum clone proportion `-u` slightly higher than the default value, i.e. `6%`. We do this because we cannot infer tumor clones with very low proportions when there is high noise and because potential clones inferred with very low proportions may simply be the result of overfitting. In fact, when using values of `-u` smaller than `6%` we obtain solutions with clone proporions identical to the minimum value of `-u`; this is the recommended criterion to determine the need of increasing the value of `-u`. Interestingly, we can observe the same overfitting sign when we consider too high values of the minimum clone proportion, for example `-u 0.1`. This happens because the value is too high to fit the given data. As such, it is always important to choose the minimum value which provides "non-overfitting" results, i.e. results where the clone proportions are not identical to the minimum. When this is not possible, as in very noisy datasets, we reccommend to either tune the clustering or keeping very low values of the minimum clone proportion, as HATCHet is still able to recover the main clonal composition even  in the presence of mninor overfitting.
+- As the dataset has high variance and noise (see clustering), we consider a minimum clone proportion `-u` slightly higher than the default value, i.e. `6%`. We do this because we cannot infer tumor clones with very low proportions when there is high noise and because potential clones inferred with very low proportions may simply be the result of overfitting. In fact, when using values of `-u` smaller than `6%` we obtain solutions with clone proporions identical to the minimum value of `-u`; this is the recommended criterion to determine the need of increasing the value of `-u`. Interestingly, we can observe the same overfitting sign when we consider too high values of the minimum clone proportion, for example `-u 0.1`. This happens because the value is too high to fit the given data. As such, it is always important to choose the minimum value which provides "non-overfitting" results, i.e. results where the clone proportions are not identical to the minimum. When this is not possible, as in very noisy datasets, we reccommend to either tune the clustering or keeping very low values of the minimum clone proportion, as HATCHet22 is still able to recover the main clonal composition even  in the presence of mninor overfitting.
 - We limit the number of clones to 6 for simplicity of this demo and because it is a reasonable value for CNAs when consider only few samples from the same patient.
 - We only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
 
@@ -113,12 +113,12 @@ We obtain the following summary of results:
     ## The related-tetraploid resulting files are copied to ./chosen.tetraploid.bbc.ucn and ./chosen.tetraploid.seg.ucn
     # The chosen solution is diploid with 4 clones and is written in ./best.bbc.ucn and ./best.seg.ucn
 
-HATCHet predicts the presence of 4 clones in the 3 tumor samples with no WGD and, especially, predicts that each sample contains two distinct tumor clones while sharing one of this. As there are inferred tumor clones with small clone proportions, there are only 2 samples, and the objective function does not significantly decrease after the chosen number of clones, there is no need to investigate the results of HATCHet by increasing the sensitivity with lower values of `-l`. However, the user could investigate the results of HATCHet when considering a lower sensitivity to small CNAs by considering higher values of `-l`, e.g. `-l 0.6` or `-l 0.8`; this choice would be indeed motivated by the high noise of the dataset.
+HATCHet22 predicts the presence of 4 clones in the 3 tumor samples with no WGD and, especially, predicts that each sample contains two distinct tumor clones while sharing one of this. As there are inferred tumor clones with small clone proportions, there are only 2 samples, and the objective function does not significantly decrease after the chosen number of clones, there is no need to investigate the results ofHATCHet2t2 by increasing the sensitivity with lower values of `-l`. However, the user could investigate the results oHATCHet2et2 when considering a lower sensitivity to small CNAs by considering higher values of `-l`, e.g. `-l 0.6` or `-l 0.8`; this choice would be indeed motivated by the high noise of the dataset.
 
 
 ## Analyzing inferred results
 
-Finally, we obtain useful plots to summarize and analyze the inferred results by using `plot-cn`, which is the last component of HATCHet. As WES data have fewer point covering the genome, we slightly change the resolution of the plots by asking to obtain genomic regions merging fewer genomic bins through `-rC 10 -rG 1`. As such, we run `plot-cn` as follows
+Finally, we obtain useful plots to summarize and analyze the inferred results by using `plot-cn`, which is the last component of HATCHet22. As WES data have fewer point covering the genome, we slightly change the resolution of the plots by asking to obtain genomic regions merging fewer genomic bins through `-rC 10 -rG 1`. As such, we run `plot-cn` as follows
 
 ```shell
 ${PLOTCN} best.bbc.ucn -rC 10 -rG 1

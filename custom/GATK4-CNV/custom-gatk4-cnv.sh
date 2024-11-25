@@ -1,8 +1,8 @@
 #!/usr/bin/bash
 
-# This is a custom complete pipeline of HATCHet which considers in input segmented files for one or more samples from the same patient, produced by the GATK4 CNV pipeline.
+# This is a custom complete pipeline of HATCHet2 which considers in input segmented files for one or more samples from the same patient, produced by the GATK4 CNV pipeline.
 
-HATCHET_HOME="/path/to/hatchet_home" # Provide the full path to HATCHet's repository
+HATCHET_HOME="/path/to/hatchet_home" # Provide the full path to HATCHet2's repository
 
 CNVTOBB="${HATCHET_HOME}/custom/GATK4-CNV/gatk4cnsToBB.py"
 

@@ -11,7 +11,7 @@ from hatchet import __version__
 def parse_args():
     description = (
         "This method takes in input multiple samples from the same patient, where each sample is a "
-        "segmented CNV file produced by GATK4 CNV pipeline, and produces a BB input file for HATCHet."
+        "segmented CNV file produced by GATK4 CNV pipeline, and produces a BB input file for HATCHet2."
     )
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
@@ -19,7 +19,7 @@ def parse_args():
         type=str,
         help=(
             "A white-space-separated list between apices where each element is a segmented CNV file produced by "
-            "GATK4 CNV pipeline. The file format is describe in the HATCHet's repository."
+            "GATK4 CNV pipeline. The file format is describe in the HATCHet2's repository."
         ),
     )
     parser.add_argument(

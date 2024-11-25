@@ -1,4 +1,4 @@
-# All supported HATCHet commands
+# All supported HATCHet2 commands
 commands = (
     "count-reads",
     "count-reads-fw",
@@ -20,7 +20,7 @@ commands = (
 )
 
 
-# Support for old command names as they've been used in earlier versions of HATCHet
+# Support for old command names as they've been used in earlier versions of HATCHet2
 command_aliases = {
     "binBAM": "count-reads-fw",
     "SNPCaller": "genotype-snps",

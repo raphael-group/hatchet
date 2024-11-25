@@ -1,0 +1,2 @@
+[console_scripts]
+hatchet = hatchet.__main__:main

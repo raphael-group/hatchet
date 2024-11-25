@@ -50,7 +50,7 @@ jobs:
           echo "GRB_LICENSE_FILE=${GUROBI_HOME}/gurobi.lic" >> $GITHUB_ENV
         continue-on-error: true
 
-      - name: Install HATCHet with dev dependencies
+      - name: Install HATCHet2 with dev dependencies
         run: |
           python -m pip install .[dev]
         env:
@@ -136,7 +136,7 @@ jobs:
           tar zxvf 1000GP_Phase3.tgz --wildcards *chr22* *sample
           echo "HATCHET_DOWNLOAD_PANEL_REFPANELDIR=$(pwd)" >> $GITHUB_ENV
 
-      - name: HATCHet Check
+      - name: HATCHet2 Check
         run: |
           hatchet check
 

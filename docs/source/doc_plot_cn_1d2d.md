@@ -2,7 +2,7 @@
 
 This step produces alternate plots that show bins in terms of their computed read-depth ratios (RDR), B-allele frequencies (BAF), and assigned copy-number states.
 These plots show bins colored by cluster, where the color is consistent between the "2D" (RDR x BAF) view and the "1D" (genomic location x RDR/BAF) view.
-Additionally, the labeled points in the 2D plots and the black bars in the 1D plots show the *expected* positions of the assigned copy-number states (determined by the mixture proportions and fractional copy number scaling). These indicators can be used to evaluate the consistency of the HATCHet solution.
+Additionally, the labeled points in the 2D plots and the black bars in the 1D plots show the *expected* positions of the assigned copy-number states (determined by the mixture proportions and fractional copy number scaling). These indicators can be used to evaluate the consistency of the HATCHet2 solution.
 
 When `plot_cn = True` is indicated in `hatchet.ini`, both this command and the command [plot-cn](doc_plot_cn.md) will be run.
 

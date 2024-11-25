@@ -52,7 +52,7 @@ def generate_1D2D_plots(
     resample_balanced=False,
 ):
     if "#CHR" not in bbc:
-        # throw HATCHet error
+        # throw HATCHet2 error
         raise ValueError("Input table is malformed (missing #CHR column)")
 
     # Prepend 'chr' to #CHR column if not already present

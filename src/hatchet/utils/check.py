@@ -261,7 +261,7 @@ CHECKS = {
 def main(hatchet_cmds=None):
     all_ok = True
     hatchet_cmds = hatchet_cmds or all_commands
-    print("======================\nRunning HATCHet checks\n======================")
+    print("======================\nRunning HATCHet2 checks\n======================")
 
     _pred_cache = {}
 

@@ -302,13 +302,13 @@ def count_chromosome_wrapper(param):
 
 def read_snps(baf_file, ch, all_names):
     """
-    Read and validate SNP data for this patient (TSV table output from HATCHet deBAF.py).
+    Read and validate SNP data for this patient.
     """
     all_names = all_names[
         1:
     ]  # remove normal sample -- not looking for SNP counts from normal
 
-    # Read in HATCHet BAF table
+    # Read in HATCHet2 BAF table
     all_snps = pd.read_table(
         baf_file,
         names=["CHR", "POS", "SAMPLE", "REF", "ALT"],

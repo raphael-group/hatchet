@@ -63,9 +63,9 @@ html_extra_path = [
 master_doc = "index"
 
 # General information about the project.
-project = "HATCHet"
-copyright = "2021, Princeton University"
-author = "Simone Zaccaria"
+project = 'HATCHet2'
+copyright = '2024, Princeton University'
+author = 'Matthew Myers, Simone Zaccaria, Vineet Bansal, and Brian Arnold'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
