@@ -2,7 +2,6 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from pybedtools import BedTool
 
-
 def rd_gccorrect(bb, ref_genome):
     """
     Function to correct GC bias in read depth data for each sample.
@@ -11,20 +10,18 @@ def rd_gccorrect(bb, ref_genome):
     - ref_genome: File path to the reference genome in FASTA format
     Return type: DataFrame with corrected read depth data
     """
-
     bb['CHR'] = bb['#CHR'].str.replace('chr', '')
     bb = bb.sort_values(by=['CHR', 'START']).reset_index(drop=True)
 
     # add GC content
-    # ref_genome = '/n/fs/ragr-data/datasets/ref-genomes/GRCh38_10X/fasta/genome.fa'
-    bb = bb.merge(
-        BedTool.from_dataframe(bb[['#CHR', 'START', 'END']].drop_duplicates())
-        .nucleotide_content(fi=ref_genome)
-        .to_dataframe(disable_auto_names=True)
-        .rename(columns={'#1_usercol': '#CHR', '2_usercol': 'START', '3_usercol': 'END', '5_pct_gc': 'GC'})[
-            ['#CHR', 'START', 'END', 'GC']
-        ]
-    )
+    gc = (BedTool.from_dataframe(bb[['#CHR', 'START', 'END']].drop_duplicates())
+            .nucleotide_content(fi=ref_genome)
+            .to_dataframe(disable_auto_names=True)
+            .rename(columns={'#1_usercol': '#CHR', '2_usercol': 'START', '3_usercol': 'END', '5_pct_gc': 'GC'})[
+                ['#CHR', 'START', 'END', 'GC']
+            ])
+    gc['#CHR'] = gc['#CHR'].astype(str)
+    bb = bb.merge(gc)
 
     # Correcting GC bias per sample
     gccorrect = bb.groupby('SAMPLE').apply(lambda D: smf.quantreg('RD ~ GC + I(GC ** 2.0)', data=D).fit(q=0.5))

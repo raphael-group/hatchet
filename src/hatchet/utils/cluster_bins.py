@@ -301,6 +301,8 @@ def hmm_model_select(
             model.transmat_ = A
             model.fit(X, lengths)
 
+            if np.any(np.isnan(model.startprob_)):
+                model.startprob_ = np.ones(K) / K
             prob, labels = model.decode(X, lengths, algorithm=decode_alg)
             if prob > my_best_ll:
                 my_best_labels = labels

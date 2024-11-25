@@ -18,7 +18,7 @@ if(EXISTS ${GUROBI_HOME} )
     string(STRIP ${GUROBI_VER} GUROBI_VER )
     message( "-- The retrieved version of Gurobi is: " ${GUROBI_VER} )
 
-    string(SUBSTRING ${GUROBI_VER} 0 3 GUROBI_VER_LIB)
+    string(SUBSTRING ${GUROBI_VER} 0 2 GUROBI_VER_LIB)
 
     message( "-- The retrieved name of version-specific library is " gurobi ${GUROBI_VER_LIB} )
 
@@ -55,6 +55,18 @@ FIND_LIBRARY(GUROBI_LIB
              NAMES "gurobi${GUROBI_VER_LIB}"
              PATHS /usr/local/gurobi751/linux64/lib/ /Library/gurobi751/mac64/lib/ ${GUROBI_HOME}/linux64/lib/ ${GUROBI_HOME}/mac64/lib/ ${GUROBI_HOME}/lib/
              DOC "Gurobi C Libraries")
+
+if( GUROBI_INCLUDE_DIR )
+    message( "-- Gurobi include dir found in " ${GUROBI_INCLUDE_DIR})
+endif()
+
+if( GUROBI_CPP_LIB )
+    message( "-- Gurobi CPP lib found in " ${GUROBI_CPP_LIB})
+endif()
+
+if( GUROBI_LIB )
+    message( "-- Gurobi lib found in " ${GUROBI_LIB})
+endif()
 
 set(GUROBI_LIBRARIES ${GUROBI_CPP_LIB} ${GUROBI_LIB})
 
