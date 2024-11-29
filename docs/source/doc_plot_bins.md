@@ -46,7 +46,7 @@ A command must be specified using the flag `-c`, `--command` and every command i
 
 ### RD
 
-The command generates a scatter plot describing the RDR of every genomic bin in the different samples. For every genomic bin sorted by chromosome and by genomic positions, a point is plotted with the correspondig value of RDR and colored by a color identifying the corresponding sample.
+The command generates a scatter plot describing the RDR of every genomic bin in the different samples. For every genomic bin sorted by chromosome and by genomic positions, a point is plotted with the corresponding value of RDR and colored by a color identifying the corresponding sample.
 
     python -m hatchet plot-bins A12.bbc -c RD -m Set1 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
 
@@ -56,7 +56,7 @@ The command generates a scatter plot describing the RDR of every genomic bin in 
 
 ### BAF
 
-The command generates a scatter plot describing the BAF of every genomic bin in the different samples. For every genomic bin sorted by chromosome and by genomic positions, a point is plotted with the correspondig value of RDR and colored by a color identifying the corresponding sample.
+The command generates a scatter plot describing the BAF of every genomic bin in the different samples. For every genomic bin sorted by chromosome and by genomic positions, a point is plotted with the corresponding value of RDR and colored by a color identifying the corresponding sample.
 
     python -m hatchet plot-bins A12.bbc -c BAF -m Set1 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
 
@@ -107,7 +107,7 @@ The command generates a series of 2d-scatter plots where x-axis corresponds to t
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-tC`, `--chrthreshold` | Threshold of chromosomes | A threshold can be specified to select to plot only genomic regions belonging to clusters that cover at least the specified number of chomosomes | 0, no threshold |
+| `-tC`, `--chrthreshold` | Threshold of chromosomes | A threshold can be specified to select to plot only genomic regions belonging to clusters that cover at least the specified number of chromosomes | 0, no threshold |
 | `-tS`, `--sizethreshold` | Threshold of size | A threshold can be specified to select to plot only genomic regions belonging to clusters that cover at least the specified fraction of the genome | 0, no threshold |
 | `--xmin` | Minimum x-value of plot | The value can be specified to fix the minimum value of x-axis of the plot | None |
 | `--xmax` | Maximum x-value of plot | The value can be specified to fix the maximum value of x-axis of the plot | None |
@@ -119,5 +119,5 @@ The command generates a series of 2d-scatter plots where x-axis corresponds to t
 | `--resolution` | Number of bins to merge | This feature allows plot-bins to merge multiple bins into segments whose copy numbers will be chosen by majority. This features allows to change the resolution of the plot. | 0, bins are not merged |
 | `--colwrap` | Number of plots per each column | This value determines the maximum number of plots for multiple samples to print on the same row  | 2 |
 | `--fontscale` | Scale for font size | The value is used to scale the font size | 1 |
-| `-s`, `--segfile` | Path to cluter file | The cluster file, containing estimated values of RDR and BAF for each cluster in every sample is only required by `CLUSTER` command | None |
+| `-s`, `--segfile` | Path to cluster file | The cluster file, containing estimated values of RDR and BAF for each cluster in every sample is only required by `CLUSTER` command | None |
 | `-x`, `--rundir` | Path to running directory | The running directory where output the results | Current directory  |

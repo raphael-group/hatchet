@@ -67,7 +67,7 @@ combine-counts has some main parameters; the main values of these parameters all
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-v`, `--verbose`  | Verbose logging flag | When enabled, combine-counts outputs a verbose log of the executiong | Not used |
+| `-v`, `--verbose`  | Verbose logging flag | When enabled, combine-counts outputs a verbose log of the executing | Not used |
 | `-r`, `--disablebar` | Disabling progress-bar flag | When enabled, the output progress bar is disabled | Not used |
 | `-b`, `--normalbafs` | File of allele counts for SNPs in matched-normal sample | When provided, combine-counts attempts to correct the estimated BAF using the variance in matched-normal sample. | Not used (deprecated) |
 | `-d`, `--diploidbaf` | Maximum expected shift from 0.5 for BAF of diploid or tetraploid clusters | The maximum shift is used to identify potential potential bins with base states (1, 1) or (2, 2) whose BAF needs to be corrected. The value depends on the variance in the data (related to noise and coverage); generally, higher variance requires a higher shift. Information provided by plot-bins can help to decide this value in special datasets. | 0.08 (other typically suggested values are 0.1-0.11 for higher variance and 0.06 for low variance) |

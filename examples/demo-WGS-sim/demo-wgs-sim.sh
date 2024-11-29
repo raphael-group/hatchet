@@ -7,7 +7,7 @@ The following HATCHet's demo represents a guided example starting from WGS (whol
 
 Specifically, the tumor is composed of 2 tumor clones (clone0 and clone1) and a normal diploid clone (normal). The clonal composition of every sample is described in the following table:
 
-| Name | Proportion of normal clone | Proporion of clone0 | Proportion of clone1 |
+| Name | Proportion of normal clone | Proportion of clone0 | Proportion of clone1 |
 |------|----------------------------|---------------------|----------------------|
 | `bulk_035clone1_06clone0_005normal` | `5%` | `60%` | `35%` |
 | `bulk_055clone1_04clone0_005normal` | `5%` | `40%` | `55%` |
@@ -67,7 +67,7 @@ We can easily notice that the clustering is good and not tuning is needed as eve
 ## hatchet's step
 
 Next we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
-We apply the last step with default parameters and, for simplicity of this demo, we consider 8 clones, which can be easily considered by HATCHet in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
+We apply the last step with default parameters and, for simplicity of this demo, we consider 8 clones, which can be easily considered by HATCHet in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we recommend to use at least 400 restarts in standard runs.
 
 ```shell
 ${INFER} -i demo-wgs-sim -n2,8 -p 100 -v 2 -u 0.03 -r 12 -eD 6 -eT 12 -l 0.5 |& tee hatchet.log
@@ -126,4 +126,4 @@ The second `intratumor-clones-allelecn.pdf` similarly represents the allele-spec
 
 The third `intratumor-profiles.pdf` represents both the clone proportions and the total copy numbers of every clone in genomic regions.
 ![intratumor-clones-allelecn.pdf](profiles.png)
-The main heatmap in the right side of the figure represent the total copy number of every clone (i.e. a row) for every genomic region (which are partition into chromosomes as described at the top of the heatmap) such that grey color indicate regions with base copy number not affected by CNAs (but they can be affected by a WGD when this occurrs), blue colors indicates deletions, and red colors indicate amplifications; in general, the stronger the color the smaller/higher the corresponding aberration. The smaller heatmap in the left side describes the clone proportion of each clone in each sample such that the lightest color correspond to absence while darker colors indicate higher clone proportions. Last, in the left-most part there is a dendogram which hierarchically clusters the tumor clones based on similiraity.
+The main heatmap in the right side of the figure represent the total copy number of every clone (i.e. a row) for every genomic region (which are partition into chromosomes as described at the top of the heatmap) such that grey color indicate regions with base copy number not affected by CNAs (but they can be affected by a WGD when this occurs), blue colors indicates deletions, and red colors indicate amplifications; in general, the stronger the color the smaller/higher the corresponding aberration. The smaller heatmap in the left side describes the clone proportion of each clone in each sample such that the lightest color correspond to absence while darker colors indicate higher clone proportions. Last, in the left-most part there is a dendogram which hierarchically clusters the tumor clones based on similarity.
