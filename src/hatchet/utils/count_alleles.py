@@ -264,7 +264,7 @@ class AlleleCounter(Worker):
             self.dp,
             self.snplist[chromosome],
         )
-        cmd_query = "{} query -f '%CHROM\\t%POS\\t%REF,%ALT\\t%AD\\n' -i 'SUM(AD)<={} & SUM(AD)>={}'".format(
+        cmd_query = "{} query -f '%CHROM\\t%POS\\t%REF,%ALT\\t%AD\\n' -i 'SUM(INFO/AD)<={} & SUM(INFO/AD)>={}'".format(
             self.bcftools, self.dp, self.mincov
         )
         if self.E:
@@ -287,6 +287,8 @@ class AlleleCounter(Worker):
                 stderr=err,
                 universal_newlines=True,
             )
+            # Allow sp mpileup to receive a SIGPIPE if p2 exits. avoid deadlock
+            mpileup.stdout.close()
             stdout, _ = query.communicate()
             codes = map(lambda p: p.wait(), [mpileup, query])
         if any(c != 0 for c in codes):
