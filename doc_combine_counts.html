@@ -1,0 +1,338 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>combine-counts &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">combine-counts</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_combine_counts.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="combine-counts">
+<h1>combine-counts<a class="headerlink" href="#combine-counts" title="Permalink to this heading">¶</a></h1>
+<p>This step constructs variable-length bins that ensure that each bin has at least some number (<code class="docutils literal notranslate"><span class="pre">--msr</span></code>) of SNP-covering reads and at least some number (<code class="docutils literal notranslate"><span class="pre">--mtr</span></code>) of total reads per bin. Then, it combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin.</p>
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">combine-counts</span></code> takes in input the output from <code class="docutils literal notranslate"><span class="pre">count-reads</span></code> (i.e., two gzipped files <code class="docutils literal notranslate"><span class="pre">ch.total.gz</span></code> and <code class="docutils literal notranslate"><span class="pre">ch.thresholds.gz</span></code> for each chromosome <code class="docutils literal notranslate"><span class="pre">ch</span></code>, ). Use the <code class="docutils literal notranslate"><span class="pre">-A,</span> <span class="pre">--array</span></code> argument to specify a directory containing these input files.</p>
+<p>It also requires (specified by the flag <code class="docutils literal notranslate"><span class="pre">-b</span></code>, <code class="docutils literal notranslate"><span class="pre">--baffile</span></code>) a tab-separated file specifying the allele counts for heterzygous germline SNPs from all tumor samples. The tab separated file would typically be produced by the <code class="docutils literal notranslate"><span class="pre">count-alleles</span></code> command and has the following fields:</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of a chromosome</td>
+</tr>
+<tr>
+<td><code>POS</code></td>
+<td>Genomic position corresponding to a heterozygous germline in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of a tumor sample</td>
+</tr>
+<tr>
+<td><code>REF_COUNT</code></td>
+<td>Count of reads covering <code>POS</code> with reference allele</td>
+</tr>
+<tr>
+<td><code>ALT_COUNT</code></td>
+<td>Count of reads covering <code>POS</code> with alternate allele</td>
+</tr>
+</tbody>
+</table><p>Finally, <code class="docutils literal notranslate"><span class="pre">combine-counts</span></code> requires a TSV file (<code class="docutils literal notranslate"><span class="pre">-t,</span> <span class="pre">--totalcounts</span></code>) specifying the total number of reads aligned in each sample (also typically produced by <code class="docutils literal notranslate"><span class="pre">count-reads</span></code>).</p>
+<p>In summary, <strong>the following arguments are required to specify input</strong>:</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-A</code>, <code>--array</code></td>
+<td>Directory containing intermediate files</td>
+<td>Typically populated by <code>count-reads</code>. For each chromosome <code>ch</code>, this directory should contain files <code>ch.total.gz</code> and <code>ch.thresholds.gz</code> (as well as <code>samples.txt</code> indicating sample names)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>-b, --baffile</code></td>
+<td>Tab-separated file with allele counts</td>
+<td>Typically produced by <code>count-alleles</code>. See description above.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>-t, --totalcounts</code></td>
+<td>Tab-separated file with total aligned reads for each sample</td>
+<td>Typically produced by <code>count-reads</code>.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>-V, --refversion</code></td>
+<td>Reference genome version</td>
+<td>Either "hg19" or "hg38". This argument is used to select which centromere locations to use.</td>
+<td></td>
+</tr>
+</tbody>
+</table></section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">¶</a></h2>
+<p>combine-counts produces a tab-separated file (<code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--outfile</span></code>) with the following fields.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of a chromosome</td>
+</tr>
+<tr>
+<td><code>START</code></td>
+<td>Starting genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>END</code></td>
+<td>Ending genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of a tumor sample</td>
+</tr>
+<tr>
+<td><code>RD</code></td>
+<td>RDR of the bin in <code>SAMPLE</code> (corrected by the total reads in <code>SAMPLE</code> vs. the total reads in the matched normal sample)</td>
+</tr>
+<tr>
+<td><code>#SNPS</code></td>
+<td>Number of SNPs present in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>COV</code></td>
+<td>Average coverage in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>ALPHA</code></td>
+<td>Alpha parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from A allele</td>
+</tr>
+<tr>
+<td><code>BETA</code></td>
+<td>Beta parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from B allele</td>
+</tr>
+<tr>
+<td><code>BAF</code></td>
+<td>BAF of the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>TOTAL_READS</code></td>
+<td>Total number of reads in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>NORMAL_READS</code></td>
+<td>Total number of reads in the bin in the matched normal sample</td>
+</tr>
+<tr>
+<td><code>CORRECTED_READS</code></td>
+<td>Total number of reads in the bin in <code>SAMPLE</code>, corrected by the total reads in <code>SAMPLE</code> vs. the total reads in matched normal.</td>
+</tr>
+</tbody>
+</table><p>Currently, it produces one such file that excludes sex chromosomes (for use in HATCHet), and one that includes sex chromosomes (for future use).</p>
+</section>
+<section id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Permalink to this heading">¶</a></h2>
+<p>combine-counts has some main parameters; the main values of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--msr</code></td>
+<td>Minimum SNP-covering reads for each bin</td>
+<td>Each bin constructed by this command must have at least this many reads covering heterozygous SNPs in each sample</td>
+<td>5000</td>
+</tr>
+<tr>
+<td><code>--mtr</code></td>
+<td>Minimum total reads for each bin</td>
+<td>Each bin constructed by this command must have at least this many total reads in each sample</td>
+<td>5000</td>
+</tr>
+</tbody>
+</table></section>
+<section id="phasing-parameters">
+<h2>Phasing parameters<a class="headerlink" href="#phasing-parameters" title="Permalink to this heading">¶</a></h2>
+<p>A phased VCF file must be given via argument <code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--phase</span></code> to apply reference-based phasing. The remaining parameters control the degree to which the phasing information is used.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-p</code>, <code>--phase</code></td>
+<td>vcf.gz with phasing for all het. SNPs</td>
+<td>File containing phasing data for germline SNPs, typically <code>phased.vcf.gz</code> if using the HATCHet pipeline.</td>
+<td>None (no phasing is performed)</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--blocksize</code></td>
+<td>Maximum phasing block size</td>
+<td>Maximum distance (in bp) between a pair of SNPs included in the same phasing block (ignored if <code>-p, --phase</code> is not used)</td>
+<td>25000</td>
+</tr>
+<tr>
+<td><code>-m</code>, <code>--max_spb</code></td>
+<td>Maximum number of SNPs per phased block</td>
+<td>No more than this many SNPs can be included in the same phasing block (included to minimize phasing errors in high-LD regions)</td>
+<td>10</td>
+</tr>
+<tr>
+<td><code>-a</code>, <code>--alpha</code></td>
+<td>Significance threshold to allow adjacent SNPs to be merged</td>
+<td>If adjacent SNPs have significantly different BAFs (at this significance level) after taking the phasing into account, they are not merged a priori. Higher means less trust in phasing.</td>
+<td>0.1</td>
+</tr>
+</tbody>
+</table></section>
+<section id="other-optional-parameters">
+<h2>Other optional parameters<a class="headerlink" href="#other-optional-parameters" title="Permalink to this heading">¶</a></h2>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-j</code>, <code>--processes</code></td>
+<td>Number of parallel processes to use (default 1)</td>
+<td></td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>-z, --not_compressed</code></td>
+<td>Indicates that intermediate files are not compressed</td>
+<td>For compatibility with legacy versions of previous step -- set this flag if your <code>.total</code> and <code>.thresholds</code> files are plaintext rather than gzipped.</td>
+<td></td>
+</tr>
+</tbody>
+</table></section>
+<section id="example-usage">
+<h2>Example usage<a class="headerlink" href="#example-usage" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">combine-counts</span> <span class="pre">-b</span> <span class="pre">baf/bulk.1bed</span> <span class="pre">-o</span> <span class="pre">abin/bulk.bb</span> <span class="pre">-j</span> <span class="pre">24</span> <span class="pre">-V</span> <span class="pre">hg19</span> <span class="pre">-A</span> <span class="pre">array</span> <span class="pre">-t</span> <span class="pre">array/total.tsv</span> <span class="pre">-V</span> <span class="pre">hg19</span></code></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

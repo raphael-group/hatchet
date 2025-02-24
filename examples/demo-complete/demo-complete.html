@@ -1,0 +1,247 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo complete for the entire HATCHet pipeline &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=0218eca2"></script>
+      <script src="../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Demo complete for the entire HATCHet pipeline</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/examples/demo-complete/demo-complete.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="demo-complete-for-the-entire-hatchet-pipeline">
+<h1>Demo complete for the entire HATCHet pipeline<a class="headerlink" href="#demo-complete-for-the-entire-hatchet-pipeline" title="Permalink to this heading">¶</a></h1>
+<p>: ex: set ft=markdown ;:&lt;&lt;’```shell’ #</p>
+<p>The following HATCHet demo represents a guided example of the complete HATCHet pipeline starting from an exemplary dataset of tumour and matched normal
+<a class="reference external" href="https://doi.org/10.5281/zenodo.4046906">BAM files</a> publicly available. From this directory, simply run this file through BASH as a standard script to run
+the complete demo. The demo can also be considered as a guided example of a complete execution and is correspondingly commented.</p>
+<section id="requirements-and-set-up">
+<h2>Requirements and set up<a class="headerlink" href="#requirements-and-set-up" title="Permalink to this heading">¶</a></h2>
+<p>The demo requires that HATCHet has been succesfully installed in the current python environment.
+Please make sure that you can succesfully run the required dependencies <code class="docutils literal notranslate"><span class="pre">samtools</span></code>, <code class="docutils literal notranslate"><span class="pre">bcftools</span></code>, <code class="docutils literal notranslate"><span class="pre">tabix</span></code>, and <code class="docutils literal notranslate"><span class="pre">mosdepth</span></code>.
+The demo includes the downloading of all the required files and will terminate in &lt;20 minutes on machine with minimum requirements satisfied.</p>
+<p>We guarantee that the running directory in the same directory of the demo and we remove previous results.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span><span class="k">$(</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$0</span><span class="s2">&quot;</span><span class="k">)</span><span class="s2">&quot;</span><span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="w"> </span><span class="p">;</span><span class="w"> </span><span class="nb">pwd</span><span class="w"> </span>-P<span class="w"> </span><span class="k">)</span>
+rm<span class="w"> </span>-rf<span class="w"> </span>rdr/<span class="w"> </span>baf/<span class="w"> </span>snps/<span class="w"> </span>bb/<span class="w"> </span>bbc/<span class="w"> </span>plots/<span class="w"> </span>results/<span class="w"> </span>summary/
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>We also ask the demo to terminate in case of errors and to print a trace of the execution by the following commands</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">set</span><span class="w"> </span>-e
+<span class="nb">set</span><span class="w"> </span>-o<span class="w"> </span>xtrace
+<span class="nv">PS4</span><span class="o">=</span><span class="s1">&#39;[\t]&#39;</span>
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+</section>
+<section id="downloading-of-data">
+<h2>Downloading of data<a class="headerlink" href="#downloading-of-data" title="Permalink to this heading">¶</a></h2>
+<p>The demo automatically downloads the required tumor and matched-normal BAM files in <code class="docutils literal notranslate"><span class="pre">data</span></code> folder.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Creating data folder</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>data
+
+<span class="c1"># Downloading matched-normal BAM file</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Downloading matched-normal BAM file from Zenodo, please be patient as downloading time may vary.&quot;</span>
+curl<span class="w"> </span>-L<span class="w"> </span><span class="s1">&#39;https://zenodo.org/record/4046906/files/normal.bam?download=1&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>data/normal.bam
+curl<span class="w"> </span>-L<span class="w"> </span><span class="s1">&#39;https://zenodo.org/record/4046906/files/normal.bam.bai?download=1&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>data/normal.bam.bai
+
+<span class="c1"># Downloading BAM file of tumor sample 1</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Downloading BAM file of tumor sample 1 from Zenodo, please be patient as downloading time may vary.&quot;</span>
+curl<span class="w"> </span>-L<span class="w"> </span><span class="s1">&#39;https://zenodo.org/record/4046906/files/bulk_03clone1_06clone0_01normal.sorted.bam?download=1&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>data/bulk_03clone1_06clone0_01normal.sorted.bam
+curl<span class="w"> </span>-L<span class="w"> </span><span class="s1">&#39;https://zenodo.org/record/4046906/files/bulk_03clone1_06clone0_01normal.sorted.bam.bai?download=1&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>data/bulk_03clone1_06clone0_01normal.sorted.bam.bai
+
+<span class="c1"># Downloading BAM file of tumor sample 2</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Downloading BAM file of tumor sample 2 from Zenodo, please be patient as downloading time may vary.&quot;</span>
+curl<span class="w"> </span>-L<span class="w"> </span><span class="s1">&#39;https://zenodo.org/record/4046906/files/bulk_08clone1_Noneclone0_02normal.sorted.bam?download=1&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>data/bulk_08clone1_Noneclone0_02normal.sorted.bam
+curl<span class="w"> </span>-L<span class="w"> </span><span class="s1">&#39;https://zenodo.org/record/4046906/files/bulk_08clone1_Noneclone0_02normal.sorted.bam.bai?download=1&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>data/bulk_08clone1_Noneclone0_02normal.sorted.bam.bai
+
+<span class="c1"># Downloading BAM file of tumor sample 3</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Downloading BAM file of tumor sample 3 from Zenodo, please be patient as downloading time may vary.&quot;</span>
+curl<span class="w"> </span>-L<span class="w"> </span><span class="s1">&#39;https://zenodo.org/record/4046906/files/bulk_Noneclone1_09clone0_01normal.sorted.bam?download=1&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>data/bulk_Noneclone1_09clone0_01normal.sorted.bam
+curl<span class="w"> </span>-L<span class="w"> </span><span class="s1">&#39;https://zenodo.org/record/4046906/files/bulk_Noneclone1_09clone0_01normal.sorted.bam.bai?download=1&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>data/bulk_Noneclone1_09clone0_01normal.sorted.bam.bai
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>Next the corresponding reference genome is downloaded and unpacked</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Downloading human reference genome, please be patient as downloading time may vary.&quot;</span>
+curl<span class="w"> </span>-L<span class="w"> </span>https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz<span class="w"> </span><span class="p">|</span><span class="w"> </span>gzip<span class="w"> </span>-d<span class="w"> </span>&gt;<span class="w"> </span>data/hg19.fa
+samtools<span class="w"> </span>faidx<span class="w"> </span>data/hg19.fa
+samtools<span class="w"> </span>dict<span class="w"> </span>data/hg19.fa<span class="w"> </span>&gt;<span class="w"> </span>data/hg19.dict
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+</section>
+<section id="configuring-the-hatchet-s-execution">
+<h2>Configuring the HATCHet’s execution<a class="headerlink" href="#configuring-the-hatchet-s-execution" title="Permalink to this heading">¶</a></h2>
+<p>We follow the template of the HATCHet’s <a class="reference external" href="../../doc/doc_fullpipeline.md#fullpipelineandtutorial">script</a>.</p>
+<ol class="simple">
+<li><p>We specify the correct path to the reference genome and the output folder, and other required flags</p></li>
+</ol>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;[run]&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;genotype_snps=True&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;count_alleles=True&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;count_reads=True&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;combine_counts=True&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;cluster_bins=True&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;plot_bins=True&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;compute_cn=True&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;plot_cn=True&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;reference=data/hg19.fa&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;output=output/&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nv">j</span><span class="o">=</span><span class="k">$(</span>grep<span class="w"> </span>-c<span class="w"> </span>^processor<span class="w"> </span>/proc/cpuinfo<span class="k">)</span>
+<span class="nv">processes</span><span class="o">=</span><span class="s2">&quot;processes=</span><span class="si">${</span><span class="nv">j</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="nb">echo</span><span class="w"> </span><span class="nv">$processes</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;chromosomes=&quot;chr22&quot;&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>We specify the path to the matched-normal BAM files</p></li>
+</ol>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;normal=data/normal.bam&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>We specify the list of paths to the tumor BAM files and corresponding names</p></li>
+</ol>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;bams=data/bulk_03clone1_06clone0_01normal.sorted.bam data/bulk_08clone1_Noneclone0_02normal.sorted.bam data/bulk_Noneclone1_09clone0_01normal.sorted.bam&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;samples=TumorSample1 TumorSample2 TumorSample3&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>We specify the min/max coverage for the genotpe_snps step</p></li>
+</ol>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;[genotype_snps]&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;mincov=8&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;maxcov=300&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>We specify the reference genome and chr notation</p></li>
+</ol>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;reference_version=hg19&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;chr_notation=True&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>We specify mincov/maxcov for the count_alleles step</p></li>
+</ol>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;[count_alleles]&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;mincov=8&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;maxcov=300&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>We specify the minimum number of total and SNP-covering reads in each bin for the combine_counts step</p></li>
+</ol>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;[combine_counts]&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;msr=3000&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;mtr=5000&#39;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>hatchet.ini
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+</section>
+<section id="running-hatchet">
+<h2>Running HATCHet<a class="headerlink" href="#running-hatchet" title="Permalink to this heading">¶</a></h2>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>run<span class="w"> </span>hatchet.ini
+<span class="nb">exit</span><span class="w"> </span><span class="nv">$?</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

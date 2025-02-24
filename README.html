@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HATCHet &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Modules" href="modules.html" />
+    <link rel="prev" title="HATCHet" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">HATCHet</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#contents">Contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#algorithm">Algorithm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#software">Software</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#setup">Setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#installation">Installation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#standard-installation">Standard Installation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#manual-installation">Manual Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#using-a-solver">Using a Solver</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#using-gurobi">Using Gurobi</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#using-a-different-pyomo-supported-solver">Using a different Pyomo-supported solver</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#required-data">Required data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#current-issues">Current issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#contacts">Contacts</a></li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">HATCHet</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/README.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p><img alt="CI" src="https://github.com/raphael-group/hatchet/workflows/CI/badge.svg" />
+<a class="reference external" href="https://codecov.io/gh/raphael-group/hatchet"><img alt="codecov" src="https://codecov.io/gh/raphael-group/hatchet/branch/master/graph/badge.svg" /></a></p>
+<section id="hatchet">
+<h1>HATCHet<a class="headerlink" href="#hatchet" title="Permalink to this heading">¶</a></h1>
+<p>HATCHet is an algorithm to infer allele and clone-specific copy-number aberrations (CNAs), clone proportions, and whole-genome duplications (WGD) for several tumor clones jointly from multiple bulk-tumor samples of the same patient or from a single bulk-tumor sample. HATCHet has been designed and developped by Simone Zaccaria in the group of prof. Ben Raphael at Princeton University. The full description of the algorithm, the comparison with previous state-of-the-art methods, and its application on published cancer datasets are described in</p>
+<p><a class="reference external" href="https://www.biorxiv.org/content/early/2018/12/17/496174">Simone Zaccaria and Ben Raphael, 2018</a></p>
+<p>The novel simulationg framework, MASCoTE, is available at</p>
+<p><a class="reference external" href="https://github.com/raphael-group/mascote">MASCoTE</a></p>
+<p>The simulated data, the results of all the methods considered in the comparison, the results of HATCHet on the published whole-genome multi-sample tumor sequencing datasets (<a class="reference external" href="https://www.nature.com/articles/nature14347">(Gundem et al., <em>Nature</em>, 2015)</a> and <a class="reference external" href="https://www.nature.com/articles/ng.3764">(Makohon-Moore et al., <em>Nature genetics</em>, 2017)</a>) and all the related analyses are available at</p>
+<p><a class="reference external" href="https://github.com/raphael-group/hatchet-paper">manuscript’s data</a></p>
+<p>This repository includes a quick overview of the HATCHet’s algorithm and software, detailed instructions for installation and requirements, a script to execute the full pipeline of HATCHet, demos to illustrate how to apply HATCHet on different datasets with different features, a list of current issues, and contacts.</p>
+<section id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this heading">¶</a></h2>
+<ol class="simple">
+<li><p><a class="reference external" href="#overview">Overview</a></p>
+<ul class="simple">
+<li><p><a class="reference external" href="#algorithm">Algorithm</a></p></li>
+<li><p><a class="reference external" href="#software">Software</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference external" href="#setup">Setup</a></p>
+<ul class="simple">
+<li><p><a class="reference external" href="#installation">Installation</a></p></li>
+<li><p><a class="reference external" href="#usingasolver">Using a Solver</a></p></li>
+<li><p><a class="reference external" href="#requireddata">Required data</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference external" href="#usage">Usage</a></p>
+<ul class="simple">
+<li><p><a class="reference external" href="#fullpipelineandtutorial">Full pipeline and tutorial</a></p></li>
+<li><p><a class="reference external" href="#demos">Demos</a></p></li>
+<li><p><a class="reference external" href="#custompipelines">Custom pipelines</a></p></li>
+<li><p><a class="reference external" href="#detailedsteps">Detailed steps</a></p></li>
+<li><p><a class="reference external" href="#recommendations">Recommendations and quality control</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference external" href="#currentissues">Current issues</a></p></li>
+<li><p><a class="reference external" href="#contacts">Contacts</a></p></li>
+</ol>
+</section>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading">¶</a></h2>
+<p><a name="overview"></a></p>
+<section id="algorithm">
+<h3>Algorithm<a class="headerlink" href="#algorithm" title="Permalink to this heading">¶</a></h3>
+<p><a name="algorithm"></a></p>
+<p><img alt="_images/hatchet-cartoon.png" src="_images/hatchet-cartoon.png" /></p>
+<p><strong>Overview of HATCHet algorithm.</strong></p>
+<ol class="simple">
+<li><p>HATCHet analyzes the read-depth ratio (RDR) and the B-allele frequency (BAF) in bins of the reference genome (black squares) jointly from multiple tumor samples. Here, we show two tumor samples <em>p</em> and <em>q</em>.</p></li>
+<li><p>HATCHet globally clusters the bins based on RDR and BAF along the entire genome and jointly across samples <em>p</em> and <em>q</em>. Each cluster (color) includes bins with the same copy-number state within each clone present in <em>p</em> or <em>q</em>.</p></li>
+<li><p>HATCHet estimates the fractional copy number of each cluster. If there is no WGD, the identification of the cluster (magenta) with copy-number state <em>(1, 1)</em> is sufficient and RDRs are scaled correspondingly. If a WGD occurs, HATCHet finds the cluster with copy-number state <em>(2, 2)</em> (same magenta cluster) and a second cluster having an identical copy-number state in all tumor clones.</p></li>
+<li><p>HATCHet factorizes the allele-specific fractional copy numbers <em>F^A, F^B</em> into the allele-specific copy numbers <em>A, B</em>, respectively, and the clone proportions <em>U</em>. Here there is a normal clone and 3 tumor clones.</p></li>
+<li><p>HATCHet’s model selection criterion identifies the matrices <em>A</em>, <em>B</em> and <em>U</em> in the factorization while evaluating the fit according to both the inferred number of clones and presence/absence of a WGD.</p></li>
+<li><p>Clusters are classified by their inferred copy-number states in each sample. <em>Sample-clonal clusters</em> have a unique copy-number state in the sample and correspond to evenly-spaced positions in the scaled RDR-BAF plot (vertical grid lines in each plot). <em>Sample-subclonal clusters</em> (e.g. cyan in <em>p</em>) have different copy-number states in a sample and thus correspond to intermediate positions in the scaled RDR-BAF plot. <em>Tumor-clonal clusters</em> have identical copy-number states in all tumor clones – thus they are sample-clonal clusters in every sample and preserve their relative positions in scaled-RDR-BAF plots. In contrast, <em>tumor-subclonal clusters</em> have different copy-number states in different tumor clones and their relative positions in the scaled RDR-BAF plot varies across samples (e.g. purple cluster).</p></li>
+</ol>
+<p>Note that this overview and figure do not include recently added features such as variable-width binning and locality-aware clustering that are currently default in HATCHet. These features will be described in a future publication.</p>
+</section>
+<section id="software">
+<h3>Software<a class="headerlink" href="#software" title="Permalink to this heading">¶</a></h3>
+<p><a name="software"></a></p>
+<p>The current implementation of HATCHet is composed of two sets of modules:</p>
+<p>(1) The <em>core</em> modules of HATCHet are designed to efficiently solve a challenging constrained and distance-based simultaneous matrix factorization which aim to infer allele and clone-specific copy numbers and clone proportins from fractional copy numbers. The module is implemented in C++11 and are included in <code class="docutils literal notranslate"><span class="pre">src</span></code> folder.</p>
+<p>(2) The <em>utility</em> modules of HATCHet perform several different tasks that are needed to process the raw data, perform steps of the HATCHet’s algorithm needed for the factorization, and process the results. These task include reading/calling germinal single-point mutations, counting reads from a BAM file, combining the read counts and other information, segmenting through HATCHet’s global approach, plotting very useful information, etc. These modules are implemented in python 3 and are available as the <code class="docutils literal notranslate"><span class="pre">util</span></code> and <code class="docutils literal notranslate"><span class="pre">bin</span></code> submodules.</p>
+</section>
+</section>
+<section id="setup">
+<h2>Setup<a class="headerlink" href="#setup" title="Permalink to this heading">¶</a></h2>
+<p><a name="setup"></a></p>
+<p>The setup process is composed of 3 steps:</p>
+<ol class="simple">
+<li><p><a class="reference external" href="#installation">Installation</a>: the compilation and installation of Hatchet and its dependencies; this is a one-time process.</p></li>
+<li><p><a class="reference external" href="#usingasolver">Using a Solver</a>: the requirements to run a Solver; these need to be satisfied for computing allele-specific fractional copy numbers.</p></li>
+<li><p><a class="reference external" href="#requireddata">Required data</a>: the requirements for considered data; these need to be satisfied whenever using new data.</p></li>
+</ol>
+<section id="installation">
+<h3>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h3>
+<p><a name="installation"></a></p>
+<section id="standard-installation">
+<h4>Standard Installation<a class="headerlink" href="#standard-installation" title="Permalink to this heading">¶</a></h4>
+<p>HATCHet can be installed using an existing installation of <code class="docutils literal notranslate"><span class="pre">conda</span></code> (e.g. either the compact
+<a class="reference external" href="https://docs.conda.io/en/latest/miniconda.html">Miniconda</a> or the complete <a class="reference external" href="https://www.anaconda.com/">Anaconda</a>).</p>
+<p>We recommend creating a new environment in which to install <code class="docutils literal notranslate"><span class="pre">hatchet</span></code>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>create<span class="w"> </span>-n<span class="w"> </span>hatchet<span class="w"> </span>hatchet
+</pre></div>
+</div>
+<p>In this case, <code class="docutils literal notranslate"><span class="pre">hatchet</span></code> must be activated before every session with the following command</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span>activate<span class="w"> </span>hatchet
+</pre></div>
+</div>
+<p>For installation, <code class="docutils literal notranslate"><span class="pre">bioconda</span></code> <a class="reference external" href="https://bioconda.github.io/user/index.html">requires</a> to set the following channels in this exact order:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>config<span class="w"> </span>--add<span class="w"> </span>channels<span class="w"> </span>defaults
+conda<span class="w"> </span>config<span class="w"> </span>--add<span class="w"> </span>channels<span class="w"> </span>bioconda
+conda<span class="w"> </span>config<span class="w"> </span>--add<span class="w"> </span>channels<span class="w"> </span>conda-forge
+</pre></div>
+</div>
+<p>Then, <code class="docutils literal notranslate"><span class="pre">hatchet</span></code> can be installed with the following one-time command:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>hatchet
+</pre></div>
+</div>
+<p>If you would like to run the reference-based phasing modules of HATCHet, please install the additional dependency <code class="docutils literal notranslate"><span class="pre">shapeit</span></code> from the channel <code class="docutils literal notranslate"><span class="pre">dranew</span></code>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>dranew<span class="w"> </span>shapeit
+</pre></div>
+</div>
+</section>
+<section id="manual-installation">
+<h4>Manual Installation<a class="headerlink" href="#manual-installation" title="Permalink to this heading">¶</a></h4>
+<p>If you wish to install <code class="docutils literal notranslate"><span class="pre">HATCHet</span></code> directly from this repository, the steps are a bit more involved. Please refer to the
+<a class="reference internal" href="doc_manual_install.html"><span class="doc">Manual Installation</span></a> document for more details.</p>
+</section>
+</section>
+<section id="using-a-solver">
+<h3>Using a Solver<a class="headerlink" href="#using-a-solver" title="Permalink to this heading">¶</a></h3>
+<p><a name="usingasolver"></a></p>
+<p>Every run of HATCHet (specifically, the <code class="docutils literal notranslate"><span class="pre">compute-cn</span></code> step) needs to use a <a class="reference external" href="https://pyomo.readthedocs.io/en/stable/solving_pyomo_models.html#supported-solvers">Pyomo</a> supported solver. By default, the HATCHet is compiled against <a class="reference external" href="https://www.gurobi.com/">Gurobi</a>, so the easiest (and fastest) option is to use a valid Gurobi license.</p>
+<section id="using-gurobi">
+<h4>Using Gurobi<a class="headerlink" href="#using-gurobi" title="Permalink to this heading">¶</a></h4>
+<p><a name="usingasolver_gurobi"></a></p>
+<p>If using Gurobi (the default option), make sure that the environmental variable <code class="docutils literal notranslate"><span class="pre">GRB_LICENSE_FILE</span></code> points to a valid license file (typically with a <code class="docutils literal notranslate"><span class="pre">.lic</span></code> extension). This can be easily obtained depending on the type of free academic license available:</p>
+<ol>
+<li><p><strong>Individual license</strong>. This license can be obtained <a class="reference external" href="http://www.gurobi.com/academia/academia-center">easily</a> by any academic user with an institutional email. This license is user and machine-specific, meaning that the user needs to require a different license for every used machine. Assuming the license is stored at <code class="docutils literal notranslate"><span class="pre">/path/to/gurobi.lic</span></code>, set the environment variable <code class="docutils literal notranslate"><span class="pre">GRB_LICENSE_FILE</span></code> to point to it:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">GRB_LICENSE_FILE</span><span class="o">=</span><span class="s2">&quot;/path/to/gurobi.lic&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Multi-use license</strong>. This license can be used by multiple users on any machine in a cluster. This <a class="reference external" href="http://www.gurobi.com/academia/academia-center">license</a> can be obtained but needs to be requested by the IT staff of the user’s institution. This license is typically used in a machine cluster and only requires the following command (the exact form of this command may vary):</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>module<span class="w"> </span>load<span class="w"> </span>gurobi
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="using-a-different-pyomo-supported-solver">
+<h4>Using a different Pyomo-supported solver<a class="headerlink" href="#using-a-different-pyomo-supported-solver" title="Permalink to this heading">¶</a></h4>
+<p><a name="usingasolver_other"></a></p>
+<p>If you do not have or wish to use Gurobi (though using Gurobi will be at least twice as fast as any other solver),
+you can use any Pyomo-supported solver by setting the environment variable <code class="docutils literal notranslate"><span class="pre">HATCHET_COMPUTE_CN_SOLVER</span></code> to <code class="docutils literal notranslate"><span class="pre">cbc</span></code>,
+<code class="docutils literal notranslate"><span class="pre">glpk</span></code>, or any other Pyomo-supported solver. For example, <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">HATCHET_COMPUTE_CN_SOLVER=cbc</span></code>.</p>
+<p>Alternatively, you can set the key <code class="docutils literal notranslate"><span class="pre">solver</span></code> key in the <code class="docutils literal notranslate"><span class="pre">compute_cn</span></code>
+section of your <code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code> (if using the <a class="reference external" href="doc_runhatchet.html">hatchet run</a> command) to a specific Pyomo-supported
+solver. Make sure the relevant solver binaries are in your <code class="docutils literal notranslate"><span class="pre">$PATH</span></code>, otherwise Pyomo will not be able to find them
+correctly.</p>
+<p>One HATCHet command that is very useful to sanity-check your solver is <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">check</span></code>. This command runs the HATCHet <code class="docutils literal notranslate"><span class="pre">compute_cn</span></code> step on a small set of pre-packaged data files and completes fairly quickly (a few seconds for the Gurobi optimizer, but up to a few minutes for glpk). Running this command will ensure that you have your solver settings (including licenses) set up correctly, so you should always run this command first before trying out the <code class="docutils literal notranslate"><span class="pre">compute_cn</span></code> step on your large data files.</p>
+</section>
+</section>
+<section id="required-data">
+<h3>Required data<a class="headerlink" href="#required-data" title="Permalink to this heading">¶</a></h3>
+<p><a name="requireddata"></a></p>
+<p>HATCHet requires 3 input data files:</p>
+<ol>
+<li><p>One or more BAM files containing DNA sequencing reads obtained from tumor samples of a single patient. Every BAM file contains the sequencing reads from a sample ad needs to be indexed and sorted. For example, each BAM file can be easily indexed and sorted using <a class="reference external" href="http://www.htslib.org/workflow/#mapping_to_variant">SAMtools</a>. In addition, one can improve the quality of the data by processing the BAM files according to the <a class="reference external" href="https://software.broadinstitute.org/gatk/best-practices/">GATK Best Practices</a>.</p></li>
+<li><p>A BAM file containg DNA sequencing reads obtained from a matched-normal sample of the same patient of the considered tumor samples. The BAM file needs to be indexed and sorted as the tumor BAM files. Also, the BAM files can be processed as the tumor BAM files.</p></li>
+<li><p>A human reference genome. Ideally, one should consider the same human reference genome used to align the sequencing reads in the given BAM files. The most-used human reference genome are available at <a class="reference external" href="https://www.ncbi.nlm.nih.gov/grc/human">GRC</a> or <a class="reference external" href="http://hgdownload.cse.ucsc.edu/downloads.html#human">UCSC</a>. Observe that human reference genomes use two different notations for chromosomes: either <code class="docutils literal notranslate"><span class="pre">1,</span> <span class="pre">2,</span> <span class="pre">3,</span> <span class="pre">4,</span> <span class="pre">5</span> <span class="pre">...</span></code> or <code class="docutils literal notranslate"><span class="pre">chr1,</span> <span class="pre">chr2,</span> <span class="pre">chr3,</span> <span class="pre">chr4,</span> <span class="pre">chr5</span> <span class="pre">...</span></code>. One needs to make sure all BAM files and reference genome share that same chromosome notation. When this is not the case, one needs to change the reference to guarantee consistency and needs to re-index the new reference (e.g. using <a class="reference external" href="http://www.htslib.org/workflow/#mapping_to_variant">SAMtools</a>). Also, HATCHet requires that the name of each chromosome is the first word in each ID such that <code class="docutils literal notranslate"><span class="pre">&gt;1</span> <span class="pre">[ANYTHING]</span> <span class="pre">...</span> <span class="pre">\n&gt;2</span> <span class="pre">[ANYTHING]</span> <span class="pre">...</span> <span class="pre">\n&gt;3</span> <span class="pre">[ANYTHING]</span> <span class="pre">...</span></code> or <code class="docutils literal notranslate"><span class="pre">&gt;chr1</span> <span class="pre">[ANYTHING]</span> <span class="pre">...</span> <span class="pre">\n&gt;chr2</span> <span class="pre">[ANYTHING]</span> <span class="pre">...</span> <span class="pre">\n&gt;chr3</span> <span class="pre">[ANYTHING]</span></code>.</p>
+<p>For the reference genome, HATCHet requires the existence of a a sequence dictionary (<code class="docutils literal notranslate"><span class="pre">.dict</span></code>), which is part of all standard pipelines for sequencing data, see for example <a class="reference external" href="https://gatk.broadinstitute.org/hc/en-us/articles/360035531652-FASTA-Reference-genome-format">GATK</a> or <a class="reference external" href="https://galaxyproject.org/admin/data-preparation/">Galaxy</a>. Please note that the sequence dictionary is <strong>NOT</strong> the reference index <code class="docutils literal notranslate"><span class="pre">.fai</span></code>, which is a different structure, has a different function, and it is also recommended.</p>
+<p>The dictionary of a reference genome is often included in the available bundles for the reference genomes, see the <a class="reference external" href="ftp://gsapubftp-anonymous&#64;ftp.broadinstitute.org/bundle/hg19">example for hg19</a> from Broad Institute. However, the dictionary can also be generated in seconds using either <a class="reference external" href="http://www.htslib.org/doc/samtools-dict.html">SAMtools</a> or <a class="reference external" href="https://gatk.broadinstitute.org/hc/en-us/articles/360036729911-CreateSequenceDictionary-Picard-">Picard tools</a>.</p>
+<p>In the folder where you want to download and index the human genome, the steps would typically be:</p>
+<div class="highlight-script notranslate"><div class="highlight"><pre><span></span>curl -L https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz | gzip -d &gt; hg19.fa
+samtools faidx hg19.fa
+samtools dict hg19.fa &gt; hg19.dict
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h2>
+<p><a name="usage"></a></p>
+<p>The repository includes all the components that are required to cover every step of the entire HATCHet’s pipeline, starting from the processing of raw data reported in a BAM file through the analysis of the final results.
+We provide:</p>
+<ul>
+<li><p><a name="fullpipelineandtutorial"></a> A script representing the <a class="reference external" href="doc_fullpipeline.html#fullpipelineandtutorial">full pipeline</a> of HATCHet, and we describe in details the whole script through a tutorial with instructions for usage.</p></li>
+<li><p><a name="demos"></a> <a class="reference external" href="doc_fullpipeline.html#demos">Demos</a> that correspond to guided executions of HATCHet on some examples, and explain in detail the usage of HATCHet when considering standard datasets, real datasets with high noise, and different kind of data.</p></li>
+<li><p><a name="custompipelines"></a> <a class="reference external" href="doc_fullpipeline.html#custompipelines">Custom pipelines</a> which adapt the full HATCHet’s pipeline to special conditions or integrates pre-processed data belonging to different pipelines.</p>
+<p>The implementation of HATCHet is highly modular and one can replace any HATCHet’s module with any other method to obtain the required results (especially for the pre-processing modules).
+As such, we also provide here an overview of the entire pipeline and we describe the <a name="detailedsteps"></a> <a class="reference external" href="doc_fullpipeline.html#detailedsteps">details of each step</a> in a dedicated section of the manual.</p>
+</li>
+<li><p><a name="recommendations"></a> <a class="reference external" href="doc_fullpipeline.html#recommendations">Recommendations</a>, especially for noisy datasets or with different features, to guide the user in the interpretation of HATCHet’s inference. We explain how to perform quality control to guarantee the best-quality results, and describe how the user can control and tune some of the parameters to obtain the best-fitting results.</p></li>
+</ul>
+</section>
+<section id="current-issues">
+<h2>Current issues<a class="headerlink" href="#current-issues" title="Permalink to this heading">¶</a></h2>
+<p><a name="currentissues"></a></p>
+<p>HATCHet is in active development, please report any issue or question as this could help the devolment and imporvement of HATCHet. Current known issues with current version are reported here below:</p>
+<ul class="simple">
+<li><p>The allele-swapping feature of combine-counts has been temporarily disabled due to conflicts with recent SAMtools versions.</p></li>
+<li><p>HATCHet has not been tested on Windows yet. For Windows users, we recommend <a class="reference external" href="https://docs.microsoft.com/en-us/windows/wsl/install">Windows Subsystems for Linux</a>.</p></li>
+</ul>
+<p>A list of the major recent updates:</p>
+<ul class="simple">
+<li><p>Variable-width binning which adapts to the sequencing coverage and observed heterzygous germline SNP positions</p></li>
+<li><p>Modules for reference-based phasing and associated pre- and post-processing</p></li>
+<li><p>Locality-aware clustering which combines global clustering with genomic location</p></li>
+<li><p>Added plotting modules which show a) bins with consistent coloring between 2D and genome-wide views and b) expected positions of assigned copy-number states</p></li>
+</ul>
+</section>
+<section id="contacts">
+<h2>Contacts<a class="headerlink" href="#contacts" title="Permalink to this heading">¶</a></h2>
+<p><a name="contacts"></a></p>
+<p>HATCHet is maintained by the research groups of Prof. Ben Raphael (Princeton) <a class="reference external" href="mailto:braphael&#37;&#52;&#48;princeton&#46;edu">[email]</a> and Prof. Simone Zaccaria (UCL)  <a class="reference external" href="mailto:s&#46;zaccaria&#37;&#52;&#48;ucl&#46;ac&#46;uk">[email]</a>. Major contributors include Matt Myers, Vineet Bansal, and Brian Arnold.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="HATCHet" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="modules.html" class="btn btn-neutral float-right" title="Modules" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

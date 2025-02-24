@@ -1,0 +1,237 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo for standard WGS data &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=0218eca2"></script>
+      <script src="../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Demo for standard WGS data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/examples/demo-WGS-sim/demo-wgs-sim.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="demo-for-standard-wgs-data">
+<h1>Demo for standard WGS data<a class="headerlink" href="#demo-for-standard-wgs-data" title="Permalink to this heading">¶</a></h1>
+<p>: ex: set ft=markdown ;:&lt;&lt;’```shell’ #</p>
+<p><strong>NOTE</strong>: this demo has not yet been updated for version 1.0 of HATCHet which includes variable-width binning, phasing, and locality-aware clustering.</p>
+<p>The following HATCHet’s demo represents a guided example starting from WGS (whole-genome sequencing) data from 3 simulated samples obtained from the same tumor. This represents an exemplary case of executing HATCHet on a typical dataset with standard noise. For simplicity, the demo starts from a BB file <code class="docutils literal notranslate"><span class="pre">demo-WGS-sim.bb</span></code> (included in this demo at <code class="docutils literal notranslate"><span class="pre">examples/demo-WGS-sim/</span></code>) which contains the RDR and BAF of every genomic bin and, therefore, we assume that the preliminary steps (i.e. count-reads, count-alleles, and combine-counts) have already been executed by running standard configuration for WGS data (bin size of 50kb through -b 50kb of count-reads, and the allele counts for germline heterozygous SNPs have been selected between 3 and 200 through <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">3</span> <span class="pre">-C</span> <span class="pre">200</span></code>).</p>
+<p>Specifically, the tumor is composed of 2 tumor clones (clone0 and clone1) and a normal diploid clone (normal). The clonal composition of every sample is described in the following table:</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Proportion of normal clone</th>
+<th>Proporion of clone0</th>
+<th>Proportion of clone1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bulk_035clone1_06clone0_005normal</code></td>
+<td><code>5%</code></td>
+<td><code>60%</code></td>
+<td><code>35%</code></td>
+</tr>
+<tr>
+<td><code>bulk_055clone1_04clone0_005normal</code></td>
+<td><code>5%</code></td>
+<td><code>40%</code></td>
+<td><code>55%</code></td>
+</tr>
+<tr>
+<td><code>bulk_08clone1_Noneclone0_02normal</code></td>
+<td><code>20%</code></td>
+<td>Not present</td>
+<td><code>80%</code></td>
+</tr>
+</tbody>
+</table><section id="requirements-and-set-up">
+<h2>Requirements and set up<a class="headerlink" href="#requirements-and-set-up" title="Permalink to this heading">¶</a></h2>
+<p>The demo requires that HATCHet has been successfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">PY</span><span class="o">=</span><span class="s2">&quot;python3&quot;</span><span class="w"> </span><span class="c1"># This id the full path to the version of PYTHON3 which contains the required `hatchet` module. When this corresponds to the standard version, the user can keep the given value of `python3`</span>
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>The following paths are consequently obtained to point to the required components of HATCHet</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">CLUSTERBINS</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PY</span><span class="si">}</span><span class="s2"> -m hatchet cluster-bins&quot;</span>
+<span class="nv">PLOTBINS</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PY</span><span class="si">}</span><span class="s2"> -m hatchet plot-bins&quot;</span>
+<span class="nv">INFER</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PY</span><span class="si">}</span><span class="s2"> -m hatchet compute-cn&quot;</span>
+<span class="nv">PLOTCN</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PY</span><span class="si">}</span><span class="s2"> -m hatchet plot-cn&quot;</span>
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>We also ask the demo to terminate in case of errors and to print a trace of the execution by the following commands</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">set</span><span class="w"> </span>-e
+<span class="nb">set</span><span class="w"> </span>-o<span class="w"> </span>xtrace
+<span class="nv">PS4</span><span class="o">=</span><span class="s1">&#39;[\t]&#39;</span>
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+</section>
+<section id="global-clustering">
+<h2>Global clustering<a class="headerlink" href="#global-clustering" title="Permalink to this heading">¶</a></h2>
+<p>The first main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code>, i.e. the HATCHet’s component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="si">${</span><span class="nv">CLUSTERBINS</span><span class="si">}</span><span class="w"> </span>demo-wgs-sim.bb<span class="w"> </span>-o<span class="w"> </span>demo-wgs-sim.seg<span class="w"> </span>-O<span class="w"> </span>demo-wgs-sim.bbc<span class="w"> </span>-e<span class="w"> </span><span class="m">12</span><span class="w"> </span>-tB<span class="w"> </span><span class="m">0</span>.03<span class="w"> </span>-tR<span class="w"> </span><span class="m">0</span>.15<span class="w"> </span>-d<span class="w"> </span><span class="m">0</span>.08
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>To assess the quality of the clustering we generate the cluster plot using the <code class="docutils literal notranslate"><span class="pre">CBB</span></code> command of <code class="docutils literal notranslate"><span class="pre">plot-bins</span></code>, i.e. the HATCHet’s component designed for the analysis of the data. For simplicity, we also use the following options</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--colwrap</span> <span class="pre">3</span></code> allows to have the 3 plots of the 3 samples on the same figure row</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-tS</span> <span class="pre">0.01</span></code> asks to plot only the clusters which cover at least the <code class="docutils literal notranslate"><span class="pre">1%</span></code> of the genome. This is useful to clean the figure and focus on the main components.</p></li>
+</ul>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="si">${</span><span class="nv">PLOTBINS</span><span class="si">}</span><span class="w"> </span>-c<span class="w"> </span>CBB<span class="w"> </span>demo-wgs-sim.bbc<span class="w"> </span>--colwrap<span class="w"> </span><span class="m">3</span><span class="w"> </span>-tS<span class="w"> </span><span class="m">0</span>.01
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>We thus obtain the following clustering:</p>
+<p><img alt="CBB" src="../../_images/cbb2.png" /></p>
+<p>We can easily notice that the clustering is good and not tuning is needed as every pair of clusters is clearly distinct in one of the two dimensions (RDR and BAF) in <strong>at least one</strong> sample.</p>
+</section>
+<section id="hatchet-s-step">
+<h2>hatchet’s step<a class="headerlink" href="#hatchet-s-step" title="Permalink to this heading">¶</a></h2>
+<p>Next we apply <code class="docutils literal notranslate"><span class="pre">hatchet</span></code>, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
+We apply the last step with default parameters and, for simplicity of this demo, we consider 8 clones, which can be easily considered by HATCHet in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="si">${</span><span class="nv">INFER</span><span class="si">}</span><span class="w"> </span>-i<span class="w"> </span>demo-wgs-sim<span class="w"> </span>-n2,8<span class="w"> </span>-p<span class="w"> </span><span class="m">100</span><span class="w"> </span>-v<span class="w"> </span><span class="m">2</span><span class="w"> </span>-u<span class="w"> </span><span class="m">0</span>.03<span class="w"> </span>-r<span class="w"> </span><span class="m">12</span><span class="w"> </span>-eD<span class="w"> </span><span class="m">6</span><span class="w"> </span>-eT<span class="w"> </span><span class="m">12</span><span class="w"> </span>-l<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="p">|&amp;</span><span class="w"> </span>tee<span class="w"> </span>hatchet.log
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>We obtain the following summary of results:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">## Scores approximating second derivative for diploid results</span>
+<span class="c1">## Diploid with 2 clones - OBJ: 66.884758 - score: -0.17739731674</span>
+<span class="c1">## Diploid with 3 clones - OBJ: 34.954154 - score: -0.0216588755513</span>
+<span class="c1">## Diploid with 4 clones - OBJ: 17.510067 - score: 0.0555719383474</span>
+<span class="c1">## Diploid with 5 clones - OBJ: 9.744628 - score: 0.186776250313</span>
+<span class="c1">## Diploid with 6 clones - OBJ: 7.243104 - score: 0.0839737725603</span>
+<span class="c1">## Diploid with 7 clones - OBJ: 5.991972 - score: 0.0538665194051</span>
+<span class="c1">## Diploid with 8 clones - OBJ: 5.27972 - score: -0.181132288335</span>
+<span class="c1">## Scores approximating second derivative for tetraploid results</span>
+<span class="c1">## Tetraploid with 2 clones - OBJ: 81.216417 - score: -0.415141225696</span>
+<span class="c1">## Tetraploid with 3 clones - OBJ: 23.135209 - score: 0.169099207187</span>
+<span class="c1">## Tetraploid with 4 clones - OBJ: 15.47975 - score: 0.0653131702741</span>
+<span class="c1">## Tetraploid with 5 clones - OBJ: 11.36852 - score: 0.0682096876804</span>
+<span class="c1">## Tetraploid with 6 clones - OBJ: 9.124625 - score: 0.0411292123085</span>
+<span class="c1">## Tetraploid with 7 clones - OBJ: 7.698914 - score: 0.0753487410723</span>
+<span class="c1">## Tetraploid with 8 clones - OBJ: 7.076072 - score: -0.219100018522</span>
+<span class="c1"># The chosen diploid solution has 5 clones with OBJ: 9.744628 and score: 0.186776250313</span>
+<span class="c1">## The related-diploid resulting files are copied to ./chosen.diploid.bbc.ucn and ./chosen.diploid.seg.ucn</span>
+<span class="c1"># The chosen tetraploid solution has 3 clones with OBJ: 23.135209 and score: 0.169099207187</span>
+<span class="c1">## The related-tetraploid resulting files are copied to ./chosen.tetraploid.bbc.ucn and ./chosen.tetraploid.seg.ucn</span>
+<span class="c1"># The chosen solution is tetraploid with 3 clones and is written in ./best.bbc.ucn and ./best.seg.ucn</span>
+</pre></div>
+</div>
+<p>HATCHet predicts the presence of 3 clones in the 3 tumor samples and, especially, predicts that 2 samples contains two distinct tumor clones, according to the true clonal composition.</p>
+</section>
+<section id="analyzing-inferred-results">
+<h2>Analyzing inferred results<a class="headerlink" href="#analyzing-inferred-results" title="Permalink to this heading">¶</a></h2>
+<p>Finally, we obtain useful plots to summarize and analyze the inferred results by using <code class="docutils literal notranslate"><span class="pre">plot-cn</span></code>, which is the last component of HATCHet. We run <code class="docutils literal notranslate"><span class="pre">plot-cn</span></code> as follows</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="si">${</span><span class="nv">PLOTCN</span><span class="si">}</span><span class="w"> </span>best.bbc.ucn
+<span class="nb">exit</span><span class="w"> </span><span class="nv">$?</span>
+</pre></div>
+</div>
+<p>First, <code class="docutils literal notranslate"><span class="pre">plot-cn</span></code> summarizes the values of tumor purity and tumor ploidy for every sample of the patient as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">### SAMPLE: bulk_08clone1_Noneclone0_02normal -- PURITY: 0.799477 -- PLOIDY: 3.07107541299 -- CLASSIFICATION: TETRAPLOID</span>
+<span class="c1">### SAMPLE: bulk_035clone1_06clone0_005normal -- PURITY: 0.95065 -- PLOIDY: 3.37447061915 -- CLASSIFICATION: TETRAPLOID</span>
+<span class="c1">### SAMPLE: bulk_055clone1_04clone0_005normal -- PURITY: 0.95048 -- PLOIDY: 3.27575289096 -- CLASSIFICATION: TETRAPLOID</span>
+</pre></div>
+</div>
+<p>Next, <code class="docutils literal notranslate"><span class="pre">plot-cn</span></code> produces some informative plots to evaluate the inferred results. Among all the plots, 3 of those are particularly interesting.</p>
+<p>The first <code class="docutils literal notranslate"><span class="pre">intratumor-clones-totalcn.pdf</span></code> represents the total-copy numbers for all tumor clones in fixed-size regions (obtained by merging neighboring genomic bins).
+<img alt="intratumor-clones-totalcn.pdf" src="../../_images/totalcn3.png" />
+Every tumor clone is identified by a color and a dot is drawn for every genomic region (which are partitioned) for the corresponding total copy number.</p>
+<p>The second <code class="docutils literal notranslate"><span class="pre">intratumor-clones-allelecn.pdf</span></code> similarly represents the allele-specific copy numbers (split between the bottom and top regions of the figure) as the plot above.
+<img alt="intratumor-clones-allelecn.pdf" src="../../_images/allelecn3.png" /></p>
+<p>The third <code class="docutils literal notranslate"><span class="pre">intratumor-profiles.pdf</span></code> represents both the clone proportions and the total copy numbers of every clone in genomic regions.
+<img alt="intratumor-clones-allelecn.pdf" src="../../_images/profiles3.png" />
+The main heatmap in the right side of the figure represent the total copy number of every clone (i.e. a row) for every genomic region (which are partition into chromosomes as described at the top of the heatmap) such that grey color indicate regions with base copy number not affected by CNAs (but they can be affected by a WGD when this occurrs), blue colors indicates deletions, and red colors indicate amplifications; in general, the stronger the color the smaller/higher the corresponding aberration. The smaller heatmap in the left side describes the clone proportion of each clone in each sample such that the lightest color correspond to absence while darker colors indicate higher clone proportions. Last, in the left-most part there is a dendogram which hierarchically clusters the tumor clones based on similiraity.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

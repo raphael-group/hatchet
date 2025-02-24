@@ -1,0 +1,186 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Command for running the HATCHet workflow &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=0218eca2"></script>
+      <script src="../_static/doctools.js?v=888ff710"></script>
+      <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Command for running the HATCHet workflow</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/script/README.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="command-for-running-the-hatchet-workflow">
+<h1>Command for running the HATCHet workflow<a class="headerlink" href="#command-for-running-the-hatchet-workflow" title="Permalink to this heading">¶</a></h1>
+<p>The entire end-end <code class="docutils literal notranslate"><span class="pre">HATCHet</span></code> pipeline can be run by using the <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">run</span></code> command. This command requires an <em>ini-file</em>
+from which it gets its configuration values. A sample
+<a class="reference external" href="https://raw.githubusercontent.com/raphael-group/hatchet/master/script/hatchet.ini">hatchet.ini</a> file is provided in
+this folder for you to get started. You can name this file anything you want and specify it during <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">run</span></code>, but we
+will use <code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code> in the writeup below.</p>
+<section id="set-variables">
+<h2>Set variables<a class="headerlink" href="#set-variables" title="Permalink to this heading">¶</a></h2>
+<p>Set all variables in <code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code> with appropriate values. You will likely not need to modify anything at all other
+than the paths to the reference genome, paths to the normal and tumor bam files, and unique names for the tumor
+samples, all in the <code class="docutils literal notranslate"><span class="pre">run</span></code> section of <code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">reference</span> <span class="o">=</span> <span class="s2">&quot;/path/to/reference.fa&quot;</span>
+<span class="n">normal</span> <span class="o">=</span> <span class="s2">&quot;/path/to/normal.bam&quot;</span>
+<span class="n">bams</span> <span class="o">=</span> <span class="s2">&quot;/path/to/tumor1.bam /path/to/tumor2.bam&quot;</span>
+<span class="n">samples</span> <span class="o">=</span> <span class="s2">&quot;Primary Met&quot;</span>
+</pre></div>
+</div>
+<p>Optionally, if you wish to run the HATCHet pipeline only on select chromosome(s), specify their name(s) under the
+‘chromosomes’ key, separated by whitespace. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">chromosomes</span> <span class="o">=</span> <span class="n">chr21</span> <span class="n">chr22</span>
+</pre></div>
+</div>
+<p>This can be very useful when trying to validate your pipeline relatively quickly before running it on all chromosomes.
+As an example, this should be set to <code class="docutils literal notranslate"><span class="pre">chr22</span></code> for <a class="reference external" href="https://zenodo.org/record/4046906">HATCHet Demo data</a>.
+To run the pipeline on all chromosomes, leave the key blank.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">chromosomes</span> <span class="o">=</span>
+</pre></div>
+</div>
+</section>
+<section id="run-hatchet-without-phasing">
+<h2>Run HATCHet without phasing<a class="headerlink" href="#run-hatchet-without-phasing" title="Permalink to this heading">¶</a></h2>
+<p>Use the following command To run HATCHet without phasing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">hatchet</span> <span class="n">run</span> <span class="n">hatchet</span><span class="o">.</span><span class="n">ini</span>
+</pre></div>
+</div>
+<p>As explained above, you can leave all values to their defaults, but you will want to override the <code class="docutils literal notranslate"><span class="pre">reference</span></code>, <code class="docutils literal notranslate"><span class="pre">normal</span></code>,
+<code class="docutils literal notranslate"><span class="pre">bams</span></code> and <code class="docutils literal notranslate"><span class="pre">samples</span></code> values in the ini file.</p>
+</section>
+<section id="run-hatchet-with-phasing">
+<h2>Run HATCHet with phasing<a class="headerlink" href="#run-hatchet-with-phasing" title="Permalink to this heading">¶</a></h2>
+<p>Running HATCHet with phasing is currently a two part process. It’s a little more labor intensive but may produce cleaner
+results.</p>
+<p>First run <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">run</span> <span class="pre">hatchet.ini</span></code>, but <strong>enable only the first 3 steps</strong> of the HATCHet pipeline in <code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">genotype_snps</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">count_alleles</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">count_reads</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">combine_counts</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">cluster_bins</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">plot_bins</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">compute_cn</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">plot_cn</span> <span class="o">=</span> <span class="kc">False</span>
+</pre></div>
+</div>
+<p>After the run finishes, go to the <code class="docutils literal notranslate"><span class="pre">snps</span></code> subdirectory within the output directory (<code class="docutils literal notranslate"><span class="pre">output/</span></code> by default) specified in
+<code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code>. Here you will find a collection of VCF files, one for each chromosome. These must then be phased (e.g.
+using the <a class="reference external" href="https://imputationserver.sph.umich.edu/index.html#%21">Michigan Imputation Server</a>), and the location of the
+phased VCF file specified in <code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code> as the <code class="docutils literal notranslate"><span class="pre">phase</span></code> variable under the <code class="docutils literal notranslate"><span class="pre">combine_counts</span></code> section. If you use the
+Michigan imputation server:</p>
+<ol class="simple">
+<li><p>You may have to use <code class="docutils literal notranslate"><span class="pre">bcftools</span> <span class="pre">annotate</span></code> to convert between chromosome names (e.g. chr20 -&gt; 20)</p></li>
+<li><p>Results are always returned in hg19 coordinates, so you may need to convert coordinates back to hg38 using e.g.
+Picard’s <a class="reference external" href="https://broadinstitute.github.io/picard/command-line-overview.html#LiftoverVcf">LiftoverVcf</a></p></li>
+<li><p>The by-chromosome phased VCF files you receive must be combined with the <code class="docutils literal notranslate"><span class="pre">bcftools</span> <span class="pre">concat</span></code> command to give HATCHet a
+single phased VCF file.</p></li>
+</ol>
+<p>Also in <code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code>, under the <code class="docutils literal notranslate"><span class="pre">combine_counts</span></code> section is a <code class="docutils literal notranslate"><span class="pre">blocklength</span></code> parameter, which is the haplotype block
+size used for combining SNPs when estimating B-Allele frequencies. This should ideally be 20kb to 50kb. While larger
+haplotype block sizes allow you to combine more SNPs, the accuracy of phasing declines with the block size used (e.g.
+see this <a class="reference external" href="https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1007308">paper</a> comparing various
+phasing methods).</p>
+<p>Then, run the HATCHet workflow again using <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">run</span> <span class="pre">hatchet.ini</span></code>, after enabling only the remaining steps of
+the HATCHet pipeline. This should have a shorter runtime than when you ran the first 3 steps:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">genotype_snps</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">count_alleles</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">count_reads</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">combine_counts</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">cluster_bins</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">plot_bins</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">compute_cn</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">plot_cn</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,155 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyze global clustering &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Analyze global clustering</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/recommendation_clustering.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="analyze-global-clustering">
+<h1>Analyze global clustering<a class="headerlink" href="#analyze-global-clustering" title="Permalink to this heading">¶</a></h1>
+<p>The global clustering performed along the genome and jointly across samples is a crucial feature of HATCHet and the quality of the final results is strongly affected by the quality of the clustering. This global clustering is performed by HATCHet’s component <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code>, whose default values are suitable for many datasets. However, for ideal results on specific datasets these parameters may need to be modified.</p>
+<p>The module <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> incorporates genomic position to improve clustering using a Gaussian hidden Markov model (GHMM), as opposed to the position-agnostic Gaussian mixture model (GMM) used in <code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code> and described in the original HATCHet publication. This page describes how to tune the parameters of <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> – for recommendations on <code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code>, see <a class="reference internal" href="recommendation_old_clustering.html"><span class="doc">this page</span></a> instead.</p>
+<p>The user should validate the results of the clustering, especially in noisy or suspicious cases, through the cluster figures produced by <a class="reference external" href="doc_plot_bins.html">plot-bins</a> and <a class="reference external" href="doc_plot_bins_1d2d.html">plot-bins-1d2d</a>. More specifically, we suggest the following criteria to evaluate the clustering:</p>
+<ol class="simple">
+<li><p>Every pair of clusters should be clearly distinct in terms of RDR or BAF in at least one sample, and</p></li>
+<li><p>Each cluster should contain regions with similar values of RDR and BAF in all samples</p></li>
+</ol>
+<p><code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> offers several parameters that can be used to tune the clustering.</p>
+<section id="number-of-clusters">
+<h2>Number of clusters<a class="headerlink" href="#number-of-clusters" title="Permalink to this heading">¶</a></h2>
+<p>By default, <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> tries several possible values for the number <code class="docutils literal notranslate"><span class="pre">K</span></code> of clusters and selects the one that maximizes the silhouette score. In practice, this tends to <em>underestimate</em> the number of clusters that are visually apparent. This can be modified by</p>
+<ol class="simple">
+<li><p>Setting the parameters <code class="docutils literal notranslate"><span class="pre">--minK</span></code> and <code class="docutils literal notranslate"><span class="pre">--maxK</span></code> which specify the minimum and maximum number of clusters to consider, or</p></li>
+<li><p>Setting the parameter <code class="docutils literal notranslate"><span class="pre">--exactK</span></code> to fix the number of clusters to a given value.</p></li>
+</ol>
+</section>
+<section id="model-parameters">
+<h2>Model parameters<a class="headerlink" href="#model-parameters" title="Permalink to this heading">¶</a></h2>
+<p>Some parameters of the model can be tuned to change the clustering. The most useful one is the value <code class="docutils literal notranslate"><span class="pre">--tau</span></code>, which corresponds to the probability of transitioning between different copy-number states (i.e., the initial value for off-diagonal entries in the transition matrix). In practice, <code class="docutils literal notranslate"><span class="pre">tau</span></code> controls the balance between global information (RDR and BAf across samples) and local information (assigning adjacent bins to the same cluster): smaller values of <code class="docutils literal notranslate"><span class="pre">tau</span></code> put more weight on <em>local</em> information, and larger values of <code class="docutils literal notranslate"><span class="pre">tau</span></code> put more weight on <em>global</em> information.
+It may be appropriate to reduce <code class="docutils literal notranslate"><span class="pre">tau</span></code> by several orders of magnitude for noisier or lower-coverage datasets, as in this case the global RDR/BAF values are less reliable.</p>
+<p>Other parameters (below) are available to change the structure of the model, although in practice I have not found them particularly helpful in tuning the clustering.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-t</code>, <code>--transmat</code></td>
+<td>Type of transition matrix to infer</td>
+<td><code>fixed</code> (to off-diagonal = tau), <code>diag</code> (all diagonal elements are equal, all off-diagonal elements are equal) or <code>full</code> (freely varying)</td>
+<td><code>diag</code></td>
+</tr>
+<tr>
+<td><code>-c</code>, <code>--covar</code></td>
+<td>Type of covariance matrix to infer</td>
+<td>options described in <a href="https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.hmm.GaussianHMM">hmmlearn documentation</a></td>
+<td><code>diag</code></td>
+</tr>
+<tr>
+<td><code>-x</code>, <code>--decoding</code></td>
+<td>Decoding algorithm to use to infer final estimates of states</td>
+<td><code>map</code> for MAP inference, <code>viterbi</code> for Viterbi algorithm</td>
+<td><code>map</code></td>
+</tr>
+</tbody>
+</table></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,312 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>count-alleles &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">count-alleles</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_count_alleles.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="count-alleles">
+<h1>count-alleles<a class="headerlink" href="#count-alleles" title="Permalink to this heading">¶</a></h1>
+<p>Given one or more BAM files and lists of heterozygous SNP positions, this step of HATCHet counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample.</p>
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p>count-alleles takes in input sorted and indexed BAM files for multiple tumor samples from the same patient, a sorted and index BAM file from a matched-normal sample, and a indexed human reference genome.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-T</code>, <code>--tumors</code></td>
+<td>A white-space separated list of sorted-indexed BAM files</td>
+<td>The tumor samples from the same patient that are jointly analyzed by HATCHet</td>
+</tr>
+<tr>
+<td><code>-N</code>, <code>--normal</code></td>
+<td>A sorted-indexed BAM file</td>
+<td>The matched normal sample for the same patient</td>
+</tr>
+<tr>
+<td><code>-L</code>, <code>--snps</code></td>
+<td>VCF files</td>
+<td>One or more files listing heterozygous SNP positions</td>
+</tr>
+<tr>
+<td><code>-r</code>, <code>--reference</code></td>
+<td>A FASTA file</td>
+<td>The human reference genome used for germline variant calling</td>
+</tr>
+</tbody>
+</table></section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">¶</a></h2>
+<p>count-alleles produces three tab-separated files: the first contains the read counts for every genomic bin in every tumor sample, the second contains the read counts for every genomic bin the matched-normal sample, and the third contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-O</code>, <code>--outputnormal</code></td>
+<td>The output file for the read counts from matched-normal sample</td>
+<td><code>#SAMPLE  CHR  POS  REF_COUNT  ALT_COUNT</code></td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--outputtumors</code></td>
+<td>The output file for the read counts from the tumor samples</td>
+<td><code>#SAMPLE  CHR  POS  REF_COUNT  ALT_COUNT</code></td>
+</tr>
+<tr>
+<td><code>-l</code>, <code>--outputsnps</code></td>
+<td>the output directory for the list of identified heterozygous germline SNPs</td>
+<td><code>#CHR POS</code></td>
+</tr>
+</tbody>
+</table><p>The format fields are described in the following.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of a sample</td>
+</tr>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of the chromosome</td>
+</tr>
+<tr>
+<td><code>POS</code></td>
+<td>Genomic position in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>REF_COUNT</code></td>
+<td>Number of reads harboring reference allele in <code>POS</code></td>
+</tr>
+<tr>
+<td><code>ALT_COUNT</code></td>
+<td>Number of reads harboring alternate allele in <code>POS</code></td>
+</tr>
+</tbody>
+</table></section>
+<section id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Permalink to this heading">¶</a></h2>
+<p>count-alleles has some main parameters; the main values of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-S</code>, <code>--samples</code></td>
+<td>White-space separater list of a names</td>
+<td>The first name is used for the matched-normal sample, while the others are for the tumor samples and they match the same order of the corresponding BAM files</td>
+<td>File names are used</td>
+</tr>
+<tr>
+<td><code>-st</code>, <code>--samtools</code></td>
+<td>Path to <code>bin</code> directory of SAMtools</td>
+<td>The path to this direcoty needs to be specified when it is not included in <code>$PATH</code></td>
+<td>Path is expected in the enviroment variable <code>$PATH</code></td>
+</tr>
+<tr>
+<td><code>-bt</code>, <code>--bcftools</code></td>
+<td>Path to <code>bin</code> directory of BCFtools</td>
+<td>The path to this direcoty needs to be specified when it is not included in <code>$PATH</code></td>
+<td>Path is expected in the enviroment variable <code>$PATH</code></td>
+</tr>
+<tr>
+<td><code>-c</code>, <code>--mincov</code></td>
+<td>Minimum coverage</td>
+<td>Minimum number of reads that have to cover a variant to be called, the value can be increased when considering a dataset with high depth (&gt;60x)</td>
+<td>8</td>
+</tr>
+<tr>
+<td><code>-C</code>, <code>--maxcov</code></td>
+<td>Maximum coverage</td>
+<td>Maximum number of reads that have to cover a variant to be called, the typically suggested value should be twice higher than expected coverage to avoid sequencing and mapping artifacts</td>
+<td>300</td>
+</tr>
+<tr>
+<td><code>-j</code>, <code>--processes</code></td>
+<td>Number of parallele jobs</td>
+<td>Parallel jobs are used to consider the chromosomes in different samples on parallel. The higher the number the better the running time</td>
+<td>22</td>
+</tr>
+</tbody>
+</table></section>
+<section id="optional-parameters">
+<h2>Optional parameters<a class="headerlink" href="#optional-parameters" title="Permalink to this heading">¶</a></h2>
+<p>count-alleles has some optional parameters; changes in the default values of these parameters are not expected to have a significant impact but they can be tuned to better fit the given data.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-v</code>, <code>--verbose</code></td>
+<td>Verbose logging flag</td>
+<td>When enabled, count-alleles outputs a verbose log of the executiong</td>
+<td>Not used</td>
+</tr>
+<tr>
+<td><code>-g</code>, <code>--gamma</code></td>
+<td>Level of confidence for selecting germline heterozygous SNPs</td>
+<td>This value is the level of confidence used for the binomial model used to assess whether a called SNPs is in fact germline heterozygous</td>
+<td>0.05</td>
+</tr>
+<tr>
+<td><code>-q</code>, <code>--readquality</code></td>
+<td>Threshold for phred-score quality of sequencing reads</td>
+<td>The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of sequencing reads</td>
+<td>20</td>
+</tr>
+<tr>
+<td><code>-Q</code>, <code>--basequality</code></td>
+<td>Threshold for phred-score quality of sequenced nucleotide bases</td>
+<td>The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of sequenced nucleotide bases</td>
+<td>20</td>
+</tr>
+<tr>
+<td><code>-U</code>, <code>--snpquality</code></td>
+<td>Threshold for phred-score quality of called variants</td>
+<td>The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of called variants</td>
+<td>20</td>
+</tr>
+<tr>
+<td><code>-L</code>, <code>--snps</code></td>
+<td>Path to file of SNPs in the format <code>#CHR POS</code></td>
+<td>When provided, only the included genomic positions will be considered for calling germline SNPs. Using well-known lists (e.g. dbSNP) help to significantly speed up this step</td>
+<td>Not used, SNPs are called across all genome</td>
+</tr>
+<tr>
+<td><code>-E</code>,<code>--newbaq</code></td>
+<td>Flag to enable <code>newbaq</code> veafute of SAMtools</td>
+<td>When selected, the user asks SAMtools to recompute alignment of reads on the fly during SNP calling</td>
+<td>Not used</td>
+</tr>
+<tr>
+<td><code>-b</code>, <code>--maxshift</code></td>
+<td>Maximum BAF difference from 0.5</td>
+<td>When used, only SNPs with an absolute difference between the BAF and 0.5 below the maximum are selected</td>
+<td>Not used</td>
+</tr>
+</tbody>
+</table></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

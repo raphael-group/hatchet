@@ -1,0 +1,292 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Full pipeline and tutorial &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Full pipeline and tutorial</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_fullpipeline.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="full-pipeline-and-tutorial">
+<h1>Full pipeline and tutorial<a class="headerlink" href="#full-pipeline-and-tutorial" title="Permalink to this heading">¶</a></h1>
+<p><a name="fullpipelineandtutorial"></a></p>
+<p>We provide example <a class="reference internal" href="script/README.html"><span class="doc">BASH scripts</span></a> that implement the entire pipeline of HATCHet.
+This script and its usage are described in detailed in a guided <a class="reference internal" href="doc_runhatchet.html"><span class="doc">tutorial</span></a>.
+The user can simply use the script for every execution of HATCHet on different data by copying the script inside the running directory and changing the corresponding paths of the required data and dependencies at the beginning of the script, as described in the guided <a class="reference internal" href="doc_runhatchet.html"><span class="doc">tutorial</span></a>.</p>
+</section>
+<section id="demos">
+<h1>Demos<a class="headerlink" href="#demos" title="Permalink to this heading">¶</a></h1>
+<p><a name="demos"></a></p>
+<p>Each demo is an example and guided execution of HATCHet on a dataset included in the corresponding demo’s folder of this
+repository (inside <code class="docutils literal notranslate"><span class="pre">examples</span></code>). The demos are meant to illustrate how the user should apply HATCHet on different
+datasets characterized by different features, noise, and kind of data. In fact, the default parameters of HATCHet allow
+to successfully analyze most of the datasets but some of these may be characterized by special features or
+higher-than-expected variance of the data. Understanding the functioning of HATCHet, assessing the quality of the
+results, and tuning the few parameters needed to fit the unique features of the considered data thus become crucial to
+guarantee to always obtain the best-quality results. These are the goals of these demos.</p>
+<p>More specifically, each demo is simultaneously a guided description of the entire example and a BASH script, which can
+be directly executed to run the complete demo after setting the few required paths at the beginning of the file. As
+such, the user can both read the guided description as a web page and run the same script to execute the demo. At this
+time the following demos are available (more demos will be added in the near future):</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Demo</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="examples/demo-complete/demo-complete.html">demo-complete</a></td>
+<td>A demo of the complete HATCHet pipeline starting from an example dataset of tumour and matched normal BAM files</td>
+</tr>
+<tr>
+<td><a href="examples/demo-WGS-sim/demo-wgs-sim.html">demo-wgs-sim</a></td>
+<td>A demo on a typical WGS (whole-genome sequencing) multi-sample dataset with standard noise and variance of the data</td>
+</tr>
+<tr>
+<td><a href="examples/demo-WGS-cancer/demo-wgs-cancer.html">demo-wgs-cancer</a></td>
+<td>A demo on a cancer WGS (whole-genome sequencing) multi-sample dataset with high noise and variance of the data</td>
+</tr>
+<tr>
+<td><a href="examples/demo-WES/demo-wes.html">demo-wes</a></td>
+<td>A demo on a cancer WES (whole-exome sequencing) multi-sample dataset, which is typycally characterized by very high variance of RDR</td>
+</tr>
+</tbody>
+</table></section>
+<section id="custom-pipelines">
+<h1>Custom pipelines<a class="headerlink" href="#custom-pipelines" title="Permalink to this heading">¶</a></h1>
+<p><a name="custompipelines"></a></p>
+<p>The repository includes custom pipelines which have been designed to adapt the complete pipeline of HATCHet to special
+conditions or to integrate the processed data produced by other pipelines. Each custom pipeline is a variation of the
+main HATCHet’s pipeline, we thus recommend the user to always first carefully understand the main
+<a class="reference internal" href="script/README.html"><span class="doc">BASH script</span></a> through the corresponding guided <a class="reference internal" href="doc_runhatchet.html"><span class="doc">tutorial</span></a> and to carefully
+understand the provided <a class="reference external" href="#demos">demos</a> to properly apply HATCHet for best-quality results. Each custom pipeline also
+includes a specific demo which represent a guided and executable example on example data.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Script</th>
+<th>Demo</th>
+<th>Variations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GATK4-CNV</td>
+<td>Custom pipeline for segmented files from GATK4 CNV pipeline</td>
+<td><a href="custom-gatk4-cnv.sh">custom-gatk4-cnv.sh</a></td>
+<td><a href="custom/GATK4-CNV/demo-gatk4-cnv.html">demo-gatk4-cnv.sh</a></td>
+<td>This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet (<code>count-reads</code>, <code>count-alleles</code>, and <code>combine-counts</code>) are not needed; for this reason, the following depdencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case.</td>
+</tr>
+</tbody>
+</table></section>
+<section id="detailed-steps">
+<h1>Detailed steps<a class="headerlink" href="#detailed-steps" title="Permalink to this heading">¶</a></h1>
+<p><a name="detailedsteps"></a></p>
+<p>The full pipeline of HATCHet is composed of 9 sequential steps (and an additional dependency-checking command), starting from the required input data.
+The description of each step also includes the details of the corresponding input/output that are especially useful when
+one wants to replace or change some of the steps in the pipeline while guaranteeing the correct functioning of HATCHet.
+Each step <code class="docutils literal notranslate"><span class="pre">&lt;step&gt;</span></code> of HATCHet can be run with the following command within a HATCHet conda environment:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>hatchet<span class="w"> </span>&lt;step&gt;
+</pre></div>
+</div>
+<p><strong>Note</strong>: This version of HATCHet uses variable-width bins to ensure that each bin has comparable B-allele frequency (BAF) signal from heterogeneous germline SNPs and to account for sequencing coverage. To run the older versions of HATCHet with fixed-width bins, use <a class="reference external" href="doc_count_reads_fw.html"><em>count-reads-fw</em></a> (formerly binBAM) instead of <em>count-reads</em> and <a class="reference external" href="doc_combine_counts_fw.html"><em>combine-counts-fw</em></a> (formerly comBBo) instead of <em>combine-counts</em>. If you are using the <code class="docutils literal notranslate"><span class="pre">run</span></code> command, set <code class="docutils literal notranslate"><span class="pre">fixed_width</span> <span class="pre">=</span> <span class="pre">True</span></code> under the <code class="docutils literal notranslate"><span class="pre">[run]</span></code> header in your <code class="docutils literal notranslate"><span class="pre">.ini</span></code> file.</p>
+<p>Additionally, this version of HATCHet uses a new locality-aware clustering module that incorporates local information along the genome. This replaces the previous GMM-based clustering (command named cluBB). Users can still use GMM-based clustering if they wish by setting <code class="docutils literal notranslate"><span class="pre">loc-clust</span></code> to <code class="docutils literal notranslate"><span class="pre">False</span></code> under the <code class="docutils literal notranslate"><span class="pre">[run]</span></code> header in <code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code>, or by running <a class="reference internal" href="doc_cluster_bins_gmm.html"><span class="doc">cluster-bins-gmm</span></a> directly.</p>
+<p><em>Older versions of HATCHet used different names for these steps. The <code class="docutils literal notranslate"><span class="pre">Old</span> <span class="pre">Name</span></code> column lists those names.</em></p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Order</th>
+<th>Step</th>
+<th>Old Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(1)</td>
+<td><a href="doc_genotype_snps.html"><em>genotype-snps</em></a></td>
+<td>deBAF</td>
+<td>This step calls heterozygous germline SNPs from the matched-normal sample.</td>
+</tr>
+<tr>
+<td>(2)</td>
+<td><a href="doc_count_alleles.html"><em>count-alleles</em></a></td>
+<td>deBAF</td>
+<td>This step counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample.</td>
+</tr>
+<tr>
+<td>(3)</td>
+<td><a href="doc_count_reads.html"><em>count-reads</em></a></td>
+<td>N/A</td>
+<td>This step splits the human reference genome into very small regions (representing candidate bins) according to germline SNP positions, and counts the number of total reads aligned to each region in each of the tumor samples and in the matched normal sample.</td>
+</tr>
+<tr>
+<td>(4)</td>
+<td><a href="doc_phase_snps.html"><em>phase-snps</em></a></td>
+<td>N/A</td>
+<td>This <strong>optional</strong> step uses reference-based phasing to group together germline SNPs that are likely on the same haplotype. This improves the quality of BAF estimates for balanced regions of the genome.</td>
+</tr>
+<tr>
+<td>(5)</td>
+<td><a href="doc_combine_counts.html"><em>combine-counts</em></a></td>
+<td>N/A</td>
+<td>This step constructs genomic bins with variable sizes, and combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin.</td>
+</tr>
+<tr>
+<td>(6)</td>
+<td><a href="doc_cluster_bins.html"><em>cluster-bins</em></a></td>
+<td>N/A</td>
+<td>This step globally clusters genomic bins along the entire genome and jointly across tumor samples while incorporating local information.</td>
+</tr>
+<tr>
+<td>(7)</td>
+<td><a href="doc_plot_bins.html"><em>plot-bins</em></a></td>
+<td>BBot</td>
+<td>This <strong>optional</strong>  step produces informative plots concerning the computed RDRs, BAFs, and clusters. The information produced by this step are important to validate the compute clusters of genomic regions. When this step is enabled in the <code>.ini</code> file, <a href="doc_plot_bins_1d2d.html">plot-bins-1d2d</a> is run as well to generate additional plots.</td>
+</tr>
+<tr>
+<td>(8)</td>
+<td><a href="doc_compute_cn.html"><em>compute-cn</em></a></td>
+<td>hatchet</td>
+<td>This step computes allele-specific fractional copy numbers, solves a constrained distance-based simultaneous factorization to compute allele and clone-specific copy numbers and clone proportions, and deploys a model-selection criterion select the number of clone by explicitly considering the trade-off between subclonal copy-number aberrations and whole-genome duplication.</td>
+</tr>
+<tr>
+<td>(9)</td>
+<td><a href="doc_plot_cn.html"><em>plot-cn</em></a></td>
+<td>BBeval</td>
+<td>This <strong>optional</strong> step analyzes the inferred copy-number states and clone proportions and produces informative plots jointly considering all samples from the same patient. In addition, this step can also combine results obtained for different patients and perform integrative analysis. When this step is enabled in the <code>.ini</code> file, <a href="doc_plot_cn_1d2d.html">plot-cn-1d2d</a> is run as well to generate additional plots.</td>
+</tr>
+<tr>
+<td>(10)</td>
+<td><a href="doc_check.html"><em>check</em></a></td>
+<td>check-solver</td>
+<td>This <strong>optional</strong> step is a quick way to verify if your solver and other 3rd party dependencies are working correctly. It checks for the presence of several dependencies and tests <code>compute_cn</code> on a set of small data files pre-packaged.</td>
+</tr>
+</tbody>
+</table></section>
+<section id="recommendations-and-quality-control">
+<h1>Recommendations and quality control<a class="headerlink" href="#recommendations-and-quality-control" title="Permalink to this heading">¶</a></h1>
+<p><a name="recommendations"></a></p>
+<p>All the components of HATCHet’s pipeline use some basic parameters that allow to deal with data characterized by different features. The default values of these parameters allow one to succesfully apply HATCHet on most datasets. However, special or noisy datasets may require to tune some parameters. The user can deal with these cases by following the recommendations reported here, reading the descriptions of the various steps, and using the informative plots to verify the results. In the following guides and recommentations, we guide the user in the interpration of HATCHet’s inference, we explain how to perform quality control to guarantee the best-quality results, and we describe how the user can control and tune some of the parameters to obtain the best-fitting results. We thus split the recommendations into distinct topics with dedicated descriptions.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Recommendation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="recommendation_inference.html">Analyze HATCHet inference</a></td>
+<td>Interpret HATCHet's inference, quality and error control, and investigate alternative solutions.</td>
+</tr>
+<tr>
+<td><a href="recommendation_clustering.html">Analyze global clustering</a></td>
+<td>Interprent global clustering, quality and error control, and parameter tuning</td>
+</tr>
+<tr>
+<td><a href="recommendation_datatype.html">Analyze different type of data</a></td>
+<td>Tuning parameters to better analyzing different type of data as those from WES</td>
+</tr>
+<tr>
+<td><a href="recommendation_runtime.html">Improve running time</a></td>
+<td>Tips for improving running time of the whole pipeline</td>
+</tr>
+</tbody>
+</table></section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

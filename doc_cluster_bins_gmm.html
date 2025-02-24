@@ -1,0 +1,339 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cluster-bins-gmm &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">cluster-bins-gmm</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_cluster_bins_gmm.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cluster-bins-gmm">
+<h1>cluster-bins-gmm<a class="headerlink" href="#cluster-bins-gmm" title="Permalink to this heading">¶</a></h1>
+<p>This step globally clusters genomic bins along the entire genome and jointly across tumor samples, and estimate the corresponding values of RDR and BAF for every cluster in every sample.
+cluster-bins-gmm uses a non-parametric Gaussian mixture model (GMM) (scikit-learn implementation) for clustering; the main parameters can be tuned for dealing with special datasets, especially those with high variance or low tumor purity (see <a class="reference external" href="#main-parameters">Main Parameters</a> below).</p>
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p>cluster-bins-gmm takes in input a tab-separated file with the following fields.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of a chromosome</td>
+</tr>
+<tr>
+<td><code>START</code></td>
+<td>Starting genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>END</code></td>
+<td>Ending genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of a tumor sample</td>
+</tr>
+<tr>
+<td><code>RD</code></td>
+<td>RDR of the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>#SNPS</code></td>
+<td>Number of SNPs present in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>COV</code></td>
+<td>Average coverage in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>ALPHA</code></td>
+<td>Alpha parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from A allele</td>
+</tr>
+<tr>
+<td><code>BETA</code></td>
+<td>Beta parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from B allele</td>
+</tr>
+<tr>
+<td><code>BAF</code></td>
+<td>BAF of the bin in <code>SAMPLE</code></td>
+</tr>
+</tbody>
+</table><p>The fields <code class="docutils literal notranslate"><span class="pre">#SNPS</span></code>, <code class="docutils literal notranslate"><span class="pre">COV</span></code>, <code class="docutils literal notranslate"><span class="pre">ALPHA</span></code>, and <code class="docutils literal notranslate"><span class="pre">BETA</span></code> are currently deprecated and their values are ignored.</p>
+</section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">¶</a></h2>
+<p>cluster-bins-gmm produces two tab-separated files:</p>
+<ol class="simple">
+<li><p>A file of clustered genomic bins, specified by the flag <code class="docutils literal notranslate"><span class="pre">-O</span></code>, <code class="docutils literal notranslate"><span class="pre">--outbins</span></code>. The tab separated file has the same fields as the input plus a last field <code class="docutils literal notranslate"><span class="pre">CLUSTER</span></code> which specifies the name of the corresponding cluster.</p></li>
+<li><p>A file of clustered genomic bins, specified by the flag <code class="docutils literal notranslate"><span class="pre">-o</span></code>, <code class="docutils literal notranslate"><span class="pre">--outsegments</span></code>. The tab separated file has the following fields.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ID</code></td>
+<td>The name of a cluster</td>
+</tr>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>The name of a sample</td>
+</tr>
+<tr>
+<td><code>#BINS</code></td>
+<td>The number of bins included in <code>ID</code></td>
+</tr>
+<tr>
+<td><code>RD</code></td>
+<td>The RDR of the cluster <code>ID</code> in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>#SNPS</code></td>
+<td>The total number of SNPs in the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>COV</code></td>
+<td>The average coverage in the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>ALPHA</code></td>
+<td>The alpha parameter of the binomial model for the BAF of the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>BETA</code></td>
+<td>The beta parameter of the binomial model for the BAF of the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>BAF</code></td>
+<td>The BAF of the cluster <code>ID</code> in <code>SAMPLE</code></td>
+</tr>
+</tbody>
+</table></section>
+<section id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Permalink to this heading">¶</a></h2>
+<p>cluster-bins-gmm has 4 main features with some main parameters that allow  to improve the clustering.</p>
+<ol class="simple">
+<li><p>cluster-bins-gmm has a parameter <code class="docutils literal notranslate"><span class="pre">-d</span></code>, <code class="docutils literal notranslate"><span class="pre">--diploidbaf</span></code> that specifies the maximum expected shift from 0.5 for BAF for a diploid or tetraploid cluster (i.e. with copy-number states (1, 1) or (2, 2)). This threshold is used for two goals: (1) To identify the diploid or tetraploid cluster which is used to correct the estimated BAF of potentially biased clusters. (2) To identify potentially biased clusters.
+The default value of this parameter (0.1) is typically sufficient for most of the datasets, but its value can be changed or tuned to accommodate the features of special datasets.
+In particular, the value of this threshold depends on the variance in the data (related to noise and coverage); generally, higher variance requires a higher shift.
+Information provided by plot-bins can be crucial to decide whether one needs to change this value in special datasets.</p></li>
+<li><p>cluster-bins-gmm has some main parameters to control the clustering; the default values for most of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.
+plot-bins provides informative plots that can be used to assess the quality of the clustering and evaluate the need of changing some parameters for special datasets.
+If your clusters do not appear to be cohesive, try lowering the maximum number of clusters (<code class="docutils literal notranslate"><span class="pre">-K</span></code>) which will force cluster-bins-gmm to infer fewer clusters.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-K</code>, <code>--initclusters</code></td>
+<td>Maximum number of clusters</td>
+<td>The parameter specifies the maximum number of clusters to infer, i.e., the maximum number of GMM components</td>
+<td>50</td>
+</tr>
+<tr>
+<td><code>-c</code>, <code>--concentration</code></td>
+<td>Concentration parameter for clustering</td>
+<td>This parameter determines how much confidence the GMM has in different types of clusterings. Higher values (e.g., 10 or 100)  favor fewer clusters, and smaller values (e.g., 0.01 or 0.001) favor more clusters. For experts, this is the alpha parameter for the Dirichlet process prior.</td>
+<td>1/K</td>
+</tr>
+</tbody>
+</table><ol class="simple">
+<li><p>cluster-bins-gmm offers a bootstraping approach that allows a succesfull clustering even when there is a limited number genomic bins that are considred. The bootstraping approach generates sinthetic (i.e. used only for clustering) bins based on the data of the given bins. The bootstraping is controlled by the following parameters.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-u</code>, <code>--bootclustering</code></td>
+<td>Number of sinthetic bins to generate</td>
+<td>Sinthetic bins can be generated based on the RDR and BAF of given bins and are added only to the clustering to improve it when the total number of bins is low (e.g. when considering data from WES)</td>
+<td>0, not used</td>
+</tr>
+<tr>
+<td><code>-dR</code>,<code>--ratiodeviation</code></td>
+<td>Standard deviation for generate RDR of sinthetic bins</td>
+<td>The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this</td>
+<td>0.02</td>
+</tr>
+<tr>
+<td><code>-dB</code>,<code>--bafdeviation</code></td>
+<td>Standard deviation for generate BAF of sinthetic bins</td>
+<td>The parameter affects the variance of the generated data, this value can be estimated from given bins and plot-bins generates informative plots to do this</td>
+<td>0.02</td>
+</tr>
+<tr>
+<td><code>-s</code>, <code>--seed</code></td>
+<td>Random seed</td>
+<td>The value is used to seed the random generation of RDR and BAF of synthetic bins</td>
+<td>0</td>
+</tr>
+</tbody>
+</table><ol class="simple">
+<li><p>cluster-bins-gmm offers a basic iterative process to merge clusters according to given tolerances. This feature can be used to refine the results of the GMM clustering and merge distinct clusters that are not sufficiently distinguished. This process can be controlled by the following parameters.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-tR</code>, <code>--tolerancerdr</code></td>
+<td>Tolerance for RDR</td>
+<td>The value is used to determine when two clusters should be merged in terms of RDR</td>
+<td>0.0, merging is not performed</td>
+</tr>
+<tr>
+<td><code>-tB</code>, <code>--tolerancebaf</code></td>
+<td>Tolerance for BAF</td>
+<td>The value is used to determine when two clusters should be merged in terms of BAF</td>
+<td>0.0, merging is not performed</td>
+</tr>
+</tbody>
+</table></section>
+<section id="optional-parameters">
+<h2>Optional parameters<a class="headerlink" href="#optional-parameters" title="Permalink to this heading">¶</a></h2>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-v</code>, <code>--verbose</code></td>
+<td>Verbose logging flag</td>
+<td>When enabled, combine-counts outputs a verbose log of the executiong</td>
+<td>Not used</td>
+</tr>
+<tr>
+<td><code>-r</code>, <code>--disablebar</code></td>
+<td>Disabling progress-bar flag</td>
+<td>When enabled, the output progress bar is disabled</td>
+<td>Not used</td>
+</tr>
+</tbody>
+</table></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
