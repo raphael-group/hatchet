@@ -28,6 +28,7 @@ def rd_gccorrect(bb, ref_genome):
                 "3_usercol": "END",
                 "5_pct_gc": "GC",
             }
+        ).astype({"#CHR": str}
         )[["#CHR", "START", "END", "GC"]]
     )
 
