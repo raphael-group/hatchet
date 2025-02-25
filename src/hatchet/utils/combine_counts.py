@@ -113,7 +113,7 @@ def main(args=None):
 
     big_bb["CORRECTED_READS"] = np.NAN
 
-    # For each sample, correct read counts to account for differences in coverage (as in HATCHet)
+    # For each sample, correct read counts to account for differences in coverage (as in HATCHet2)
     # (i.e., multiply read counts by total-reads-normal/total-reads-sample)
     rc = pd.read_table(args["totalcounts"], header=None, names=["SAMPLE", "#READS"])
     normal_name = all_names[0]
@@ -153,7 +153,7 @@ def main(args=None):
     # perform GC bias correction
     autosomal_bb = rd_gccorrect(autosomal_bb, referencefasta)
 
-    # Convert intervals from closed to half-open to match .1bed/HATCHet standard format
+    # Convert intervals from closed to half-open to match .1bed/HATCHet2 standard format
     autosomal_bb.END = autosomal_bb.END + 1
     autosomal_bb.to_csv(outfile, index=False, sep="\t")
 
@@ -168,13 +168,13 @@ def main(args=None):
 
 def read_snps(baf_file, ch, all_names, phasefile=None):
     """
-    Read and validate SNP data for this patient (TSV table output from HATCHet deBAF.py).
+    Read and validate SNP data for this patient (TSV table output from HATCHet2 deBAF.py).
     """
     all_names = all_names[
         1:
     ]  # remove normal sample -- not looking for SNP counts from normal
 
-    # Read in HATCHet BAF table
+    # Read in HATCHet2 BAF table
     all_snps = pd.read_table(
         baf_file,
         names=["CHR", "POS", "SAMPLE", "ALT", "REF"],
@@ -1148,7 +1148,7 @@ def run_chromosome(
     test_alpha,
 ):
     """
-    Perform adaptive binning and infer BAFs to produce a HATCHet BB file for a single chromosome.
+    Perform adaptive binning and infer BAFs to produce a HATCHet2 BB file for a single chromosome.
     """
 
     try:

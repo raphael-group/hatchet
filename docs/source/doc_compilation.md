@@ -1,6 +1,6 @@
 # Detailed compilation
 
-To perform the compilation, execute the following commands from the root of HATCHet's repository.
+To perform the compilation, execute the following commands from the root of HATCHet2's repository.
 
 ```shell
 $ mkdir build
@@ -9,7 +9,7 @@ $ ccmake ..
 $ make
 ```
 
-HATCHet's compilation process attempts to automatically find the following Gurobi's paths.
+HATCHet2's compilation process attempts to automatically find the following Gurobi's paths.
 
 | Name | Path | Comment |
 |------|------|---------|

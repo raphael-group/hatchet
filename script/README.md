@@ -1,6 +1,6 @@
-# Command for running the HATCHet workflow
+# Command for running the HATCHet2 workflow
 
-The entire end-end `HATCHet` pipeline can be run by using the `hatchet run` command. This command requires an *ini-file*
+The entire end-end `HATCHet2` pipeline can be run by using the `hatchet run` command. This command requires an *ini-file*
 from which it gets its configuration values. A sample
 [hatchet.ini](https://raw.githubusercontent.com/raphael-group/hatchet/master/script/hatchet.ini) file is provided in
 this folder for you to get started. You can name this file anything you want and specify it during `hatchet run`, but we
@@ -19,7 +19,7 @@ bams = "/path/to/tumor1.bam /path/to/tumor2.bam"
 samples = "Primary Met"
 ```
 
-Optionally, if you wish to run the HATCHet pipeline only on select chromosome(s), specify their name(s) under the
+Optionally, if you wish to run the HATCHet2 pipeline only on select chromosome(s), specify their name(s) under the
 'chromosomes' key, separated by whitespace. For example:
 
 ```
@@ -27,16 +27,16 @@ chromosomes = chr21 chr22
 ```
 
 This can be very useful when trying to validate your pipeline relatively quickly before running it on all chromosomes.
-As an example, this should be set to `chr22` for [HATCHet Demo data](https://zenodo.org/record/4046906).
+As an example, this should be set to `chr22` for [HATCHet2 Demo data](https://zenodo.org/record/4046906).
 To run the pipeline on all chromosomes, leave the key blank.
 
 ```
 chromosomes =
 ```
 
-## Run HATCHet without phasing
+## Run HATCHet2 without phasing
 
-Use the following command To run HATCHet without phasing:
+Use the following command To run HATCHet2 without phasing:
 
 ```
 hatchet run hatchet.ini
@@ -45,12 +45,12 @@ hatchet run hatchet.ini
 As explained above, you can leave all values to their defaults, but you will want to override the `reference`, `normal`,
 `bams` and `samples` values in the ini file.
 
-## Run HATCHet with phasing
+## Run HATCHet2 with phasing
 
-Running HATCHet with phasing is currently a two part process. It's a little more labor intensive but may produce cleaner
+Running HATCHet2 with phasing is currently a two part process. It's a little more labor intensive but may produce cleaner
 results.
 
-First run `hatchet run hatchet.ini`, but **enable only the first 3 steps** of the HATCHet pipeline in `hatchet.ini`:
+First run `hatchet run hatchet.ini`, but **enable only the first 3 steps** of the HATCHet2 pipeline in `hatchet.ini`:
 
 ```
 genotype_snps = True
@@ -72,7 +72,7 @@ Michigan imputation server:
 1. You may have to use `bcftools annotate` to convert between chromosome names (e.g. chr20 -> 20)
 2. Results are always returned in hg19 coordinates, so you may need to convert coordinates back to hg38 using e.g.
    Picard's [LiftoverVcf](https://broadinstitute.github.io/picard/command-line-overview.html#LiftoverVcf)
-3. The by-chromosome phased VCF files you receive must be combined with the `bcftools concat` command to give HATCHet a
+3. The by-chromosome phased VCF files you receive must be combined with the `bcftools concat` command to give HATCHet2 a
    single phased VCF file.
 
 Also in `hatchet.ini`, under the `combine_counts` section is a `blocklength` parameter, which is the haplotype block
@@ -81,8 +81,8 @@ haplotype block sizes allow you to combine more SNPs, the accuracy of phasing de
 see this [paper](https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1007308) comparing various
 phasing methods).
 
-Then, run the HATCHet workflow again using `hatchet run hatchet.ini`, after enabling only the remaining steps of
-the HATCHet pipeline. This should have a shorter runtime than when you ran the first 3 steps:
+Then, run the HATCHet2 workflow again using `hatchet run hatchet.ini`, after enabling only the remaining steps of
+the HATCHet2 pipeline. This should have a shorter runtime than when you ran the first 3 steps:
 
 ```
 genotype_snps = False

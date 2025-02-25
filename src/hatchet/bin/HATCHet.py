@@ -719,7 +719,7 @@ t2s = lambda x: [str(a) for a in x]
 def parse_clonal_diploid(clonal):
     """
     Given a list of clonal cluster copy numbers, this function tries to order them to be compatible
-    with the HATCHet C++ factorization module.
+    with the HATCHet2 C++ factorization module.
     For diploid scaling, this module requires:
     -the first cluster is indicated with copy-number 1,1
     -the second cluster has a total copy number different from 2
@@ -743,7 +743,7 @@ def parse_clonal_diploid(clonal):
         raise ValueError(
             error(
                 "No cluster was indicated as (1,1) in argument to 'clonal' with "
-                "'diploid'=True. HATCHet solving module requires specification of (1,1) cluster for the "
+                "'diploid'=True. HATCHet2 solving module requires specification of (1,1) cluster for the "
                 "'clonal' argument to be used in this case."
             )
         )
@@ -783,7 +783,7 @@ def parse_clonal_diploid(clonal):
 def parse_clonal_tetraploid(clonal):
     """
     Given a list of clonal cluster copy numbers, this function tries to order them to be compatible
-    with the HATCHet C++ factorization module.
+    with the HATCHet2 C++ factorization module.
     For tetraploid scaling, this module requires:
     -the first cluster is indicated with copy-number 2,2
     -the second cluster has a total copy number different from 4
@@ -807,7 +807,7 @@ def parse_clonal_tetraploid(clonal):
         raise ValueError(
             error(
                 "No cluster was indicated as (2,2) in argument to 'clonal' with "
-                "'tetraploid'=True. HATCHet solving module requires specification of (2,2) cluster for the "
+                "'tetraploid'=True. HATCHet2 solving module requires specification of (2,2) cluster for the "
                 "'clonal' argument to be used in this case."
             )
         )

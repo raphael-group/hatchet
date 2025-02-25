@@ -110,7 +110,7 @@ hatchet solves a constrained and distance-based variant of the factorization tha
 | `-f`, `--noampdel` | Activate clone evolutionary contraints | User can decide whether to enable or not constrained about the evolution of tumor clones. These constrained force each allele to be either amplified or deleted across all tumor clones | Activated |
 | `-d`, `--cnstates` | Maximum number of distinct copy-number states per cluster | When enabled, the maximum number of distinct copy-number states per cluster is fixed. This option is deprecated | Not used |
 
-HATCHet implements two methods to solve the constrained and distance-based simultaneous factorization: (1) a integer-linear programming (ILP) and (2) a coordinate-descent method (CD).
+HATCHet2 implements two methods to solve the constrained and distance-based simultaneous factorization: (1) a integer-linear programming (ILP) and (2) a coordinate-descent method (CD).
 These methods can be combined in 3 different modes:
 - (0) CD + ILP: the solution found by CD is used to start the ILP. As such, ILP attempts to improve the solution found by CD.
 - (1) ILP only
@@ -127,8 +127,8 @@ In addition, the solving methods can be controlled by the following parameters.
 | `-s`, `--timelimit` | Time limit | The time limit, expressed in seconds, is imposed to every step of the CD algorithm or to the whole ILP | None |
 | `-m`, `--timelimit` | Memory limit | The memory limit, expressed in megabytes, is imposed to every step of the CD algorithm or to the whole ILP. The execution will not be interrupted when reaching the threshold but disk is used | None |
 | `--maxiterations` | Maximum number of iteration per seed | This number is imposed as the maximum number of iterations executed for every restart of the CD algorithm | 40 |
-| `--diploid` | Assume no WGD | When enabled, HATCHet assumes the absence of a WGD | Not used |
-| `--tetraloid` | Assume a WGD | When enabled, HATCHet assumes the occurrence of a WGD | Not used |
+| `--diploid` | Assume no WGD | When enabled, HATCHet2 assumes the absence of a WGD | Not used |
+| `--tetraloid` | Assume a WGD | When enabled, HATCHet2 assumes the occurrence of a WGD | Not used |
 
 ## Model selection
 
@@ -136,7 +136,7 @@ This steps have two main parameters to control the model-selection criterion:
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-l`, `--limitinc` | Sensitivity level | The sensitivity level is used to control the confidence in evaluating the presence of tumor clones characterized by small CNAs. By decreasing the value of the sensitivity, HATCHet is more sensible to the presence of small CNAs and small clusters or with small shifts in RDR/BAF are more likely considered as the signal of an additional tumor clone. The possible values of this parameter are between 1.0 and 0.0 and specifically corresponds to an upper bound for the left relative improvement of the objective function. | None, reasonable values to use can be 0.6, 0.5, 0.4, 0.3, 0.2, ... according to the values of the objective function. |
-| `-g`, `--ghostprop` | Confidence in the presence of a single tumor clone | This value expresses the confidence of HATCHet when evaluating the presence of a single tumor clone. The higher the value the more likely the presence of a single clone is considered | 0.2 |
+| `-l`, `--limitinc` | Sensitivity level | The sensitivity level is used to control the confidence in evaluating the presence of tumor clones characterized by small CNAs. By decreasing the value of the sensitivity, HATCHet2 is more sensible to the presence of small CNAs and small clusters or with small shifts in RDR/BAF are more likely considered as the signal of an additional tumor clone. The possible values of this parameter are between 1.0 and 0.0 and specifically corresponds to an upper bound for the left relative improvement of the objective function. | None, reasonable values to use can be 0.6, 0.5, 0.4, 0.3, 0.2, ... according to the values of the objective function. |
+| `-g`, `--ghostprop` | Confidence in the presence of a single tumor clone | This value expresses the confidence of HATCHet2 when evaluating the presence of a single tumor clone. The higher the value the more likely the presence of a single clone is considered | 0.2 |
 
 ## Additional parameters

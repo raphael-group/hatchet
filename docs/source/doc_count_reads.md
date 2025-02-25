@@ -1,6 +1,6 @@
 # count-reads
 
-This step of HATCHet uses the locations of heterozygous SNPs (called by `count-alleles`) to identify candidate bin thresholds between SNPs. Then, it counts the total number of reads in each sample between each set of candidate thresholds for use in constructing variable-length bins.
+This step of HATCHet2 uses the locations of heterozygous SNPs (called by `count-alleles`) to identify candidate bin thresholds between SNPs. Then, it counts the total number of reads in each sample between each set of candidate thresholds for use in constructing variable-length bins.
 
 ## Input
 
@@ -8,7 +8,7 @@ This step of HATCHet uses the locations of heterozygous SNPs (called by `count-a
 
 | Name | Description | Usage |
 |------|-------------|-------|
-| `-T`, `--tumors` | A white-space separated list of sorted-indexed BAM files for tumor samples | The tumor samples from the same patient that are jointly analyzed by HATCHet |
+| `-T`, `--tumors` | A white-space separated list of sorted-indexed BAM files for tumor samples | The tumor samples from the same patient that are jointly analyzed by HATCHet2 |
 | `-N`, `--normal` | A sorted-indexed BAM file for matched-normal sample | The matched normal sample for the same patient |
 | `-b`, `--baffile` | A 1bed file containing locations of heterozygous germline SNPs | Typically, a user would run `count-alleles` to obtain this file. |
 | `-V`, `--refversion` | Reference genome version (hg19 or hg38 supported) | |

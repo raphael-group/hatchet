@@ -1,0 +1,46 @@
+Metadata-Version: 2.1
+Name: hatchet
+Version: 2.1.0
+Summary: A package to infer allele and clone-specific copy-number aberrations (CNAs).
+Author-email: Simone Zaccaria <s.zaccaria@ucl.ac.uk>, Ben Raphael <braphael@cs.princeton.edu>, Matt Myers <mm63@cs.princeton.edu>, Brian Arnold <brianjohnarnold@gmail.com>, Vineet Bansal <vineetb@princeton.edu>, Metin Balaban <metin@princeton.edu>
+Project-URL: Homepage, https://github.com/raphael-group/hatchet
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: POSIX :: Linux
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pybedtools
+Requires-Dist: biopython
+Requires-Dist: hmmlearn
+Requires-Dist: matplotlib
+Requires-Dist: pandas
+Requires-Dist: psutil
+Requires-Dist: pyomo
+Requires-Dist: pysam
+Requires-Dist: requests
+Requires-Dist: seaborn
+Requires-Dist: scikit-learn
+Requires-Dist: scipy
+Requires-Dist: statsmodels
+Provides-Extra: dev
+Requires-Dist: pre-commit; extra == "dev"
+Requires-Dist: pytest>=6; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: mock; extra == "dev"
+Requires-Dist: coverage; extra == "dev"
+Requires-Dist: numpydoc; extra == "dev"
+Requires-Dist: sphinx; extra == "dev"
+Requires-Dist: sphinxcontrib-bibtex<2.0.0; extra == "dev"
+Requires-Dist: sphinx-rtd-theme; extra == "dev"
+Requires-Dist: recommonmark; extra == "dev"
+Requires-Dist: sphinx-markdown-tables; extra == "dev"
+
+![CI](https://github.com/raphael-group/hatchet/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/raphael-group/hatchet/branch/master/graph/badge.svg)](https://codecov.io/gh/raphael-group/hatchet)
+
+# HATCHet2
+
+HATCHet2 is an algorithm to infer allele and clone-specific copy-number aberrations (CNAs), clone proportions, and whole-genome duplications (WGD) for several tumor clones jointly from multiple bulk-tumor samples of the same patient or from a single bulk-tumor sample.
+
+Complete documentation for HATCHet2 is available at [https://raphael-group.github.io/hatchet/](https://raphael-group.github.io/hatchet/)

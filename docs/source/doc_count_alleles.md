@@ -1,6 +1,6 @@
 # count-alleles
 
-Given one or more BAM files and lists of heterozygous SNP positions, this step of HATCHet counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample.
+Given one or more BAM files and lists of heterozygous SNP positions, this step of HATCHet2 counts the number of reads covering both the alleles of each identified heterozgyous SNP in every tumor sample.
 
 ## Input
 
@@ -8,7 +8,7 @@ count-alleles takes in input sorted and indexed BAM files for multiple tumor sam
 
 | Name | Description | Usage |
 |------|-------------|-------|
-| `-T`, `--tumors` | A white-space separated list of sorted-indexed BAM files | The tumor samples from the same patient that are jointly analyzed by HATCHet |
+| `-T`, `--tumors` | A white-space separated list of sorted-indexed BAM files | The tumor samples from the same patient that are jointly analyzed by HATCHet2 |
 | `-N`, `--normal` | A sorted-indexed BAM file | The matched normal sample for the same patient |
 | `-L`, `--snps` | VCF files | One or more files listing heterozygous SNP positions |
 | `-r`, `--reference` | A FASTA file | The human reference genome used for germline variant calling |

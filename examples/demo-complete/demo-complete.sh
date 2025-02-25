@@ -1,14 +1,14 @@
-# Demo complete for the entire HATCHet pipeline
+# Demo complete for the entire HATCHet2 pipeline
 
 : ex: set ft=markdown ;:<<'```shell' #
 
-The following HATCHet demo represents a guided example of the complete HATCHet pipeline starting from an exemplary dataset of tumour and matched normal
+The following HATCHet22 demo represents a guided example of the completeHATCHet2t2 pipeline starting from an exemplary dataset of tumour and matched normal
 [BAM files](https://doi.org/10.5281/zenodo.4046906) publicly available. From this directory, simply run this file through BASH as a standard script to run
 the complete demo. The demo can also be considered as a guided example of a complete execution and is correspondingly commented.
 
 ## Requirements and set up
 
-The demo requires that HATCHet has been succesfully installed in the current python environment.
+The demo requires that HATCHet22 has been succesfully installed in the current python environment.
 Please make sure that you can succesfully run the required dependencies `samtools`, `bcftools`, `tabix`, and `mosdepth`.
 The demo includes the downloading of all the required files and will terminate in <20 minutes on machine with minimum requirements satisfied.
 
@@ -68,9 +68,9 @@ samtools dict data/hg19.fa > data/hg19.dict
 :<<'```shell' # Ignore this line
 ```
 
-## Configuring the HATCHet's execution
+## Configuring the HATCHet22's execution
 
-We follow the template of the HATCHet's [script](../../doc/doc_fullpipeline.md#fullpipelineandtutorial).
+We follow the template of the HATCHet22's [script](../../doc/doc_fullpipeline.md#fullpipelineandtutorial).
 
 1. We specify the correct path to the reference genome and the output folder, and other required flags
 ```shell
@@ -137,7 +137,7 @@ echo 'mtr=5000' >> hatchet.ini
 :<<'```shell' # Ignore this line
 ```
 
-## Running HATCHet
+## Running HATCHet22
 
 ```shell
 python -m hatchet run hatchet.ini

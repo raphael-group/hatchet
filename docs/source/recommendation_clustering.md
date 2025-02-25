@@ -1,6 +1,6 @@
 # Analyze global clustering
 
-The global clustering performed along the genome and jointly across samples is a crucial feature of HATCHet and the quality of the final results is strongly affected by the quality of the clustering. This global clustering is performed by HATCHet's component `cluster-bins`, whose default values are suitable for many datasets. However, for ideal results on specific datasets these parameters may need to be modified.
+The global clustering performed along the genome and jointly across samples is a crucial feature of HATCHet2 and the quality of the final results is strongly affected by the quality of the clustering. This global clustering is performed by HATCHet2's component `cluster-bins`, whose default values are suitable for many datasets. However, for ideal results on specific datasets these parameters may need to be modified.
 
 The module `cluster-bins` incorporates genomic position to improve clustering using a Gaussian hidden Markov model (GHMM), as opposed to the position-agnostic Gaussian mixture model (GMM) used in `cluster-bins-gmm` and described in the original HATCHet publication. This page describes how to tune the parameters of `cluster-bins` -- for recommendations on `cluster-bins-gmm`, see [this page](recommendation_old_clustering.md) instead.
 
