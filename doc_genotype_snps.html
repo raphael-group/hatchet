@@ -1,0 +1,237 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>genotype-snps &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">genotype-snps</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_genotype_snps.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="genotype-snps">
+<h1>genotype-snps<a class="headerlink" href="#genotype-snps" title="Permalink to this heading">¶</a></h1>
+<p>Given the normal BAM file, this step of HATCHet identifies heterozygous germline SNP positions. The user can restrict candidate positions to a given list (e.g., dbSNP) using the <code class="docutils literal notranslate"><span class="pre">-R,</span> <span class="pre">--snps</span></code> argument.</p>
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p>genotype-snps takes in input a sorted and index BAM file from a matched-normal sample and an indexed human reference genome (preferrably the same version as was used for alignment).</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-N</code>, <code>--normal</code></td>
+<td>A sorted-indexed BAM file</td>
+<td>The matched normal sample</td>
+</tr>
+<tr>
+<td><code>-r</code>, <code>--reference</code></td>
+<td>A FASTA file</td>
+<td>The human reference genome used for germline variant calling</td>
+</tr>
+</tbody>
+</table></section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">¶</a></h2>
+<p>genotype-snps produces a tab-separated VCF file for each chromosome which contains a list of the genomic positions that have been identified as germline heterozygous SNPs in the matched-normal sample.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-l</code>, <code>--outputsnps</code></td>
+<td>the output file for the list of identified heterozygous germline SNPs</td>
+<td><code>#CHR POS</code></td>
+</tr>
+</tbody>
+</table></section>
+<section id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Permalink to this heading">¶</a></h2>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-R</code>, <code>--snps</code></td>
+<td>VCF files</td>
+<td>Optional list of candidate SNP positions to consider</td>
+<td>None*</td>
+</tr>
+<tr>
+<td><code>-st</code>, <code>--samtools</code></td>
+<td>Path to <code>bin</code> directory of SAMtools</td>
+<td>The path to this direcoty needs to be specified when it is not included in <code>$PATH</code></td>
+<td>Path is expected in the enviroment variable <code>$PATH</code></td>
+</tr>
+<tr>
+<td><code>-bt</code>, <code>--bcftools</code></td>
+<td>Path to <code>bin</code> directory of BCFtools</td>
+<td>The path to this direcoty needs to be specified when it is not included in <code>$PATH</code></td>
+<td>Path is expected in the enviroment variable <code>$PATH</code></td>
+</tr>
+<tr>
+<td><code>-c</code>, <code>--mincov</code></td>
+<td>Minimum coverage</td>
+<td>Minimum number of reads that have to cover a variant to be called, the value can be increased when considering a dataset with high depth (&gt;60x)</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>-C</code>, <code>--maxcov</code></td>
+<td>Maximum coverage</td>
+<td>Maximum number of reads that have to cover a variant to be called, the typically suggested value should be twice higher than expected coverage to avoid sequencing and mapping artifacts</td>
+<td>1000</td>
+</tr>
+<tr>
+<td><code>-j</code>, <code>--processes</code></td>
+<td>Number of parallel jobs</td>
+<td>Parallel jobs are used to consider the chromosomes in different samples on parallel. The higher the number the better the running time</td>
+<td>2</td>
+</tr>
+</tbody>
+</table><p>*When run as a standalone module, the no SNP list is used by default. When run as part of <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">run</span></code> and no <code class="docutils literal notranslate"><span class="pre">--snps</span></code> argument is supplied, the correct version of dbSNP is automatically downloaded and used to call SNPs.</p>
+</section>
+<section id="optional-parameters">
+<h2>Optional parameters<a class="headerlink" href="#optional-parameters" title="Permalink to this heading">¶</a></h2>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-v</code>, <code>--verbose</code></td>
+<td>Verbose logging flag</td>
+<td>When enabled, count-alleles outputs a verbose log of the executiong</td>
+<td>Not used</td>
+</tr>
+<tr>
+<td><code>-q</code>, <code>--readquality</code></td>
+<td>Threshold for phred-score quality of sequencing reads</td>
+<td>The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of sequencing reads</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>-Q</code>, <code>--basequality</code></td>
+<td>Threshold for phred-score quality of sequenced nucleotide bases</td>
+<td>The value can be either decreased (e.g. 10) or increased (e.g. 30) to adjust the filtering of sequenced nucleotide bases</td>
+<td>11</td>
+</tr>
+<tr>
+<td><code>-E</code>,<code>--newbaq</code></td>
+<td>Flag to enable <code>newbaq</code> veafute of SAMtools</td>
+<td>When selected, the user asks SAMtools to recompute alignment of reads on the fly during SNP calling</td>
+<td>Not used</td>
+</tr>
+</tbody>
+</table></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,237 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyze HATCHet’s inference &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Analyze HATCHet’s inference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/recommendation_inference.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="analyze-hatchet-s-inference">
+<h1>Analyze HATCHet’s inference<a class="headerlink" href="#analyze-hatchet-s-inference" title="Permalink to this heading">¶</a></h1>
+<p>The main component of HATCHet (<a class="reference internal" href="doc_compute_cn.html"><span class="doc">compute-cn</span></a> step) performs three major tasks: (1) explicit estimation of fractional copy numbers, (2) inference of allele and clone-specific copy numbers, and (3) joint prediction of number of clones and whole-genome duplication. In the following, we guide the user in the interpration of HATCHet’s inference, we explain how to perform quality control to guarantee the best-quality results, and we describe how the user can control and tune some of the parameters to obtain the best-fitting results. In fact, it is important to assess the quality of the results from each of these steps to guarantee the best-quality results, especially when considering datasets with high noise or special features.</p>
+<ol class="simple">
+<li><p><a class="reference external" href="#estimation">Estimation of fractional copy numbers</a></p></li>
+<li><p><a class="reference external" href="#inference">Inference of allele and clone-specific copy numbers</a></p></li>
+<li><p><a class="reference external" href="#joint">Joint selection of number of clones and whole-genome duplication</a></p></li>
+<li><p><a class="reference external" href="#quality">Quality control and suspicious cases</a></p></li>
+</ol>
+<section id="estimation-of-fractional-copy-numbers">
+<h2>1. Estimation of fractional copy numbers<a class="headerlink" href="#estimation-of-fractional-copy-numbers" title="Permalink to this heading">¶</a></h2>
+<p><a name="estimation"></a></p>
+<p>HATCHet estimates the fractional copy numbers for all segments by identifying 1 or 2 tumor clonal clusters (i.e, a cluster which have the same CNA in all tumor clones). First, HATCHet selects only some of the clusters as potential clonal clusters and, next, it aims to find consistent combinations of clonal clusters.</p>
+<section id="selecting-potential-clonal-clusters">
+<h3>Selecting potential clonal clusters<a class="headerlink" href="#selecting-potential-clonal-clusters" title="Permalink to this heading">¶</a></h3>
+<p>HATCHet selects potential clonal clusters as sufficiently large clusters; the list of the selected clusters is reported in the LOG of the <code class="docutils literal notranslate"><span class="pre">HATCHet</span></code> step starting with line <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Selected</span> <span class="pre">clusters</span></code>. This list reports the cluster size and the corresponding pairs of values (RDR, BAF) in each sample (alphabetically sorted) and, therefore, can be easily used to map these clusters to the <code class="docutils literal notranslate"><span class="pre">bb_clustered.pdf</span></code> figure generated by the command <code class="docutils literal notranslate"><span class="pre">CBB</span></code> of <code class="docutils literal notranslate"><span class="pre">plot-bins</span></code> or the <code class="docutils literal notranslate"><span class="pre">plot-bins-1d2d</span></code> command. For example, we have the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Selected clusters: 11, 10, 12, 15, 21, 22, 23</span>
+<span class="c1">## Features of selected clusters:</span>
+<span class="c1">## 11: SIZE= 169350000.0	#CHRS= 6	(RDR, BAF)= (0.98300155842, 0.0717476641159)-(0.70901452517, 0.0218274427111)-(0.793836783391, 0.0201025034921)</span>
+<span class="c1">## 10: SIZE= 31250000.0	#CHRS= 2	(RDR, BAF)= (1.26230102783, 0.5)-(0.993581127953, 0.39042851007)-(1.08735153846, 0.411521706019)</span>
+<span class="c1">## 12: SIZE= 187400000.0	#CHRS= 8	(RDR, BAF)= (1.54296926478, 0.399215013858)-(1.28029494725, 0.494771052557)-(1.38353348068, 0.415539785049)</span>
+<span class="c1">## 15: SIZE= 57450000.0	#CHRS= 2	(RDR, BAF)= (0.70122709154, 0.406572560257)-(0.96296886062, 0.419918229626)-(0.869811018537, 0.415889001548)</span>
+<span class="c1">## 21: SIZE= 73000000.0	#CHRS= 1	(RDR, BAF)= (0.982893169988, 0.350795164506)-(0.88867098782, 0.410185588799)-(0.917182445956, 0.415596024012)</span>
+<span class="c1">## 22: SIZE= 71600000.0	#CHRS= 1	(RDR, BAF)= (0.982359985531, 0.350709236531)-(1.2496122809, 0.497653731887)-(1.16543827292, 0.496215824202)</span>
+<span class="c1">## 23: SIZE= 106150000.0	#CHRS= 10	(RDR, BAF)= (0.701788866503, 0.100467817792)-(0.602518459603, 0.0254102909342)-(0.621971921092, 0.0253841073015)</span>
+</pre></div>
+</div>
+<p>The size of the clusters that are considered is defined by the parameter <code class="docutils literal notranslate"><span class="pre">-ts</span></code> which defines the minimum fraction of the genome that needs to be covered by a potential clonal cluster. To deal with special or noisy datasets, the user can either decrease the value of this threshold (e.g. <code class="docutils literal notranslate"><span class="pre">-ts</span> <span class="pre">0.001</span></code>, 0.1% fraction of the genome) to include clusters which have been erroneously excluded or increase the value of this threshold (e.g. <code class="docutils literal notranslate"><span class="pre">-ts</span> <span class="pre">0.03</span></code>, 3% fraction of the genome) to exclude noisy clusters. Including all the most significant clusters is crucial to guarantee a correct identification of the clonal clusters and their copy numbers. For example, assume to have the following clusters:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">## 0:   SIZE= 498    #CHRS= 22    (RDR, BAF)= (1.0, 0.5)</span>
+<span class="c1">## 1:   SIZE= 497    #CHRS= 22    (RDR, BAF)= (0.7, 0.25)</span>
+<span class="c1">## 2:   SIZE= 5      #CHRS= 10    (RDR, BAF)= (1.0, 0.00)</span>
+</pre></div>
+</div>
+<p>When using the default value of <code class="docutils literal notranslate"><span class="pre">-ts</span> <span class="pre">0.008</span></code>, the cluster <code class="docutils literal notranslate"><span class="pre">2</span></code> will be excluded as it is covering a fraction of the genome smaller than the given threshold; as a consequence, the other cluster <code class="docutils literal notranslate"><span class="pre">1</span></code> appears to be the one with maximum shift of BAF and, therefore, with a copy-number state equal for example to (2, 0) (i.e. a loss-of-heterozygosity, LOH). However, assuming <code class="docutils literal notranslate"><span class="pre">2</span></code> is not due to noise but is providing true information, <code class="docutils literal notranslate"><span class="pre">2</span></code> should be the one with maximum shift of BAF and with a state (2, 0) corresponding to a LOH. Therefore, the user should identify the absence of cluster <code class="docutils literal notranslate"><span class="pre">2</span></code> by using the <code class="docutils literal notranslate"><span class="pre">bb_clustered.pdf</span></code> figure generated by command CBB of <code class="docutils literal notranslate"><span class="pre">plot-bins</span></code> and use a lower threshold <code class="docutils literal notranslate"><span class="pre">-ts</span> <span class="pre">0.005</span></code> to include it.</p>
+</section>
+<section id="identifying-combinations-of-clonal-clusters">
+<h3>Identifying combinations of clonal clusters<a class="headerlink" href="#identifying-combinations-of-clonal-clusters" title="Permalink to this heading">¶</a></h3>
+<p>HATCHet chooses the largest combination of consistent clonal clusters to obtain the needed clonal cluster and to estimate the fractional copy numbers, when assuming the occurrence of a WGD. The combinations considered by HATCHet are reported in the LOG of the <code class="docutils literal notranslate"><span class="pre">HATCHet</span></code> step, after the inferences with the absence of a WGD (<code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Running</span> <span class="pre">diploid</span></code>) and starting with line <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Finding</span> <span class="pre">clonal</span> <span class="pre">clusters</span> <span class="pre">and</span> <span class="pre">their</span> <span class="pre">copy</span> <span class="pre">numbers</span></code>. Each combination (also called pattern) is reported by first specifying the total size of the involved clusters and next the copy number state of each cluster. For example, we have the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Finding clonal clusters and their copy numbers</span>
+<span class="c1">## Found pattern of size 1080892751.0: {&#39;8&#39;: (2, 1), &#39;28&#39;: (3, 2), &#39;50&#39;: (2, 2), &#39;29&#39;: (4, 2), &#39;23&#39;: (2, 0)}</span>
+<span class="c1">## Found pattern of size 906528933.0: {&#39;60&#39;: (2, 1), &#39;12&#39;: (3, 2), &#39;50&#39;: (2, 2)}</span>
+<span class="c1">## Found pattern of size 712147541.0: {&#39;11&#39;: (2, 0), &#39;50&#39;: (2, 2)}</span>
+<span class="c1">## Found pattern of size 835497541.0: {&#39;23&#39;: (2, 0), &#39;28&#39;: (3, 2), &#39;50&#39;: (2, 2), &#39;29&#39;: (4, 2), &#39;21&#39;: (2, 1)}</span>
+<span class="c1">## Found pattern of size 886592751.0: {&#39;8&#39;: (2, 0), &#39;28&#39;: (4, 2), &#39;50&#39;: (2, 2)}</span>
+<span class="c1">## Chosen pattern of size 1080892751.0: {&#39;8&#39;: (2, 1), &#39;28&#39;: (3, 2), &#39;50&#39;: (2, 2), &#39;29&#39;: (4, 2), &#39;23&#39;: (2, 0)}</span>
+</pre></div>
+</div>
+<p>There are two parameters which control the identification of these patterns, which are <code class="docutils literal notranslate"><span class="pre">-tR</span></code>, i.e. RDR threshold, and <code class="docutils literal notranslate"><span class="pre">-tB</span></code>, i.e. BAF threshold. These thresholds are considered as the maximum allowed errors when estimating the clonal clusters. As such, the user can either decrease the thresholds (e.g. <code class="docutils literal notranslate"><span class="pre">-ts</span> <span class="pre">0.03</span></code> and <code class="docutils literal notranslate"><span class="pre">-ts</span> <span class="pre">0.02</span></code>) to consider more stringent constraints especially in low-noise datasets where subclonality can be accurately identified, or increase the thresholds (e.g. <code class="docutils literal notranslate"><span class="pre">-ts</span> <span class="pre">0.15</span></code> and <code class="docutils literal notranslate"><span class="pre">-ts</span> <span class="pre">0.05</span></code>) to accomodate the higher noise in certain datasets. The user can use the <code class="docutils literal notranslate"><span class="pre">bb_clustered.pdf</span></code> figure produced by the command <code class="docutils literal notranslate"><span class="pre">CBB</span></code> of <code class="docutils literal notranslate"><span class="pre">plot-bins</span></code> to assess the identified clonal cluster. For example, in the following case</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">## 0:   SIZE= 498    #CHRS= 22    (RDR, BAF)= (1.0, 0.5)</span>
+<span class="c1">## 1:   SIZE= 497    #CHRS= 22    (RDR, BAF)= (0.7, 0.25)</span>
+<span class="c1">## 2:   SIZE= 5      #CHRS= 10    (RDR, BAF)= (1.0, 0.00)</span>
+</pre></div>
+</div>
+<p>The users can easily see that the following pattern would be suspicious and wrong:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">## Chosen pattern of size 995: {`0` : (2, 2), `1` : (2, 0)}</span>
+</pre></div>
+</div>
+<p>because in the <code class="docutils literal notranslate"><span class="pre">bb_clustered.pdf</span></code> figure there is another clear cluster <code class="docutils literal notranslate"><span class="pre">2</span></code> which have a significantly higher shift in the BAF and, therefore, <code class="docutils literal notranslate"><span class="pre">1</span></code> cannot have a state <code class="docutils literal notranslate"><span class="pre">(2,</span> <span class="pre">0)</span></code> which would correspond to the highest shift of BAF.</p>
+</section>
+</section>
+<section id="inference-of-allele-and-clone-specific-copy-numbers">
+<h2>2. Inference of allele and clone-specific copy numbers<a class="headerlink" href="#inference-of-allele-and-clone-specific-copy-numbers" title="Permalink to this heading">¶</a></h2>
+<p><a name="inference"></a></p>
+<p>HATCHet infers allele and clone-specific copy numbers by first assuming the absence of a WGD (<code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Running</span> <span class="pre">diploid</span></code>) and, next, by assuming the presence of a WGD (<code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Running</span> <span class="pre">tetraploid</span></code>). In each of the two cases, HATCHet considers an increasing number of clones (including the normal diploid clone). Typically, the interval starts from 2 (i.e. 1 tumor clone) up to 6-8 clones which is the typical maximum number of clones in terms of CNAs; however, the user can consider larger numbers, especially when suspecting the presence of more clones, by controlling the parameter <code class="docutils literal notranslate"><span class="pre">-n</span></code>, e.g. typical intervals are <code class="docutils literal notranslate"><span class="pre">-n</span> <span class="pre">2,6</span></code>, <code class="docutils literal notranslate"><span class="pre">-n</span> <span class="pre">2,8</span></code>, <code class="docutils literal notranslate"><span class="pre">-n</span> <span class="pre">2,10</span></code>, <code class="docutils literal notranslate"><span class="pre">-n</span> <span class="pre">2,12</span></code>, …</p>
+<section id="maximum-copy-numbers-and-minimum-clone-proportion">
+<h3>Maximum copy numbers and minimum clone proportion<a class="headerlink" href="#maximum-copy-numbers-and-minimum-clone-proportion" title="Permalink to this heading">¶</a></h3>
+<p>For each assumpotion and number of clones, HATCHet infers allele and clone-specific copy-numbers by using two main parameters, the <em>maximum copy numbers (<code class="docutils literal notranslate"><span class="pre">-eD</span></code> and <code class="docutils literal notranslate"><span class="pre">-eT</span></code>)</em> and the <em>minimum clone proportion (<code class="docutils literal notranslate"><span class="pre">-u</span></code>)</em>. These parameters are very important to constrain the solution space depending on the needs of the user, in particular the minimum clone proportion <code class="docutils literal notranslate"><span class="pre">-u</span></code> is particularly important to deal with noisy datasets and we reccomend the user to follow the criterion described here below:</p>
+<ul class="simple">
+<li><p><strong>Maximum copy numbers (<code class="docutils literal notranslate"><span class="pre">-eD</span></code> and <code class="docutils literal notranslate"><span class="pre">-eT</span></code>)</strong>: these values define the maximum value of the total copy number when assuming the absence of a WGD (<code class="docutils literal notranslate"><span class="pre">-eD</span></code>) and the presence of a WGD (<code class="docutils literal notranslate"><span class="pre">-eT</span></code>). By default the value of these parameters is <code class="docutils literal notranslate"><span class="pre">0</span></code> meaning that these values are inferred from the estimated fractional copy numbers. However, we recommend the user to try to use common values, especially in the first attempts, (e.g. 5, 6, 8 for <code class="docutils literal notranslate"><span class="pre">-eD</span></code> and 8, 10, 12 for <code class="docutils literal notranslate"><span class="pre">eT</span></code>) to constraint the searching space and avoid that noisy clusters introduce outlying values.</p></li>
+<li><p><strong>Minimum clone proportion <code class="docutils literal notranslate"><span class="pre">-u</span></code></strong>: this value defines the minimum clone proportion for the inferred tumor clones. Default values are pretty small, e.g. 0.03 or 0.05, and allow to infer tumor clones present in small proportions. However, the power of the inference and the capability of inferring tumor clones with small proportions strongly depend on the noise of the data. As such, especially for noisy and special datasets it is very important that the user considers higher values when possible, e.g. 0.1-0.15. We reccomend to consider the following criterion to avoid overfitting and find the best fitting value for <code class="docutils literal notranslate"><span class="pre">-u</span></code>: <strong>start from very small minimum clone proprtions and increase the value whenever the inferred solutions contain clones with clone proportions equal to this threshold</strong>.</p></li>
+</ul>
+</section>
+</section>
+<section id="joint-selection-of-number-of-clones-and-whole-genome-duplication">
+<h2>3. Joint selection of number of clones and whole-genome duplication<a class="headerlink" href="#joint-selection-of-number-of-clones-and-whole-genome-duplication" title="Permalink to this heading">¶</a></h2>
+<p><a name="joint"></a></p>
+<p>For each number of clones N, the related copy numbers are computed by HATCHet and placed in two output files:</p>
+<ul class="simple">
+<li><p>A <code class="docutils literal notranslate"><span class="pre">BBC-UCN</span></code> file which adds to the input <code class="docutils literal notranslate"><span class="pre">BBC</span></code> file the copy-number state and proportion inferred for each clone (the normal clone is always the first). The file is named <code class="docutils literal notranslate"><span class="pre">results.diploid.nN.bbc.ucn.tsv</span></code> or <code class="docutils literal notranslate"><span class="pre">results.tetraploid.nN.bbc.ucn.tsv</span></code> for the solutions obtained when considering the absence or presence of a WGD, respectively.</p></li>
+<li><p>A <code class="docutils literal notranslate"><span class="pre">SEG-UCN</span></code> file which combines neighboring bins with the same copy-number states into segments and for each segment it reports the copy-number state and proportion of each clone. The file is named <code class="docutils literal notranslate"><span class="pre">results.diploid.nN.seg.ucn.tsv</span></code> or <code class="docutils literal notranslate"><span class="pre">results.tetraploid.nN.seg.ucn.tsv</span></code> for the solutions obtained when considering the absence or presence of a WGD, respectively.</p></li>
+</ul>
+<p>HATCHet selects the best solution under each of the two assumptions through a model selection criterion; as such, it copies the best diploid solutions to the files <code class="docutils literal notranslate"><span class="pre">chosen.diploid.bbc.ucn</span></code> and <code class="docutils literal notranslate"><span class="pre">chosen.diploid.seg.ucn</span></code>, and the best tetraploid solution to the two files <code class="docutils literal notranslate"><span class="pre">chosen.tetraploid.bbc.ucn</span></code> and <code class="docutils literal notranslate"><span class="pre">chosen.tetraploid.seg.ucn</span></code>. Each choice is based on the value of an elbow function (called <code class="docutils literal notranslate"><span class="pre">score</span></code>) computed for each number of clones. This value approximates the second derivative of the factorization objective function (called <code class="docutils literal notranslate"><span class="pre">OBJ</span></code>) and the choice is based on the maximum score; as such <strong>the best number of clones is chosen as the number which significantly improves the objective function with respect to lower number of clones but no significant subsequent improvements are observed with increasing number of clones</strong>. All these values are summarized in the LOG of the HATCHet step by firts summarizing the values for diploid solutions and next those of tetraploid solutions, e.g.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">## Scores approximating second derivative for diploid results</span>
+<span class="c1">## Diploid with 2 clones - OBJ: 66.804147 - score: -0.176997273837</span>
+<span class="c1">## Diploid with 3 clones - OBJ: 34.938751 - score: -0.020688175766</span>
+<span class="c1">## Diploid with 4 clones - OBJ: 17.550243 - score: 0.0543991087813</span>
+<span class="c1">## Diploid with 5 clones - OBJ: 9.77046 - score: 0.203750740655</span>
+<span class="c1">## Diploid with 6 clones - OBJ: 7.430087 - score: 0.0541415395045</span>
+<span class="c1">## Diploid with 7 clones - OBJ: 6.052593 - score: 0.0380373822927</span>
+<span class="c1">## Diploid with 8 clones - OBJ: 5.160703 - score: -0.152643321631</span>
+<span class="c1">## Scores approximating second derivative for tetraploid results</span>
+<span class="c1">## Tetraploid with 2 clones - OBJ: 81.064423 - score: -0.414934454045</span>
+<span class="c1">## Tetraploid with 3 clones - OBJ: 23.108674 - score: 0.172765083795</span>
+<span class="c1">## Tetraploid with 4 clones - OBJ: 15.546709 - score: 0.103011062784</span>
+<span class="c1">## Tetraploid with 5 clones - OBJ: 12.060766 - score: 0.023008690139</span>
+<span class="c1">## Tetraploid with 6 clones - OBJ: 9.633957 - score: 0.0339979959232</span>
+<span class="c1">## Tetraploid with 7 clones - OBJ: 8.022994 - score: 0.104757566866</span>
+<span class="c1">## Tetraploid with 8 clones - OBJ: 7.521881 - score: -0.237540399507</span>
+</pre></div>
+</div>
+<p>The user should analyze the scores as HATCHet provides the following two parameters (controlling different hypotheses) to investigate alternative solutions with also high scores:</p>
+<ul class="simple">
+<li><p><strong>Sensitivity to small CNAs <code class="docutils literal notranslate"><span class="pre">-l</span></code></strong>: this parameter controls the sensitivity of HATCHet to small CNAs, whose typical values are 0.5-0.6. The user should decrease this value, e.g. 0.2-0.3, to investigate solutions with more clones and smaller CNAs, while it should increase the value, e.g. 1.0-1.5, to give more confidence to large CNAs and less to small CNAs.</p></li>
+<li><p><strong>Confidence in a single tumor clone <code class="docutils literal notranslate"><span class="pre">-g</span></code></strong>: this parameter controls the confidence in the presence of a single tumor clone, whose typical values are 0.2-0.3. The user should increase the value to increase the confidence, e.g. 0.4-0.5, in the presence of a single tumor clone, while lower values, e.g. 0.0-0.1, decrease the confidenze and favor the presence of more clones. The value should be increase especially in 2 cases: (1) when the score of 2 clones is particularly high with or without a WGD (e.g. a value close to 0.0), and especially (2) when the score of 2 clones is significantly higher with a WGD than the score of 2 clones without a WGD; the latter may indeed indicate the presence of a single tetraploid clone.</p></li>
+</ul>
+<p>The final best solution, according to prediction of the presence or absence of a WGD, is made based on a trade-off between the number of clones and WGD; more specifically, the diploid solution is chosen when it has the same or lower number of clones than the tetraploid solution, otherwise the tetraploid solution is chosen.</p>
+</section>
+<section id="quality-control-and-suspicious-cases">
+<h2>4. Quality control and suspicious cases<a class="headerlink" href="#quality-control-and-suspicious-cases" title="Permalink to this heading">¶</a></h2>
+<p><a name="quality"></a></p>
+<p>It is very important that the user verifies the results in different steps to guarantee the best-quality results, more specifically:</p>
+<ul class="simple">
+<li><p>User can assess the validity of the chosen clonal cluster using the <code class="docutils literal notranslate"><span class="pre">bb_clustered.pdf</span></code> figure produced by the command <code class="docutils literal notranslate"><span class="pre">CBB</span></code> of <code class="docutils literal notranslate"><span class="pre">plot-bins</span></code> and comparing the list of selected potential clonal clusters.</p></li>
+<li><p>User can assess the inferred copy numbers by analyzing the inferred maximum values and the inferred clone proportions which define the tumor clonal composition.</p></li>
+<li><p>User can assess the joint inference of number of clones and WGD by analyzing the values of the objective function and the related scores.</p></li>
+</ul>
+<p>There are some typical suspicious and warning cases that the user can identify from the analysis of the LOG of the <code class="docutils literal notranslate"><span class="pre">HATCHet</span></code> step:</p>
+<ul class="simple">
+<li><p>Many diploid solutions have high scores.</p></li>
+<li><p>Objective function of tetraploid solutions (i.e. with WGD) does not almost decrease/vary when increasing the number of clones. Even if this can occur because a single tetraploid tumor clone is present, this typically occurrs when the heuristic of HATCHet failed to identify a correct clonal cluster. This case is even more suspicious when the chosen number of diploid clones is much higher or when the objective function of tetraploid solutions is hugely higher that those of diploid solutions.</p></li>
+<li><p>Inferred clone proportions are identical to the minimum clone proportion <code class="docutils literal notranslate"><span class="pre">-u</span></code> and tumor clones are present in all samples with very small proportions. Also, higher maximum copy numbers are needed when these result in much lower objective functions.</p></li>
+<li><p>Huge difference between the number of clones inferred with and without a WGD, especially when the chosen diploid solution has a much lower number of clones than the chosen tetraploid solution.</p></li>
+<li><p>Objective function that keeps decreasing significantly and objective function with very small values.</p></li>
+<li><p>Score of 2 clones with a WGD is much higher then score of 2 clones without a WGD. This typically requires to increase the single-clone confidence of HATCHet <code class="docutils literal notranslate"><span class="pre">-g</span></code> to investigate the presence of a single tumor clone.</p></li>
+</ul>
+<p>The user can consider the following parameters to investigate alternative solutions and better fitting:</p>
+<ul class="simple">
+<li><p>Sensitivity <code class="docutils literal notranslate"><span class="pre">-l</span></code> controls how much the variance of data and clusters influence the choice of the number of clones. The user should <strong>increase the sensitivity (by decreasing the value of <code class="docutils literal notranslate"><span class="pre">-l</span></code> to 0.4, or 0.45, 0.5, or 0.3) when having high-purity or low variance samples</strong> to better investigate multiple solutions, especially when there are multiple solutions with higher scores (and especially when there are many diploid solutions with high scores) and when considering small CNAs. Conversely, the user should <strong>decrease the sensitivity (by increasing -l to 0.6, 0.8, 1.0)</strong> when considering low-purity or high-variance samples.</p></li>
+<li><p>Minimum clone proportion <code class="docutils literal notranslate"><span class="pre">-u</span></code>, we suggest to increase this value whenever obtaing solutions with clone proportions idetical to <code class="docutils literal notranslate"><span class="pre">-u</span></code> or clones present in all samples with very small proportions.</p></li>
+<li><p>Maximum copy numbers, both standard values and those inferred from fractional copy numbers (by providing <code class="docutils literal notranslate"><span class="pre">-eD</span> <span class="pre">0</span> <span class="pre">-eT</span> <span class="pre">0</span></code>) should be investigated.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-g</span></code> controls the confidence in the presence of a single tumor clone.</p></li>
+<li><p>Higher values of <code class="docutils literal notranslate"><span class="pre">-tR</span></code> and <code class="docutils literal notranslate"><span class="pre">-tR</span></code> allow to increase the thresholds for the inferred clonal clusters in case of high noise in the data, while lower values allow to decrease error in case of low noise data.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-ts</span></code> determines a thresholds for the clusters to consider as potential clonal clusters, higher values allow to improve accuracy while lower values include more information especially when small CNAs are present.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,121 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>check &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">check</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_check.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="check">
+<h1>check<a class="headerlink" href="#check" title="Permalink to this heading">¶</a></h1>
+<p>This command of HATCHet verifies that dependencies that are unique to specific parts of HATCHet are correctly installed. The relevant commands with dependencies are <code class="docutils literal notranslate"><span class="pre">count-reads</span></code>, <code class="docutils literal notranslate"><span class="pre">phase-snps</span></code>, and <code class="docutils literal notranslate"><span class="pre">compute-cn</span></code>.</p>
+<p>All checks can be run simultaneously via <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">check</span></code>, or an individual command can be checked via, e.g., <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">check</span> <span class="pre">compute-cn</span></code>.</p>
+<p>The check for <code class="docutils literal notranslate"><span class="pre">compute-cn</span></code> runs the step on a set of small data files (.bbc/.seg) pre-packaged with HATCHet, and is a quick way to verify if your solver is working correctly.
+If you are unable to run this command, it likely indicates a licensing issue with default (Gurobi) solver. To use alternative solvers, see the
+<a class="reference external" href="README.html#usingasolver_other">Using a different Pyomo-supported solver</a> section of the README for more details.</p>
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p>This command takes no inputs.</p>
+</section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">¶</a></h2>
+<p>This command produces debugging output from the solver as well as other dependency checks. For <code class="docutils literal notranslate"><span class="pre">compute-cn</span></code>, look for the message towards the end of the output:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Your current solver ... seems to be working correctly</span>
+</pre></div>
+</div>
+<p>to verify if your selected solver works correctly.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

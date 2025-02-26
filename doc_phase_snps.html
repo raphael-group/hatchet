@@ -1,0 +1,217 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>phase-snps &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">phase-snps</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_phase_snps.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="phase-snps">
+<h1>phase-snps<a class="headerlink" href="#phase-snps" title="Permalink to this heading">¶</a></h1>
+<p><strong>Note:</strong> To run this step, you must first run <a class="reference external" href="doc_download_panel.html"><em>download-panel</em></a> to download the reference-based phasing panel, and specify its location via the argument <code class="docutils literal notranslate"><span class="pre">-D,</span> <span class="pre">--refpaneldir</span></code>. The <code class="docutils literal notranslate"><span class="pre">download-panel</span></code> command only needs to be run once per system.</p>
+<p>This step of HATCHet phases genotypes found in VCF files. It automatically takes care of differences in coordinates if the user has aligned their reads to a version of the reference genome (e.g. hg38) that is different from the version used in the reference panel (e.g. hg19 for the 1000 genomes project), using the liftover utility within Picard. Once genotypes are lifted over and phased, we again perform one last liftover to the coordinates of the genome used for alignment. Liftover is skipped if the version of the reference genome used for alignments corresponds to the same version used in the reference panel. Lastly, in order to account for differences in naming conventions for chromosomes, with or without the “chr” prefix, we also add or remove these prefixes so that chromosome names correspond to those used in the reference panel (without “chr” for the 1000 genomes project hg19 panel).</p>
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">phase-snps</span></code> takes one or more VCF files containing heterozygous SNP positions as input, specified using <code class="docutils literal notranslate"><span class="pre">-L,</span> <span class="pre">--snps</span></code>. These are typically produced by <a class="reference internal" href="doc_genotype_snps.html"><span class="doc">genotype_snps</span></a>.</p>
+<p>The following parameters are required to specify and describe the input data:</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-L</code>, <code>--snps</code></td>
+<td>A list of VCF files to phase, one per chromosome</td>
+<td>Specify a list using a path along with a wildcard, e.g. /path/to/snps/*.vcf.gz</td>
+</tr>
+<tr>
+<td><code>-D</code>, <code>--refpaneldir</code></td>
+<td>Path to the Reference Panel</td>
+<td>This is the location where the 1000 genome project reference panel will be downloaded</td>
+</tr>
+<tr>
+<td><code>-g</code>, <code>--refgenome</code></td>
+<td>Path to the reference genome used to align reads</td>
+<td>Path should include the filename</td>
+</tr>
+<tr>
+<td><code>-V</code>, <code>--refversion</code></td>
+<td>Version of reference genome used to align reads</td>
+<td>Specify the human reference genome used for aligning reads; hg19 or hg38</td>
+</tr>
+<tr>
+<td><code>-N</code>, <code>--chrnotation</code></td>
+<td>Chromosome names contain "chr" (e.g., "chr1" instead of "1")</td>
+<td>Set this flag if and only if your BAM files/reference genome include "chr" in chromosome names</td>
+</tr>
+<tr>
+<td><code>-o</code>, <code>--outdir</code></td>
+<td>Output folder for phased VCFs</td>
+<td>Specify a path or relative path</td>
+</tr>
+</tbody>
+</table></section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">¶</a></h2>
+<p>The following files will be placed in the directory indicated by <code class="docutils literal notranslate"><span class="pre">-o,</span> <span class="pre">--outdir</span></code>:</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>phased.vcf.gz</td>
+<td>VCF file containing phased genotypes for all chromosomes</td>
+</tr>
+<tr>
+<td>phased.log</td>
+<td>Table showing how many SNPs were present before and after phasing; SNPs may be lost in the process due to various reasons, e.g. they were not present in the reference panel so there is no information to phase them</td>
+</tr>
+<tr>
+<td>*_alignments.log</td>
+<td>Log files from the shapeit phasing program, one per chromosome</td>
+</tr>
+</tbody>
+</table></section>
+<section id="main-parameters">
+<h2>Main Parameters<a class="headerlink" href="#main-parameters" title="Permalink to this heading">¶</a></h2>
+<p>If HATCHet is installed via <code class="docutils literal notranslate"><span class="pre">conda</span></code>, the dependencies (<code class="docutils literal notranslate"><span class="pre">shapeit</span></code>, <code class="docutils literal notranslate"><span class="pre">picard</span></code>, <code class="docutils literal notranslate"><span class="pre">bcftools</span></code>, and <code class="docutils literal notranslate"><span class="pre">bgzip</span></code>) should be installed automatically and available on the PATH.
+You can verify that these dependencies are available by running <a class="reference internal" href="doc_check.html"><span class="doc">the check command</span></a>, i.e., <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">check</span></code>.</p>
+<p>If HATCHet is installed from source, you may need to install them youself (i.e., via <code class="docutils literal notranslate"><span class="pre">conda</span></code> or from source) and/or specify their locations using the following arguments:</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-j</code>, <code>--processes</code></td>
+<td>Number of parallel jobs</td>
+<td>Parallel jobs independently phase VCF files, which are split up by chromosome</td>
+</tr>
+<tr>
+<td><code>-si</code>, <code>--shapeit</code></td>
+<td>Path to the <code>shapeit</code> executable</td>
+<td><code>shapeit</code> is required to run this command</td>
+</tr>
+<tr>
+<td><code>-pc</code>, <code>--picard</code></td>
+<td>Path to the <code>picard</code> executable or JAR file</td>
+<td><code>picard</code> is required to run this command</td>
+</tr>
+<tr>
+<td><code>-bt</code>, <code>--bcftools</code></td>
+<td>Path to the <code>bcftools</code> executable</td>
+<td><code>bcftools</code> is required to run this command</td>
+</tr>
+<tr>
+<td><code>-bg</code>, <code>--bgzip</code></td>
+<td>Path to the <code>bgzip</code> executable</td>
+<td><code>bgzip</code> is required to run this command</td>
+</tr>
+</tbody>
+</table></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

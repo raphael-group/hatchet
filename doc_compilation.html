@@ -1,0 +1,148 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detailed compilation &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Detailed compilation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_compilation.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="detailed-compilation">
+<h1>Detailed compilation<a class="headerlink" href="#detailed-compilation" title="Permalink to this heading">¶</a></h1>
+<p>To perform the compilation, execute the following commands from the root of HATCHet’s repository.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>mkdir<span class="w"> </span>build
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>build/
+$<span class="w"> </span>ccmake<span class="w"> </span>..
+$<span class="w"> </span>make
+</pre></div>
+</div>
+<p>HATCHet’s compilation process attempts to automatically find the following Gurobi’s paths.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Path</th>
+<th>Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GUROBI_CPP_LIB</code></td>
+<td><code>/to/gurobiXXX/YY/lib/libgurobi_c++.a</code></td>
+<td><ul><li><code>/to/gurobi</code> is the path to Gurobi's home, typically <code>/opt/gurobiXXX</code> for linux and <code>/Library/gurobiXXX</code> for mac</li><li><code>XXX</code> is the Gurobi full version, e.g. 702 or 751</li><li><code>YY</code> depends on os, typically <code>linux64</code> for linux or <code>mac64</code> for mac</li></ul></td>
+</tr>
+<tr>
+<td><code>GUROBI_INCLUDE_DIR</code></td>
+<td><code>/to/gurobiXXX/YY/include</code></td>
+<td><ul><li><code>/to/gurobi</code> is the path to Gurobi's home</li><li><code>XXX</code> is the Gurobi full version</li><li><code>YY</code> depends on os</li></ul></td>
+</tr>
+<tr>
+<td><code>GUROBI_LIB</code></td>
+<td><code>/to/gurobiXXX/YY/lib/libgurobiZZ.QQ</code></td>
+<td><ul><li><code>/to/gurobiXXX</code> is the path to Gurobi's home</li><li><code>XXX</code> is the Gurobi full version</li><li><code>YY</code> depends on os</li><li><code>ZZ</code> are typically the first 2 numbers of <code>XXX</code></li><li><code>QQ</code> is typically <code>so</code> but becomes <code>dylib</code> for MAC version since version 8.10</li></ul></td>
+</tr>
+</tbody>
+</table><p>If the automatic compilation fails to find the Gurobi’s paths, these need to be specified directly. First, user needs to verify the existence of each of these 3 files. Next, user can specify these paths directly by either using</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ccmake<span class="w"> </span>..
+</pre></div>
+</div>
+<p>or by directly running <code class="docutils literal notranslate"><span class="pre">CMake</span></code> with proper flags as following</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>cmake<span class="w"> </span>..<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DGUROBI_CPP_LIB<span class="o">=</span>/to/gurobiXXX/YY/lib/libgurobi_c++.a<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DGUROBI_INCLUDE_DIR<span class="o">=</span>/to/gurobiXXX/YY/include<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>-DGUROBI_LIB<span class="o">=</span>/to/gurobiXXX/YY/lib/libgurobiZZ.QQ
+</pre></div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

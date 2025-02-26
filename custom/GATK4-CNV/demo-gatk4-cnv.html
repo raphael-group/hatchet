@@ -1,0 +1,282 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo of the custom pipeline for GATK4 CNV data &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=0218eca2"></script>
+      <script src="../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Demo of the custom pipeline for GATK4 CNV data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/custom/GATK4-CNV/demo-gatk4-cnv.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="demo-of-the-custom-pipeline-for-gatk4-cnv-data">
+<h1>Demo of the custom pipeline for GATK4 CNV data<a class="headerlink" href="#demo-of-the-custom-pipeline-for-gatk4-cnv-data" title="Permalink to this heading">¶</a></h1>
+<p>: ex: set ft=markdown ;:&lt;&lt;’```shell’ # This line makes this file both a guieded and executable DEMO. The file can be both displayed as a Markdown file, where to read the instructions and descriptions of the demo and results, and a BASH script, which can be directly executed with BASH to execute the demo after setting the first requirements.</p>
+<p>The following HATCHet’s demo represents a guided example of the custom pipeline designed to start from the data produced by the <a class="reference external" href="https://software.broadinstitute.org/gatk/best-practices/workflow?id=11147">GATK4 CNV pipeline</a>. This custom pipeline considers one or more tumor samples from the same patient which have been segmented through the GATK4 CNV pipeline, such that for each sample a <strong>segmented file</strong> is available. The expected format of each segmented file is first described in the following section. Next, the requirements for this demo are described and the guided demo is detailed across the different steps.</p>
+<section id="input-format">
+<h2>Input format<a class="headerlink" href="#input-format" title="Permalink to this heading">¶</a></h2>
+<p>Ths GATK4 CNV pipeline takes in input segmented files for one or more tumor samples from the same patient. Each segmented file is a tab-separated file with the following header subsequently followed by the specified fields:</p>
+<ul class="simple">
+<li><p><em>HEADER</em>: The header is composed of lines starting with the symbol <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> which provide several details concerning the sample and are ignored by this pipeline.</p></li>
+<li><p><em>Fields</em>: The fields contain the the segments and the related data; in particular, the first line specified the name of the fields starting with the word <code class="docutils literal notranslate"><span class="pre">CONTIG</span></code> and next each line corresponds to a different segments. The fields are the following:</p></li>
+</ul>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+<th>USED/IGNORED</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CONTIG</code></td>
+<td>Name of a chromosome</td>
+<td>USED</td>
+</tr>
+<tr>
+<td><code>START</code></td>
+<td>Start genomic position of segment</td>
+<td>USED</td>
+</tr>
+<tr>
+<td><code>END</code></td>
+<td>End genomic positon of segment</td>
+<td>USED</td>
+</tr>
+<tr>
+<td><code>NUM_POINTS_COPY_RATIO</code></td>
+<td>Number of points used to estimate RDR</td>
+<td>IGNORED</td>
+</tr>
+<tr>
+<td><code>NUM_POINTS_ALLELE_FRACTION</code></td>
+<td>Number of points used to estimate BAF</td>
+<td>IGNORED</td>
+</tr>
+<tr>
+<td><code>LOG2_COPY_RATIO_POSTERIOR_10</code></td>
+<td>RDR posterior 10</td>
+<td>IGNORED</td>
+</tr>
+<tr>
+<td><code>LOG2_COPY_RATIO_POSTERIOR_50</code></td>
+<td>Estimated RDR</td>
+<td>USED</td>
+</tr>
+<tr>
+<td><code>LOG2_COPY_RATIO_POSTERIOR_90</code></td>
+<td>RDR posterior 90</td>
+<td>IGNORED</td>
+</tr>
+<tr>
+<td><code>MINOR_ALLELE_FRACTION_POSTERIOR_10</code></td>
+<td>BAF posterior 10</td>
+<td>IGNORED</td>
+</tr>
+<tr>
+<td><code>MINOR_ALLELE_FRACTION_POSTERIOR_50</code></td>
+<td>Estimated BAF</td>
+<td>USED</td>
+</tr>
+<tr>
+<td><code>MINOR_ALLELE_FRACTION_POSTERIOR_90</code></td>
+<td>BAF posterior 90</td>
+<td>IGNORED</td>
+</tr>
+</tbody>
+</table><p>Two example segmented files in this format for two tumor samples from the same patient are included with this demo as <a class="reference external" href="../../sample1.GATK4.CNV.seg">sample1.GATK4.CNV.seg</a> and <a class="reference external" href="../../sample2.GATK4.CNV.seg">sample2.GATK4.CNV.seg</a>.</p>
+</section>
+<section id="requirements-and-set-up">
+<h2>Requirements and set up<a class="headerlink" href="#requirements-and-set-up" title="Permalink to this heading">¶</a></h2>
+<p>The demo requires that HATCHet has been succesfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">PY</span><span class="o">=</span><span class="s2">&quot;python3&quot;</span><span class="w"> </span><span class="c1"># This id the full path to the version of PYTHON3 which contains the required modules. When this corresponds to the standard version, the user can keep the given value of `python3`</span>
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>The following paths are consequently obtained to point to the required components of HATCHet</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">CLUSTERBINS</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PY</span><span class="si">}</span><span class="s2"> -m hatchet cluster-bins&quot;</span>
+<span class="nv">PLOTBINS</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PY</span><span class="si">}</span><span class="s2"> -m hatchet plot-bins&quot;</span>
+<span class="nv">INFER</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PY</span><span class="si">}</span><span class="s2"> -m hatchet solve&quot;</span>
+<span class="nv">PLOTCN</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PY</span><span class="si">}</span><span class="s2"> -m hatchet plot-cn&quot;</span>
+<span class="nv">GATK4CNSTOBB</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">PY</span><span class="si">}</span><span class="s2"> gatk4cnsToBB.py&quot;</span>
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>We also ask the demo to terminate in case of errors and to print a trace of the execution by the following commands</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">set</span><span class="w"> </span>-e
+<span class="nb">set</span><span class="w"> </span>-o<span class="w"> </span>xtrace
+<span class="nv">PS4</span><span class="o">=</span><span class="s1">&#39;[\t]&#39;</span>
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+</section>
+<section id="generating-input-bb-file">
+<h2>Generating input BB file<a class="headerlink" href="#generating-input-bb-file" title="Permalink to this heading">¶</a></h2>
+<p>The first step of this custom pipeline aims to generate an input BB file for HATCHet starting from the given segmented files; in this case, we consider the two examples included with this demo <code class="docutils literal notranslate"><span class="pre">sample1.GATK4.CNV.seg</span></code> and <code class="docutils literal notranslate"><span class="pre">sample2.GATK4.CNV.seg</span></code>. The corresponding BB file can be easily obtained by using the custom python script <a class="reference external" href="gatk4cnsToBB.py">gatk4cnsToBB.py</a> included in the custom pipeline. We apply the script by specifiying the two segmented files in a white-sperated list between apices and specifying the names of the samples in the same order with <code class="docutils literal notranslate"><span class="pre">--samples</span></code>. In addition, we consider the default values of the parameters and we run it as follows:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="si">${</span><span class="nv">GATK4CNSTOBB</span><span class="si">}</span><span class="w"> </span><span class="s2">&quot;sample1.GATK4.CNV.seg sample2.GATK4.CNV.seg&quot;</span><span class="w"> </span>--samples<span class="w"> </span><span class="s2">&quot;Sample1 Sample2&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>samples.GATK4.CNV.bb
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>In addition, one could consider different size of the resulting bins by using the option <code class="docutils literal notranslate"><span class="pre">-b</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">-b</span> <span class="pre">10kb</span></code>.</p>
+</section>
+<section id="global-custering">
+<h2>Global custering<a class="headerlink" href="#global-custering" title="Permalink to this heading">¶</a></h2>
+<p>Having the input BB file, we can continue by executing the standard HATCHet pipeline and skipping the pre-processing steps (<code class="docutils literal notranslate"><span class="pre">count-reads</span></code>, <code class="docutils literal notranslate"><span class="pre">count-alleles</span></code>, and <code class="docutils literal notranslate"><span class="pre">combine-counts</span></code>). As such, the next main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code>, i.e. the HATCHet’s component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="si">${</span><span class="nv">CLUSTERBINS</span><span class="si">}</span><span class="w"> </span>samples.GATK4.CNV.bb<span class="w"> </span>-o<span class="w"> </span>samples.GATK4.CNV.seg<span class="w"> </span>-O<span class="w"> </span>samples.GATK4.CNV.bbc<span class="w"> </span>-e<span class="w"> </span><span class="m">12</span><span class="w"> </span>-tB<span class="w"> </span><span class="m">0</span>.03<span class="w"> </span>-tR<span class="w"> </span><span class="m">0</span>.15<span class="w"> </span>-d<span class="w"> </span><span class="m">0</span>.08
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>To assess the quality of the clustering we generate the cluster plot using the <code class="docutils literal notranslate"><span class="pre">CBB</span></code> command of <code class="docutils literal notranslate"><span class="pre">plot-bins</span></code>, i.e. the HATCHet’s component designed for the analysis of the data. For simplicity, we also use the following option <code class="docutils literal notranslate"><span class="pre">-tS</span> <span class="pre">0.001</span></code> which asks to plot only the clusters which cover at least the <code class="docutils literal notranslate"><span class="pre">0.1%</span></code> of the genome. This is useful to clean the figure and focus on the main components.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="si">${</span><span class="nv">PLOTBINS</span><span class="si">}</span><span class="w"> </span>-c<span class="w"> </span>CBB<span class="w"> </span>samples.GATK4.CNV.bbc<span class="w"> </span>-tS<span class="w"> </span><span class="m">0</span>.001
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>We thus obtain the following clustering:</p>
+<p><img alt="CBB" src="../../_images/cbb.png" /></p>
+<p>We can easily notice that the clustering is good and not tuning is needed as every pair of clusters is clearly distinct in one of the two dimensions (RDR and BAF) in <strong>at least one</strong> sample.</p>
+</section>
+<section id="hatchet-s-step">
+<h2>hatchet’s step<a class="headerlink" href="#hatchet-s-step" title="Permalink to this heading">¶</a></h2>
+<p>Next we apply <code class="docutils literal notranslate"><span class="pre">hatchet</span></code>, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
+We apply the last step with default parameters and, for simplicity of this demo, we consider 6 clones, which can be easily considered by HATCHet in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="si">${</span><span class="nv">INFER</span><span class="si">}</span><span class="w"> </span>-i<span class="w"> </span>samples.GATK4.CNV<span class="w"> </span>-n2,6<span class="w"> </span>-p<span class="w"> </span><span class="m">100</span><span class="w"> </span>-v<span class="w"> </span><span class="m">2</span><span class="w"> </span>-u<span class="w"> </span><span class="m">0</span>.03<span class="w"> </span>-r<span class="w"> </span><span class="m">12</span><span class="w"> </span>-eD<span class="w"> </span><span class="m">6</span><span class="w"> </span>-eT<span class="w"> </span><span class="m">12</span><span class="w"> </span>-l<span class="w"> </span><span class="m">0</span>.6<span class="w"> </span><span class="p">|&amp;</span><span class="w"> </span>tee<span class="w"> </span>hatchet.log
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>We obtain the following summary of results:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Selecting best solution</span>
+<span class="c1">## Scores approximating second derivative for diploid results</span>
+<span class="c1">## Diploid with 2 clones - OBJ: 5.145092 - score: -0.61889027446</span>
+<span class="c1">## Diploid with 3 clones - OBJ: 0.417317 - score: 0.345368628644</span>
+<span class="c1">## Diploid with 4 clones - OBJ: 0.311055 - score: -0.052709774101</span>
+<span class="c1">## Diploid with 5 clones - OBJ: 0.215455 - score: 0.208536290615</span>
+<span class="c1">## Diploid with 6 clones - OBJ: 0.194167 - score: -0.201195145158</span>
+<span class="c1">## Scores approximating second derivative for tetraploid results</span>
+<span class="c1">## Tetraploid with 2 clones - OBJ: 13.22581 - score: -0.647943150552</span>
+<span class="c1">## Tetraploid with 3 clones - OBJ: 0.688494 - score: 0.198212911078</span>
+<span class="c1">## Tetraploid with 4 clones - OBJ: 0.411866 - score: 0.230287135053</span>
+<span class="c1">## Tetraploid with 5 clones - OBJ: 0.341231 - score: 0.171499953868</span>
+<span class="c1">## Tetraploid with 6 clones - OBJ: 0.34156 - score: -0.3</span>
+<span class="c1"># The chosen diploid solution has 3 clones with OBJ: 0.417317 and score: 0.345368628644</span>
+<span class="c1">## The related-diploid resulting files are copied to ./chosen.diploid.bbc.ucn and ./chosen.diploid.seg.ucn</span>
+<span class="c1"># The chosen tetraploid solution has 4 clones with OBJ: 0.411866 and score: 0.230287135053</span>
+<span class="c1">## The related-tetraploid resulting files are copied to ./chosen.tetraploid.bbc.ucn and ./chosen.tetraploid.seg.ucn</span>
+<span class="c1"># The chosen solution is diploid with 3 clones and is written in ./best.bbc.ucn and ./best.seg.ucn</span>
+</pre></div>
+</div>
+<p>HATCHet predicts the presence of 3 clones in the 2 tumor samples and, especially, predicts that a sample contains two distinct tumor clones, according to the true clonal composition, and one of these clones is shared with the other sample.</p>
+</section>
+<section id="analyzing-inferred-results">
+<h2>Analyzing inferred results<a class="headerlink" href="#analyzing-inferred-results" title="Permalink to this heading">¶</a></h2>
+<p>Finally, we obtain useful plots to summarize and analyze the inferred results by using <code class="docutils literal notranslate"><span class="pre">plot-cn</span></code>, which is the last component of HATCHet. We run <code class="docutils literal notranslate"><span class="pre">plot-cn</span></code> as follows</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="si">${</span><span class="nv">PLOTCN</span><span class="si">}</span><span class="w"> </span>best.bbc.ucn
+<span class="nb">exit</span><span class="w"> </span><span class="nv">$?</span>
+</pre></div>
+</div>
+<p>First, <code class="docutils literal notranslate"><span class="pre">plot-cn</span></code> summarizes the values of tumor purity and tumor ploidy for every sample of the patient as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">### SAMPLE: Sample1 -- PURITY: 0.799622 -- PLOIDY: 2.00463946866 -- CLASSIFICATION: DIPLOID</span>
+<span class="c1">### SAMPLE: Sample2 -- PURITY: 0.948195 -- PLOIDY: 2.01049490767 -- CLASSIFICATION: DIPLOID</span>
+</pre></div>
+</div>
+<p>Next, <code class="docutils literal notranslate"><span class="pre">plot-cn</span></code> produces some informative plots to evaluate the inferred results. Among all the plots, 3 of those are particularly interesting.</p>
+<p>The first <code class="docutils literal notranslate"><span class="pre">intratumor-clones-totalcn.pdf</span></code> represents the total-copy numbers for all tumor clones in fixed-size regions (obtained by merging neighboring genomic bins).
+<img alt="intratumor-clones-totalcn.pdf" src="../../_images/totalcn.png" />
+Every tumor clone is identified by a color and a dot is drawn for every genomic region (which are partitioned) for the corresponding total copy number.</p>
+<p>The second <code class="docutils literal notranslate"><span class="pre">intratumor-clones-allelecn.pdf</span></code> similarly represents the allele-specific copy numbers (split between the bottom and top regions of the figure) as the plot above.
+<img alt="intratumor-clones-allelecn.pdf" src="../../_images/allelecn.png" /></p>
+<p>The third <code class="docutils literal notranslate"><span class="pre">intratumor-profiles.pdf</span></code> represents both the clone proportions and the total copy numbers of every clone in genomic regions.
+<img alt="intratumor-clones-allelecn.pdf" src="../../_images/profiles.png" />
+The main heatmap in the right side of the figure represent the total copy number of every clone (i.e. a row) for every genomic region (which are partition into chromosomes as described at the top of the heatmap) such that grey color indicate regions with base copy number not affected by CNAs (but they can be affected by a WGD when this occurrs), blue colors indicates deletions, and red colors indicate amplifications; in general, the stronger the color the smaller/higher the corresponding aberration. The smaller heatmap in the left side describes the clone proportion of each clone in each sample such that the lightest color correspond to absence while darker colors indicate higher clone proportions. Last, in the left-most part there is a dendogram which hierarchically clusters the tumor clones based on similiraity.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

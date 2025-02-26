@@ -1,0 +1,169 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Automatic installation for HATCHet’s preprocessing &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=0218eca2"></script>
+      <script src="../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Automatic installation for HATCHet’s preprocessing</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/custom/setup-preprocess/setup.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="automatic-installation-for-hatchet-s-preprocessing">
+<h1>Automatic installation for HATCHet’s preprocessing<a class="headerlink" href="#automatic-installation-for-hatchet-s-preprocessing" title="Permalink to this heading">¶</a></h1>
+<p>: ex: set ft=markdown ;:&lt;&lt;’```shell’ #</p>
+<p>The following script allows the user to setup all the required requisites for running the preprocessing steps of HATCHet.</p>
+<section id="preliminary-setup">
+<h2>Preliminary setup<a class="headerlink" href="#preliminary-setup" title="Permalink to this heading">¶</a></h2>
+<p>First we define the <code class="docutils literal notranslate"><span class="pre">SETUP_HOME</span></code> directory as the current dictory, however any path can be alternatively chosen. Please update this path accoring to your requirements.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">SETUP_HOME</span><span class="o">=</span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>We also ask the setup to terminate in case of errors and to print a trace of the execution by the following commands</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">set</span><span class="w"> </span>-e
+<span class="nb">set</span><span class="w"> </span>-o<span class="w"> </span>xtrace
+<span class="nv">PS4</span><span class="o">=</span><span class="s1">&#39;[\t]&#39;</span>
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+</section>
+<section id="downloading-and-installing-samtools-and-bcftools-v1-6">
+<h2>Downloading and installing SAMtools and BCFtools v1.6<a class="headerlink" href="#downloading-and-installing-samtools-and-bcftools-v1-6" title="Permalink to this heading">¶</a></h2>
+<p>We download and install SAMtools 1.6 within <code class="docutils literal notranslate"><span class="pre">${SETUP_HOME}/samtools-1.6</span></code></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://github.com/samtools/samtools/releases/download/1.6/samtools-1.6.tar.bz2<span class="w"> </span>-P<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/
+tar<span class="w"> </span>-xvjf<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/samtools-1.6.tar.bz2<span class="w"> </span>-C<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/samtools-1.6.tar.bz2
+<span class="o">(</span><span class="nb">cd</span><span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/samtools-1.6<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./configure<span class="w"> </span>--prefix<span class="o">=</span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/samtools-1.6/<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>-j<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>-j<span class="w"> </span>install<span class="o">)</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;export PATH=&#39;</span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span><span class="s1">&#39;/samtools-1.6/bin/:${PATH}&#39;</span><span class="w"> </span>&gt;<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/setup_hatchet.sh
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+<p>We download and install BCFtools 1.6 within <code class="docutils literal notranslate"><span class="pre">${SETUP_HOME}/bcftools-1.6</span></code></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://github.com/samtools/bcftools/releases/download/1.6/bcftools-1.6.tar.bz2<span class="w"> </span>-P<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/
+tar<span class="w"> </span>-xvjf<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/bcftools-1.6.tar.bz2<span class="w"> </span>-C<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/bcftools-1.6.tar.bz2
+<span class="o">(</span><span class="nb">cd</span><span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/bcftools-1.6<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./configure<span class="w"> </span>--prefix<span class="o">=</span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/bcftools-1.6/<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>-j<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>-j<span class="w"> </span>install<span class="o">)</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;export PATH=&#39;</span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span><span class="s1">&#39;/bcftools-1.6/bin/:${PATH}&#39;</span><span class="w">  </span>&gt;&gt;<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/setup_hatchet.sh
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+</section>
+<section id="setting-up-the-python-environment">
+<h2>Setting up the python environment<a class="headerlink" href="#setting-up-the-python-environment" title="Permalink to this heading">¶</a></h2>
+<p>We download and install Miniconda to create virtual environment specific to HATCHet.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>wget<span class="w"> </span>https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh<span class="w"> </span>-P<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/
+bash<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/Miniconda3-latest-Linux-x86_64.sh<span class="w"> </span>-b<span class="w"> </span>-f<span class="w"> </span>-p<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/miniconda/<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/Miniconda3-latest-Linux-x86_64.sh
+<span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/miniconda/bin/conda<span class="w"> </span>create<span class="w"> </span>-y<span class="w"> </span>-n<span class="w"> </span>hatchet<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+<span class="c1"># install HATCHet</span>
+<span class="nb">source</span><span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/miniconda/bin/activate<span class="w"> </span>hatchet
+pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>pip
+pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>setuptools
+pip<span class="w"> </span>install<span class="w"> </span>.
+<span class="c1"># set up bioconda and install mosdepth</span>
+conda<span class="w"> </span>config<span class="w"> </span>--add<span class="w"> </span>channels<span class="w"> </span>defaults
+conda<span class="w"> </span>config<span class="w"> </span>--add<span class="w"> </span>channels<span class="w"> </span>bioconda
+conda<span class="w"> </span>config<span class="w"> </span>--add<span class="w"> </span>channels<span class="w"> </span>conda-forge
+conda<span class="w"> </span>install<span class="w"> </span>mosdepth
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;source </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span><span class="s2">/miniconda/bin/activate hatchet&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/setup_hatchet.sh
+:&lt;&lt;<span class="s1">&#39;```shell&#39;</span><span class="w"> </span><span class="c1"># Ignore this line</span>
+</pre></div>
+</div>
+</section>
+<section id="using-this-setup-for-hatchet">
+<h2>Using this setup for HATCHet<a class="headerlink" href="#using-this-setup-for-hatchet" title="Permalink to this heading">¶</a></h2>
+<p>All the previous steps are one-time only, however the environments that we prepared should be activated in every new session before using HATCHet. This can be achieved by simply running the following command once per new session before running HATCHet, where <code class="docutils literal notranslate"><span class="pre">${SETUP_HOME}</span></code> is the path that we chose at the beginning:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span><span class="si">${</span><span class="nv">SETUP_HOME</span><span class="si">}</span>/setup_hatchet.sh
+<span class="nb">exit</span><span class="w"> </span><span class="nv">$?</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

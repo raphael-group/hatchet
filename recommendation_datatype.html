@@ -1,0 +1,117 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyze different type of data &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Analyze different type of data</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/recommendation_datatype.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="analyze-different-type-of-data">
+<h1>Analyze different type of data<a class="headerlink" href="#analyze-different-type-of-data" title="Permalink to this heading">¶</a></h1>
+<p>The default values in the complete pipeline of HATCHet are typically used for analyzing whole-genome sequencing (WGS) data. However, when considering different type of data, as those from whole-exome sequencing (WES) data, users should adjust some of the parameters due to the different features of this kind of data. More specifically, there are 4 main points to consider when analyzing WES data:</p>
+<ul class="simple">
+<li><p><em>Bin sizes</em>. One can use the plots from <a class="reference external" href="https://github.com/raphael-group/hatchet/blob/master/doc/doc_plot_bins.html">plot-bins</a> to test different parameters (<code class="docutils literal notranslate"><span class="pre">--mtr</span></code> and <code class="docutils literal notranslate"><span class="pre">--msr</span></code> for variable-width, bin size for fixed width) and inspect the amount of variance and/or the separation between apparent clusters.</p>
+<ul>
+<li><p><strong>Variable-width</strong> Having a sufficient number of germline SNPs is needed to have good estimations with low variances for RDR and, especially, for the B-allele frequency (BAF) of each bin. Variable-width binning attempts to account for this by adjusting bin widths to ensure enough total and SNP-covering reads in each bin. You can tune the average bin width using the <code class="docutils literal notranslate"><span class="pre">--msr</span></code> (min. SNP-covering reads, default 5000) and <code class="docutils literal notranslate"><span class="pre">--mtr</span></code> (min. total reads, default 5000) parameters to <code class="docutils literal notranslate"><span class="pre">combine-counts</span></code>. Generally, <code class="docutils literal notranslate"><span class="pre">--msr</span></code> is more important because a bin with enough SNP-covering reads to get a good BAF estimate will almost certainly have enough total reads to get a good RDR estimate. Increasing these parameters produces larger bins (on average) with lower variance, while decreasing these values produces smaller bins (on average) with higher variance.</p></li>
+<li><p><strong>Fixed-width (legacy)</strong> While a size of 50kb is standard for CNA analysis when considering whole-genome sequencing (WGS) data, data from whole-exome sequencing (WES) generally require to use large bin sizes in order to guarantee that each bin contains a sufficient number of heterozygous germline SNPs. As such, more appropriate bin sizes to consider may be 200kb or 250k when analyzing WES data; even larger bin sizes, e.g. <code class="docutils literal notranslate"><span class="pre">500kb</span></code>, may be needed for noisy WES data.</p></li>
+</ul>
+</li>
+<li><p><em>Read-count thresholds</em>. As suggested in the GATK best practices, <code class="docutils literal notranslate"><span class="pre">count-alleles</span></code> requires two parameters -c (the minimum coverage for SNPs) and -C (the maximum coverage for SNPs) to reliably call SNPs and exclude those in regions with artifacts. GATK suggests to consider a value of -C that is at least twice larger than the average coverage and -c should be large enough to exclude non-sequenced regions. For example, <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">6</span></code> and <code class="docutils literal notranslate"><span class="pre">-C</span> <span class="pre">300</span></code> are values previously used for WGS data whose coverage is typically between 30x and 90x. However, WES data are generally characterized by a much larger average coverage and thus require larger values, e.g. <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">20</span></code> and <code class="docutils literal notranslate"><span class="pre">-C</span> <span class="pre">600</span></code>. These values are also very usefule to discard off-target regions. In any case, the user should ideally pick values according to the considered data.</p></li>
+<li><p><em>Bootstrapping for clustering</em>. (legacy <code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code> only) Occasionally, WES may have very few points and much less data points than WGS. Only in these special cases with very few data points, the global clustering of cluster-bins-gmm may generally benefit from the integrated bootstrapping approach. This approach allow to generate a certain number of synthetic bins from the real ones to increase the power of the clustering. For example, the following cluster-bins-gmm parameters <code class="docutils literal notranslate"><span class="pre">-u</span> <span class="pre">20</span> <span class="pre">-dR</span> <span class="pre">0.002</span> <span class="pre">-dB</span> <span class="pre">0.002</span></code> allow to activate the bootstraping which introduces 20 synthetic bins for each real bin with low variances.</p></li>
+<li><p><em>Bias in balanced BAF.</em> Depending on the data type (WGS vs. WES) and the sequencing coverage, the argument <code class="docutils literal notranslate"><span class="pre">-d,</span> <span class="pre">--diploidbaf</span></code> in <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code>/<code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code> may need to be adjusted to match the observed BAF bias. This threshold should be set so that the centroids of cluster(s) with BAF closest to 0.5 are included in the range [0.5 - <code class="docutils literal notranslate"><span class="pre">d</span></code>, 0.5] and other clusters with apparently different BAF are excluded.</p></li>
+<li><p><em>Genomic regions</em>. Provide a BED file defining the sequenced genomic regions when this is available. This helps to speed up the process.</p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

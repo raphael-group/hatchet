@@ -1,0 +1,37 @@
+hatchet.utils.solve package
+===========================
+
+Submodules
+----------
+
+hatchet.utils.solve.cd module
+-----------------------------
+
+.. automodule:: hatchet.utils.solve.cd
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.solve.ilp\_subset module
+--------------------------------------
+
+.. automodule:: hatchet.utils.solve.ilp_subset
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.solve.utils module
+--------------------------------
+
+.. automodule:: hatchet.utils.solve.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: hatchet.utils.solve
+   :members:
+   :undoc-members:
+   :show-inheritance:

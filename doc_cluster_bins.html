@@ -1,0 +1,280 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cluster-bins &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">cluster-bins</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_cluster_bins.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cluster-bins">
+<h1>cluster-bins<a class="headerlink" href="#cluster-bins" title="Permalink to this heading">¶</a></h1>
+<p>This step globally clusters genomic bins along the entire genome and jointly across tumor samples.
+<code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> clusters bins while also taking into account their locations on the genome to preferentially form clusters that correspond to contiguous genomic segments on chromosome arms.
+The input/output files for <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> are exactly the same as those for <code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code>.</p>
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> takes in input a tab-separated file with the following fields.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of a chromosome</td>
+</tr>
+<tr>
+<td><code>START</code></td>
+<td>Starting genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>END</code></td>
+<td>Ending genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of a tumor sample</td>
+</tr>
+<tr>
+<td><code>RD</code></td>
+<td>RDR of the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>#SNPS</code></td>
+<td>Number of SNPs present in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>COV</code></td>
+<td>Average coverage in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>ALPHA</code></td>
+<td>Alpha parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from A allele</td>
+</tr>
+<tr>
+<td><code>BETA</code></td>
+<td>Beta parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from B allele</td>
+</tr>
+<tr>
+<td><code>BAF</code></td>
+<td>BAF of the bin in <code>SAMPLE</code></td>
+</tr>
+</tbody>
+</table><p>The fields <code class="docutils literal notranslate"><span class="pre">#SNPS</span></code>, <code class="docutils literal notranslate"><span class="pre">COV</span></code>, <code class="docutils literal notranslate"><span class="pre">ALPHA</span></code>, and <code class="docutils literal notranslate"><span class="pre">BETA</span></code> are currently deprecated and their values are ignored.</p>
+</section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> produces two tab-separated files:</p>
+<ol class="simple">
+<li><p>A file of clustered genomic bins, specified by the flag <code class="docutils literal notranslate"><span class="pre">-O</span></code>, <code class="docutils literal notranslate"><span class="pre">--outbins</span></code>. The tab separated file has the same fields as the input plus a last field <code class="docutils literal notranslate"><span class="pre">CLUSTER</span></code> which specifies the name of the corresponding cluster.</p></li>
+<li><p>A file of clustered genomic bins, specified by the flag <code class="docutils literal notranslate"><span class="pre">-o</span></code>, <code class="docutils literal notranslate"><span class="pre">--outsegments</span></code>. The tab separated file has the following fields.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ID</code></td>
+<td>The name of a cluster</td>
+</tr>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>The name of a sample</td>
+</tr>
+<tr>
+<td><code>#BINS</code></td>
+<td>The number of bins included in <code>ID</code></td>
+</tr>
+<tr>
+<td><code>RD</code></td>
+<td>The RDR of the cluster <code>ID</code> in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>#SNPS</code></td>
+<td>The total number of SNPs in the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>COV</code></td>
+<td>The average coverage in the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>ALPHA</code></td>
+<td>The alpha parameter of the binomial model for the BAF of the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>BETA</code></td>
+<td>The beta parameter of the binomial model for the BAF of the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>BAF</code></td>
+<td>The BAF of the cluster <code>ID</code> in <code>SAMPLE</code></td>
+</tr>
+</tbody>
+</table></section>
+<section id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Permalink to this heading">¶</a></h2>
+<ol class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> has a parameter <code class="docutils literal notranslate"><span class="pre">-d</span></code>, <code class="docutils literal notranslate"><span class="pre">--diploidbaf</span></code> that specifies the maximum expected shift from 0.5 the BAF of a balanced cluster (i.e., diploid with copy-number state (1, 1) or tetraploid with copy-number state (2, 2)). This threshold is used to correct bias in the BAF of these balanced clusters.
+The default value of this parameter (0.1) is often sufficient, but the most appropriate value will vary depending on noise and coverage. In general, this value should be set to include only those clusters that are closest to 0.5 – for example, if some clusters have centroids near 0.47 and others have centroids near 0.42, this parameter should be set to 0.035 or 0.04.
+To determine the best setting for this value, please check the plots produced by <code class="docutils literal notranslate"><span class="pre">plot-bins</span></code> and the centroid values described  <code class="docutils literal notranslate"><span class="pre">bbc/bulk.seg</span></code> (output from this command).</p></li>
+<li><p>By default, <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code> takes as input a minimum number of clusters (<code class="docutils literal notranslate"><span class="pre">--minK</span></code>, default <code class="docutils literal notranslate"><span class="pre">2</span></code>) and maximum number of clusters (<code class="docutils literal notranslate"><span class="pre">--maxK</span></code>, default <code class="docutils literal notranslate"><span class="pre">30</span></code>), and chooses the number <code class="docutils literal notranslate"><span class="pre">K</span></code> of clusters in this closed interval that maximizes the silhoutette score. Users can also specify an exact number of clusters (<code class="docutils literal notranslate"><span class="pre">--exactK</span></code>) to infer, which skips the model selection step.</p></li>
+<li><p>Other options are available to change aspects of the Gaussian Hidden Markov model (GHMM) that is used by <code class="docutils literal notranslate"><span class="pre">cluster-bins</span></code>:</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--tau</code></td>
+<td>Off-diagonal value for initializing transition matrix</td>
+<td>must be <code>&lt;= 1/(K-1)</code></td>
+<td><code>1e-6</code></td>
+</tr>
+<tr>
+<td><code>-t</code>, <code>--transmat</code></td>
+<td>Type of transition matrix to infer</td>
+<td><code>fixed</code> (to off-diagonal = tau), <code>diag</code> (all diagonal elements are equal, all off-diagonal elements are equal) or <code>full</code> (freely varying)</td>
+<td><code>diag</code></td>
+</tr>
+<tr>
+<td><code>-c</code>, <code>--covar</code></td>
+<td>Type of covariance matrix to infer</td>
+<td>options described in <a href="https://hmmlearn.readthedocs.io/en/latest/api.html#hmmlearn.hmm.GaussianHMM">hmmlearn documentation</a></td>
+<td><code>diag</code></td>
+</tr>
+<tr>
+<td><code>-x</code>, <code>--decoding</code></td>
+<td>Decoding algorithm to use to infer final estimates of states</td>
+<td><code>map</code> for MAP inference, <code>viterbi</code> for Viterbi algorithm</td>
+<td><code>map</code></td>
+</tr>
+</tbody>
+</table><p>Particularly, <code class="docutils literal notranslate"><span class="pre">tau</span></code> controls the balance between global information (RDR and BAf across samples) and local information (assigning adjacent bins to the same cluster): smaller values of <code class="docutils literal notranslate"><span class="pre">tau</span></code> put more weight on <em>local</em> information, and larger values of <code class="docutils literal notranslate"><span class="pre">tau</span></code> put more weight on <em>global</em> information. It may be appropriate to reduce <code class="docutils literal notranslate"><span class="pre">tau</span></code> by several orders of magnitude for noisier or lower-coverage datasets.</p>
+</section>
+<section id="optional-parameters">
+<h2>Optional parameters<a class="headerlink" href="#optional-parameters" title="Permalink to this heading">¶</a></h2>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-R</code>, <code>--restarts</code></td>
+<td>Number of restarts (initializations)</td>
+<td>For each K, the HMM is initialized randomly this many times and the solution with the highest log-likelihood is kept</td>
+<td>10</td>
+</tr>
+</tbody>
+</table></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

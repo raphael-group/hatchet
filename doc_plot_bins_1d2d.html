@@ -1,0 +1,267 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>plot-bins-1d2d &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">plot-bins-1d2d</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_plot_bins_1d2d.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="plot-bins-1d2d">
+<h1>plot-bins-1d2d<a class="headerlink" href="#plot-bins-1d2d" title="Permalink to this heading">¶</a></h1>
+<p>This step produces alternate plots that show bins in terms of their computed read-depth ratios (RDR), B-allele frequencies (BAF), and cluster assignments.
+These plots show bins colored by cluster, where the color is consistent between the “2D” (RDR x BAF) view and the “1D” (genomic location x RDR/BAF) view.
+These plots should be used to review the clustering and tune clustering parameters.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">plot_bins</span> <span class="pre">=</span> <span class="pre">True</span></code> is indicated in <code class="docutils literal notranslate"><span class="pre">hatchet.ini</span></code>, both this command and the command <a class="reference internal" href="doc_plot_bins.html"><span class="doc">plot-bins</span></a> will be run.</p>
+<hr class="docutils" />
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p>plot-bins considers two different inputs which are tab-separated files, one is mandatory and the other is optional (required to show cluster centers):</p>
+<ol class="simple">
+<li><p>A file of clustered genomic bins, specified with the flag <code class="docutils literal notranslate"><span class="pre">-b,</span> <span class="pre">--bbc</span></code> and with the following fields.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of a chromosome</td>
+</tr>
+<tr>
+<td><code>START</code></td>
+<td>Starting genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>END</code></td>
+<td>Ending genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of a tumor sample</td>
+</tr>
+<tr>
+<td><code>RD</code></td>
+<td>RDR of the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>#SNPS</code></td>
+<td>Number of SNPs present in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>COV</code></td>
+<td>Average coverage in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>ALPHA</code></td>
+<td>Alpha parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from A allele</td>
+</tr>
+<tr>
+<td><code>BETA</code></td>
+<td>Beta parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from B allele</td>
+</tr>
+<tr>
+<td><code>BAF</code></td>
+<td>BAF of the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>CLUSTER</code></td>
+<td>The name of the corresponding cluster of the bin in <code>SAMPLE</code></td>
+</tr>
+</tbody>
+</table><ol class="simple">
+<li><p>A file of clusters, which is required only by commands and it is specified through the flag <code class="docutils literal notranslate"><span class="pre">-s</span></code>, <code class="docutils literal notranslate"><span class="pre">--segfile</span></code>. The file has the following fields.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ID</code></td>
+<td>The name of a cluster</td>
+</tr>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>The name of a sample</td>
+</tr>
+<tr>
+<td><code>#BINS</code></td>
+<td>The number of bins included in <code>ID</code></td>
+</tr>
+<tr>
+<td><code>RD</code></td>
+<td>The RDR of the cluster <code>ID</code> in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>#SNPS</code></td>
+<td>The total number of SNPs in the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>COV</code></td>
+<td>The average coverage in the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>ALPHA</code></td>
+<td>The alpha parameter of the binomial model for the BAF of the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>BETA</code></td>
+<td>The beta parameter of the binomial model for the BAF of the cluster <code>ID</code></td>
+</tr>
+<tr>
+<td><code>BAF</code></td>
+<td>The BAF of the cluster <code>ID</code> in <code>SAMPLE</code></td>
+</tr>
+</tbody>
+</table></section>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-O</code>, <code>--outdir</code></td>
+<td>Output directory</td>
+<td>Directory in which output plots will be stored</td>
+<td>"" (current directory)</td>
+</tr>
+<tr>
+<td><code>--baflim</code></td>
+<td>Axis limits for mirrored BAF</td>
+<td>Specify limits as comma-separated values, e.g., '0,0.51'</td>
+<td>None (determined by extremes of data)</td>
+</tr>
+<tr>
+<td><code>--rdrlim</code></td>
+<td>Axis limits for read-depth ratio</td>
+<td>Specify limits as comma-separated values, e.g., '0,3'</td>
+<td>None (determined by extremes of data)</td>
+</tr>
+<tr>
+<td><code>--centers</code></td>
+<td>Show cluster centers</td>
+<td>Requires SEG file provided via <code>-s, --seg</code>. Enable by including this flag.</td>
+<td>False</td>
+</tr>
+<tr>
+<td><code>--centromeres</code></td>
+<td>Mark centromere locations with grey rectangles</td>
+<td>Enable by including this flag.</td>
+<td>False</td>
+</tr>
+<tr>
+<td><code>-a, --alpha</code></td>
+<td>Opacity value for scatterplots</td>
+<td>Valid values are (0, 1]. Smaller values make points more transparent.</td>
+<td>1</td>
+</tr>
+</tbody>
+</table></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

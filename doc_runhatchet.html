@@ -1,0 +1,277 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tutorial &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Tutorial</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_runhatchet.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="tutorial">
+<h1>Tutorial<a class="headerlink" href="#tutorial" title="Permalink to this heading">¶</a></h1>
+<p>This tutorial illustrates how to use the complete pipeline through the <code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">run</span></code> command, along with the configuration <a class="reference external" href="hatchet.ini">hatchet.ini</a> file that stores all the variables the user needs to specify.</p>
+<p>The tutorial is subdivided into some subsections and each of these describes sequential parts of the full pipeline:</p>
+<ol class="simple">
+<li><p><a class="reference external" href="#preliminaries">Preliminaries</a></p></li>
+<li><p><a class="reference external" href="#genotype-snps">genotype-snps</a></p></li>
+<li><p><a class="reference external" href="#count-alleles">count-alleles</a></p></li>
+<li><p><a class="reference external" href="#count-reads">count-reads</a></p></li>
+<li><p><a class="reference external" href="#combine-counts">combine-counts</a></p></li>
+<li><p><a class="reference external" href="#cluster-bins">cluster-bins</a></p></li>
+<li><p><a class="reference external" href="#plot-bins">plot-bins</a></p></li>
+<li><p><a class="reference external" href="#compute-cn">compute-cn</a></p></li>
+<li><p><a class="reference external" href="#plot-cn">plot-cn</a></p></li>
+</ol>
+<p>We suggest you make a copy of the configuration file, place it into the designated running directory, and follow the tutorial.</p>
+<section id="preliminaries">
+<h2>Preliminaries<a class="headerlink" href="#preliminaries" title="Permalink to this heading">¶</a></h2>
+<p><a name="preliminaries"></a></p>
+<p>The following variables, specified in <a class="reference external" href="hatchet.ini">hatchet.ini</a>, should be changed according to the user’s data:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Path to reference genome - make sure you have also generated the reference dictionary as /path/to/reference.dict</span>
+<span class="nv">reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/reference.fa&quot;</span>
+<span class="nv">normal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/normal.bam&quot;</span>
+<span class="c1"># Space-delimited list of tumor BAM locations</span>
+<span class="nv">bams</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/tumor1.bam /path/to/tumor2.bam&quot;</span>
+<span class="c1"># Space-delimited list of tumor names</span>
+<span class="nv">samples</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Primary Met&quot;</span>
+</pre></div>
+</div>
+<p>Each of these are explained further below.</p>
+<hr class="docutils" />
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/reference.fa&quot;</span>
+<span class="nv">reference_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<span class="nv">chr_notation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>True
+</pre></div>
+</div>
+<p>First, you need to specify the full path to the human reference genome with the variable <code class="docutils literal notranslate"><span class="pre">reference</span></code>, along with the specific version of this reference with the <code class="docutils literal notranslate"><span class="pre">reference_version</span></code> variable, which may be “hg19” or “hg38”. This reference version is used to select a list of known germline SNPs to genotype samples. Lastly, the <code class="docutils literal notranslate"><span class="pre">chr_notation</span></code> must be set to true/false depending on whether or not the chromosomes in your reference are prefixed with “chr”.</p>
+<hr class="docutils" />
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">normal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/normal.bam&quot;</span>
+<span class="nv">bams</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/tumor1.bam /path/to/tumor2.bam&quot;</span>
+<span class="nv">samples</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Primary Met&quot;</span>
+</pre></div>
+</div>
+<p>Next, you need to specify the full paths to the required input data:</p>
+<ol class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">normal</span></code> is the full path to the BAM file of matched-normal samples</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bams</span></code> is a white-space separated list of the BAM files for the multiple tumor samples from the considered patient.</p></li>
+</ol>
+<p>The variable <code class="docutils literal notranslate"><span class="pre">samples</span></code> is also a white-space separated list of tumor sample names (specified in the same order as the BAM files in <code class="docutils literal notranslate"><span class="pre">bams</span></code>), and these names are used in the plots produced by HATCHet.</p>
+<hr class="docutils" />
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">mincov</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">8</span>
+<span class="nv">maxcov</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">300</span>
+</pre></div>
+</div>
+<p>Both <code class="docutils literal notranslate"><span class="pre">mincov</span></code> and <code class="docutils literal notranslate"><span class="pre">maxcov</span></code> specify the minimum and maximum sequencing depth for considering germline snps. For samples that have undergone whole-genome sequencing with depths &gt;30X, values around 8 and 300 should be reasonable for the minimum and maximum, respectively. For samples in which only the exome was sequenced to ~100X, then values around 20 and 1000 should be fine for the minimum and maximum, respectively.</p>
+</section>
+<hr class="docutils" />
+<section id="genotype-snps">
+<h2>genotype-snps<a class="headerlink" href="#genotype-snps" title="Permalink to this heading">¶</a></h2>
+<p><a name="genotype-snps"></a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>genotype-snps<span class="w"> </span>-N<span class="w"> </span><span class="si">${</span><span class="nv">NORMAL</span><span class="si">}</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">REF</span><span class="si">}</span><span class="w"> </span>-j<span class="w"> </span><span class="si">${</span><span class="nv">J</span><span class="si">}</span><span class="w"> </span>-c<span class="w"> </span><span class="si">${</span><span class="nv">MINREADS</span><span class="si">}</span><span class="w"> </span>-C<span class="w"> </span><span class="si">${</span><span class="nv">MAXREADS</span><span class="si">}</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                            </span>-R<span class="w"> </span><span class="si">${</span><span class="nv">LIST</span><span class="si">}</span><span class="w"> </span>-o<span class="w"> </span><span class="si">${</span><span class="nv">SNP</span><span class="si">}</span><span class="w"> </span><span class="p">|&amp;</span><span class="w"> </span>tee<span class="w"> </span><span class="si">${</span><span class="nv">BAF</span><span class="si">}</span>bafs.log
+</pre></div>
+</div>
+<p>genotype-snps genotypes germline SNPs from the matched-normal sample <code class="docutils literal notranslate"><span class="pre">${NORMAL}</span></code>, using positions of known germline variation specified by the file in <code class="docutils literal notranslate"><span class="pre">${LIST}</span></code>. If this parameter is omitted, heterozygous SNPs are inferred from the normal sample. As mentioned above, SNPs are only considered for downstream analysis if they have a minimum and maximum sequencing depth of <code class="docutils literal notranslate"><span class="pre">${MINREADS}</span></code> and <code class="docutils literal notranslate"><span class="pre">${MAXREADs}</span></code>, respectively.</p>
+<p>GATK best practices suggest that the maximum should be at least twice the expected average coverage to avoid mapping artifacts.
+Observe that WES generally requires higher thresholds (e.g. 100 and 3000).
+Also, an increasing in the minimum threshold allow to improve the quality of the estimated BAF (computed in the next step), while a decreasing  it allows us to consider more SNPs.</p>
+</section>
+<section id="count-alleles">
+<h2><a class="reference external" href="doc_count_alleles.html">count-alleles</a><a class="headerlink" href="#count-alleles" title="Permalink to this heading">¶</a></h2>
+<p><a name="count-alleles"></a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>count-alleles<span class="w"> </span>-N<span class="w"> </span><span class="si">${</span><span class="nv">NORMAL</span><span class="si">}</span><span class="w"> </span>-T<span class="w"> </span><span class="si">${</span><span class="nv">BAMS</span><span class="si">}</span><span class="w"> </span>-S<span class="w"> </span><span class="si">${</span><span class="nv">ALLNAMES</span><span class="si">}</span><span class="w"> </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">REF</span><span class="si">}</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                          </span>-j<span class="w"> </span><span class="si">${</span><span class="nv">J</span><span class="si">}</span><span class="w"> </span>-c<span class="w"> </span><span class="si">${</span><span class="nv">MINREADS</span><span class="si">}</span><span class="w"> </span>-C<span class="w"> </span><span class="si">${</span><span class="nv">MAXREADS</span><span class="si">}</span><span class="w"> </span>-L<span class="w"> </span><span class="si">${</span><span class="nv">SNP</span><span class="si">}</span>*.vcf.gz<span class="w"> </span><span class="se">\</span>
+<span class="w">                          </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">BAF</span><span class="si">}</span>normal.1bed<span class="w"> </span>-o<span class="w"> </span><span class="si">${</span><span class="nv">BAF</span><span class="si">}</span>tumor.1bed<span class="w"> </span><span class="p">|&amp;</span><span class="w"> </span>tee<span class="w"> </span><span class="si">${</span><span class="nv">BAF</span><span class="si">}</span>bafs.log
+</pre></div>
+</div>
+<p>count-alleles uses these germline SNPs from genotype-snps (specified in the list <code class="docutils literal notranslate"><span class="pre">${SNP}*.vcf.gz</span></code>) and computes the corresponding allele counts from all tumor samples <code class="docutils literal notranslate"><span class="pre">${BAMS}</span></code>.
+As for all steps in this pipeline, the same reference genome used for the BAM files has to be specified by <code class="docutils literal notranslate"><span class="pre">${REF}</span></code>.
+Minimum and maximum thresholds for the read counts of germline SNPs are again specified with <code class="docutils literal notranslate"><span class="pre">${MINREADS}</span></code> and <code class="docutils literal notranslate"><span class="pre">${MAXREADS}</span></code>.</p>
+<p>Several simple parameters are also specified including: number of parallel threads, output filenames, and the log filename of this step.</p>
+</section>
+<section id="count-reads">
+<h2><a class="reference external" href="doc_count_reads.html">count-reads</a><a class="headerlink" href="#count-reads" title="Permalink to this heading">¶</a></h2>
+<p><a name="count-reads"></a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>count-reads<span class="w"> </span>-N<span class="w"> </span><span class="si">${</span><span class="nv">NORMAL</span><span class="si">}</span><span class="w"> </span>-T<span class="w"> </span><span class="si">${</span><span class="nv">BAMS</span><span class="si">}</span><span class="w"> </span>-S<span class="w"> </span><span class="si">${</span><span class="nv">ALLNAMES</span><span class="si">}</span><span class="w"> </span>-b<span class="w"> </span><span class="si">${</span><span class="nv">BAF</span><span class="si">}</span>tumor.1bed<span class="w"> </span><span class="se">\</span>
+<span class="w">                              </span>-j<span class="w"> </span><span class="si">${</span><span class="nv">J</span><span class="si">}</span><span class="w"> </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">RDR</span><span class="si">}</span>normal.1bed<span class="w"> </span>-O<span class="w"> </span><span class="o">{</span>RDR<span class="o">}</span><span class="w"> </span>-V<span class="w"> </span><span class="o">{</span>REF_VERSION<span class="o">}</span><span class="w"> </span><span class="p">|&amp;</span><span class="w"> </span>tee<span class="w"> </span><span class="si">${</span><span class="nv">RDR</span><span class="si">}</span>bins.log
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">count-reads</span></code> identifies candidate bin thresholds using the SNPs identified by <code class="docutils literal notranslate"><span class="pre">count_alleles</span></code> (in <code class="docutils literal notranslate"><span class="pre">${BAF}tumor.1bed</span> </code>), and counts the number of reads in each tumor sample <code class="docutils literal notranslate"><span class="pre">${BAMS}</span></code> as well as in the normal sample <code class="docutils literal notranslate"><span class="pre">{$NORMAL}</span></code> that fall within each interval as well as the number of reads overlapping each threshold. It uses the centromere locations corresponding the the reference genome version <code class="docutils literal notranslate"><span class="pre">${REF_VERSION}</span></code> (hg19 or hg38) to avoid constructing bins that overlap centromeres. This step produces a gzip-compressed file for each chromosome and each sample in the <code class="docutils literal notranslate"><span class="pre">${RDR}</span></code> directory, as well as an ordered list <code class="docutils literal notranslate"><span class="pre">${RDR}samples.txt</span></code> of sample labels. It also counts the total reads in each of the BAM files and writes it to <code class="docutils literal notranslate"><span class="pre">${RDR}total.tsv</span></code>.
+Other simple parameters are also specified including number of parallel threads, output filenames, and the log filename of this step.</p>
+</section>
+<section id="combine-counts">
+<h2><a class="reference external" href="doc_combine_counts.html">combine-counts</a><a class="headerlink" href="#combine-counts" title="Permalink to this heading">¶</a></h2>
+<p><a name="combine-counts"></a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>combine-counts<span class="w"> </span>-A<span class="w"> </span><span class="si">${</span><span class="nv">RDR</span><span class="si">}</span><span class="w"> </span>-t<span class="w"> </span><span class="si">${</span><span class="nv">RDR</span><span class="si">}</span>total.tsv<span class="w"> </span>-b<span class="w"> </span><span class="o">{</span>BAF<span class="o">}</span>tumor.1bed<span class="w"> </span>-o<span class="w"> </span><span class="c1">#{BB}bulk.bb \</span>
+<span class="w">                          </span>--msr<span class="w"> </span><span class="si">${</span><span class="nv">msr</span><span class="si">}</span><span class="w"> </span>--mtr<span class="w"> </span><span class="si">${</span><span class="nv">mtr</span><span class="si">}</span><span class="w"> </span>-j<span class="w"> </span><span class="si">${</span><span class="nv">J</span><span class="si">}</span><span class="w"> </span><span class="se">\</span>
+<span class="w">                          </span>-p<span class="w"> </span><span class="si">${</span><span class="nv">PHASE</span><span class="si">}</span><span class="w"> </span>-s<span class="w"> </span><span class="si">${</span><span class="nv">max_blocksize</span><span class="si">}</span><span class="w"> </span>-m<span class="w"> </span><span class="o">{</span>max_spb<span class="o">}</span><span class="w"> </span>-a<span class="w"> </span><span class="o">{</span>alpha<span class="o">}</span><span class="w"> </span><span class="c1"># optional phasing args</span>
+</pre></div>
+</div>
+<p>combine-counts constructs genomic bins such that in all samples, each bin has at least <code class="docutils literal notranslate"><span class="pre">${msr}</span></code> SNP-covering reads and at least <code class="docutils literal notranslate"><span class="pre">${mtr}</span></code> total reads. Bins will not have the same width, but using this rule each bin will have comparable RDR and BAF signals for the following clustering steps. The BAF for each bin and the relative phase of all SNPs in the bin are inferred via EM, and the RDR for each bin is computed fom the read count files in the <code class="docutils literal notranslate"><span class="pre">${RDR}</span></code> folder. After this computation, RDR values are normalized using the total reads in each sample (from <code class="docutils literal notranslate"><span class="pre">${RDR}total.tsv</span></code>). As with other HATCHet commands, <code class="docutils literal notranslate"><span class="pre">-j</span> <span class="pre">${J}</span></code> controls the number of parallel processes.</p>
+<p>See the <a class="reference internal" href="script/README.html"><span class="doc">script</span></a> directory for a guide on how to run HATCHet with phasing. If a phased VCF file is supplied via <code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--phase</span> <span class="pre">${PHASE}</span></code> (e.g., <code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">phase/phased.vcf.gz</span></code>), SNPs are merged into blocks before BAF inference. Each block contains at most <code class="docutils literal notranslate"><span class="pre">${max_spb}</span></code> such that no two SNPs in the same block are further apart than <code class="docutils literal notranslate"><span class="pre">${max_blocksize}</span></code>, and such that no two adjacent SNPs have significantly different marginal BAF estimates (at significance level <code class="docutils literal notranslate"><span class="pre">${alpha}</span></code> – higher <code class="docutils literal notranslate"><span class="pre">${alpha}</span></code> corresponds to less trust in the phasing results). Then, blocks are passed to the EM which determines the relative phase of each block.</p>
+</section>
+<section id="cluster-bins">
+<h2><a class="reference external" href="doc_cluster_bins.html">cluster-bins</a><a class="headerlink" href="#cluster-bins" title="Permalink to this heading">¶</a></h2>
+<p><a name="cluster-bins"></a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>cluster-bins<span class="w"> </span><span class="si">${</span><span class="nv">BB</span><span class="si">}</span>bulk.bb<span class="w"> </span>-o<span class="w"> </span><span class="si">${</span><span class="nv">BBC</span><span class="si">}</span>bulk.seg<span class="w"> </span>-O<span class="w"> </span><span class="si">${</span><span class="nv">BBC</span><span class="si">}</span>bulk.bbc<span class="w"> </span><span class="se">\</span>
+<span class="w">                                      </span>-minK<span class="w"> </span><span class="m">5</span><span class="w"> </span>-maxK<span class="w"> </span><span class="m">10</span><span class="w"> </span>-tau<span class="w"> </span><span class="m">0</span>.0001<span class="w"> </span>-d<span class="w"> </span><span class="m">0</span>.08
+</pre></div>
+</div>
+<p>cluster-bins globally clusters genomic bins based on RDR and BAF (specified in a BB file <code class="docutils literal notranslate"><span class="pre">${BB}bulk.bb</span></code>) jointly along the genome and across all tumor samples. This <em>locality-aware</em> clustering takes into account the contiguity of bins along the genome to inform the clustering.</p>
+<p>The main parameters are as follows:</p>
+<ul class="simple">
+<li><p>The maximum expected BAF shift <code class="docutils literal notranslate"><span class="pre">-d</span></code> for a balanced cluster, here set to <code class="docutils literal notranslate"><span class="pre">0.08</span></code>. This parameter should be as small as possible while still including the clusters with the closest BAF to 0.5.</p></li>
+<li><p>Parameters <code class="docutils literal notranslate"><span class="pre">minK</span></code> and <code class="docutils literal notranslate"><span class="pre">maxK</span></code> which specify the minimum and maximum (respectively) of clusters to consider. Alternatively, one can specify <code class="docutils literal notranslate"><span class="pre">exactK</span></code> to fix the number of clusters at a given value.</p></li>
+<li><p>Parameter <code class="docutils literal notranslate"><span class="pre">tau</span></code> which controls the trade-off between local and global information: lower <code class="docutils literal notranslate"><span class="pre">tau</span></code> puts more weight on <em>local</em> information (i.e., adjacent bins on each chromosome arm) while higher <code class="docutils literal notranslate"><span class="pre">tau</span></code> puts more weight on <em>global</em> information (i.e., RDR and BAF values).</p></li>
+</ul>
+<p>The plots from <code class="docutils literal notranslate"><span class="pre">plot-bins</span></code> are helpful to evaluate clusterings and tune parameters.</p>
+<p>Other parameters are used to specify the output files containing the cluster information (<code class="docutils literal notranslate"><span class="pre">${BBC}bulk.seg</span></code>) and the clustered genomic bins (<code class="docutils literal notranslate"><span class="pre">${BBC}bulk.bbc</span></code>).</p>
+</section>
+<section id="plot-bins">
+<h2><a class="reference external" href="doc_plot_bins.html">plot-bins</a><a class="headerlink" href="#plot-bins" title="Permalink to this heading">¶</a></h2>
+<p><a name="plot-bins"></a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span><span class="si">${</span><span class="nv">PLO</span><span class="si">}</span>
+python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>plot-bins<span class="w"> </span>-c<span class="w"> </span>RD<span class="w"> </span>--figsize<span class="w"> </span><span class="m">6</span>,3<span class="w"> </span>../<span class="si">${</span><span class="nv">BBC</span><span class="si">}</span>bulk.bbc
+python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>plot-bins<span class="w"> </span>-c<span class="w"> </span>CRD<span class="w"> </span>--figsize<span class="w"> </span><span class="m">6</span>,3<span class="w"> </span>../<span class="si">${</span><span class="nv">BBC</span><span class="si">}</span>bulk.bbc
+python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>plot-bins<span class="w"> </span>-c<span class="w"> </span>BAF<span class="w"> </span>--figsize<span class="w"> </span><span class="m">6</span>,3<span class="w"> </span>../<span class="si">${</span><span class="nv">BBC</span><span class="si">}</span>bulk.bbc
+python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>plot-bins<span class="w"> </span>-c<span class="w"> </span>BB<span class="w"> </span>../<span class="si">${</span><span class="nv">BBC</span><span class="si">}</span>bulk.bbc
+python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>plot-bins<span class="w"> </span>-c<span class="w"> </span>CBB<span class="w"> </span>../<span class="si">${</span><span class="nv">BBC</span><span class="si">}</span>bulk.bbc<span class="w"> </span>-tS<span class="w"> </span><span class="m">0</span>.01
+</pre></div>
+</div>
+<p>plot-bins produces informative plots which are described <a class="reference internal" href="doc_plot_bins.html"><span class="doc">here</span></a>.
+Many of these plots can be very useful to assess the performance of the various steps of HATCHet, especially in the case of noisy datasets.</p>
+</section>
+<section id="compute-cn">
+<h2><a class="reference external" href="doc_compute_cn.html">compute-cn</a><a class="headerlink" href="#compute-cn" title="Permalink to this heading">¶</a></h2>
+<p><a name="compute-cn"></a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>../<span class="si">${</span><span class="nv">RES</span><span class="si">}</span>
+python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>compute-cn<span class="w"> </span>-i<span class="w"> </span>../<span class="si">${</span><span class="nv">BBC</span><span class="si">}</span>bulk<span class="w"> </span>-n2,6<span class="w"> </span>-p<span class="w"> </span><span class="m">400</span><span class="w"> </span>-u<span class="w"> </span><span class="m">0</span>.03<span class="w"> </span><span class="se">\</span>
+<span class="w">                          </span>-r<span class="w"> </span><span class="si">${</span><span class="nv">RANDOM</span><span class="si">}</span><span class="w"> </span>-j<span class="w"> </span><span class="si">${</span><span class="nv">J</span><span class="si">}</span><span class="w"> </span>-eD<span class="w"> </span><span class="m">6</span><span class="w"> </span>-eT<span class="w"> </span><span class="m">12</span><span class="w"> </span>-g<span class="w"> </span><span class="m">0</span>.35<span class="w"> </span><span class="se">\</span>
+<span class="w">                          </span>-l<span class="w"> </span><span class="m">0</span>.6<span class="w"> </span><span class="p">&amp;</span>&gt;<span class="w"> </span>&gt;<span class="o">(</span>tee<span class="w"> </span>&gt;<span class="o">(</span>grep<span class="w"> </span>-v<span class="w"> </span>Progress<span class="w"> </span>&gt;<span class="w"> </span>hatchet.log<span class="o">))</span>
+</pre></div>
+</div>
+<p>compute-cn computes the fractional copy numbers, factorizes these into allele and clone-specific copy numbers and clone proportions, and applies a model-selection step to jointly infer the number of clones and predict a whole-genome duplication (WGD).
+This step requires the common prefix <code class="docutils literal notranslate"><span class="pre">${BBC}bulk</span></code> of the cluster and clustered bins files.
+Some basic parameter include:</p>
+<ul class="simple">
+<li><p>the interval <code class="docutils literal notranslate"><span class="pre">2,6</span></code>  specifying the minimum and maximum number of clones which can be increased as much as wanted. User can start to use this interval and increasing if the number of clones appear to be higher or close to the maximum.</p></li>
+<li><p>the number of restarts <code class="docutils literal notranslate"><span class="pre">400</span></code> for the coordinate-descent method. This value is typically enough to obtain a good solution close to the optimum, however an increase in this value allows to improve the search of a solution. This can be useful when observing a number of clusters significantly higher than usual.</p></li>
+<li><p>Random initializing seed with <code class="docutils literal notranslate"><span class="pre">${RANDOM}</span></code>.</p></li>
+<li><p>Number of parallel threads <code class="docutils literal notranslate"><span class="pre">${J}</span></code></p></li>
+</ul>
+<p>There are also some important parameters which need to be tuned for special or noisy datasets.
+The details of these parameters are the following:</p>
+<ul class="simple">
+<li><p>Maximum copy number without a WGD <code class="docutils literal notranslate"><span class="pre">-eD</span></code> and with a WGD <code class="docutils literal notranslate"><span class="pre">-eT</span></code>. The specified values are typically enough to obtain the copy numbers of large CNAs. While higher values increase the number of reasonable solutions, the values can be increased to investigate the presence of large genomic regions with higher copy numbers. In particular, when the value <code class="docutils literal notranslate"><span class="pre">0</span></code> is specified, then the maximum copy numbers are automatically chosen from the fractional copynumbers.</p></li>
+<li><p>Minimum clone proportion <code class="docutils literal notranslate"><span class="pre">-u</span></code>. The value depends on the power to identify tumor clones present in samples at low tumor proportions. The default value is reasonable for most of the datasets, but datasets with high noise may need higher values to avoid overfitting. We thus suggest, especially in these special cases, to repeat the hatchet step by considering increasing values of this parameter up to a maximum or until clone proportions are different from this threshold.</p></li>
+<li><p>Two parameters are used to control the elbow method during model selection to choose the best solution. The user should repeat this step with different values of these parameters, especially when one wants to investigate the presence of a single tumor clone or the presence of more tumor clones with small different CNAs and small clone proportions. These two parameters are the following:</p>
+<ul>
+<li><p>Confidence in the presence of a single tumor clone <code class="docutils literal notranslate"><span class="pre">g</span></code>. This value determines the confidence in having a single tumor clone in several of the given samples. The user can investigate the hypothesis that a single tumor clone is present by increasing the confidence, e.g. using values of <code class="docutils literal notranslate"><span class="pre">0.4,</span> <span class="pre">0.5,</span> <span class="pre">...</span></code>. Vice versa, the confidence is lowered by decreasing these values. For example, one can do that to investigate the presence of tumor clones with small CNAs or small proportions.</p></li>
+<li><p>Sensitivity <code class="docutils literal notranslate"><span class="pre">l</span></code>. This value determines the sensitivity of the method. Lower values correspond to higher sensitivities which allow to consider solutions with a higher number of clones. The user can decrease this value for investigating the presence of more tumor clones, especially tumor clones with small different CNAs or present in small proportions.</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="plot-cn">
+<h2><a class="reference external" href="doc_plot_cn.html">plot-cn</a><a class="headerlink" href="#plot-cn" title="Permalink to this heading">¶</a></h2>
+<p><a name="plot-cn"></a></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>../<span class="si">${</span><span class="nv">SUM</span><span class="si">}</span>
+python3<span class="w"> </span>-m<span class="w"> </span>hatchet<span class="w"> </span>plot-cn<span class="w"> </span>../<span class="si">${</span><span class="nv">RES</span><span class="si">}</span>/best.bbc.ucn
+</pre></div>
+</div>
+<p>plot-cn produces informative and summary plots for the inferred results.
+Examples and details of these plots are reported <a class="reference internal" href="doc_plot_cn.html"><span class="doc">here</span></a>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

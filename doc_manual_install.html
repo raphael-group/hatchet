@@ -1,0 +1,187 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual Installation &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Manual Installation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_manual_install.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="manual-installation">
+<h1>Manual Installation<a class="headerlink" href="#manual-installation" title="Permalink to this heading">¶</a></h1>
+<p>If you wish to install <code class="docutils literal notranslate"><span class="pre">HATCHet</span></code> directly from this repository, the steps are a bit more involved.</p>
+<p>Note that the complexity of manual installation is largely because the <code class="docutils literal notranslate"><span class="pre">compute-cn</span></code> step (determination of
+allele-specific copy numbers) of the HATCHet pipeline uses custom-written C++11 code that uses the
+<a class="reference external" href="http://www.gurobi.com/">Gurobi</a> optimizer. If you do not have a valid Gurobi license (though it is
+<a class="reference external" href="http://www.gurobi.com/academia/academia-center">easily available</a> for users in academia), then the C++ parts of
+HATCHet do not necessarily need to be compiled, and you can read the
+<a class="reference external" href="#withoutgurobi">Compiling HATCHet without the built-in Gurobi optimizer</a> section of this page.</p>
+<section id="compiling-hatchet-with-the-built-in-gurobi-optimizer">
+<h2>Compiling HATCHet with the built-in Gurobi optimizer<a class="headerlink" href="#compiling-hatchet-with-the-built-in-gurobi-optimizer" title="Permalink to this heading">¶</a></h2>
+<p>The core optimization module of HATCHet is written in C++11 and thus requires a modern C++ compiler (GCC &gt;= 4.8.1, or Clang).
+As long as you have a recent version of GCC or Clang installed, <code class="docutils literal notranslate"><span class="pre">setuptools</span></code> should automatically be able to download a
+recent version of <code class="docutils literal notranslate"><span class="pre">cmake</span></code> and compile the Hatchet code into a working package.</p>
+<p>The installation process can be broken down into the following steps:</p>
+<ol>
+<li><p><strong>Get <a class="reference external" href="http://www.gurobi.com/">Gurobi</a></strong> (v9.0.2)</p>
+<p>The coordinate-method applied by HATCHet is based on several integer linear programming (ILP) formulations. Gurobi is a commercial ILP solver with two licensing options: (1) a single-host license where the license is tied to a single computer and (2) a network license for use in a compute cluster (using a license server in the cluster). Both options are freely and <a class="reference external" href="http://www.gurobi.com/academia/academia-center">easily available</a> for users in academia.
+<a class="reference external" href="https://www.gurobi.com/downloads/gurobi-optimizer-eula">Download</a> Gurobi for your specific platform.</p>
+</li>
+<li><p><strong>Set GUROBI_HOME environment variable</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="nv">GUROBI_HOME</span><span class="o">=</span>/path/to/gurobi902
+</pre></div>
+</div>
+<p>Set <code class="docutils literal notranslate"><span class="pre">GUROBI_HOME</span></code> to where you download Gurobi. Here <code class="docutils literal notranslate"><span class="pre">XXX</span></code> is the 3-digit version of gurobi.</p>
+</li>
+<li><p><strong>Build Gurobi</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;</span><span class="si">${</span><span class="nv">GUROBI_HOME</span><span class="si">}</span><span class="s2">&quot;</span>
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>linux64/src/build/
+$<span class="w"> </span>make
+$<span class="w"> </span>cp<span class="w"> </span>libgurobi_c++.a<span class="w"> </span>../../lib
+</pre></div>
+</div>
+<p>Substitute <code class="docutils literal notranslate"><span class="pre">mac64</span></code> for <code class="docutils literal notranslate"><span class="pre">linux64</span></code> if using the Mac OSX platform.</p>
+</li>
+<li><p><strong>Create a new venv/conda environment for Hatchet</strong></p>
+<p><code class="docutils literal notranslate"><span class="pre">Hatchet</span></code> is a Python 3 package. Unless you want to compile/install it in your default Python 3 environment, you will
+want to create either a new Conda environment for Python 3 and activate it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">create</span> <span class="o">--</span><span class="n">name</span> <span class="n">hatchet</span> <span class="n">python</span><span class="o">=</span><span class="mf">3.8</span>
+<span class="n">conda</span> <span class="n">activate</span> <span class="n">hatchet</span>
+</pre></div>
+</div>
+<p>or use <code class="docutils literal notranslate"><span class="pre">virtualenv</span></code> through <code class="docutils literal notranslate"><span class="pre">pip</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python3</span> <span class="o">-</span><span class="n">m</span> <span class="n">pip</span> <span class="n">virtualenv</span> <span class="n">env</span>
+<span class="n">source</span> <span class="n">env</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">activate</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Install basic packages</strong></p>
+<p>It is <strong>highly recommended</strong> that you upgrade your <code class="docutils literal notranslate"><span class="pre">pip</span></code> and <code class="docutils literal notranslate"><span class="pre">setuptools</span></code> versions to the latest, using:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>pip
+pip<span class="w"> </span>install<span class="w"> </span>-U<span class="w"> </span>setuptools
+</pre></div>
+</div>
+</li>
+<li><p><strong>Build and install HATCHet</strong></p>
+<p>Execute the following commands from the root of HATCHet’s repository.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+<p><strong>NOTE</strong>: If you experience a failure of compilation with an error message like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">_undefined</span> <span class="n">reference</span> <span class="n">to</span> <span class="n">symbol</span> <span class="s1">&#39;pthread_create@@GLIBC_2.2.5&#39;</span><span class="n">_</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>you may need to set <code class="docutils literal notranslate"><span class="pre">CXXFLAGS</span></code> to <code class="docutils literal notranslate"><span class="pre">-pthread</span></code> before invoking the command:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span><span class="nv">CXXFLAGS</span><span class="o">=</span>-pthread<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+<p>When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the <a class="reference internal" href="doc_compilation.html"><span class="doc">detailed intructions</span></a>.</p>
+</li>
+<li><p><strong>Install required utilities</strong></p>
+<p>For reading BAM files, read counting, allele counting, and SNP calling, you need to install <a class="reference external" href="http://www.htslib.org/doc/">SAMtools, BCFtools, and tabix</a> as well as <a class="reference external" href="https://github.com/brentp/mosdepth">mosdepth</a>.
+If you want to perform reference-based phasing, you must also install <a class="reference external" href="https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.html">shapeit</a>, <a class="reference external" href="https://broadinstitute.github.io/picard/">picard</a>, and <a class="reference external" href="http://www.htslib.org/doc/">bgzip</a>. The easiest way to install these is via <code class="docutils literal notranslate"><span class="pre">conda</span></code>, as all are available from the <code class="docutils literal notranslate"><span class="pre">bioconda</span></code> channel (except <code class="docutils literal notranslate"><span class="pre">shapeit</span></code> which is available from channel <code class="docutils literal notranslate"><span class="pre">dranew</span></code>).</p>
+</li>
+</ol>
+</section>
+<section id="compiling-hatchet-without-the-built-in-gurobi-optimizer">
+<h2>Compiling HATCHet <em>without</em> the built-in Gurobi optimizer<a class="headerlink" href="#compiling-hatchet-without-the-built-in-gurobi-optimizer" title="Permalink to this heading">¶</a></h2>
+<p><a name="withoutgurobi"></a></p>
+<p>If you wish to use an alternate ILP optimizer, then you do not need a C++ compiler.</p>
+<p>In this case, set the <code class="docutils literal notranslate"><span class="pre">HATCHET_BUILD_NOEXT</span></code> environment variable to <code class="docutils literal notranslate"><span class="pre">1</span></code> (using <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">HATCHET_BUILD_NOEXT=1</span></code>),
+set the environment variable <code class="docutils literal notranslate"><span class="pre">HATCHET_COMPUTE_CN_SOLVER</span></code> to a Pyomo-supported solver (see the
+<a class="reference external" href="README.html#usingasolver_other">Using a different Pyomo-supported solver</a> section of the README for more details)
+and proceed directly to step (4) above.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

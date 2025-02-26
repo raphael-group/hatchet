@@ -1,0 +1,330 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>combine-counts-fw &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">combine-counts-fw</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_combine_counts_fw.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="combine-counts-fw">
+<h1>combine-counts-fw<a class="headerlink" href="#combine-counts-fw" title="Permalink to this heading">¶</a></h1>
+<p>NOTE: This function (formerly called <code class="docutils literal notranslate"><span class="pre">comBBo</span></code>) uses the legacy fixed-width binning described in the HATCHet paper. We recommend using <a class="reference internal" href="doc_count_reads.html"><span class="doc">count-reads</span></a> and <a class="reference external" href="doc_combine-counts"><code class="docutils literal notranslate"><span class="pre">combine-counts</span></code></a> which apply an adaptive binning scheme to ensure that each genomic bin has comparable BAF signal.</p>
+<p>This step combines the read counts and the allele counts for the identified germline SNPs to compute the read-depth ratio (RDR) and B-allele frequency (BAF) of every genomic bin.</p>
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p>combine-counts-fw takes in input three tab-separate files:</p>
+<ol class="simple">
+<li><p>A file of read counts for genomic bins obtained from the matched-normal sample, specified by the flag <code class="docutils literal notranslate"><span class="pre">-c</span></code>, <code class="docutils literal notranslate"><span class="pre">--normalbins</span></code>. The tab separated file has the following fields.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of the matched-normal sample</td>
+</tr>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of a chromosome</td>
+</tr>
+<tr>
+<td><code>START</code></td>
+<td>Starting genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>END</code></td>
+<td>Ending genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>COUNT</code></td>
+<td>Count of sequencing reads in the corresponding bin</td>
+</tr>
+</tbody>
+</table><ol class="simple">
+<li><p>A file of read counts for genomic bins obtained from all the tumor samples, specified by the flag <code class="docutils literal notranslate"><span class="pre">-C</span></code>, <code class="docutils literal notranslate"><span class="pre">--tumorbins</span></code>. The tab separated file has the following fields.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of a tumor sample</td>
+</tr>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of a chromosome</td>
+</tr>
+<tr>
+<td><code>START</code></td>
+<td>Starting genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>END</code></td>
+<td>Ending genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>COUNT</code></td>
+<td>Count of sequencing reads in the corresponding bin</td>
+</tr>
+</tbody>
+</table><ol class="simple">
+<li><p>A file of allele counts for heterozygous germline SNPs obtained from all the tumor samples, specified by the flag <code class="docutils literal notranslate"><span class="pre">-B</span></code>, <code class="docutils literal notranslate"><span class="pre">--tumorbafs</span></code>. The tab separated file has the following fields.</p></li>
+</ol>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of a tumor sample</td>
+</tr>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of a chromosome</td>
+</tr>
+<tr>
+<td><code>POS</code></td>
+<td>Genomic position corresponding to a heterozygous germline in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>REF_COUNT</code></td>
+<td>Count of reads covering <code>POS</code> with reference allele</td>
+</tr>
+<tr>
+<td><code>ALT_COUNT</code></td>
+<td>Count of reads covering <code>POS</code> with alternate allele</td>
+</tr>
+</tbody>
+</table></section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">¶</a></h2>
+<p>combine-counts-fw produces a tab-separated file with the following fields.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHR</code></td>
+<td>Name of a chromosome</td>
+</tr>
+<tr>
+<td><code>START</code></td>
+<td>Starting genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>END</code></td>
+<td>Ending genomic position of a genomic bin in <code>CHR</code></td>
+</tr>
+<tr>
+<td><code>SAMPLE</code></td>
+<td>Name of a tumor sample</td>
+</tr>
+<tr>
+<td><code>RD</code></td>
+<td>RDR of the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>#SNPS</code></td>
+<td>Number of SNPs present in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>COV</code></td>
+<td>Average coverage in the bin in <code>SAMPLE</code></td>
+</tr>
+<tr>
+<td><code>ALPHA</code></td>
+<td>Alpha parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from A allele</td>
+</tr>
+<tr>
+<td><code>BETA</code></td>
+<td>Beta parameter related to the binomial model of BAF for the bin in <code>SAMPLE</code>, typically total number of reads from B allele</td>
+</tr>
+<tr>
+<td><code>BAF</code></td>
+<td>BAF of the bin in <code>SAMPLE</code></td>
+</tr>
+</tbody>
+</table></section>
+<section id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Permalink to this heading">¶</a></h2>
+<p>combine-counts has some main parameters; the main values of these parameters allow to deal with most of datasets, but their values can be changed or tuned to accommodate the features of special datasets.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-d</code>, <code>--diploidbaf</code></td>
+<td>Maximum expected shift from 0.5 for BAF of diploid or tetraploid clusters</td>
+<td>The maximum shift is used to identify all the potential clusters with base states (1, 1) or (2, 2). The value depends on the variance in the data (related to noise and coverage); generally, higher variance requires a higher shift. Information provided by plot-bins can help to decide this value in special datasets.</td>
+<td>0.08 (other typically suggested values are 0.1-0.11 for higher variance and 0.06 for low variance)</td>
+</tr>
+</tbody>
+</table></section>
+<section id="optional-parameters">
+<h2>Optional parameters<a class="headerlink" href="#optional-parameters" title="Permalink to this heading">¶</a></h2>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-v</code>, <code>--verbose</code></td>
+<td>Verbose logging flag</td>
+<td>When enabled, combine-counts outputs a verbose log of the executiong</td>
+<td>Not used</td>
+</tr>
+<tr>
+<td><code>-r</code>, <code>--disablebar</code></td>
+<td>Disabling progress-bar flag</td>
+<td>When enabled, the output progress bar is disabled</td>
+<td>Not used</td>
+</tr>
+<tr>
+<td><code>-b</code>, <code>--normalbafs</code></td>
+<td>File of allele counts for SNPs in matched-normal sample</td>
+<td>When provided, combine-counts attempts to correct the estimated BAF using the variance in matched-normal sample.</td>
+<td>Not used (deprecated)</td>
+</tr>
+<tr>
+<td><code>-d</code>, <code>--diploidbaf</code></td>
+<td>Maximum expected shift from 0.5 for BAF of diploid or tetraploid clusters</td>
+<td>The maximum shift is used to identify potential potential bins with base states (1, 1) or (2, 2) whose BAF needs to be corrected. The value depends on the variance in the data (related to noise and coverage); generally, higher variance requires a higher shift. Information provided by plot-bins can help to decide this value in special datasets.</td>
+<td>0.08 (other typically suggested values are 0.1-0.11 for higher variance and 0.06 for low variance)</td>
+</tr>
+<tr>
+<td><code>-t</code>, <code>--totalcounts</code></td>
+<td>File of total read counts</td>
+<td>When provided, the total read counts are used to normalize the read counts from the corresponding sample</td>
+<td>Not used (deprecated)</td>
+</tr>
+<tr>
+<td><code>-m</code>, <code>--mode</code></td>
+<td>Mode used to estimate BAFs</td>
+<td>Different modes are provided to combine to combine the allele counts of SNPs</td>
+<td>The counts from the allele with minor count are combined (deprecated)</td>
+</tr>
+</tbody>
+</table></section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

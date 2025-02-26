@@ -1,0 +1,127 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyze global clustering &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Analyze global clustering</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/recommendation_old_clustering.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="analyze-global-clustering">
+<h1>Analyze global clustering<a class="headerlink" href="#analyze-global-clustering" title="Permalink to this heading">¶</a></h1>
+<p><strong>Note</strong>: this page describes recommendations for tuning the older clustering module <code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code>. We recommend using the locality-aware clustering module <a class="reference internal" href="doc_cluster_bins.html"><span class="doc">cluster-bins</span></a> instead.</p>
+<p>The global clustering performed along the genome and jointly across samples is a crucial feature of HATCHet and the quality of the final results is affected by the quality of the clustering. In particular, the global clustering is performed by HATCHet’s component <code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code>, whose default values for the main parameters allow to deal with most of the datasets. However, noisy or special datasets need tuning of these parameters, especially because the current version of <code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code> uses <a class="reference external" href="https://scikit-learn.org/stable/modules/generated/sklearn.mixture.BayesianGaussianMixture.html">scikit-learn</a>, an external implementation of a GMM with a Dirichlet process prior which is not specifically designed for sequencing data. Therefore, the user needs to validate the results and improve it to obtain best-quality results, especially when considering noisy and special datasets.</p>
+<p>The user should validate the results of the clustering, especially in noisy or suspicious cases, through the cluster figure produced by the <a class="reference internal" href="doc_plot_bins.html"><span class="doc">command CBB of plot-bins</span></a> and as explained in the available <a class="reference external" href="https://github.com/raphael-group/hatchet#demos">demos</a>. More specifically, we suggest to consider the following criterion to validate the clustering: <strong>Every pair of clusters needs to be clearly distinct in terms of RDR or BAF in at least one sample and each cluster only contains regions with similar values of RDR and BAF in all samples</strong>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code> offers two sets of parameters that the user can tune to improve the result of the clustering: (1) <code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code>-specific and (2) sklearn-specific parameters.</p>
+<section id="cluster-bins-gmm-specific-parameters">
+<h2><code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code>-specific parameters<a class="headerlink" href="#cluster-bins-gmm-specific-parameters" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code> provides two specific parameters that can be used to improve the results of the global clustering:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-tR</span></code> threshold defines a RDR tolerance (default value is <code class="docutils literal notranslate"><span class="pre">-tR</span> <span class="pre">0.15</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-tB</span></code> threshold defines a BAF tolerance (default value is <code class="docutils literal notranslate"><span class="pre">-tB</span> <span class="pre">0.04</span></code>)</p></li>
+</ul>
+<p>These tolerances are used to merge any pair of clusters which have differences in terms of RDR and BAF always lower than the given thresholds across all samples. Intuitively these two thresolds are used to draw a rectangle (with <code class="docutils literal notranslate"><span class="pre">tR</span></code> width and <code class="docutils literal notranslate"><span class="pre">tB</span></code> height in every RDR-BAF plots) around every cluster in every sample. If two clusters are in the same rectangle in every sample, they are merged. As such, the user can estimate the RDR and BAF as the values of the thresholds by using the heat figure produced by the <a class="reference internal" href="doc_plot_bins.html"><span class="doc">command BB of plot-bins</span></a>. In particular, higher values allow to merge more clusters, avoid overfitting, and accomodate higher noise and variances, while smaller values allow to avoid overclustering. For example, clusters which have a disc/long shape, i.e. high variance of RDR as in the <a class="reference external" href="https://github.com/raphael-group/hatchet/blob/master/examples/demo-WGS-cancer/demo-wgs-cancer.sh">cancer WGS demo</a> or <a class="reference external" href="https://github.com/raphael-group/hatchet/blob/master/examples/demo-WES/demo-wes.sh">WES demo</a>, will require a higher value of <code class="docutils literal notranslate"><span class="pre">tR</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">-tR</span> <span class="pre">0.3</span></code> or <code class="docutils literal notranslate"><span class="pre">-tR</span> <span class="pre">0.4</span></code>.</p>
+</section>
+<section id="sklearn-specific-parameters">
+<h2><code class="docutils literal notranslate"><span class="pre">sklearn</span></code>-specific parameters<a class="headerlink" href="#sklearn-specific-parameters" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code> additionally provide 3 parameters which allow to directly control the clustering computed by the scikit-learn Gaussian Mixture Model:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-R</span></code>: number of restarts (default is <code class="docutils literal notranslate"><span class="pre">-R</span> <span class="pre">10</span></code>) which controls the number of restarts allows the method to escape local optima. While a lower number of restarts improves the running time of <code class="docutils literal notranslate"><span class="pre">cluster-bins-gmm</span></code> process, a higher number allows it to consider more solutions and choose a better clustering.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-K</span></code>: this value provides the maximum possible number of clusters (default is <code class="docutils literal notranslate"><span class="pre">-K</span> <span class="pre">50</span></code>). Scikit-learn tends to infer close to this maximum number <code class="docutils literal notranslate"><span class="pre">K</span></code> of clusters, so if you have relatively simple data with few apparent clusters you may want to lower <code class="docutils literal notranslate"><span class="pre">K</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-c</span></code>: this value (default <code class="docutils literal notranslate"><span class="pre">1</span></code>) determines the model’s relative confidence in many even clusters (large <code class="docutils literal notranslate"><span class="pre">c</span></code>) vs. an uneven distribution of points into clusters, potentially with fewer than <code class="docutils literal notranslate"><span class="pre">K</span></code> components (small <code class="docutils literal notranslate"><span class="pre">c</span></code>). For experts, this is the concentration parameter for the Dirichlet process prior. Reducing this value by many orders of magnitude (e.g., <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">0.001</span></code> or <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">0.00001</span></code>) may enable scikit-learn to infer fewer than <code class="docutils literal notranslate"><span class="pre">K</span></code> clusters.</p></li>
+</ul>
+<p>Note that that these clustering parameters determine the clustering <em>before</em> the merging heuristic described above is applied; if you are unsure which set of parameters to tune, consider turning off the merging heuristic (i.e., setting <code class="docutils literal notranslate"><span class="pre">-tR</span> <span class="pre">0</span> <span class="pre">-tB</span> <span class="pre">0</span></code>) to inspect the clustering without merging.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

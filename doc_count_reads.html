@@ -1,0 +1,238 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>count-reads &mdash; HATCHet 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=0218eca2"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            HATCHet
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">HATCHet</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Modules</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">HATCHet</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">count-reads</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/doc_count_reads.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="count-reads">
+<h1>count-reads<a class="headerlink" href="#count-reads" title="Permalink to this heading">¶</a></h1>
+<p>This step of HATCHet uses the locations of heterozygous SNPs (called by <code class="docutils literal notranslate"><span class="pre">count-alleles</span></code>) to identify candidate bin thresholds between SNPs. Then, it counts the total number of reads in each sample between each set of candidate thresholds for use in constructing variable-length bins.</p>
+<section id="input">
+<h2>Input<a class="headerlink" href="#input" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">count-reads</span></code> takes in input sorted and indexed BAM files for multiple tumor samples from the same patient, a sorted and index BAM file from a matched-normal sample, an indexed human reference genome, and a 1bed file containing SNP information for this individual (output from <code class="docutils literal notranslate"><span class="pre">count-alleles</span></code> command, normally <code class="docutils literal notranslate"><span class="pre">baf/bulk.1bed</span></code>).</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-T</code>, <code>--tumors</code></td>
+<td>A white-space separated list of sorted-indexed BAM files for tumor samples</td>
+<td>The tumor samples from the same patient that are jointly analyzed by HATCHet</td>
+</tr>
+<tr>
+<td><code>-N</code>, <code>--normal</code></td>
+<td>A sorted-indexed BAM file for matched-normal sample</td>
+<td>The matched normal sample for the same patient</td>
+</tr>
+<tr>
+<td><code>-b</code>, <code>--baffile</code></td>
+<td>A 1bed file containing locations of heterozygous germline SNPs</td>
+<td>Typically, a user would run <code>count-alleles</code> to obtain this file.</td>
+</tr>
+<tr>
+<td><code>-V</code>, <code>--refversion</code></td>
+<td>Reference genome version (hg19 or hg38 supported)</td>
+<td></td>
+</tr>
+</tbody>
+</table></section>
+<section id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">count-reads</span></code> writes all output files to a given output directory. For each chromosome <code class="docutils literal notranslate"><span class="pre">chr</span></code>, count-reads produces two gzipped files needed to construct adaptive bins: <code class="docutils literal notranslate"><span class="pre">chr.threhsolds.gz</span></code> and <code class="docutils literal notranslate"><span class="pre">chr.total.gz</span></code>. <code class="docutils literal notranslate"><span class="pre">count-reads</span></code> also produces a tab-separated file <code class="docutils literal notranslate"><span class="pre">total.tsv</span></code> containing the total number of reads in each sample, and a text file <code class="docutils literal notranslate"><span class="pre">samples.txt</span></code> containing the list of sample names.</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-O</code>, <code>--outdir</code></td>
+<td>Output directory</td>
+</tr>
+</tbody>
+</table></section>
+<section id="main-parameters">
+<h2>Main parameters<a class="headerlink" href="#main-parameters" title="Permalink to this heading">¶</a></h2>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-V</code>, <code>--refversion</code></td>
+<td>Reference genome version ("hg19" or "hg38" supported)</td>
+<td></td>
+</tr>
+</tbody>
+</table></section>
+<section id="optional-parameters">
+<h2>Optional parameters<a class="headerlink" href="#optional-parameters" title="Permalink to this heading">¶</a></h2>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Usage</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-S</code>, <code>--samples</code></td>
+<td>White-space separater list of a names</td>
+<td>The first name is used for the matched-normal sample, while the others are for the tumor samples and they match the same order of the corresponding BAM files</td>
+<td>File names are used</td>
+</tr>
+<tr>
+<td><code>-j</code>, <code>--processes</code></td>
+<td>Number of parallel jobs</td>
+<td>Parallel jobs are used to consider the chromosomed in different samples in parallel. The higher the number the better the running time (up to 22 * n_samples)</td>
+<td>22</td>
+</tr>
+<tr>
+<td><code>-st</code>, <code>--samtools</code></td>
+<td>Path to <code>bin</code> directory of SAMtools</td>
+<td>The path to this direcoty needs to be specified when it is not included in <code>$PATH</code></td>
+<td>Path is expected in the enviroment variable <code>$PATH</code></td>
+</tr>
+<tr>
+<td><code>-md</code>, <code>--mosdepth</code></td>
+<td>Path to the <code>mosdepth</code> executable</td>
+<td>The path to this executable needs to be specified when it is not included in <code>$PATH</code></td>
+<td>None (expected on <code>PATH</code>)</td>
+</tr>
+<tr>
+<td><code>-tx</code>, <code>--tabix</code></td>
+<td>Path to the <code>tabix</code> executable</td>
+<td>The path to this executable needs to be specified when it is not included in <code>$PATH</code></td>
+<td>None (expected on <code>PATH</code>)</td>
+</tr>
+<tr>
+<td><code>-q</code>, <code>--readquality</code></td>
+<td>Minimum mapping quality (MAPQ) for a read to be counted</td>
+<td>Values range from 0 to 41, see alignment documentation for details</td>
+<td>11</td>
+</tr>
+<tr>
+<td><code>-i</code>, <code>--intermediates</code></td>
+<td>Keep intermediate files</td>
+<td>Retain intermediate files (read starts and per-position coverage) that are used to compute arrays for binning</td>
+<td>False  (these files are deleted, subsequent arrays are retained instead)</td>
+</tr>
+<tr>
+<td>## Example usage</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table><p>Given samtools, mosdepth, and tabix are on the PATH, the referenced files are in the current directory, and the intended output directory <code class="docutils literal notranslate"><span class="pre">array</span></code> is present:</p>
+<p><code class="docutils literal notranslate"><span class="pre">hatchet</span> <span class="pre">count-reads</span> <span class="pre">-T</span> <span class="pre">first_sample.bam</span> <span class="pre">second_sample.bam</span> <span class="pre">-N</span> <span class="pre">normal_sample.bam</span> <span class="pre">-S</span> <span class="pre">normal</span> <span class="pre">tumor1</span> <span class="pre">tumor2</span> <span class="pre">-V</span> <span class="pre">hg19</span> <span class="pre">-j</span> <span class="pre">24</span> <span class="pre">-O</span> <span class="pre">array</span> <span class="pre">-b</span> <span class="pre">baf/bulk.1bed</span></code></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Princeton University.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
