@@ -1,0 +1,237 @@
+hatchet.utils package
+=====================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   hatchet.utils.solve
+
+Submodules
+----------
+
+hatchet.utils.ArgParsing module
+-------------------------------
+
+.. automodule:: hatchet.utils.ArgParsing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.BAMBinning module
+-------------------------------
+
+.. automodule:: hatchet.utils.BAMBinning
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.CoordinateFinding module
+--------------------------------------
+
+.. automodule:: hatchet.utils.CoordinateFinding
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.ProgressBar module
+--------------------------------
+
+.. automodule:: hatchet.utils.ProgressBar
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.Supporting module
+-------------------------------
+
+.. automodule:: hatchet.utils.Supporting
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.TotalCounting module
+----------------------------------
+
+.. automodule:: hatchet.utils.TotalCounting
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.check module
+--------------------------
+
+.. automodule:: hatchet.utils.check
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.check\_solver module
+----------------------------------
+
+.. automodule:: hatchet.utils.check_solver
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.cluster\_bins module
+----------------------------------
+
+.. automodule:: hatchet.utils.cluster_bins
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.cluster\_bins\_gmm module
+---------------------------------------
+
+.. automodule:: hatchet.utils.cluster_bins_gmm
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.combine\_counts module
+------------------------------------
+
+.. automodule:: hatchet.utils.combine_counts
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.combine\_counts\_fw module
+----------------------------------------
+
+.. automodule:: hatchet.utils.combine_counts_fw
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.commands module
+-----------------------------
+
+.. automodule:: hatchet.utils.commands
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.config module
+---------------------------
+
+.. automodule:: hatchet.utils.config
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.count\_alleles module
+-----------------------------------
+
+.. automodule:: hatchet.utils.count_alleles
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.count\_reads module
+---------------------------------
+
+.. automodule:: hatchet.utils.count_reads
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.count\_reads\_fw module
+-------------------------------------
+
+.. automodule:: hatchet.utils.count_reads_fw
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.download\_panel module
+------------------------------------
+
+.. automodule:: hatchet.utils.download_panel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.genotype\_snps module
+-----------------------------------
+
+.. automodule:: hatchet.utils.genotype_snps
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.multiprocessing module
+------------------------------------
+
+.. automodule:: hatchet.utils.multiprocessing
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.phase\_snps module
+--------------------------------
+
+.. automodule:: hatchet.utils.phase_snps
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.plot\_bins module
+-------------------------------
+
+.. automodule:: hatchet.utils.plot_bins
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.plot\_bins\_1d2d module
+-------------------------------------
+
+.. automodule:: hatchet.utils.plot_bins_1d2d
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.plot\_cn module
+-----------------------------
+
+.. automodule:: hatchet.utils.plot_cn
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.plot\_cn\_1d2d module
+-----------------------------------
+
+.. automodule:: hatchet.utils.plot_cn_1d2d
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.rd\_gccorrect module
+----------------------------------
+
+.. automodule:: hatchet.utils.rd_gccorrect
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+hatchet.utils.run module
+------------------------
+
+.. automodule:: hatchet.utils.run
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: hatchet.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:

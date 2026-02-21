@@ -1,0 +1,10 @@
+hatchet.data package
+====================
+
+Module contents
+---------------
+
+.. automodule:: hatchet.data
+   :members:
+   :undoc-members:
+   :show-inheritance:
