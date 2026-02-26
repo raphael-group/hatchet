@@ -119,6 +119,8 @@ Every run of HATCHet (specifically, the `compute-cn` step) needs to use a [Pyomo
 #### Using Gurobi
 <a name="usingasolver_gurobi"></a>
 
+We recommend using the latest version of Gurobi. For a full list of compatible Python and Gurobi versions, see the [Python/Gurobi compatibility table](doc_manual_install.html#python-gurobi-compatibility).
+
 If using Gurobi (the default option), make sure that the environmental variable `GRB_LICENSE_FILE` points to a valid license file (typically with a `.lic` extension). This can be easily obtained depending on the type of free academic license available:
 
 1. **Individual license**. This license can be obtained [easily](http://www.gurobi.com/academia/academia-center) by any academic user with an institutional email. This license is user and machine-specific, meaning that the user needs to require a different license for every used machine. Assuming the license is stored at `/path/to/gurobi.lic`, set the environment variable `GRB_LICENSE_FILE` to point to it:

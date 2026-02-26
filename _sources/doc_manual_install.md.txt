@@ -17,15 +17,22 @@ recent version of `cmake` and compile the Hatchet code into a working package.
 
 The installation process can be broken down into the following steps:
 
-1. **Get [Gurobi](http://www.gurobi.com/)** (v9.0.2)
+1. **Get [Gurobi](http://www.gurobi.com/)**
 
     The coordinate-method applied by HATCHet is based on several integer linear programming (ILP) formulations. Gurobi is a commercial ILP solver with two licensing options: (1) a single-host license where the license is tied to a single computer and (2) a network license for use in a compute cluster (using a license server in the cluster). Both options are freely and [easily available](http://www.gurobi.com/academia/academia-center) for users in academia.
 [Download](https://www.gurobi.com/downloads/gurobi-optimizer-eula) Gurobi for your specific platform.
 
+    The following table lists compatible Python and Gurobi versions (requires Python `>=3.10`):
+
+    | Python Version | Compatible Gurobi Versions | Notes |
+    |---|---|---|
+    | **3.10** | **9.5, 10.0, 11.0, 12.0, 12.0.1–12.0.3, 13.0.0, 13.0.1** | **Recommended** |
+    | 3.11 | 10.0, 11.0, 12.0, 12.0.1–12.0.3, 13.0.0, 13.0.1 | |
+
 
 2. **Set GUROBI_HOME environment variable**
     ```shell
-    $ export GUROBI_HOME=/path/to/gurobi902
+    $ export GUROBI_HOME=/path/to/gurobiXXX
     ```
     Set `GUROBI_HOME` to where you download Gurobi. Here `XXX` is the 3-digit version of gurobi.
 
@@ -45,7 +52,7 @@ The installation process can be broken down into the following steps:
     `Hatchet` is a Python 3 package. Unless you want to compile/install it in your default Python 3 environment, you will
 want to create either a new Conda environment for Python 3 and activate it:
     ```
-    conda create --name hatchet python=3.8
+    conda create --name hatchet python=3.10
     conda activate hatchet
     ```
     or use `virtualenv` through `pip`:
