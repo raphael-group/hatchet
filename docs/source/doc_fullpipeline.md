@@ -1,18 +1,18 @@
 ## Full pipeline and tutorial
 <a name="fullpipelineandtutorial"></a>
 
-We provide example [BASH scripts](script/README.md) that implement the entire pipeline of HATCHet.
+We provide example [BASH scripts](script/README.md) that implement the entire pipeline of HATCHet2.
 This script and its usage are described in detailed in a guided [tutorial](doc_runhatchet.md).
-The user can simply use the script for every execution of HATCHet on different data by copying the script inside the running directory and changing the corresponding paths of the required data and dependencies at the beginning of the script, as described in the guided [tutorial](doc_runhatchet.md).
+The user can simply use the script for every execution of HATCHet2 on different data by copying the script inside the running directory and changing the corresponding paths of the required data and dependencies at the beginning of the script, as described in the guided [tutorial](doc_runhatchet.md).
 
 ## Demos
 <a name="demos"></a>
 
-Each demo is an example and guided execution of HATCHet on a dataset included in the corresponding demo's folder of this
-repository (inside `examples`). The demos are meant to illustrate how the user should apply HATCHet on different
-datasets characterized by different features, noise, and kind of data. In fact, the default parameters of HATCHet allow
+Each demo is an example and guided execution of HATCHet2 on a dataset included in the corresponding demo's folder of this
+repository (inside `examples`). The demos are meant to illustrate how the user should apply HATCHet2 on different
+datasets characterized by different features, noise, and kind of data. In fact, the default parameters of HATCHet2 allow
 to successfully analyze most of the datasets but some of these may be characterized by special features or
-higher-than-expected variance of the data. Understanding the functioning of HATCHet, assessing the quality of the
+higher-than-expected variance of the data. Understanding the functioning of HATCHet2, assessing the quality of the
 results, and tuning the few parameters needed to fit the unique features of the considered data thus become crucial to
 guarantee to always obtain the best-quality results. These are the goals of these demos.
 
@@ -23,7 +23,7 @@ time the following demos are available (more demos will be added in the near fut
 
 | Demo | Description |
 |------|-------------|
-| [demo-complete](examples/demo-complete/demo-complete.html) | A demo of the complete HATCHet pipeline starting from an example dataset of tumour and matched normal BAM files |
+| [demo-complete](examples/demo-complete/demo-complete.html) | A demo of the complete HATCHet2 pipeline starting from an example dataset of tumour and matched normal BAM files |
 | [demo-wgs-sim](examples/demo-WGS-sim/demo-wgs-sim.html) | A demo on a typical WGS (whole-genome sequencing) multi-sample dataset with standard noise and variance of the data |
 | [demo-wgs-cancer](examples/demo-WGS-cancer/demo-wgs-cancer.html) | A demo on a cancer WGS (whole-genome sequencing) multi-sample dataset with high noise and variance of the data |
 | [demo-wes](examples/demo-WES/demo-wes.html) | A demo on a cancer WES (whole-exome sequencing) multi-sample dataset, which is typycally characterized by very high variance of RDR |
@@ -31,34 +31,34 @@ time the following demos are available (more demos will be added in the near fut
 ## Custom pipelines
 <a name="custompipelines"></a>
 
-The repository includes custom pipelines which have been designed to adapt the complete pipeline of HATCHet to special
+The repository includes custom pipelines which have been designed to adapt the complete pipeline of HATCHet2 to special
 conditions or to integrate the processed data produced by other pipelines. Each custom pipeline is a variation of the
-main HATCHet's pipeline, we thus recommend the user to always first carefully understand the main
+main HATCHet2's pipeline, we thus recommend the user to always first carefully understand the main
 [BASH script](script/README.md) through the corresponding guided [tutorial](doc_runhatchet.md) and to carefully
-understand the provided [demos](#demos) to properly apply HATCHet for best-quality results. Each custom pipeline also
+understand the provided [demos](#demos) to properly apply HATCHet2 for best-quality results. Each custom pipeline also
 includes a specific demo which represent a guided and executable example on example data.
 
 | Name | Description | Script | Demo | Variations |
 |------|-------------|--------|------|------------|
-| GATK4-CNV | Custom pipeline for segmented files from GATK4 CNV pipeline | [custom-gatk4-cnv.sh](custom-gatk4-cnv.sh) | [demo-gatk4-cnv.sh](custom/GATK4-CNV/demo-gatk4-cnv.html) | This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet (`count-reads`, `count-alleles`, and `combine-counts`) are not needed; for this reason, the following depdencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case. |
+| GATK4-CNV | Custom pipeline for segmented files from GATK4 CNV pipeline | [custom-gatk4-cnv.sh](custom-gatk4-cnv.sh) | [demo-gatk4-cnv.sh](custom/GATK4-CNV/demo-gatk4-cnv.html) | This custom pipeline takes the input the segmented files which already contain the estimated RDR and BAF. As such, the first pre-processing steps of HATCHet2 (`count-reads`, `count-alleles`, and `combine-counts`) are not needed; for this reason, the following depdencies SAMtools and BCFtools and the following required data, human reference genome, matched-normal sample, and BAM files, are not needed in this case. |
 
 ## Detailed steps
 <a name="detailedsteps"></a>
 
-The full pipeline of HATCHet is composed of 9 sequential steps (and an additional dependency-checking command), starting from the required input data.
+The full pipeline of HATCHet2 is composed of 9 sequential steps (and an additional dependency-checking command), starting from the required input data.
 The description of each step also includes the details of the corresponding input/output that are especially useful when
-one wants to replace or change some of the steps in the pipeline while guaranteeing the correct functioning of HATCHet.
-Each step `<step>` of HATCHet can be run with the following command within a HATCHet conda environment:
+one wants to replace or change some of the steps in the pipeline while guaranteeing the correct functioning of HATCHet2.
+Each step `<step>` of HATCHet2 can be run with the following command within a HATCHet2 conda environment:
 ```shell
 hatchet <step>
 ```
 
-**Note**: This version of HATCHet uses variable-width bins to ensure that each bin has comparable B-allele frequency (BAF) signal from heterogeneous germline SNPs and to account for sequencing coverage. To run the older versions of HATCHet with fixed-width bins, use [*count-reads-fw*](doc_count_reads_fw.html) (formerly binBAM) instead of *count-reads* and [*combine-counts-fw*](doc_combine_counts_fw.html) (formerly comBBo) instead of *combine-counts*. If you are using the `run` command, set `fixed_width = True` under the `[run]` header in your `.ini` file.
+**Note**: This version of HATCHet2 uses variable-width bins to ensure that each bin has comparable B-allele frequency (BAF) signal from heterogeneous germline SNPs and to account for sequencing coverage. To run the older versions of HATCHet2 with fixed-width bins, use [*count-reads-fw*](doc_count_reads_fw.html) (formerly binBAM) instead of *count-reads* and [*combine-counts-fw*](doc_combine_counts_fw.html) (formerly comBBo) instead of *combine-counts*. If you are using the `run` command, set `fixed_width = True` under the `[run]` header in your `.ini` file.
 
-Additionally, this version of HATCHet uses a new locality-aware clustering module that incorporates local information along the genome. This replaces the previous GMM-based clustering (command named cluBB). Users can still use GMM-based clustering if they wish by setting `loc-clust` to `False` under the `[run]` header in `hatchet.ini`, or by running [*cluster-bins-gmm*](doc_cluster_bins_gmm.md) directly.
+Additionally, this version of HATCHet2 uses a new locality-aware clustering module that incorporates local information along the genome. This replaces the previous GMM-based clustering (command named cluBB). Users can still use GMM-based clustering if they wish by setting `loc-clust` to `False` under the `[run]` header in `hatchet.ini`, or by running [*cluster-bins-gmm*](doc_cluster_bins_gmm.md) directly.
 
 
-*Older versions of HATCHet used different names for these steps. The `Old Name` column lists those names.*
+*Older versions of HATCHet2 used different names for these steps. The `Old Name` column lists those names.*
 
 | Order | Step | Old Name | Description |
 |-------|------|----------|-------------|
@@ -76,11 +76,11 @@ Additionally, this version of HATCHet uses a new locality-aware clustering modul
 ## Recommendations and quality control
 <a name="recommendations"></a>
 
-All the components of HATCHet's pipeline use some basic parameters that allow to deal with data characterized by different features. The default values of these parameters allow one to succesfully apply HATCHet on most datasets. However, special or noisy datasets may require to tune some parameters. The user can deal with these cases by following the recommendations reported here, reading the descriptions of the various steps, and using the informative plots to verify the results. In the following guides and recommentations, we guide the user in the interpration of HATCHet's inference, we explain how to perform quality control to guarantee the best-quality results, and we describe how the user can control and tune some of the parameters to obtain the best-fitting results. We thus split the recommendations into distinct topics with dedicated descriptions.
+All the components of HATCHet2's pipeline use some basic parameters that allow to deal with data characterized by different features. The default values of these parameters allow one to succesfully apply HATCHet2 on most datasets. However, special or noisy datasets may require to tune some parameters. The user can deal with these cases by following the recommendations reported here, reading the descriptions of the various steps, and using the informative plots to verify the results. In the following guides and recommentations, we guide the user in the interpration of HATCHet2's inference, we explain how to perform quality control to guarantee the best-quality results, and we describe how the user can control and tune some of the parameters to obtain the best-fitting results. We thus split the recommendations into distinct topics with dedicated descriptions.
 
 | Recommendation | Description |
 |----------------|-------------|
-| [Analyze HATCHet inference](recommendation_inference.html) | Interpret HATCHet's inference, quality and error control, and investigate alternative solutions. |
+| [Analyze HATCHet2 inference](recommendation_inference.html) | Interpret HATCHet2's inference, quality and error control, and investigate alternative solutions. |
 | [Analyze global clustering](recommendation_clustering.html) | Interprent global clustering, quality and error control, and parameter tuning |
 | [Analyze different type of data](recommendation_datatype.html) | Tuning parameters to better analyzing different type of data as those from WES |
 | [Improve running time](recommendation_runtime.html)| Tips for improving running time of the whole pipeline |

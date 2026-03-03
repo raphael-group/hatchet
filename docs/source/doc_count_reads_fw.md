@@ -2,7 +2,7 @@
 
 NOTE: This function (formerly called `comBBo`) uses the legacy fixed-width binning described in the HATCHet paper. We recommend using [`count-reads`](doc_count_reads.md) and [`combine-counts`](doc_combine-counts.md) which apply an adaptive binning scheme to ensure that each genomic bin has comparable BAF signal.
 
-This step of HATCHet splits the human reference genome into fixed-width bins (i.e., small genomic regions), and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample.
+This step of HATCHet2 splits the human reference genome into fixed-width bins (i.e., small genomic regions), and computes the number of sequencing reads aligned to each bin from every given tumor samples and from the matched normal sample.
 
 ## Input
 
@@ -10,7 +10,7 @@ count-reads-fw takes in input sorted and indexed BAM files for multiple tumor sa
 
 | Name | Description | Usage |
 |------|-------------|-------|
-| `-T`, `--tumors` | A white-space separated list of sorted-indexed BAM files for tumor samples | The tumor samples from the same patient that are jointly analyzed by HATCHet |
+| `-T`, `--tumors` | A white-space separated list of sorted-indexed BAM files for tumor samples | The tumor samples from the same patient that are jointly analyzed by HATCHet2 |
 | `-N`, `--normal` | A sorted-indexed BAM file for matched-normal sample | The matched normal sample for the same patient |
 | `-r`, `--reference` | A FASTA file | The human reference genome used for germline variant calling |
 

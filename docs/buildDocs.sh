@@ -27,9 +27,9 @@ git checkout -b gh-pages
 
 # Add README
 cat > README.md <<EOF
-# HATCHet
+# HATCHet2
 
-HATCHet documentation is available at [http://compbio.cs.brown.edu/hatchet/](http://compbio.cs.brown.edu/hatchet/)
+HATCHet2 documentation is available at [http://compbio.cs.brown.edu/hatchet/](http://compbio.cs.brown.edu/hatchet/)
 
 EOF
 

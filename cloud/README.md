@@ -1,14 +1,14 @@
-# Running HATCHet in the cloud
+# Running HATCHet2 in the cloud
 
-HATCHet is a Docerizable application and comes with a Dockerfile for easy deployment. We have also made HATCHet
+HATCHet2 is a Docerizable application and comes with a Dockerfile for easy deployment. We have also made HATCHet2
 available as a publicly accessible Docker image at the [Google Cloud Container Registry](https://cloud.google.com/container-registry).
-This facilitates running HATCHet in the cloud without worrying about downloading large BAM files, and without having to
-build and install HATCHet locally.
+This facilitates running HATCHet2 in the cloud without worrying about downloading large BAM files, and without having to
+build and install HATCHet2 locally.
 
-This README provides details on how to run HATCHet entirely on the [Google Cloud Platform](https://cloud.google.com) (GCP)
+This README provides details on how to run HATCHet2 entirely on the [Google Cloud Platform](https://cloud.google.com) (GCP)
 on large datasets made available at [ISB-CGC](https://isb-cgc.appspot.com/).
 
-## Running HATCHet on ISB-CGC Datasets
+## Running HATCHet2 on ISB-CGC Datasets
 
 ### Setting up access at ISB-CGC
 
@@ -20,14 +20,14 @@ section and follow the steps to register your Google project with ISB-CGC.
 
 Note that your PI will most likely have to grant you access to one or more of these controlled datasets using
 [dbGap](https://dbgap.ncbi.nlm.nih.gov/). The steps in the walk-throughs and tutorials on the ISB-CGC website will
-verify that you do have the appropriate access you will need to programmatically read these datasets in HATCHet.
+verify that you do have the appropriate access you will need to programmatically read these datasets in HATCHet2.
 
 Also note that access to controlled datasets is typically granted only for 24 hours, so you will have to extend your
 access period on the ISB-CGC website if it has expired.
 
-### Setting up your environment to run HATCHet on GCP
+### Setting up your environment to run HATCHet2 on GCP
 
-You do not need to build or install HATCHet locally, either as a python package or a Docker image. The only pre-requisite
+You do not need to build or install HATCHet2 locally, either as a python package or a Docker image. The only pre-requisite
 is that you have installed the [Google Cloud SDK](https://cloud.google.com/sdk/docs/quickstart).
 
 This is most cleanly done by installing all required dependencies inside a new Python 3 Conda environment.
@@ -43,7 +43,7 @@ pip install oauth2client dsub
 ### Logging in to your GCP Account
 
 After installing the required dependencies, make sure that you login to your Google account and set up your default
-project. These are **one time steps** to make sure that HATCHet is able to correctly talk to your project.
+project. These are **one time steps** to make sure that HATCHet2 is able to correctly talk to your project.
 
 ```
 gcloud auth application-default login
@@ -61,7 +61,7 @@ that you linked with your ISB-CGC account.
 ### Preparing a bucket for output files
 
 In the Google project that you used in the steps above, use the following command to create a new bucket where the results
-of your HATCHet analysis will be saved:
+of your HATCHet2 analysis will be saved:
 
 ```
 gsutil mb gs://BUCKET_NAME
@@ -70,10 +70,10 @@ gsutil mb gs://BUCKET_NAME
 Replace `BUCKET_NAME` with a globally-unique bucket name. This step can also be performed by logging in to the
 [Google Cloud Console](https://console.cloud.google.com) and navigating to Home -> Storage -> Browser -> Create Bucket.
 
-### Fine-tuning the HATCHet script
+### Fine-tuning the HATCHet2 script
 
-The `_run.sh` script provided with HATCHet is an end-end worflow of HATCHet. This will be familiar to you if you have
-run HATCHet locally. You can comment out sections of this script to only run certain parts of HATCHet depending on your
+The `_run.sh` script provided with HATCHet2 is an end-end worflow of HATCHet2. This will be familiar to you if you have
+run HATCHet2 locally. You can comment out sections of this script to only run certain parts of HATCHet2 depending on your
 needs, and specify the values of certain flags of the pipeline.
 
 The part of the script that you will want to pay attention to is the `Reference Genome` section. Depending on the
@@ -83,8 +83,8 @@ or `.fa` file available through `wget`.
 
 ### Running the scripts
 
-The `cloud_run.sh` script provided with HATCHet is a single [dsub](https://github.com/DataBiosphere/dsub) command that
-will run HATCHet in the cloud. This command leverages the [Google Life Sciences API](https://cloud.google.com/life-sciences/docs/reference/rest)
+The `cloud_run.sh` script provided with HATCHet2 is a single [dsub](https://github.com/DataBiosphere/dsub) command that
+will run HATCHet2 in the cloud. This command leverages the [Google Life Sciences API](https://cloud.google.com/life-sciences/docs/reference/rest)
 and internally performs the following series of steps:
 
 <a name="cloud_steps"></a>
@@ -116,7 +116,7 @@ dsub \
 ```
 
 In the above command, you will want to replace `PROJECT_ID` with your project id, `BUCKET_NAME` with the bucket name that
-you created above, `RUN_NAME` with any unique name (no spaces!) that identifies your HATCHet run. In addition:
+you created above, `RUN_NAME` with any unique name (no spaces!) that identifies your HATCHet2 run. In addition:
 
 - The `NORMALBAM` parameter should be replaced with the `gs://..` path to the matched-normal sample of the patient.
 

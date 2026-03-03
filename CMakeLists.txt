@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 3.5 )
 
-project( HATCHet )
+project( HATCHet2 )
 
 set( CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR} ${CMAKE_MODULE_PATH} )
 

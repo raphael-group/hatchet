@@ -55,7 +55,7 @@ Next, you need to specify the full paths to the required input data:
 1. `normal` is the full path to the BAM file of matched-normal samples
 2. `bams` is a white-space separated list of the BAM files for the multiple tumor samples from the considered patient.
 
-The variable `samples` is also a white-space separated list of tumor sample names (specified in the same order as the BAM files in `bams`), and these names are used in the plots produced by HATCHet.
+The variable `samples` is also a white-space separated list of tumor sample names (specified in the same order as the BAM files in `bams`), and these names are used in the plots produced by HATCHet2.
 
 ***
 
@@ -119,9 +119,9 @@ python3 -m hatchet combine-counts -A ${RDR} -t ${RDR}total.tsv -b {BAF}tumor.1be
                           -p ${PHASE} -s ${max_blocksize} -m {max_spb} -a {alpha} # optional phasing args
 ```
 
-combine-counts constructs genomic bins such that in all samples, each bin has at least `${msr}` SNP-covering reads and at least `${mtr}` total reads. Bins will not have the same width, but using this rule each bin will have comparable RDR and BAF signals for the following clustering steps. The BAF for each bin and the relative phase of all SNPs in the bin are inferred via EM, and the RDR for each bin is computed fom the read count files in the `${RDR}` folder. After this computation, RDR values are normalized using the total reads in each sample (from `${RDR}total.tsv`). As with other HATCHet commands, `-j ${J}` controls the number of parallel processes.
+combine-counts constructs genomic bins such that in all samples, each bin has at least `${msr}` SNP-covering reads and at least `${mtr}` total reads. Bins will not have the same width, but using this rule each bin will have comparable RDR and BAF signals for the following clustering steps. The BAF for each bin and the relative phase of all SNPs in the bin are inferred via EM, and the RDR for each bin is computed fom the read count files in the `${RDR}` folder. After this computation, RDR values are normalized using the total reads in each sample (from `${RDR}total.tsv`). As with other HATCHet2 commands, `-j ${J}` controls the number of parallel processes.
 
-See the [script](script/README.md) directory for a guide on how to run HATCHet with phasing. If a phased VCF file is supplied via `-p, --phase ${PHASE}` (e.g., `-p phase/phased.vcf.gz`), SNPs are merged into blocks before BAF inference. Each block contains at most `${max_spb}` such that no two SNPs in the same block are further apart than `${max_blocksize}`, and such that no two adjacent SNPs have significantly different marginal BAF estimates (at significance level `${alpha}` -- higher `${alpha}` corresponds to less trust in the phasing results). Then, blocks are passed to the EM which determines the relative phase of each block.
+See the [script](script/README.md) directory for a guide on how to run HATCHet2 with phasing. If a phased VCF file is supplied via `-p, --phase ${PHASE}` (e.g., `-p phase/phased.vcf.gz`), SNPs are merged into blocks before BAF inference. Each block contains at most `${max_spb}` such that no two SNPs in the same block are further apart than `${max_blocksize}`, and such that no two adjacent SNPs have significantly different marginal BAF estimates (at significance level `${alpha}` -- higher `${alpha}` corresponds to less trust in the phasing results). Then, blocks are passed to the EM which determines the relative phase of each block.
 
 ## [cluster-bins](doc_cluster_bins.html)
 <a name="cluster-bins"></a>
@@ -155,7 +155,7 @@ python3 -m hatchet plot-bins -c CBB ../${BBC}bulk.bbc -tS 0.01
 ```
 
 plot-bins produces informative plots which are described [here](doc_plot_bins.md).
-Many of these plots can be very useful to assess the performance of the various steps of HATCHet, especially in the case of noisy datasets.
+Many of these plots can be very useful to assess the performance of the various steps of HATCHet2, especially in the case of noisy datasets.
 
 ## [compute-cn](doc_compute_cn.html)
 <a name="compute-cn"></a>

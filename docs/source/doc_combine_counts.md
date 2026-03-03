@@ -48,7 +48,7 @@ combine-counts produces a tab-separated file (`-o, --outfile`) with the followin
 | `NORMAL_READS` |  Total number of reads in the bin in the matched normal sample |
 | `CORRECTED_READS` |  Total number of reads in the bin in `SAMPLE`, corrected by the total reads in `SAMPLE` vs. the total reads in matched normal. |
 
-Currently, it produces one such file that excludes sex chromosomes (for use in HATCHet), and one that includes sex chromosomes (for future use).
+Currently, it produces one such file that excludes sex chromosomes (for use in HATCHet2), and one that includes sex chromosomes (for future use).
 
 ## Main parameters
 
@@ -64,7 +64,7 @@ A phased VCF file must be given via argument `-p, --phase` to apply reference-ba
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-p`, `--phase`  | vcf.gz with phasing for all het. SNPs | File containing phasing data for germline SNPs, typically `phased.vcf.gz` if using the HATCHet pipeline. | None (no phasing is performed) |
+| `-p`, `--phase`  | vcf.gz with phasing for all het. SNPs | File containing phasing data for germline SNPs, typically `phased.vcf.gz` if using the HATCHet2 pipeline. | None (no phasing is performed) |
 | `-s`, `--blocksize`  | Maximum phasing block size | Maximum distance (in bp) between a pair of SNPs included in the same phasing block (ignored if `-p, --phase` is not used) | 25000 |
 | `-m`, `--max_spb`  | Maximum number of SNPs per phased block | No more than this many SNPs can be included in the same phasing block (included to minimize phasing errors in high-LD regions) | 10 |
 | `-a`, `--alpha`  | Significance threshold to allow adjacent SNPs to be merged | If adjacent SNPs have significantly different BAFs (at this significance level) after taking the phasing into account, they are not merged a priori. Higher means less trust in phasing. | 0.1 |

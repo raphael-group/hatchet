@@ -75,7 +75,7 @@ The command generates a series of 2d-scatter plots where x-axis corresponds to t
 
 ### CBB
 
-The command generates a series of 2d-scatter plots where x-axis corresponds to the mirrored BAF and the y-axis corresponds to RDR. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR and BAF. The points are colored according to the clusters computed by HATCHet. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
+The command generates a series of 2d-scatter plots where x-axis corresponds to the mirrored BAF and the y-axis corresponds to RDR. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR and BAF. The points are colored according to the clusters computed by HATCHet2. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
 
     python -m hatchet plot-bins A12.bbc -c CBB --figsize 4,1.1 -m tab20 --markersize 1 --xmax 3.5 --xmin 0.5 --colwrap 3 -tS 0.005
 
@@ -85,7 +85,7 @@ The command generates a series of 2d-scatter plots where x-axis corresponds to t
 
 ### CRDR
 
-The command generates a series of 2d-scatter plots where x-axis corresponds to the RDR and to bins sorted by chromosome and positions. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR. The points are colored according to the clusters computed by HATCHet. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
+The command generates a series of 2d-scatter plots where x-axis corresponds to the RDR and to bins sorted by chromosome and positions. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of RDR. The points are colored according to the clusters computed by HATCHet2. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
 
     python -m hatchet plot-bins A12.bbc -c CRD -m tab20 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
 
@@ -95,7 +95,7 @@ The command generates a series of 2d-scatter plots where x-axis corresponds to t
 
 ### CBAF
 
-The command generates a series of 2d-scatter plots where x-axis corresponds to the BAF and to bins sorted by chromosome and positions. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of BAF. The points are colored according to the clusters computed by HATCHet. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
+The command generates a series of 2d-scatter plots where x-axis corresponds to the BAF and to bins sorted by chromosome and positions. More specifically, a plot is generated for every sample and every point is drawn according to the corresponding values of BAF. The points are colored according to the clusters computed by HATCHet2. Remember that a cluster contains all the genomic regions that have the same copy-number state in every clone.
 
     python -m hatchet plot-bins A12.bbc -c CBAF -m tab20 --figsize 9,2.5 --markersize 1 --ymax 8 --ymin 0
 

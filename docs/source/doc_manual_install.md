@@ -1,17 +1,17 @@
 ### Manual Installation
 
-If you wish to install `HATCHet` directly from this repository, the steps are a bit more involved.
+If you wish to install `HATCHet2` directly from this repository, the steps are a bit more involved.
 
 Note that the complexity of manual installation is largely because the `compute-cn` step (determination of
-allele-specific copy numbers) of the HATCHet pipeline uses custom-written C++11 code that uses the
+allele-specific copy numbers) of the HATCHet2 pipeline uses custom-written C++11 code that uses the
 [Gurobi](http://www.gurobi.com/) optimizer. If you do not have a valid Gurobi license (though it is
 [easily available](http://www.gurobi.com/academia/academia-center) for users in academia), then the C++ parts of
-HATCHet do not necessarily need to be compiled, and you can read the
-[Compiling HATCHet without the built-in Gurobi optimizer](#withoutgurobi) section of this page.
+HATCHet2 do not necessarily need to be compiled, and you can read the
+[Compiling HATCHet2 without the built-in Gurobi optimizer](#withoutgurobi) section of this page.
 
-#### Compiling HATCHet with the built-in Gurobi optimizer
+#### Compiling HATCHet2 with the built-in Gurobi optimizer
 
-The core optimization module of HATCHet is written in C++11 and thus requires a modern C++ compiler (GCC >= 4.8.1, or Clang).
+The core optimization module of HATCHet2 is written in C++11 and thus requires a modern C++ compiler (GCC >= 4.8.1, or Clang).
 As long as you have a recent version of GCC or Clang installed, `setuptools` should automatically be able to download a
 recent version of `cmake` and compile the Hatchet code into a working package.
 
@@ -19,7 +19,7 @@ The installation process can be broken down into the following steps:
 
 1. **Get [Gurobi](http://www.gurobi.com/)** (v9.0.2)
 
-    The coordinate-method applied by HATCHet is based on several integer linear programming (ILP) formulations. Gurobi is a commercial ILP solver with two licensing options: (1) a single-host license where the license is tied to a single computer and (2) a network license for use in a compute cluster (using a license server in the cluster). Both options are freely and [easily available](http://www.gurobi.com/academia/academia-center) for users in academia.
+    The coordinate-method applied by HATCHet2 is based on several integer linear programming (ILP) formulations. Gurobi is a commercial ILP solver with two licensing options: (1) a single-host license where the license is tied to a single computer and (2) a network license for use in a compute cluster (using a license server in the cluster). Both options are freely and [easily available](http://www.gurobi.com/academia/academia-center) for users in academia.
 [Download](https://www.gurobi.com/downloads/gurobi-optimizer-eula) Gurobi for your specific platform.
 
 
@@ -64,9 +64,9 @@ want to create either a new Conda environment for Python 3 and activate it:
     ```
 
 
-6. **Build and install HATCHet**
+6. **Build and install HATCHet2**
 
-    Execute the following commands from the root of HATCHet's repository.
+    Execute the following commands from the root of HATCHet2's repository.
     ```shell
     $ pip install .
     ```
@@ -90,7 +90,7 @@ want to create either a new Conda environment for Python 3 and activate it:
     If you want to perform reference-based phasing, you must also install [shapeit](https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.html), [picard](https://broadinstitute.github.io/picard/), and [bgzip](http://www.htslib.org/doc/). The easiest way to install these is via `conda`, as all are available from the `bioconda` channel (except `shapeit` which is available from channel `dranew`).
 
 
-#### Compiling HATCHet *without* the built-in Gurobi optimizer
+#### Compiling HATCHet2 *without* the built-in Gurobi optimizer
 <a name="withoutgurobi"></a>
 
 If you wish to use an alternate ILP optimizer, then you do not need a C++ compiler.

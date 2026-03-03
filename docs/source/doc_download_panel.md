@@ -1,6 +1,6 @@
 # download-panel
 
-This step of HATCHet downloads the 1000 genomes reference panel to phase germline mutations. It also downloads and creates other files necessary for phasing when the user has aligned their reads to a version of the human reference genome that is not the same as the version used in the 1000 genomes project (which was hg19, with no 'chr' prefix preceding chromosome names).
+This step of HATCHet2 downloads the 1000 genomes reference panel to phase germline mutations. It also downloads and creates other files necessary for phasing when the user has aligned their reads to a version of the human reference genome that is not the same as the version used in the 1000 genomes project (which was hg19, with no 'chr' prefix preceding chromosome names).
 
 **Note:** This step requires access to the internet in order to download files. This step only needs to be run once per system.
 

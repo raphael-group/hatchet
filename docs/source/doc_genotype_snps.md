@@ -1,6 +1,6 @@
 # genotype-snps
 
-Given the normal BAM file, this step of HATCHet identifies heterozygous germline SNP positions. The user can restrict candidate positions to a given list (e.g., dbSNP) using the `-R, --snps` argument.
+Given the normal BAM file, this step of HATCHet2 identifies heterozygous germline SNP positions. The user can restrict candidate positions to a given list (e.g., dbSNP) using the `-R, --snps` argument.
 
 ## Input
 

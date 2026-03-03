@@ -1,7 +1,7 @@
 # Demo of the custom pipeline for GATK4 CNV data
 : ex: set ft=markdown ;:<<'```shell' # This line makes this file both a guieded and executable DEMO. The file can be both displayed as a Markdown file, where to read the instructions and descriptions of the demo and results, and a BASH script, which can be directly executed with BASH to execute the demo after setting the first requirements.
 
-The following HATCHet's demo represents a guided example of the custom pipeline designed to start from the data produced by the [GATK4 CNV pipeline](https://software.broadinstitute.org/gatk/best-practices/workflow?id=11147). This custom pipeline considers one or more tumor samples from the same patient which have been segmented through the GATK4 CNV pipeline, such that for each sample a **segmented file** is available. The expected format of each segmented file is first described in the following section. Next, the requirements for this demo are described and the guided demo is detailed across the different steps.
+The following HATCHet22's demo represents a guided example of the custom pipeline designed to start from the data produced by the [GATK4 CNV pipeline](https://software.broadinstitute.org/gatk/best-practices/workflow?id=11147). This custom pipeline considers one or more tumor samples from the same patient which have been segmented through the GATK4 CNV pipeline, such that for each sample a **segmented file** is available. The expected format of each segmented file is first described in the following section. Next, the requirements for this demo are described and the guided demo is detailed across the different steps.
 
 ## Input format
 
@@ -27,14 +27,14 @@ Two example segmented files in this format for two tumor samples from the same p
 
 ## Requirements and set up
 
-The demo requires that HATCHet has been succesfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
+The demo requires that HATCHet22 has been succesfully compiled and all the dependencies are available and functional. As such, the demo requires the user to properly set up the following paths:
 
 ```shell
 PY="python3" # This id the full path to the version of PYTHON3 which contains the required modules. When this corresponds to the standard version, the user can keep the given value of `python3`
 :<<'```shell' # Ignore this line
 ```
 
-The following paths are consequently obtained to point to the required components of HATCHet
+The following paths are consequently obtained to point to the required components of HATCHet22
 
 ```shell
 CLUSTERBINS="${PY} -m hatchet cluster-bins"
@@ -55,7 +55,7 @@ PS4='[\t]'
 
 ## Generating input BB file
 
-The first step of this custom pipeline aims to generate an input BB file for HATCHet starting from the given segmented files; in this case, we consider the two examples included with this demo `sample1.GATK4.CNV.seg` and `sample2.GATK4.CNV.seg`. The corresponding BB file can be easily obtained by using the custom python script [gatk4cnsToBB.py](gatk4cnsToBB.py) included in the custom pipeline. We apply the script by specifiying the two segmented files in a white-sperated list between apices and specifying the names of the samples in the same order with `--samples`. In addition, we consider the default values of the parameters and we run it as follows:
+The first step of this custom pipeline aims to generate an input BB file for HATCHet22 starting from the given segmented files; in this case, we consider the two examples included with this demo `sample1.GATK4.CNV.seg` and `sample2.GATK4.CNV.seg`. The corresponding BB file can be easily obtained by using the custom python script [gatk4cnsToBB.py](gatk4cnsToBB.py) included in the custom pipeline. We apply the script by specifiying the two segmented files in a white-sperated list between apices and specifying the names of the samples in the same order with `--samples`. In addition, we consider the default values of the parameters and we run it as follows:
 
 ```shell
 ${GATK4CNSTOBB} "sample1.GATK4.CNV.seg sample2.GATK4.CNV.seg" --samples "Sample1 Sample2" > samples.GATK4.CNV.bb
@@ -66,14 +66,14 @@ In addition, one could consider different size of the resulting bins by using th
 
 ## Global custering
 
-Having the input BB file, we can continue by executing the standard HATCHet pipeline and skipping the pre-processing steps (`count-reads`, `count-alleles`, and `combine-counts`). As such, the next main step of the demo performs the global clustering of HATCHet where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluster-bins`, i.e. the HATCHet's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
+Having the input BB file, we can continue by executing the standard HATCHet22 pipeline and skipping the pre-processing steps (`count-reads`, `count-alleles`, and `combine-counts`). As such, the next main step of the demo performs the global clustering ofHATCHet2t2 where genomic bins which have the same copy-number state in every tumor clone are clustered correspondingly. To do this, we use `cluster-bins`, i.e. thHATCHet2et2's component designed for this purpose. At first, we attempt to run the clustering using the default values of the parameters as follows:
 
 ```shell
 ${CLUSTERBINS} samples.GATK4.CNV.bb -o samples.GATK4.CNV.seg -O samples.GATK4.CNV.bbc -e 12 -tB 0.03 -tR 0.15 -d 0.08
 :<<'```shell' # Ignore this line
 ```
 
-To assess the quality of the clustering we generate the cluster plot using the `CBB` command of `plot-bins`, i.e. the HATCHet's component designed for the analysis of the data. For simplicity, we also use the following option `-tS 0.001` which asks to plot only the clusters which cover at least the `0.1%` of the genome. This is useful to clean the figure and focus on the main components.
+To assess the quality of the clustering we generate the cluster plot using the `CBB` command of `plot-bins`, i.e. the HATCHet22's component designed for the analysis of the data. For simplicity, we also use the following option `-tS 0.001` which asks to plot only the clusters which cover at least the `0.1%` of the genome. This is useful to clean the figure and focus on the main components.
 
 ```shell
 ${PLOTBINS} -c CBB samples.GATK4.CNV.bbc -tS 0.001
@@ -88,8 +88,8 @@ We can easily notice that the clustering is good and not tuning is needed as eve
 
 ## hatchet's step
 
-Next we apply `hatchet`, i.e. the component of HATCHet which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
-We apply the last step with default parameters and, for simplicity of this demo, we consider 6 clones, which can be easily considered by HATCHet in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
+Next we apply `hatchet`, i.e. the component of HATCHet22 which estimates fractional copy numbers, infers allele-and-clone specific copy numbers, and jointly predicts the number of clones (including the normal clone) and the presence of a WGD.
+We apply the last step with default parameters and, for simplicity of this demo, we consider 6 clones, which can be easily considered by HATCHet22 in this case, and we only consider 100 restarts for the coordinate-descent method; these are the number of attempts to find the best solution. This number is sufficient in this small example but we reccommend to use at least 400 restarts in standard runs.
 
 ```shell
 ${INFER} -i samples.GATK4.CNV -n2,6 -p 100 -v 2 -u 0.03 -r 12 -eD 6 -eT 12 -l 0.6 |& tee hatchet.log
@@ -117,11 +117,11 @@ We obtain the following summary of results:
 	## The related-tetraploid resulting files are copied to ./chosen.tetraploid.bbc.ucn and ./chosen.tetraploid.seg.ucn
 	# The chosen solution is diploid with 3 clones and is written in ./best.bbc.ucn and ./best.seg.ucn
 
-HATCHet predicts the presence of 3 clones in the 2 tumor samples and, especially, predicts that a sample contains two distinct tumor clones, according to the true clonal composition, and one of these clones is shared with the other sample.
+HATCHet22 predicts the presence of 3 clones in the 2 tumor samples and, especially, predicts that a sample contains two distinct tumor clones, according to the true clonal composition, and one of these clones is shared with the other sample.
 
 ## Analyzing inferred results
 
-Finally, we obtain useful plots to summarize and analyze the inferred results by using `plot-cn`, which is the last component of HATCHet. We run `plot-cn` as follows
+Finally, we obtain useful plots to summarize and analyze the inferred results by using `plot-cn`, which is the last component of HATCHet22. We run `plot-cn` as follows
 
 ```shell
 ${PLOTCN} best.bbc.ucn
