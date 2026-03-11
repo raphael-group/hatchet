@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import os.path
 import shlex
 import subprocess as pr
@@ -224,6 +225,30 @@ def counting(
     return results
 
 
+def get_bcftools_version(bcftools_path="bcftools"):
+    """
+    Get bcftools version as a tuple (major, minor)
+
+    Example return:
+        (1, 21)
+    """
+    try:
+        output = pr.check_output(
+            [bcftools_path, "--version"],
+            stderr=pr.STDOUT
+        ).decode()
+
+        match = re.search(r"bcftools\s+(\d+)\.(\d+)", output)
+        if match:
+            major = int(match.group(1))
+            minor = int(match.group(2))
+            return (major, minor)
+        else:
+            raise RuntimeError("Unable to parse bcftools version")
+
+    except Exception as e:
+        raise RuntimeError("Failed to detect bcftools version: {}".format(e))
+
 class AlleleCounter(Worker):
     def __init__(
         self,
@@ -239,6 +264,7 @@ class AlleleCounter(Worker):
         outdir,
     ):
         self.bcftools = bcftools
+        self.bcftools_version = get_bcftools_version(self.bcftools)
         self.reference = reference
         self.q = q
         self.Q = Q
@@ -264,9 +290,18 @@ class AlleleCounter(Worker):
             self.dp,
             self.snplist[chromosome],
         )
-        cmd_query = "{} query -f '%CHROM\\t%POS\\t%REF,%ALT\\t%AD\\n' -i 'SUM(INFO/AD)<={} & SUM(INFO/AD)>={}'".format(
-            self.bcftools, self.dp, self.mincov
-        )
+
+        # check bcftools version to determine correct syntax for filtering by INFO/AD
+        version = self.bcftools_version
+        if version >= (1, 21):
+            cmd_query = "{} query -f '%CHROM\\t%POS\\t%REF,%ALT\\t%INFO/AD\\n' -i 'SUM(INFO/AD)<={} & SUM(INFO/AD)>={}'".format(
+                self.bcftools, self.dp, self.mincov
+            )
+        else:
+            cmd_query = "{} query -f '%CHROM\\t%POS\\t%REF,%ALT\\t%AD\\n' -i 'SUM(INFO/AD)<={} & SUM(INFO/AD)>={}'".format(
+                self.bcftools, self.dp, self.mincov
+            )
+        
         if self.E:
             cmd_mpileup += " -E"
         errname = os.path.join(

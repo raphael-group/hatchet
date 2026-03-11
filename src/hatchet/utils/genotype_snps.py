@@ -6,6 +6,7 @@ from multiprocessing import Process, Queue, JoinableQueue, Lock, Value
 
 from hatchet.utils.ArgParsing import parse_genotype_snps_arguments
 from hatchet.utils.Supporting import log, logArgs, error
+from hatchet.utils.count_alleles import get_bcftools_version
 import hatchet.utils.ProgressBar as pb
 
 
@@ -182,6 +183,7 @@ class Caller(Process):
         self.result_queue = result_queue
         self.progress_bar = progress_bar
         self.bcftools = bcftools
+        self.bcftools_version = get_bcftools_version(self.bcftools)
         self.reference = reference
         self.q = q
         self.Q = Q
@@ -260,9 +262,17 @@ class Caller(Process):
             else:
                 os.remove(errname)
 
-        cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}".format(
-            self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp
-        )
+
+        # check bcftools version to determine correct syntax for filtering by INFO/AD
+        version = self.bcftools_version
+        if version >= (1, 21):
+            cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,INFO/AD,DP -q {} -Q {} -d {}".format(
+                self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp
+            )
+        else:
+            cmd_mpileup = "{} mpileup {} -Ou -f {} --skip-indels -a INFO/AD,AD,DP -q {} -Q {} -d {}".format(
+                self.bcftools, bamfile, self.reference, self.q, self.Q, self.dp
+            )
 
         if self.snplist is not None:
             assert os.path.isfile(tgtfile)
