@@ -93,7 +93,7 @@ def simulate_bb_dir(
 
     # Arrays for NPZ matrices
     # Columns: [normal, tumor1] → 2 columns
-    rdr_tumor = np.zeros(n_bins_total, dtype=np.float32)
+    rdr_tumor = np.zeros((n_bins_total, 1), dtype=np.float32)
     depth_mat = np.zeros((n_bins_total, 2), dtype=np.float32)
     a_allele = np.zeros((n_bins_total, 2), dtype=np.int32)
     b_allele = np.zeros((n_bins_total, 2), dtype=np.int32)
@@ -116,7 +116,7 @@ def simulate_bb_dir(
 
         # Observed RDR with Gaussian noise
         obs_rdr = max(true_rdr + rng.normal(0, sigma_rdr), 0.01)
-        rdr_tumor[i] = obs_rdr
+        rdr_tumor[i, 0] = obs_rdr
 
         # Depths
         depth_mat[i, 0] = normal_depth
@@ -177,7 +177,7 @@ def simulate_bb_dir(
     sample_df.to_csv(os.path.join(bb_dir, "sample_ids.tsv"), sep="\t", index=False)
 
     # Write NPZ files
-    # bb.rdr.npz: tumor RDR only, shape (N,) — will be reshaped to (N,1) in cluster_bins
+    # bb.rdr.npz: tumor RDR only, shape (N, n_tumor_samples)
     np.savez(os.path.join(bb_dir, "bb.rdr.npz"), mat=rdr_tumor)
 
     # bb.depth.npz: shape (N, 2) [normal, tumor]

@@ -1,8 +1,5 @@
 /**
- * pybind11 module exposing run_hmm (full EM loop) and omp_get_max_threads.
- *
- * All inputs must be C-contiguous float64 (or int64 for X_lengths).
- * forcecast ensures automatic conversion if needed.
+ * Pybind11 bindings for run_hmm (full EM loop) and omp_get_max_threads.
  */
 
 #include <pybind11/pybind11.h>
@@ -85,7 +82,8 @@ static py::dict run_hmm_py(
     d["lls0"]           = make_arr(res.lls0,             {N, K});
     d["lls1"]           = make_arr(res.lls1,             {N, K});
     d["elbo_trace"]     = py::cast(res.elbo_trace);
-    d["model_ll"]       = py::cast(res.loglik);
+    d["obj_ll"]         = py::cast(res.loglik);
+    d["model_ll"]       = py::cast(res.data_loglik);
     d["n_iters_done"]   = py::cast(res.n_iters_done);
     return d;
 }

@@ -1,9 +1,7 @@
 /**
- * C++ drop-in for the Numba _forward_backward kernel.
+ * Forward-backward algorithm for the 2-mixture HMM.
  *
- * Exact numeric match to hmm_fwd_bwd.py:_fwd_bwd_seg / _forward_backward.
- * Compiled with -O3 -march=native -ffast-math for SIMD auto-vectorization.
- * Segments parallelised with OpenMP when available.
+ * Segments parallelised with OpenMP. Log-space normalisation via logsumexp.
  */
 
 #include "fwd_bwd.h"
@@ -31,7 +29,7 @@ static inline double logsumexp_k(const double* x, int K) {
 
 
 /**
- * Forward-backward for one segment.  Equivalent to Python _fwd_bwd_seg.
+ * Forward-backward for one segment.
  *
  * lls0_seg  (T, K),  lls1_seg  (T, K)
  * log_startprobs (K, 2)

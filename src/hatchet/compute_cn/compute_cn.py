@@ -28,6 +28,7 @@ def run(args=None):
     out_dir = args["result_dir"]
     # output files
     os.makedirs(out_dir, exist_ok=True)
+    add_file_logging(out_dir, "compute-cn")
     plot_dir = os.path.join(out_dir, "plots")
     sols_dir = os.path.join(out_dir, "sols")
     os.makedirs(plot_dir, exist_ok=True)

@@ -216,7 +216,7 @@ void update_baf_tau_cpp(
 
         double p = p_fixed;
 
-        // Optimise neg log-likelihood in log(tau) space — matches Python exactly.
+        // Optimise neg log-likelihood in log(tau) space.
         auto neg_ll_logtau = [&](double log_tau) -> double {
             double tau    = std::exp(log_tau);
             double a0     = tau * p;

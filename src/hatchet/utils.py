@@ -168,6 +168,9 @@ def compute_tumor_ploidy(segs: pd.DataFrame, clones: list, tumor_purity: float):
     return rho
 
 
+_NOISY_LOGGERS = ["adjustText", "fontTools", "matplotlib", "numba", "pyomo"]
+
+
 def setup_logging(args) -> None:
     d = vars(args) if hasattr(args, "__dict__") else args
     verbosity = d.get("verbosity", 1)
@@ -180,12 +183,25 @@ def setup_logging(args) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
         force=True,
     )
-    logging.getLogger("adjustText").setLevel(logging.ERROR)
-    logging.getLogger("fontTools").setLevel(logging.ERROR)
-    logging.getLogger("jax").setLevel(logging.ERROR)
-    logging.getLogger("matplotlib").setLevel(logging.ERROR)
-    logging.getLogger("numba").setLevel(logging.ERROR)
-    logging.getLogger("pyomo").setLevel(logging.WARNING)
+    for name in _NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
+def add_file_logging(out_dir: str, command: str = "hatchet") -> None:
+    """Attach a FileHandler to the root logger so logs are also written to *out_dir/<command>.log*."""
+    os.makedirs(out_dir, exist_ok=True)
+    level = logging.root.level if logging.root.level != logging.WARNING else logging.INFO
+    fh = logging.FileHandler(os.path.join(out_dir, f"{command}.log"), mode="w")
+    fh.setLevel(level)
+    fh.setFormatter(logging.Formatter(
+        "%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    logging.root.addHandler(fh)
+    if logging.root.level > level:
+        logging.root.setLevel(level)
+    for name in _NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 def log_arguments(args) -> None:

@@ -1,12 +1,9 @@
 /**
- * C++ log-likelihood kernel for the 2-mixture BAF+RDR HMM.
+ * Log-likelihood kernel for the 2-mixture BAF+RDR HMM.
  *
- * Matches _compute_loglik_jax() in hmm_likelihoods.py exactly:
- *   - BAF: Beta-Binomial with lgamma-based log betaln
- *   - RDR: Gaussian with closed-form log-normal constant
- *
- * Outer loop parallelised over bins (N) with OpenMP.
- * Per-bin inner loop over (k, m) is sequential; hot constants precomputed.
+ * BAF: Beta-Binomial (lgamma-based log betaln).
+ * RDR: Gaussian (closed-form log-normal constant).
+ * Parallelised over bins with OpenMP; per-bin (k, m) loop is sequential.
  */
 
 #include "loglik.h"

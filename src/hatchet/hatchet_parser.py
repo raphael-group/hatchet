@@ -7,8 +7,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     # general inputs for bulk data
     parser.add_argument(
         "--bb_dir",
-        required=False,
-        default="bb",
+        required=True,
         type=str,
         help="Directory containing NPZ count matrices and bb.tsv.gz input files (default: bb)",
     )
@@ -45,16 +44,16 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--restarts",
         required=False,
-        default=10,
+        default=30,
         type=int,
-        help="#restarts per K (default: 10)",
+        help="#restarts per K (default: 30)",
     )
     parser.add_argument(
         "--top_restarts",
         required=False,
-        default=5,
+        default=30,
         type=int,
-        help="number of top-scoring inits to run full EM on (default: 5)",
+        help="number of top-scoring inits to run full EM on (default: 30)",
     )
     parser.add_argument(
         "--n_local_trials",
@@ -67,9 +66,9 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--niters",
         required=False,
-        default=10,
+        default=50,
         type=int,
-        help="Number of EM iterations per restart (default: 10)",
+        help="Number of EM iterations per restart (default: 50)",
     )
 
     parser.add_argument(
@@ -77,16 +76,16 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         required=False,
         choices=["viterbi", "map"],
         type=str,
-        help="HMM decoding method: viterbi (most-likely path) or map (marginal per-bin posterior) (default: viterbi)",
-        default="viterbi",
+        help="HMM decoding method: viterbi (most-likely path) or map (marginal per-bin posterior) (default: map)",
+        default="map",
     )
     parser.add_argument(
         "--score_method",
         required=False,
         choices=["bic", "icl"],
         type=str,
-        help="Model selection criterion (default: bic)",
-        default="bic",
+        help="Model selection criterion (default: icl)",
+        default="icl",
     )
     parser.add_argument(
         "--init_method",
@@ -154,14 +153,6 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
-        "-j",
-        required=False,
-        default=1,
-        type=int,
-        help="#parallel restarts to run concurrently (default: 1)",
-    )
-
-    parser.add_argument(
         "--seed",
         required=False,
         default=42,
@@ -198,8 +189,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
 def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--result_dir",
-        required=False,
-        default="results",
+        required=True,
         type=str,
         help="Output directory for computed CN results (default: results)",
     )

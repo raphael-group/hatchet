@@ -30,6 +30,7 @@ def run(args=None):
     # is_diploid = not args["tetraploid"]
     plot_dir = args["plot_dir"]
     os.makedirs(plot_dir, exist_ok=True)
+    add_file_logging(plot_dir, "plot-cn")
 
     ##################################################
     # parameters

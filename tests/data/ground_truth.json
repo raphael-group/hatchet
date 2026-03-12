@@ -1,0 +1,65 @@
+{
+  "cn_profile": {
+    "chr1_p-arm": [
+      1,
+      1
+    ],
+    "chr1_q-arm": [
+      2,
+      1
+    ],
+    "chr22_p-arm": [
+      1,
+      1
+    ],
+    "chr22_q-arm": [
+      1,
+      0
+    ]
+  },
+  "clone_proportions": [
+    0.2,
+    0.8
+  ],
+  "purity": 0.8,
+  "gamma": 2.0,
+  "n_bins": 298,
+  "regions": [
+    [
+      "chr1",
+      0,
+      121700000,
+      "chr1_p-arm"
+    ],
+    [
+      "chr1",
+      121700000,
+      248956422,
+      "chr1_q-arm"
+    ],
+    [
+      "chr22",
+      0,
+      13000000,
+      "chr22_p-arm"
+    ],
+    [
+      "chr22",
+      13000000,
+      50818468,
+      "chr22_q-arm"
+    ]
+  ],
+  "expected_rdrs": {
+    "chr1_p-arm": 1.0,
+    "chr1_q-arm": 1.4000000000000001,
+    "chr22_p-arm": 1.0,
+    "chr22_q-arm": 0.6000000000000001
+  },
+  "expected_bafs": {
+    "chr1_p-arm": 0.5,
+    "chr1_q-arm": 0.3571428571428571,
+    "chr22_p-arm": 0.5,
+    "chr22_q-arm": 0.16666666666666666
+  }
+}

@@ -519,7 +519,7 @@ def plot_2d_inits(
         out_file:   Output PDF file path.
         baf_taus:   (M,) Beta-Binomial dispersion per sample (optional; unused, kept for API compatibility).
     """
-    ylim = np.round(X_rdrs.max()).astype(int)
+    ylim = np.ceil(X_rdrs.max() * 1.1 * 10) / 10  # 10% headroom, round up to nearest 0.1
     pdf_pages = PdfPages(out_file)
 
     if bbs is not None and chrom_sizes is not None:

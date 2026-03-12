@@ -68,7 +68,6 @@ def run(args=None):
     n_local_trials = args["n_local_trials"]
     n_iter = args["niters"]
 
-    n_jobs = args["j"]
     seed = args["seed"]
     decode_method = args["decode_method"]
     score_method = args["score_method"]
@@ -76,6 +75,7 @@ def run(args=None):
     init_method = args["init_method"]
 
     os.makedirs(out_dir, exist_ok=True)
+    add_file_logging(out_dir, "cluster-bins")
     label_dir = os.path.join(out_dir, "labels")
     plot_dir = os.path.join(out_dir, "plots")
     os.makedirs(label_dir, exist_ok=True)
@@ -96,10 +96,6 @@ def run(args=None):
     X_alphas = np.load(a_mfile)["mat"][:, tumor_sidx:].astype(np.int32)
     X_betas = np.load(b_mfile)["mat"][:, tumor_sidx:].astype(np.int32)
     X_totals = np.load(t_mfile)["mat"][:, tumor_sidx:].astype(np.int32)
-    if X_rdrs.ndim == 1:  # single tumor sample — reshape to (N, 1)
-        X_rdrs, X_alphas, X_betas, X_totals = (
-            x[:, np.newaxis] for x in [X_rdrs, X_alphas, X_betas, X_totals]
-        )
     nbbs, ntumor_samples = X_rdrs.shape
     assert len(bbs) == nbbs, f"unmatched {len(bbs)} and {nbbs}"
 
@@ -261,7 +257,7 @@ def run(args=None):
 
     for K in range(minK, maxK + 1):
         logging.info("==================================================")
-        logging.info(f"running HMM on K={K}, {len(inits_run)} restarts, j={n_jobs}")
+        logging.info(f"running HMM on K={K}, {len(inits_run)} restarts")
         log_transmat0 = np.log(make_transmat(1 - diag_t, K))
 
         t0 = time.perf_counter()
@@ -298,8 +294,9 @@ def run(args=None):
                 ig_beta=ig_beta,
             )
             model_ll = sol["model_ll"]
+            obj_ll = sol["obj_ll"]
             all_elbo_traces[it] = sol["elbo_trace"]
-            logging.info(f"K={K} restart {it}: model_ll={model_ll:.6f}")
+            logging.info(f"K={K} restart {it}: model_ll={model_ll:.6f} obj_ll={obj_ll:.6f}")
             if score_method == "bic":
                 score = score_BIC(model_ll, K, ntumor_samples, nbbs)
             else:

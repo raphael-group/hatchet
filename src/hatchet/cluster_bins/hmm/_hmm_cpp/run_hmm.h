@@ -17,16 +17,15 @@ struct RunHMMResult {
     std::vector<double> lls1;            // (N, K)
     std::vector<double> elbo_trace;      // (n_iters+1)  — starts at -inf
     double loglik;
+    double data_loglik;
     int    n_iters_done;
 };
 
 /**
- * Full C++ EM loop for the 2-mixture BAF+RDR HMM.
+ * Full EM loop for the 2-mixture BAF+RDR HMM.
  *
- * Runs n_iter Baum-Welch iterations in C++, eliminating per-iteration
- * Python/JAX dispatch overhead.  Parameters are copied from the initial
- * arrays and updated in place internally; results are returned in a
- * RunHMMResult struct.
+ * Runs n_iter Baum-Welch iterations. Parameters are copied from the
+ * initial arrays and updated in place; results returned in RunHMMResult.
  *
  * Array shapes (all C-contiguous float64 unless noted):
  *   X_rdrs        (N, M) — RDR observations

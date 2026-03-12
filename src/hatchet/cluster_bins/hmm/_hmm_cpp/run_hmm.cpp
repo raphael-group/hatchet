@@ -76,9 +76,6 @@ static void build_posts_kn2(const double* posts, double* posts_kn2, int N, int K
 
 
 // Update log_startprobs from posteriors at segment-start bins.
-// Matches Python:
-//   gamma0 = sum(maximum(posts[seg_starts], tol), axis=0)  # (K, 2)
-//   log_startprobs = log(gamma0 / sum(gamma0))
 static void update_start_probs(
     const double*  posts,         // (N, K, 2)
     const int64_t* seg_starts,    // (S,)
@@ -256,6 +253,7 @@ RunHMMResult run_hmm_cpp(
     result.lls1           = std::move(lls1);
     result.elbo_trace     = std::move(elbo_trace);
     result.loglik         = result.elbo_trace.back();
+    result.data_loglik    = loglik;
     result.n_iters_done   = n_done;
     return result;
 }

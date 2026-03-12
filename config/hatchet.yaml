@@ -23,11 +23,11 @@ cluster_bins:
   # off-diagonal transition mass
   t: 1e-6
   # number of random restarts per K
-  restarts: 10
+  restarts: 30
   # number of top-scoring inits to run full EM on
-  top_restarts: 5
+  top_restarts: 30
   # EM iterations per restart
-  niters: 10
+  niters: 50
 
   # Beta-Binomial dispersion
   # fraction of near-balanced bins to estimate initial tau
@@ -47,9 +47,9 @@ cluster_bins:
   log_rdr: false
 
   # HMM decoding method: viterbi | map
-  decode_method: "viterbi"
+  decode_method: "map"
   # model selection criterion: bic | icl
-  score_method: "bic"
+  score_method: "icl"
   # initialization method: cna_plus_plus | kmeans_plus_plus
   init_method: "cna_plus_plus"
 

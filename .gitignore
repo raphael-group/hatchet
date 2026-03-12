@@ -1,7 +1,6 @@
 tmp
-test*
-!tests/
-!tests/**
+test
+tests/fixtures/
 old
 .DS_Store
 .claude
@@ -152,6 +151,7 @@ celerybeat.pid
 .envrc
 .venv
 env/
+envs/
 venv/
 ENV/
 env.bak/
