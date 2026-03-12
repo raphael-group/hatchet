@@ -1,21 +1,24 @@
 """Pytest fixtures for HATCHet3 integration tests."""
 
+import json
 import os
+
 import matplotlib
 matplotlib.use("Agg")
 
 import pytest
-from tests.simulate_bb_dir import simulate_bb_dir
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 
 @pytest.fixture(scope="session")
-def synthetic_data(tmp_path_factory):
-    """Generate synthetic bb_dir + reference files once per session."""
-    out = tmp_path_factory.mktemp("synthetic")
-    bb_dir = str(out / "bb_dir")
-    genome_sizes = str(out / "genome.sizes")
-    regions_bed = str(out / "regions.bed")
-    ground_truth = simulate_bb_dir(bb_dir, genome_sizes, regions_bed)
+def synthetic_data():
+    """Load pre-generated synthetic data from tests/data/."""
+    bb_dir = os.path.join(DATA_DIR, "bb_dir")
+    genome_sizes = os.path.join(DATA_DIR, "genome.sizes")
+    regions_bed = os.path.join(DATA_DIR, "regions.bed")
+    with open(os.path.join(DATA_DIR, "ground_truth.json")) as f:
+        ground_truth = json.load(f)
     return bb_dir, genome_sizes, regions_bed, ground_truth
 
 
@@ -45,10 +48,9 @@ def cluster_bins_result(synthetic_data, tmp_path_factory):
         "min_covar": 1e-3,
         "ig_alpha": 10.0,
         "tau_iters": 1,
-        "j": 1,
         "seed": 42,
         "decode_method": "viterbi",
-        "score_method": "bic",
+        "score_method": "icl",
         "log_rdr": False,
         "init_method": "cna_plus_plus",
         "verbosity": 1,

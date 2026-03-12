@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tests.conftest import CBC_AVAILABLE
+from conftest import CBC_AVAILABLE
 
 pytestmark = pytest.mark.skipif(not CBC_AVAILABLE, reason="CBC solver not available")
 

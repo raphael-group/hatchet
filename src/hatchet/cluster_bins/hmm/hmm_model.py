@@ -15,6 +15,28 @@ from hatchet.cluster_bins.cluster_utils import count_multimodal_clusters
 from hatchet.cluster_bins.hmm import _USE_CPP, _cpp_run_hmm
 
 
+def _check_elbo_convergence(elbo_trace, tol_ll, prefix=""):
+    """Check elbo_trace for convergence and monotonicity; log warnings."""
+    trace = elbo_trace[1:]  # skip initial -inf
+    if len(trace) < 2:
+        return
+    final_delta = abs(trace[-1] - trace[-2])
+    if final_delta >= tol_ll:
+        logging.warning(
+            f"{prefix}EM did NOT converge: final delta_ll={final_delta:.6e} >= tol_ll={tol_ll:.6e}"
+        )
+    drops = []
+    for i in range(1, len(trace)):
+        delta = trace[i] - trace[i - 1]
+        if delta < -tol_ll:
+            drops.append((i, delta))
+    if drops:
+        logging.warning(
+            f"{prefix}ELBO decreased at {len(drops)} iteration(s): "
+            + ", ".join(f"iter {i} (delta={d:.6e})" for i, d in drops[:5])
+        )
+
+
 ##################################################
 def _run_hmm_cpp(
     K,
@@ -75,9 +97,10 @@ def _run_hmm_cpp(
     elapsed = time.perf_counter() - t0
     n_done = res["n_iters_done"]
     logging.info(
-        f"{_pfx}HMM baum-welch (K={K}) converged after {n_done} iters | "
+        f"{_pfx}HMM baum-welch (K={K}) finished after {n_done} iters | "
         f"loglik={res['model_ll']:.6f} | total={elapsed:.2f}s ({elapsed / n_done:.3f}s/it)"
     )
+    _check_elbo_convergence(res["elbo_trace"], tol_ll, _pfx)
 
     full_posts = res["full_posts"]  # (N, K, 2)
     phase_posts = np.sum(full_posts, axis=1)  # (N, 2)
@@ -89,6 +112,7 @@ def _run_hmm_cpp(
         "BAF_means": res["BAF_means"],
         "BAF_taus": res["BAF_taus"],
         "elbo_trace": res["elbo_trace"],
+        "obj_ll": res["obj_ll"],
         "model_ll": res["model_ll"],
         "log_startprobs": res["log_startprobs"],
         "log_transmat": log_transmat,
@@ -320,8 +344,10 @@ def run_hmm(
         f"fwdbwd={t_fwdbwd_sum:.2f}s ({t_fwdbwd_sum / n_done:.3f}s/it) | "
         f"mstep={t_mstep_sum:.2f}s ({t_mstep_sum / n_done:.3f}s/it)"
     )
+    _check_elbo_convergence(elbo_trace, tol_ll, _pfx)
 
-    model_ll = elbo_trace[-1]
+    obj_ll = elbo_trace[-1]
+    model_ll = loglik
     phase_posts = np.sum(posts, axis=1)  # (N, 2)
     cluster_posts = np.sum(posts, axis=2)  # (N, K)
 
@@ -342,6 +368,7 @@ def run_hmm(
         "BAF_means": baf_means,
         "BAF_taus": baf_taus,
         "elbo_trace": elbo_trace,
+        "obj_ll": obj_ll,
         "model_ll": model_ll,
         "log_startprobs": log_startprobs,
         "log_transmat": log_transmat,
