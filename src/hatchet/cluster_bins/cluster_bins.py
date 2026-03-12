@@ -1,0 +1,455 @@
+import os
+import time
+import logging
+import shutil
+import argparse
+
+import numpy as np
+import pandas as pd
+from hatchet.utils import *
+from hatchet.hatchet_parser import add_arguments_cluster_bins
+from hatchet.cluster_bins.cluster_utils import *
+from hatchet.cluster_bins.hmm.hmm_init import *
+from hatchet.cluster_bins.hmm.hmm_transitions import *
+from hatchet.cluster_bins.hmm.hmm_model import *
+from hatchet.plot.plot_1d2d import plot_rdr_baf
+
+
+def run(args=None):
+    """Main entry point for the cluster-bins step.
+    1. run BAF+RDR factorial HMM with K cluster states for K in [minK, maxK].
+    2. select best K by BIC or ICL.
+
+    Input data (read from bb_dir/):
+        bb.tsv.gz         — bin metadata (chr, start, end, region_id, switchprobs)
+        bb.rdr.npz        — (N, M+1) RDR matrix
+        bb.depth.npz      - (N, M+1) Read-depth matrix
+        bb.{A,B,T}allele.npz — (N, M+1) allele count matrices
+
+    Outputs (written to bbc_dir/):
+        bulk.bbc / bulk.seg     — BBC and SEG files for the optimal K
+        labels/bulkK.bbc|seg    — per-K results
+        cluster_infos/          — per-K cluster-label TSVs
+        plots/                  — ELBO traces, RDR-BAF scatter, model score
+        model_scores.tsv / .png — BIC or ICL scores across K
+
+    Args:
+        args: dict or argparse.Namespace of CLI arguments (see hatchet_parser.py).
+    """
+    logging.info("cluster bins")
+    _log_done = log_step_start()
+    if isinstance(args, argparse.Namespace):
+        args = vars(args)
+
+    bb_dir = args["bb_dir"]
+    bb_file = os.path.join(bb_dir, "bb.tsv.gz")
+    sample_file = os.path.join(bb_dir, "sample_ids.tsv")
+    rdr_mfile = os.path.join(bb_dir, "bb.rdr.npz")
+    depth_mfile = os.path.join(bb_dir, "bb.depth.npz")
+    a_mfile = os.path.join(bb_dir, "bb.Aallele.npz")
+    b_mfile = os.path.join(bb_dir, "bb.Ballele.npz")
+    t_mfile = os.path.join(bb_dir, "bb.Tallele.npz")
+    genome_size = args["genome_size"]
+    out_dir = args["bbc_dir"]
+
+    bb_quantile = args["bb_quantile"]
+    min_tau = args["min_tau"]
+    max_tau = args["max_tau"]
+    baf_eps = args["baf_eps"]
+    min_covar = args["min_covar"]
+    ig_alpha = args["ig_alpha"]
+    tau_iters = args["tau_iters"]
+    diag_t = args["t"]
+
+    minK = args["minK"]
+    maxK = args["maxK"]
+    restarts = args["restarts"]
+    top_restarts = args["top_restarts"]
+    n_local_trials = args["n_local_trials"]
+    n_iter = args["niters"]
+
+    n_jobs = args["j"]
+    seed = args["seed"]
+    decode_method = args["decode_method"]
+    score_method = args["score_method"]
+    log_rdr = args["log_rdr"]
+    init_method = args["init_method"]
+
+    os.makedirs(out_dir, exist_ok=True)
+    label_dir = os.path.join(out_dir, "labels")
+    plot_dir = os.path.join(out_dir, "plots")
+    os.makedirs(label_dir, exist_ok=True)
+    os.makedirs(plot_dir, exist_ok=True)
+
+    ##################################################
+    logging.info("load arguments")
+    _, samples, no_normal = read_sample_file(sample_file)
+    tumor_sidx = 0 if no_normal else 1
+    tumor_samples = samples[tumor_sidx:]
+
+    bbs = pd.read_table(bb_file, sep="\t")
+
+    X_depths = np.load(depth_mfile)["mat"].astype(np.float32)
+    X_depths_tumor = X_depths[:, tumor_sidx:]
+
+    X_rdrs = np.load(rdr_mfile)["mat"].astype(np.float32)
+    X_alphas = np.load(a_mfile)["mat"][:, tumor_sidx:].astype(np.int32)
+    X_betas = np.load(b_mfile)["mat"][:, tumor_sidx:].astype(np.int32)
+    X_totals = np.load(t_mfile)["mat"][:, tumor_sidx:].astype(np.int32)
+    if X_rdrs.ndim == 1:  # single tumor sample — reshape to (N, 1)
+        X_rdrs, X_alphas, X_betas, X_totals = (
+            x[:, np.newaxis] for x in [X_rdrs, X_alphas, X_betas, X_totals]
+        )
+    nbbs, ntumor_samples = X_rdrs.shape
+    assert len(bbs) == nbbs, f"unmatched {len(bbs)} and {nbbs}"
+
+    X_log_rdrs = np.log(np.clip(X_rdrs, 1e-6, None)).astype(np.float32)
+    X_hmm_rdrs = X_log_rdrs if log_rdr else X_rdrs
+
+    ##################################################
+    logging.info("prepare HMM inputs")
+    X_lengths = (
+        bbs.groupby(by="region_id", sort=False).agg("size").to_numpy(dtype=np.int64)
+    )
+    nsegments = len(X_lengths)
+    assert np.sum(X_lengths) == nbbs, f"unmatched {np.sum(X_lengths)} and {nbbs}"
+    logging.info(f"#bbs={nbbs}, #segments={nsegments}")
+
+    X_bafs = np.clip(X_betas / X_totals, baf_eps, 1 - baf_eps)
+    switchprobs = bbs["switchprobs"].to_numpy()
+
+    X_hmm_rdrs = np.ascontiguousarray(X_hmm_rdrs, dtype=np.float64)
+    X_alphas = np.ascontiguousarray(X_alphas, dtype=np.float64)  # (N, M)
+    X_betas = np.ascontiguousarray(X_betas, dtype=np.float64)  # (N, M)
+    X_totals = np.ascontiguousarray(X_totals, dtype=np.float64)  # (N, M)
+    X_bafs = np.ascontiguousarray(X_bafs, dtype=np.float64)  # (N, M)
+    log_switchprobs = np.ascontiguousarray(np.log(switchprobs), dtype=np.float64)
+    log_stayprobs = np.ascontiguousarray(np.log(1 - switchprobs), dtype=np.float64)
+
+    ##################################################
+    logging.debug(
+        f"nbbs={nbbs}, ntumor_samples={ntumor_samples}, bbs.columns={list(bbs.columns)}"
+    )
+    bbcs = pd.DataFrame(
+        {
+            "#CHR": np.repeat(bbs["#CHR"].to_numpy(), ntumor_samples),
+            "START": np.repeat(bbs["START"].to_numpy(), ntumor_samples),
+            "END": np.repeat(bbs["END"].to_numpy(), ntumor_samples),
+            "SAMPLE": np.tile(tumor_samples, nbbs),
+            "#SNPS": np.repeat(bbs["#SNPS"].to_numpy(), ntumor_samples),
+        }
+    )
+    bbcs["CLUSTER"] = 0
+    bbcs["RD"] = X_rdrs.ravel()
+    bbcs["COV"] = X_depths_tumor.ravel()
+
+    bbs["CLUSTER"] = 0
+    bbs["PHASE"] = 0.0
+    bbs["PHASE_POSTS"] = 0.0
+
+    ##################################################
+    plot_rdr_baf(
+        tumor_samples,
+        bbs,
+        X_bafs,
+        X_rdrs,
+        genome_size,
+        xlab="BAF",
+        ylab="RDR",
+        out_dir=plot_dir,
+        out_prefix="raw_",
+        dpi=100,
+    )
+
+    baf_taus0 = estimate_BB_dispersion_balanced(
+        X_alphas,
+        X_betas,
+        X_bafs,
+        ntumor_samples,
+        min_tau=min_tau,
+        max_tau=max_tau,
+        bb_quantile=bb_quantile,
+    )
+    logging.info("estimated BAF per-sample dispersion:      %s", np.round(baf_taus0, 3))
+    rdr_vars0 = estimate_rdr_vars(X_hmm_rdrs, X_lengths, min_var=min_covar)
+    logging.info("estimated RDR per-sample variance:      %s", np.round(rdr_vars0, 3))
+
+    ig_beta = rdr_vars0 * (ig_alpha + 1)
+    logging.info("IG prior: alpha=%.2f, beta=%s", ig_alpha, np.round(ig_beta, 6))
+
+    chrom_sizes = read_genome_sizes(genome_size)
+    DEBUG = logging.getLogger().isEnabledFor(logging.DEBUG)
+
+    logging.info("HMM init method: %s", init_method)
+    if init_method == "kmeans_plus_plus":
+        X_mhbafs = np.minimum(X_bafs, 1.0 - X_bafs)
+        inits_maxK, inits_diag = init_hmm_kmeans_plus_plus(
+            X_mhbafs=X_mhbafs,
+            X_rdrs=X_hmm_rdrs,
+            rdr_vars=rdr_vars0,
+            K=maxK,
+            random_state=seed,
+            restarts=restarts,
+            n_local_trials=args["n_local_trials"],
+            baf_eps=baf_eps,
+        )
+    else:
+        inits_maxK, inits_diag = init_hmm_cna_plus_plus(
+            X_hmm_rdrs,
+            X_bafs,
+            X_alphas,
+            X_betas,
+            X_totals,
+            baf_taus0,
+            rdr_vars=rdr_vars0,
+            K=maxK,
+            random_state=seed,
+            restarts=restarts,
+            n_local_trials=n_local_trials,
+            log_rdr=log_rdr,
+            baf_eps=baf_eps,
+            collect_diag=DEBUG,
+        )
+    plot_2d_inits(
+        X_rdrs,
+        X_bafs,
+        inits_maxK,
+        ntumor_samples,
+        maxK,
+        os.path.join(plot_dir, "hmm_init.pdf"),
+        baf_taus=baf_taus0,
+        log_rdr=log_rdr,
+        bbs=bbs,
+        chrom_sizes=chrom_sizes,
+        init_method=init_method,
+        sample_names=tumor_samples,
+    )
+
+    ##################################################
+    score_records = []
+    elbo_data = []  # list of (K, all_elbo_traces, best_it)
+
+    top_restarts = min(top_restarts, len(inits_maxK))
+    sorted_inits = sorted(inits_maxK.items(), key=lambda x: x[1][-1], reverse=False)
+    inits_run = dict(sorted_inits[:top_restarts])
+
+    if DEBUG and inits_diag:
+        init_diag_dir = os.path.join(plot_dir, "init_diag")
+        os.makedirs(init_diag_dir, exist_ok=True)
+        for it in inits_run:
+            diag = inits_diag[it]
+            plot_init_sampling_probs(
+                X_hmm_rdrs,
+                X_bafs,
+                diag["probs_history"],
+                diag["centroids_history"],
+                init_diag_dir,
+                name=f"restart{it}",
+                log_rdr=log_rdr,
+                bin_info=bbs,
+                chrom_sizes=chrom_sizes,
+                selected_bins_history=diag["selected_bins_history"],
+                candidates_history=diag.get("candidates_history"),
+                final_baf_means=diag["final_baf_means"],
+                final_rdr_means=diag["final_rdr_means"],
+            )
+    logging.info(
+        "use top %d/%d restarts to run HMM",
+        top_restarts,
+        len(inits_maxK),
+    )
+
+    for K in range(minK, maxK + 1):
+        logging.info("==================================================")
+        logging.info(f"running HMM on K={K}, {len(inits_run)} restarts, j={n_jobs}")
+        log_transmat0 = np.log(make_transmat(1 - diag_t, K))
+
+        t0 = time.perf_counter()
+        best_ll = -np.inf
+        best_it = 0
+        best_sol = None
+        all_elbo_traces = {}
+        for it, (baf_means_it, rdr_means_it, rdr_vars_it, _) in inits_run.items():
+            sol = run_hmm(
+                K,
+                X_hmm_rdrs,
+                X_alphas,
+                X_betas,
+                X_totals,
+                X_lengths,
+                log_switchprobs,
+                log_stayprobs,
+                log_transmat0,
+                np.ascontiguousarray(rdr_means_it[:K], dtype=np.float64),
+                np.ascontiguousarray(rdr_vars_it[:K], dtype=np.float64),
+                np.ascontiguousarray(baf_means_it[:K], dtype=np.float64),
+                baf_taus0.copy(),
+                X_rdrs_orig=X_rdrs,
+                X_totals_orig=X_totals,
+                n_iter=n_iter,
+                min_covar=min_covar,
+                tau_iters=tau_iters,
+                min_tau=min_tau,
+                max_tau=max_tau,
+                baf_eps=baf_eps,
+                log_rdr=log_rdr,
+                restart_id=it,
+                ig_alpha=ig_alpha,
+                ig_beta=ig_beta,
+            )
+            model_ll = sol["model_ll"]
+            all_elbo_traces[it] = sol["elbo_trace"]
+            logging.info(f"K={K} restart {it}: model_ll={model_ll:.6f}")
+            if score_method == "bic":
+                score = score_BIC(model_ll, K, ntumor_samples, nbbs)
+            else:
+                score = score_ICL(
+                    sol["cluster_posts"],
+                    model_ll,
+                    K,
+                    ntumor_samples,
+                    nbbs,
+                )
+            score_records.append(
+                {"K": K, "restart_it": it, "ll": model_ll, score_method: score}
+            )
+            if model_ll > best_ll:
+                best_ll = model_ll
+                best_it = it
+                best_sol = sol
+        t_elapsed = time.perf_counter() - t0
+        logging.info(
+            f"K={K} best restart: it={best_it}, model_ll={best_ll:.6f}, time={t_elapsed:.1f}s"
+        )
+        elbo_data.append((K, all_elbo_traces, best_it))
+
+        k_labels, k_phases = decode_hmm(
+            best_sol,
+            decode_method,
+            X_lengths,
+            log_switchprobs,
+            log_stayprobs,
+            best_sol.get("log_transmat", log_transmat0),
+        )
+        k_betas_phased = (
+            X_alphas * (1 - k_phases[:, None]) + X_betas * k_phases[:, None]
+        )
+        k_bafs = k_betas_phased / X_totals
+        k_cids = np.unique(k_labels)
+        k_rdr_means = best_sol["RDR_means"][k_cids]
+        k_rdr_vars = best_sol["RDR_vars"][k_cids]
+        k_baf_means = best_sol["BAF_means"][k_cids]
+        k_baf_taus = best_sol["BAF_taus"]
+
+        if log_rdr:
+            k_rdr_means_nat = np.exp(k_rdr_means)
+            k_rdr_vars_nat = np.exp(2.0 * k_rdr_means) * k_rdr_vars
+        else:
+            k_rdr_means_nat = k_rdr_means
+            k_rdr_vars_nat = k_rdr_vars
+
+        for ci, c in enumerate(k_cids):
+            mask = k_labels == c
+            emp_rdr = np.median(X_rdrs[mask], axis=0)
+            emp_mhbaf = np.median(np.minimum(k_bafs[mask], 1.0 - k_bafs[mask]), axis=0)
+            inf_rdr = k_rdr_means_nat[ci]
+            inf_mhbaf = np.minimum(k_baf_means[ci], 1.0 - k_baf_means[ci])
+            logging.info(
+                f"K={K} cluster {c:2d} (n={mask.sum():5d}): "
+                f"RDR emp={np.round(emp_rdr, 3)} inf={np.round(inf_rdr, 3)} | "
+                f"mhBAF emp={np.round(emp_mhbaf, 3)} inf={np.round(inf_mhbaf, 3)}"
+            )
+
+        plot_rdr_baf(
+            tumor_samples,
+            bbs,
+            k_bafs,
+            X_rdrs,
+            genome_size,
+            cluster_labels=k_labels,
+            expected_rdrs=k_rdr_means_nat,
+            expected_bafs=k_baf_means,
+            unique_labels=k_cids,
+            label_clone=False,
+            xlab="mhBAF",
+            ylab="RDR",
+            out_dir=plot_dir,
+            out_prefix=f"K{K}_",
+            dpi=100,
+            rdr_means=k_rdr_means,
+            rdr_vars=k_rdr_vars,
+            baf_taus=k_baf_taus,
+            log_rdr=log_rdr,
+        )
+
+        bbs["PHASE"] = k_phases
+        bbs["PHASE_POSTS"] = best_sol["phase_posts"][:, 1]
+        bbs[["#CHR", "START", "END", "PHASE", "PHASE_POSTS"]].to_csv(
+            os.path.join(label_dir, f"bulk{K}.bb.phased.tsv.gz"),
+            sep="\t",
+            header=True,
+            index=False,
+        )
+
+        bbcs["CLUSTER"] = np.repeat(k_labels, ntumor_samples)
+        bbcs["BAF"] = k_bafs.ravel()
+        bbcs["BETA"] = k_betas_phased.ravel().astype(int)
+        bbcs["ALPHA"] = (X_totals - k_betas_phased).ravel().astype(int)
+        k_segs = mat2segs(
+            bbcs,
+            tumor_samples,
+            k_baf_means,
+            k_baf_taus,
+            k_rdr_means_nat,
+            k_rdr_vars_nat,
+            k_cids,
+        )
+        bbcs.to_csv(
+            os.path.join(label_dir, f"bulk{K}.bbc"),
+            sep="\t",
+            header=True,
+            index=False,
+        )
+        k_segs.to_csv(
+            os.path.join(label_dir, f"bulk{K}.seg"),
+            sep="\t",
+            header=True,
+            index=False,
+        )
+
+    plot_elbo_traces(elbo_data, os.path.join(plot_dir, "elbo_traces.pdf"))
+
+    scores_df = pd.DataFrame(score_records)
+    best_idx = scores_df[score_method].idxmin()
+    best_K = int(scores_df.loc[best_idx, "K"])
+    best_score = scores_df.loc[best_idx, score_method]
+    logging.info(f"model selection: best K={best_K} {score_method}={best_score:.4f}")
+    scores_df.to_csv(os.path.join(out_dir, "model_scores.tsv"), sep="\t", index=False)
+    plot_score(scores_df, score_method, os.path.join(plot_dir, "model_scores.png"))
+
+    ##################################################
+    # copy best-K results to top-level output
+    for suffix in ["bbc", "seg"]:
+        shutil.copy2(
+            os.path.join(label_dir, f"bulk{best_K}.{suffix}"),
+            os.path.join(out_dir, f"bulk.{suffix}"),
+        )
+    shutil.copy2(
+        os.path.join(label_dir, f"bulk{best_K}.bb.phased.tsv.gz"),
+        os.path.join(out_dir, "bb.phased.tsv.gz"),
+    )
+
+    _log_done("cluster-bins")
+    return
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog="HATCHet cluster_bins",
+        description="cluster haplotype blocks",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    add_arguments_cluster_bins(parser)
+    args = parser.parse_args()
+    setup_logging(args)
+    run(args)

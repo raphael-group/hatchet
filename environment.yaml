@@ -1,0 +1,26 @@
+name: hatchet3
+channels:
+  - conda-forge
+  - bioconda
+  - gurobi
+  - defaults
+  - dranew
+dependencies:
+  - python>=3.10
+  - numpy
+  - scipy
+  - pandas
+  - scikit-learn
+  - matplotlib-base
+  - seaborn
+  - pyomo
+  - coincbc
+  - gurobi>=13.0.0
+  - pip
+  - kneed
+  - numba
+  - pybind11
+  - boost-cpp
+  - llvm-openmp
+  - cxx-compiler
+  - adjusttext

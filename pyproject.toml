@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61", "pybind11>=2.11"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hatchet"
+version = "3.0.0"
+requires-python = ">=3.10"
+description = "HATCHet3: Holistic Allele-specific Tumor Copy-number Heterogeneity"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "scikit-learn",
+    "numba",
+    "kneed",
+    "pyomo",
+    "adjustText",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+hatchet = "hatchet.__main__:main"

@@ -1,0 +1,124 @@
+##################################################
+# HATCHet3 YAML configuration file
+##################################################
+# Input, absolute path
+bb_dir: "/path/to/genotyped_dir/allele/bulkDNA"
+
+# Output paths, relative to snakemake --directory
+bbc_dir: "bbc"
+result_dir: "results"
+plot_dir: "summary"
+log_dir: "logs"
+
+##################################################
+# Reference
+genome_size: ""
+region_bed: ""
+
+##################################################
+cluster_bins:
+  # HMM cluster state range
+  minK: 3
+  maxK: 30
+  # off-diagonal transition mass
+  t: 1e-6
+  # number of random restarts per K
+  restarts: 10
+  # number of top-scoring inits to run full EM on
+  top_restarts: 5
+  # EM iterations per restart
+  niters: 10
+
+  # Beta-Binomial dispersion
+  # fraction of near-balanced bins to estimate initial tau
+  bb_quantile: 0.2
+  min_tau: 50
+  max_tau: 500
+  # BAF mean Brent search bounds [baf_eps, 1-baf_eps]
+  baf_eps: 1.0e-3
+  # minimum RDR variance floor
+  min_covar: 1.0e-3
+  # inverse-gamma prior shape for RDR variance
+  ig_alpha: 10.0
+  # number of EM iterations to update tau
+  tau_iters: 1
+
+  # use log(RDR) instead of RDR for Gaussian emission
+  log_rdr: false
+
+  # HMM decoding method: viterbi | map
+  decode_method: "viterbi"
+  # model selection criterion: bic | icl
+  score_method: "bic"
+  # initialization method: cna_plus_plus | kmeans_plus_plus
+  init_method: "cna_plus_plus"
+
+##################################################
+compute_cn:
+  # manually select cluster_bins bbc/seg by cluster <k> (null = auto)
+  k: null
+
+  # solver mode: ilp | cd | both
+  mode: ilp
+  # ILP solver backend: gurobi | cbc
+  solver: gurobi
+  # ILP solver timelimit in seconds (null = unlimited)
+  timelimit: null
+
+  # filter clusters by variance distribution
+  filter_cluster: false
+  filter_std: 2.0
+
+  # tolerances for locating balanced/clonal clusters
+  balanced_baf_tol: 0.03
+  toleranceRDR: 0.08
+  toleranceBAF: 0.04
+
+  # clone range
+  minClone: 2
+  maxClone: 4
+  diploid: false
+  tetraploid: false
+
+  # regularization term: RAW | MAXCN | DROOT_SUM | DADJ_SUM
+  reg_term: "MAXCN"
+  reg_steps: 10
+  reg_stepsize: 0.01
+
+  # constraints
+  # disable amp/del symmetry constraint
+  no_ampdel: false
+  # max distinct CN states per clone (-1 = unconstrained)
+  num_cnstates: -1
+  # max total copy number per ploidy
+  diploidcmax: 6
+  tetraploidcmax: 12
+  # minimum clone proportion
+  min_prop: 0.01
+
+  # per-sample tumor purity (format: "sample1:0.8;sample2:0.7", null = inferred)
+  purities:
+
+  # Coordinate-descent parameters
+  cd_niters: 10
+  cd_convergence_iters: 2
+  cd_nseeds: 400
+  cd_njobs: 8
+  cd_seed: 42
+
+##################################################
+plot_cn:
+  dpi: 300
+  # output image format: png | pdf | svg
+  img_type: png
+  transparent: false
+  keep_gap: false
+  tail_alpha: 0.8
+  center_alpha: 1.0
+  onetail_area: 0.025
+  # FCN axis upper limit
+  maxlim_fcn: 30
+
+##################################################
+verbosity: 0
+threads: 4
