@@ -81,7 +81,7 @@ want to create either a new Conda environment for Python 3 and activate it:
     $ CXXFLAGS=-pthread pip install .
     ```
 
-    When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed intructions](doc_compilation.md).
+    When the compilation process fails or when the environment has special requirements, you may have to manually specify the required paths to Gurobi by following the [detailed instructions](doc_compilation.md).
 
 
 7. **Install required utilities**
@@ -97,5 +97,5 @@ If you wish to use an alternate ILP optimizer, then you do not need a C++ compil
 
 In this case, set the `HATCHET_BUILD_NOEXT` environment variable to `1` (using `export HATCHET_BUILD_NOEXT=1`),
 set the environment variable `HATCHET_COMPUTE_CN_SOLVER` to a Pyomo-supported solver (see the
-[Using a different Pyomo-supported solver](README.html#usingasolver_other) section of the README for more details)
+[Using a different Pyomo-supported solver](README.md#usingasolver_other) section of the README for more details)
 and proceed directly to step (4) above.

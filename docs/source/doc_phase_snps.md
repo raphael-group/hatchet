@@ -34,7 +34,7 @@ The following files will be placed in the directory indicated by `-o, --outdir`:
 If HATCHet is installed via `conda`, the dependencies (`shapeit`, `picard`, `bcftools`, and `bgzip`) should be installed automatically and available on the PATH.
 You can verify that these dependencies are available by running [the check command](doc_check.md), i.e., `hatchet check`.
 
- If HATCHet is installed from source, you may need to install them youself (i.e., via `conda` or from source) and/or specify their locations using the following arguments:
+ If HATCHet is installed from source, you may need to install them yourself (i.e., via `conda` or from source) and/or specify their locations using the following arguments:
 
 | Name | Description | Usage |
 |------|-------------|-------|

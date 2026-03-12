@@ -32,9 +32,9 @@ This step of HATCHet uses the locations of heterozygous SNPs (called by `count-a
 
 | Name | Description | Usage | Default |
 |------|-------------|-------|---------|
-| `-S`, `--samples` | White-space separater list of a names | The first name is used for the matched-normal sample, while the others are for the tumor samples and they match the same order of the corresponding BAM files | File names are used |
-| `-j`, `--processes` | Number of parallel jobs | Parallel jobs are used to consider the chromosomed in different samples in parallel. The higher the number the better the running time (up to 22 * n_samples) | 22 |
-| `-st`, `--samtools` | Path to `bin` directory of SAMtools | The path to this direcoty needs to be specified when it is not included in `$PATH` | Path is expected in the enviroment variable `$PATH` |
+| `-S`, `--samples` | White-space separator list of a names | The first name is used for the matched-normal sample, while the others are for the tumor samples and they match the same order of the corresponding BAM files | File names are used |
+| `-j`, `--processes` | Number of parallel jobs | Parallel jobs are used to consider the chromosomes in different samples in parallel. The higher the number the better the running time (up to 22 * n_samples) | 22 |
+| `-st`, `--samtools` | Path to `bin` directory of SAMtools | The path to this directory needs to be specified when it is not included in `$PATH` | Path is expected in the environment variable `$PATH` |
 | `-md`, `--mosdepth` | Path to the `mosdepth` executable | The path to this executable needs to be specified when it is not included in `$PATH` | None (expected on `PATH`) |
 | `-tx`, `--tabix` | Path to the `tabix` executable | The path to this executable needs to be specified when it is not included in `$PATH` | None (expected on `PATH`) |
 | `-q`, `--readquality` | Minimum mapping quality (MAPQ) for a read to be counted | Values range from 0 to 41, see alignment documentation for details  | 11 |
