@@ -1,18 +1,24 @@
 """Integration test for the full HATCHet3 Snakemake pipeline."""
 
 import os
-import subprocess
+from pathlib import Path
 
 import yaml
 import pandas as pd
 import pytest
+
+from snakemake.api import SnakemakeApi
+from snakemake.settings.types import (
+    ConfigSettings,
+    ResourceSettings,
+)
 
 from conftest import CBC_AVAILABLE
 from simulate_bb_dir import simulate_bb_dir
 
 pytestmark = pytest.mark.skipif(not CBC_AVAILABLE, reason="CBC solver not available")
 
-SNAKEFILE = os.path.join(os.path.dirname(__file__), "..", "Snakefile")
+SNAKEFILE = Path(__file__).resolve().parent.parent / "Snakefile"
 
 
 @pytest.fixture(scope="module")
@@ -22,8 +28,8 @@ def snakemake_result(tmp_path_factory):
     bb_dir = str(base / "bb_dir")
     genome_sizes = str(base / "genome.sizes")
     regions_bed = str(base / "regions.bed")
-    workdir = str(base / "output")
-    os.makedirs(workdir, exist_ok=True)
+    workdir = base / "output"
+    workdir.mkdir(exist_ok=True)
 
     ground_truth = simulate_bb_dir(bb_dir, genome_sizes, regions_bed)
 
@@ -66,58 +72,59 @@ def snakemake_result(tmp_path_factory):
         },
     }
 
-    config_file = str(base / "config.yaml")
+    config_file = base / "config.yaml"
     with open(config_file, "w") as f:
         yaml.dump(config, f)
 
-    cmd = [
-        "snakemake", "-p", "--cores", "1",
-        "-s", os.path.abspath(SNAKEFILE),
-        "--configfile", config_file,
-        "--directory", workdir,
-    ]
+    error = None
+    try:
+        with SnakemakeApi() as api:
+            workflow = api.workflow(
+                resource_settings=ResourceSettings(cores=1),
+                config_settings=ConfigSettings(
+                    configfiles=[config_file],
+                ),
+                snakefile=SNAKEFILE,
+                workdir=workdir,
+            )
+            dag = workflow.dag()
+            dag.execute_workflow()
+    except Exception as exc:
+        error = exc
 
-    result = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=300,
-    )
-
-    return workdir, ground_truth, result
+    return str(workdir), ground_truth, error
 
 
 class TestSnakemakePipeline:
     """Verify the full Snakemake pipeline runs and produces correct outputs."""
 
     def test_snakemake_exit_code(self, snakemake_result):
-        workdir, _, result = snakemake_result
-        assert result.returncode == 0, (
-            f"Snakemake failed with exit code {result.returncode}\n"
-            f"STDOUT:\n{result.stdout[-2000:]}\n"
-            f"STDERR:\n{result.stderr[-2000:]}"
-        )
+        workdir, _, error = snakemake_result
+        assert error is None, f"Snakemake failed:\n{error}"
 
     def test_bbc_output_exists(self, snakemake_result):
-        workdir, _, result = snakemake_result
-        if result.returncode != 0:
+        workdir, _, error = snakemake_result
+        if error is not None:
             pytest.skip("Snakemake failed")
         assert os.path.isfile(os.path.join(workdir, "bbc", "bulk.bbc"))
         assert os.path.isfile(os.path.join(workdir, "bbc", "bulk.seg"))
 
     def test_best_ucn_exists(self, snakemake_result):
-        workdir, _, result = snakemake_result
-        if result.returncode != 0:
+        workdir, _, error = snakemake_result
+        if error is not None:
             pytest.skip("Snakemake failed")
         assert os.path.isfile(os.path.join(workdir, "results", "best.bbc.ucn"))
         assert os.path.isfile(os.path.join(workdir, "results", "best.seg.ucn"))
 
     def test_gammas_exists(self, snakemake_result):
-        workdir, _, result = snakemake_result
-        if result.returncode != 0:
+        workdir, _, error = snakemake_result
+        if error is not None:
             pytest.skip("Snakemake failed")
         assert os.path.isfile(os.path.join(workdir, "results", "gammas.tsv"))
 
     def test_ucn_format(self, snakemake_result):
-        workdir, _, result = snakemake_result
-        if result.returncode != 0:
+        workdir, _, error = snakemake_result
+        if error is not None:
             pytest.skip("Snakemake failed")
         bbc = pd.read_table(
             os.path.join(workdir, "results", "best.bbc.ucn"), sep="\t"
@@ -127,8 +134,8 @@ class TestSnakemakePipeline:
         assert (bbc["cn_normal"] == "1|1").all()
 
     def test_logs_created(self, snakemake_result):
-        workdir, _, result = snakemake_result
-        if result.returncode != 0:
+        workdir, _, error = snakemake_result
+        if error is not None:
             pytest.skip("Snakemake failed")
         assert os.path.isfile(os.path.join(workdir, "logs", "cluster_bins.log"))
         assert os.path.isfile(os.path.join(workdir, "logs", "compute_cn.log"))
