@@ -171,7 +171,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     # aux files
     parser.add_argument(
         "--genome_size",
-        required=False,
+        required=True,
         type=str,
         help="Reference chromosome sizes file (e.g., hg19.chrom.sizes)",
     )

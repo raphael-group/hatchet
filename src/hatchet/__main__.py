@@ -3,6 +3,7 @@ import os
 import sys
 import logging
 import argparse
+from importlib.metadata import version
 
 from hatchet.cluster_bins.cluster_bins import run as hatchet_cluster_bins
 from hatchet.compute_cn.compute_cn import run as hatchet_compute_cn
@@ -14,6 +15,7 @@ from hatchet.utils import setup_logging, log_arguments
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="hatchet")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {version('hatchet')}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     p_clu = subparsers.add_parser("cluster-bins", help="run cluster-bins")

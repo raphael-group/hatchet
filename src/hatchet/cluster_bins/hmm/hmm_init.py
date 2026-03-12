@@ -66,9 +66,9 @@ def init_hmm_cna_plus_plus(
             potential: scalar total potential (sum of D_w); np.inf if degenerate.
             entropy:   scalar Shannon entropy of probs_w; 0.0 if degenerate.
         """
-        # Pick the better haplotype orientation per bin (sum across clusters and samples)
-        chosen_h = lls0_full.sum(axis=(1, 2)) >= lls1_full.sum(axis=(1, 2))  # (N,)
-        lls_best = np.where(chosen_h[:, None, None], lls0_full, lls1_full)  # (N, k, M)
+        # Pick the better haplotype orientation per (bin, cluster) pair (sum across samples)
+        chosen_h = lls0_full.sum(axis=2) >= lls1_full.sum(axis=2)  # (N, k)
+        lls_best = np.where(chosen_h[:, :, None], lls0_full, lls1_full)  # (N, k, M)
 
         # Chebyshev-style distance: worst sample per cluster, then best cluster per bin
         worst_nll_per_cluster = (-lls_best).max(axis=2)  # (N, k)
