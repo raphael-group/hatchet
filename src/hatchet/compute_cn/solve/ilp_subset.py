@@ -827,18 +827,27 @@ class ILPSubset:
         Must be called after run() with a Gurobi solver and pool_size > 1.
         Returns a list of (obj, cA, cB, u) tuples for pool solutions beyond
         the optimal (index 0), which is already returned by run().
+
+        Uses the Pyomo solver's internal variable map to reliably resolve
+        Pyomo variables to their Gurobi counterparts (avoids name-mismatch
+        issues with getVarByName).
         """
         if not hasattr(self, "_pyomo_solver") or self._solver_type not in ("gurobi", "gurobipy"):
             return []
 
         try:
             grb_model = self._pyomo_solver._solver_model
+            var_map = self._pyomo_solver._pyomo_var_to_solver_var_map
         except AttributeError:
             return []
 
         n_pool = grb_model.SolCount
         if n_pool <= 1:
             return []
+
+        def _grb_var(pyomo_var):
+            """Look up the Gurobi variable for a Pyomo Var via the solver map."""
+            return var_map.get(id(pyomo_var))
 
         solutions = []
         for sol_idx in range(1, min(n_pool, pool_size)):
@@ -851,25 +860,28 @@ class ILPSubset:
 
             for _m in range(self.m):
                 for _n in range(self.n):
-                    var_cA = grb_model.getVarByName(f"cA_{_m + 1}_{_n + 1}")
-                    if var_cA is not None:
-                        cA[_m][_n] = int(round(var_cA.Xn))
+                    pyomo_cA = self.optimized_cA[_m][_n]
+                    grb_cA = _grb_var(pyomo_cA) if hasattr(pyomo_cA, "value") else None
+                    if grb_cA is not None:
+                        cA[_m][_n] = int(round(grb_cA.Xn))
                     else:
-                        cA[_m][_n] = int(self._fixed_cA[_m][_n])
+                        cA[_m][_n] = int(getattr(pyomo_cA, "value", pyomo_cA))
 
-                    var_cB = grb_model.getVarByName(f"cB_{_m + 1}_{_n + 1}")
-                    if var_cB is not None:
-                        cB[_m][_n] = int(round(var_cB.Xn))
+                    pyomo_cB = self.optimized_cB[_m][_n]
+                    grb_cB = _grb_var(pyomo_cB) if hasattr(pyomo_cB, "value") else None
+                    if grb_cB is not None:
+                        cB[_m][_n] = int(round(grb_cB.Xn))
                     else:
-                        cB[_m][_n] = int(self._fixed_cB[_m][_n])
+                        cB[_m][_n] = int(getattr(pyomo_cB, "value", pyomo_cB))
 
             for _n in range(self.n):
                 for _k in range(self.k):
-                    var_u = grb_model.getVarByName(f"u_{_n + 1}_{_k + 1}")
-                    if var_u is not None:
-                        u[_n][_k] = var_u.Xn
+                    pyomo_u = self.optimized_u[_n][_k]
+                    grb_u = _grb_var(pyomo_u) if hasattr(pyomo_u, "value") else None
+                    if grb_u is not None:
+                        u[_n][_k] = grb_u.Xn
                     else:
-                        u[_n][_k] = self._fixed_u[_n][_k]
+                        u[_n][_k] = getattr(pyomo_u, "value", pyomo_u)
 
             solutions.append((pool_obj, cA, cB, u))
 
