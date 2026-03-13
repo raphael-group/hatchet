@@ -4,7 +4,7 @@ import logging
 import pandas as pd
 import numpy as np
 
-from hatchet.utils import read_region_bed, sort_df_chr
+from hatchet.utils import read_region_bed, sort_df_chr, build_seg_from_bbc
 from hatchet.plot import plot_cn as _plot_cn
 
 
@@ -407,53 +407,8 @@ def segmentation(
         df[orig_cols + extra_columns].to_csv(bbc_out_file, sep="\t", index=False)
 
     if seg_out_file is not None:
-        df["all_copy_numbers"] = df[cN.columns].apply(",".join, axis=1)
-        first_sample = df["SAMPLE"].iloc[0]
-        df["segment"] = (
-            (df["SAMPLE"] == first_sample)
-            & (
-                (df["#CHR"] != df["#CHR"].shift())
-                | (df["all_copy_numbers"] != df["all_copy_numbers"].shift())
-                | (df["START"] != df["END"].shift())
-            )
-        ).cumsum()
-
-        agg = {"#CHR": "first", "START": "min", "END": "max", "SAMPLE": "first"}
-        agg.update({c: "first" for c in extra_columns})
-        seg = df.groupby(["segment", "SAMPLE"]).agg(agg)
-
         regions = read_region_bed(region_file)
-
-        # Merge adjacent same-CN segments within each region (regions act as merge boundaries).
-        # All segments are preserved; two adjacent same-CN rows are only merged if they fall
-        # within the same region.
-        seg = seg.reset_index(drop=True)
-        cn_cols = [c for c in extra_columns if c.startswith("cn_")]
-        out_cols = ["#CHR", "START", "END", "SAMPLE"] + extra_columns
-
-        # Assign each segment to a region index (-1 = outside all regions)
-        seg["_region"] = -1
-        for r_idx, region in regions.iterrows():
-            mask = (
-                (seg["#CHR"] == region["#CHR"])
-                & (seg["START"] >= region["START"])
-                & (seg["END"] <= region["END"])
-            )
-            seg.loc[mask, "_region"] = r_idx
-
-        merged_rows = []
-        for _, grp in seg.groupby(["SAMPLE", "#CHR", "_region"], sort=False):
-            grp = grp.sort_values("START").reset_index(drop=True)
-            state_key = grp[cn_cols].apply(tuple, axis=1)
-            grp["_run"] = (state_key != state_key.shift()).cumsum()
-            for _, run_grp in grp.groupby("_run"):
-                row = run_grp.iloc[0].copy()
-                row["START"] = run_grp["START"].min()
-                row["END"] = run_grp["END"].max()
-                merged_rows.append(row[out_cols])
-
-        out = sort_df_chr(pd.DataFrame(merged_rows, columns=out_cols), pos="START")
-        out = out.sort_values(["#CHR", "START", "SAMPLE"]).reset_index(drop=True)
+        out = build_seg_from_bbc(df, regions)
         out.to_csv(seg_out_file, sep="\t", index=False)
 
 

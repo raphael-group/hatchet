@@ -149,6 +149,75 @@ def read_region_bed(bed_file: str, names=["#CHR", "START", "END", "NAME"]):
     return regions
 
 
+def build_seg_from_bbc(df: pd.DataFrame, regions: pd.DataFrame) -> pd.DataFrame:
+    """Build a segment-level DataFrame from a bin-level BBC DataFrame with CN columns.
+
+    Adjacent bins with the same copy-number state are merged into segments.
+    Region boundaries (from a BED file) act as merge barriers so that segments
+    never span across regions.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Bin-level DataFrame that must contain columns ``#CHR``, ``START``,
+        ``END``, ``SAMPLE``, plus ``cn_*`` and ``u_*`` columns.
+    regions : pd.DataFrame
+        Region BED DataFrame with ``#CHR``, ``START``, ``END`` columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        Segment-level DataFrame with the same CN/u columns.
+    """
+    cn_cols = [c for c in df.columns if c.startswith("cn_")]
+    u_cols = [c for c in df.columns if c.startswith("u_")]
+    extra_columns = [col for pair in zip(cn_cols, u_cols) for col in pair]
+
+    df = df.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
+    df["all_copy_numbers"] = df[cn_cols].apply(",".join, axis=1)
+    first_sample = df["SAMPLE"].iloc[0]
+    df["segment"] = (
+        (df["SAMPLE"] == first_sample)
+        & (
+            (df["#CHR"] != df["#CHR"].shift())
+            | (df["all_copy_numbers"] != df["all_copy_numbers"].shift())
+            | (df["START"] != df["END"].shift())
+        )
+    ).cumsum()
+
+    agg = {"#CHR": "first", "START": "min", "END": "max", "SAMPLE": "first"}
+    agg.update({c: "first" for c in extra_columns})
+    seg = df.groupby(["segment", "SAMPLE"]).agg(agg).reset_index(drop=True)
+
+    out_cols = ["#CHR", "START", "END", "SAMPLE"] + extra_columns
+
+    # Assign each segment to a region index (-1 = outside all regions)
+    seg["_region"] = -1
+    for r_idx, region in regions.iterrows():
+        mask = (
+            (seg["#CHR"] == region["#CHR"])
+            & (seg["START"] >= region["START"])
+            & (seg["END"] <= region["END"])
+        )
+        seg.loc[mask, "_region"] = r_idx
+
+    # Merge adjacent same-CN segments within each region
+    merged_rows = []
+    for _, grp in seg.groupby(["SAMPLE", "#CHR", "_region"], sort=False):
+        grp = grp.sort_values("START").reset_index(drop=True)
+        state_key = grp[cn_cols].apply(tuple, axis=1)
+        grp["_run"] = (state_key != state_key.shift()).cumsum()
+        for _, run_grp in grp.groupby("_run"):
+            row = run_grp.iloc[0].copy()
+            row["START"] = run_grp["START"].min()
+            row["END"] = run_grp["END"].max()
+            merged_rows.append(row[out_cols])
+
+    out = sort_df_chr(pd.DataFrame(merged_rows, columns=out_cols), pos="START")
+    out = out.sort_values(["#CHR", "START", "SAMPLE"]).reset_index(drop=True)
+    return out
+
+
 def compute_tumor_ploidy(segs: pd.DataFrame, clones: list, tumor_purity: float):
     if tumor_purity <= 1e-8:
         return 0.0

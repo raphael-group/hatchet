@@ -79,7 +79,7 @@ def run(args=None):
     solID = ""
     if solfile != None:
         bbcs, segs, n_clones, n_tumors, solID = override_solution(
-            bbcs, segs, samples, clusters, n_clones, solfile
+            bbcs, samples, clusters, n_clones, solfile, regions
         )
     assert n_tumors > 0, "at least one tumor clone must present"
 
