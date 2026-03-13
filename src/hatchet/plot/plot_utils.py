@@ -68,6 +68,12 @@ def override_solution(
     )
 
     segs = build_seg_from_bbc(bbcs, regions)
+    segs["CNP"] = segs.apply(
+        func=lambda r: ";".join(r[f"cn_{c}"] for c in clones), axis=1
+    )
+    segs["PROPS"] = segs.apply(
+        func=lambda r: ";".join(str(r[f"u_{c}"]) for c in clones), axis=1
+    )
 
     return bbcs, segs, n_clones, n_tumors, solID
 
