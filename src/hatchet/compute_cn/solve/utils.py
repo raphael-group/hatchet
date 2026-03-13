@@ -97,6 +97,44 @@ def store_instance_tofile(
                         fd2.write("\t".join(str(v) for v in fields) + "\n")
     return
 
+def store_pool_tofile(
+    pool_instances: dict,
+    f_a: pd.DataFrame,
+    f_b: pd.DataFrame,
+    baf: pd.DataFrame,
+    tempdir: str,
+    solve_mode: str,
+    n: int,
+):
+    """Store solution-pool alternatives alongside primary solutions.
+
+    pool_instances: {pparam: [(obj, cA, cB, u), ...]}
+    """
+    assert tempdir is not None
+    cluster_ids = f_a.index.tolist()
+    sample_ids = f_a.columns.tolist()
+    clone_cols = ["cn_normal\tu_normal"] + [f"cn_clone{i}\tu_clone{i}" for i in range(1, n)]
+    header = "\t".join(["CLUSTER", "SAMPLE", "baf", "exp-baf", "fcn", "exp-fcn"] + clone_cols)
+
+    with open(f"{tempdir}/{solve_mode}_pool_objs.tsv", "w") as fd1:
+        fd1.write("sol_id\tpool_idx\tobjective\n")
+        for pparam, solutions in pool_instances.items():
+            for pool_idx, (obj, cA, cB, u) in enumerate(solutions, start=1):
+                fd1.write(f"{pparam}\t{pool_idx}\t{obj}\n")
+                with open(f"{tempdir}/{solve_mode}_sol{pparam}_pool{pool_idx}.tsv", "w") as fd2:
+                    fd2.write(header + "\n")
+                    for ci, cid in enumerate(cluster_ids):
+                        for si, sample in enumerate(sample_ids):
+                            fcn = f_a.loc[cid, sample] + f_b.loc[cid, sample]
+                            exp_fcn = sum((cA[ci][oi] + cB[ci][oi]) * u[oi][si] for oi in range(n))
+                            exp_bcount = sum(cB[ci][oi] * u[oi][si] for oi in range(n))
+                            exp_baf = exp_bcount / exp_fcn if exp_fcn != 0 else -1
+                            fields = [cid, sample, baf.loc[cid, sample], exp_baf, fcn, exp_fcn]
+                            for oi in range(n):
+                                fields.extend([f"{cA[ci][oi]}|{cB[ci][oi]}", u[oi][si]])
+                            fd2.write("\t".join(str(v) for v in fields) + "\n")
+
+
 def compute_individual_objs(
     pname: str,
     weights: pd.Series,

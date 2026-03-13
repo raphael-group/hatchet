@@ -232,6 +232,15 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         type=int,
         help="ILP solver timelimit in seconds (default: None)",
     )
+
+    parser.add_argument(
+        "--pool_size",
+        required=False,
+        default=1,
+        type=int,
+        help="Number of Gurobi solution-pool solutions to collect (mode 0, default: 1 = disabled). "
+        "Only effective with --solver gurobi.",
+    )
     ##################################################
     # preprocessing
     parser.add_argument(

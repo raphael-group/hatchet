@@ -319,6 +319,7 @@ def solve_wrapper(
         timelimit=args["timelimit"],
         instances_dir=instances_dir,
         verbose=verbosity >= 1,
+        pool_size=args.get("pool_size", 1),
     )
 
     best_instance, imf_obj = model_selection_instance(

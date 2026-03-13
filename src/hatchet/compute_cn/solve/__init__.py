@@ -47,6 +47,7 @@ def solve(
     timelimit=None,
     instances_dir=None,
     verbose=False,
+    pool_size=1,
 ):
     cd_instances = None
     if solve_mode in ("cd", "both"):
@@ -119,6 +120,7 @@ def solve(
             logging.info(f"use CD local opt with obj={obj} to initialize ILP model")
             solver.hot_start(cA, cB)
 
+        pool_instances = {}
         for i0 in range(0, reg_steps + 1):
             if verbose:
                 logging.info(f"running instance {i0}/{reg_steps}")
@@ -128,9 +130,14 @@ def solve(
                 cA, cB = sol_instances[0][1:3]
                 solver.hot_start(cA, cB)
             sol_instances[pparam] = solver.run(
-                solver_type=solver_type, timelimit=timelimit
+                solver_type=solver_type, timelimit=timelimit, pool_size=pool_size,
             )
             assert sol_instances[pparam] is not None, "optimization failed"
+
+            if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
+                pool_sols = solver.get_pool_solutions(pool_size=pool_size)
+                if pool_sols:
+                    pool_instances[pparam] = pool_sols
 
         if instances_dir is not None:
             store_instance_tofile(
@@ -142,6 +149,16 @@ def solve(
                 solve_mode,
                 n,
             )
+            if pool_instances:
+                store_pool_tofile(
+                    pool_instances,
+                    f_a,
+                    f_b,
+                    baf,
+                    instances_dir,
+                    solve_mode,
+                    n,
+                )
 
     if solve_mode == "cd":
         return cd_instances

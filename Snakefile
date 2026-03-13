@@ -46,6 +46,8 @@ if bool(config["compute_cn"]["no_ampdel"]):
     compute_cn_args_list.append("--no_ampdel")
 if config["compute_cn"].get("purities"):
     compute_cn_args_list.extend(["--purities", str(config["compute_cn"]["purities"])])
+if int(config["compute_cn"].get("pool_size", 1)) > 1:
+    compute_cn_args_list.extend(["--pool_size", int(config["compute_cn"]["pool_size"])])
 compute_cn_args = " ".join(shlex.quote(str(x)) for x in compute_cn_args_list + xargs)
 
 ##################################################

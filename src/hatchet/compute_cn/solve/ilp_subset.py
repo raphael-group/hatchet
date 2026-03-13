@@ -766,15 +766,22 @@ class ILPSubset:
                 U[:, _k] = v
         return U
 
-    def run(self, solver_type="gurobi", timelimit=None, write_path=None, solver=None):
+    def run(self, solver_type="gurobi", timelimit=None, write_path=None, solver=None, pool_size=1):
         if solver is None:
             if solver_type in ("gurobipy", "gurobi"):
                 solver = pe.SolverFactory("gurobi", solver_io="python")
                 solver.options["OutputFlag"] = 0
                 solver.options["LogToConsole"] = 0
                 solver.options["LogFile"] = ""
+                if pool_size > 1:
+                    solver.options["PoolSolutions"] = pool_size
+                    solver.options["PoolSearchMode"] = 0
             else:
                 solver = pe.SolverFactory(solver_type)
+
+        # Store for pool extraction
+        self._pyomo_solver = solver
+        self._solver_type = solver_type
 
         kwargs = {"report_timing": False}
         if timelimit is not None:
@@ -811,3 +818,57 @@ class ILPSubset:
             [[int(getattr(x, "value", x)) for x in row] for row in self.optimized_cB],
             [[getattr(x, "value", x) for x in row] for row in self.optimized_u],
         )
+
+    def get_pool_solutions(self, pool_size=10):
+        """Extract additional solutions from Gurobi's solution pool.
+
+        Must be called after run() with a Gurobi solver and pool_size > 1.
+        Returns a list of (obj, cA, cB, u) tuples for pool solutions beyond
+        the optimal (index 0), which is already returned by run().
+        """
+        if not hasattr(self, "_pyomo_solver") or self._solver_type not in ("gurobi", "gurobipy"):
+            return []
+
+        try:
+            grb_model = self._pyomo_solver._solver_model
+        except AttributeError:
+            return []
+
+        n_pool = grb_model.SolCount
+        if n_pool <= 1:
+            return []
+
+        solutions = []
+        for sol_idx in range(1, min(n_pool, pool_size)):
+            grb_model.setParam("SolutionNumber", sol_idx)
+            pool_obj = grb_model.PoolObjVal
+
+            cA = [[0] * self.n for _ in range(self.m)]
+            cB = [[0] * self.n for _ in range(self.m)]
+            u = [[0.0] * self.k for _ in range(self.n)]
+
+            for _m in range(self.m):
+                for _n in range(self.n):
+                    var_cA = grb_model.getVarByName(f"cA_{_m + 1}_{_n + 1}")
+                    if var_cA is not None:
+                        cA[_m][_n] = int(round(var_cA.Xn))
+                    else:
+                        cA[_m][_n] = int(self._fixed_cA[_m][_n])
+
+                    var_cB = grb_model.getVarByName(f"cB_{_m + 1}_{_n + 1}")
+                    if var_cB is not None:
+                        cB[_m][_n] = int(round(var_cB.Xn))
+                    else:
+                        cB[_m][_n] = int(self._fixed_cB[_m][_n])
+
+            for _n in range(self.n):
+                for _k in range(self.k):
+                    var_u = grb_model.getVarByName(f"u_{_n + 1}_{_k + 1}")
+                    if var_u is not None:
+                        u[_n][_k] = var_u.Xn
+                    else:
+                        u[_n][_k] = self._fixed_u[_n][_k]
+
+            solutions.append((pool_obj, cA, cB, u))
+
+        return solutions
