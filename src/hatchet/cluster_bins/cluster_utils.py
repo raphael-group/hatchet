@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from scipy.special import betaln
+from scipy.special import betaln, polygamma
 from scipy.optimize import minimize_scalar
 from scipy.signal import find_peaks
 from scipy.stats import gaussian_kde
@@ -126,12 +126,48 @@ def estimate_rdr_vars(
     return global_var[None, :]  # (1, M)
 
 
+def compute_baf_se(k_labels, k_betas_phased, X_totals, k_baf_means, k_baf_taus, k_cids):
+    """Observed Fisher information SE for per-cluster BAF means.
+
+    Args:
+        k_labels:        (N,) cluster assignment per bin.
+        k_betas_phased:  (N, M) phased B-allele counts.
+        X_totals:        (N, M) total allele counts.
+        k_baf_means:     (K, M) fitted BAF means per cluster.
+        k_baf_taus:      (M,)   fitted BAF dispersions per sample.
+        k_cids:          (K,)   ordered active cluster IDs.
+
+    Returns:
+        baf_ses: (K, M) standard errors of BAF means.
+    """
+    n_clusters = len(k_cids)
+    n_samples = k_baf_means.shape[1]
+    baf_ses = np.full((n_clusters, n_samples), np.nan)
+    for ci, c in enumerate(k_cids):
+        mask = k_labels == c
+        for m in range(n_samples):
+            p = k_baf_means[ci, m]
+            tau = k_baf_taus[m]
+            a = tau * p
+            b = tau * (1.0 - p)
+            beta_bins = k_betas_phased[mask, m]
+            alpha_bins = X_totals[mask, m] - beta_bins
+            fisher = tau**2 * np.sum(
+                polygamma(1, a) + polygamma(1, b)
+                - polygamma(1, beta_bins + a)
+                - polygamma(1, alpha_bins + b)
+            )
+            baf_ses[ci, m] = 1.0 / np.sqrt(fisher) if fisher > 0 else np.inf
+    return baf_ses
+
+
 ##################################################
 def mat2segs(
     bbcs: pd.DataFrame,
     tumor_samples: list,
     baf_means: np.ndarray,
     baf_taus: np.ndarray,
+    k_baf_ses: np.ndarray,
     rdr_means: np.ndarray,
     rdr_vars: np.ndarray,
     cluster_ids: np.ndarray,
@@ -149,9 +185,10 @@ def mat2segs(
         rdr_means:    (K, M) fitted RDR means.
         rdr_vars:     (K, M) fitted RDR variances.
         cluster_ids:  Ordered array of active cluster IDs (0-indexed).
+        baf_ses:      (K, M) BAF standard errors (optional; NaN if not provided).
 
     Returns:
-        segs: DataFrame with columns #ID, SAMPLE, #BINS, #SNPS, LENGTH, ALPHA, BETA, COV, BAF, BAF-tau, RD, RD-var.
+        segs: DataFrame with columns #ID, SAMPLE, #BINS, #SNPS, LENGTH, ALPHA, BETA, COV, BAF, BAF-se, BAF-tau, RD, RD-var.
               LENGTH is the total base-pair span of bins in the cluster.
               COV is the bin-length-weighted mean depth across bins in the cluster.
     """
@@ -175,6 +212,7 @@ def mat2segs(
                     bb_sample["BETA"].sum(),
                     cov,
                     baf_means[l, s],
+                    k_baf_ses[l, s],
                     baf_taus[s],
                     rdr_means[l, s],
                     rdr_vars[l, s],
@@ -192,6 +230,7 @@ def mat2segs(
             "BETA",
             "COV",
             "BAF",
+            "BAF-se",
             "BAF-tau",
             "RD",
             "RD-var",

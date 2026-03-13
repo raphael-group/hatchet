@@ -392,11 +392,15 @@ def run(args=None):
         bbcs["BAF"] = k_bafs.ravel()
         bbcs["BETA"] = k_betas_phased.ravel().astype(int)
         bbcs["ALPHA"] = (X_totals - k_betas_phased).ravel().astype(int)
+        k_baf_ses = compute_baf_se(
+            k_labels, k_betas_phased, X_totals, k_baf_means, k_baf_taus, k_cids,
+        )
         k_segs = mat2segs(
             bbcs,
             tumor_samples,
             k_baf_means,
             k_baf_taus,
+            k_baf_ses,
             k_rdr_means_nat,
             k_rdr_vars_nat,
             k_cids,
