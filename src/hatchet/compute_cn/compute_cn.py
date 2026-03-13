@@ -11,6 +11,7 @@ import pandas as pd
 from hatchet.utils import *
 from hatchet.compute_cn.compute_cn_utils import *
 from hatchet.compute_cn.compute_cn_utils import run_plot_cn
+from hatchet.compute_cn.scaling import get_scaling_factor
 from hatchet.compute_cn.model_select import *
 from hatchet.hatchet_parser import parse_arguments_compute_cn
 
@@ -61,25 +62,19 @@ def run(args=None):
             bbcs.to_csv(fbbc_path, header=True, index=False, sep="\t")
             args["bbc"] = fbbc_path
 
-    # infer balanced clusters
-    segs = annotate_balanced_clusters(
-        segs, args["balanced_baf_tol"], colname="balanced"
-    )
-    balanced_s = segs.loc[segs["balanced"], "#ID"].unique().tolist()
-    unbalanced_z = segs.loc[~segs["balanced"], "#ID"].unique().tolist()
-
-    # estimate RDR scaling factor
-    s0, pair_noWGD, gammas_noWGD, purities_noWGD, pair_WGD, gammas_WGD, purities_WGD = (
-        get_scaling_factor(
-            samples,
-            segs,
-            balanced_s,
-            unbalanced_z,
-            args["toleranceRDR"],
-            args["toleranceBAF"],
-            args["diploidcmax"],
-            args["tetraploidcmax"],
-        )
+    # infer balanced clusters and estimate RDR scaling factor
+    (
+        s0, pair_noWGD, gammas_noWGD, purities_noWGD,
+        pair_WGD, gammas_WGD, purities_WGD,
+        balanced_s, unbalanced_z,
+    ) = get_scaling_factor(
+        samples,
+        segs,
+        args["balanced_baf_tol"],
+        args["toleranceRDR"],
+        args["toleranceBAF"],
+        args["diploidcmax"],
+        args["tetraploidcmax"],
     )
     gamma_outfile = os.path.join(out_dir, "gammas.tsv")
     with open(gamma_outfile, "w") as fd:
