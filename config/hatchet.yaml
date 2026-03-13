@@ -66,6 +66,8 @@ compute_cn:
   timelimit: null
   # Number of Gurobi solution-pool solutions to collect (1 = disabled)
   pool_size: 1
+  # Relative optimality gap for solution pool (null = keep all feasible)
+  pool_gap: null
 
   # filter clusters by variance distribution
   filter_cluster: false

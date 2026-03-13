@@ -320,6 +320,7 @@ def solve_wrapper(
         instances_dir=instances_dir,
         verbose=verbosity >= 1,
         pool_size=args.get("pool_size", 1),
+        pool_gap=args.get("pool_gap", None),
     )
 
     best_instance, imf_obj = model_selection_instance(

@@ -241,6 +241,15 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         help="Number of Gurobi solution-pool solutions to collect (mode 0, default: 1 = disabled). "
         "Only effective with --solver gurobi.",
     )
+
+    parser.add_argument(
+        "--pool_gap",
+        required=False,
+        default=None,
+        type=float,
+        help="Relative optimality gap for Gurobi solution pool (default: None = keep all). "
+        "E.g. 0.0 keeps only optimal, 0.1 keeps within 10%% of optimal.",
+    )
     ##################################################
     # preprocessing
     parser.add_argument(

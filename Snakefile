@@ -48,6 +48,8 @@ if config["compute_cn"].get("purities"):
     compute_cn_args_list.extend(["--purities", str(config["compute_cn"]["purities"])])
 if int(config["compute_cn"].get("pool_size", 1)) > 1:
     compute_cn_args_list.extend(["--pool_size", int(config["compute_cn"]["pool_size"])])
+if config["compute_cn"].get("pool_gap") is not None:
+    compute_cn_args_list.extend(["--pool_gap", float(config["compute_cn"]["pool_gap"])])
 compute_cn_args = " ".join(shlex.quote(str(x)) for x in compute_cn_args_list + xargs)
 
 ##################################################

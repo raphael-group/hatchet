@@ -48,6 +48,7 @@ def solve(
     instances_dir=None,
     verbose=False,
     pool_size=1,
+    pool_gap=None,
 ):
     cd_instances = None
     if solve_mode in ("cd", "both"):
@@ -130,7 +131,7 @@ def solve(
                 cA, cB = sol_instances[0][1:3]
                 solver.hot_start(cA, cB)
             sol_instances[pparam] = solver.run(
-                solver_type=solver_type, timelimit=timelimit, pool_size=pool_size,
+                solver_type=solver_type, timelimit=timelimit, pool_size=pool_size, pool_gap=pool_gap,
             )
             assert sol_instances[pparam] is not None, "optimization failed"
 

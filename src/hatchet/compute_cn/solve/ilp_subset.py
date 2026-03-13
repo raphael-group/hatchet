@@ -766,7 +766,7 @@ class ILPSubset:
                 U[:, _k] = v
         return U
 
-    def run(self, solver_type="gurobi", timelimit=None, write_path=None, solver=None, pool_size=1):
+    def run(self, solver_type="gurobi", timelimit=None, write_path=None, solver=None, pool_size=1, pool_gap=None):
         if solver is None:
             if solver_type in ("gurobipy", "gurobi"):
                 solver = pe.SolverFactory("gurobi", solver_io="python")
@@ -776,6 +776,8 @@ class ILPSubset:
                 if pool_size > 1:
                     solver.options["PoolSolutions"] = pool_size
                     solver.options["PoolSearchMode"] = 0
+                    if pool_gap is not None:
+                        solver.options["PoolGap"] = pool_gap
             else:
                 solver = pe.SolverFactory(solver_type)
 
