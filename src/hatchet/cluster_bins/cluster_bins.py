@@ -296,7 +296,9 @@ def run(args=None):
             model_ll = sol["model_ll"]
             obj_ll = sol["obj_ll"]
             all_elbo_traces[it] = sol["elbo_trace"]
-            logging.info(f"K={K} restart {it}: model_ll={model_ll:.6f} obj_ll={obj_ll:.6f}")
+            logging.info(
+                f"K={K} restart {it}: model_ll={model_ll:.6f} obj_ll={obj_ll:.6f}"
+            )
             if score_method == "bic":
                 score = score_BIC(model_ll, K, ntumor_samples, nbbs)
             else:
@@ -393,8 +395,14 @@ def run(args=None):
         bbcs["BETA"] = k_betas_phased.ravel().astype(int)
         bbcs["ALPHA"] = (X_totals - k_betas_phased).ravel().astype(int)
         k_baf_ses = compute_baf_se(
-            k_labels, k_betas_phased, X_totals, k_baf_means, k_baf_taus, k_cids,
+            k_labels,
+            k_betas_phased,
+            X_totals,
+            k_baf_means,
+            k_baf_taus,
+            k_cids,
         )
+        k_rdr_ses = compute_rdr_se(k_labels, k_rdr_vars_nat, k_cids)
         k_segs = mat2segs(
             bbcs,
             tumor_samples,
@@ -403,6 +411,7 @@ def run(args=None):
             k_baf_ses,
             k_rdr_means_nat,
             k_rdr_vars_nat,
+            k_rdr_ses,
             k_cids,
         )
         bbcs.to_csv(

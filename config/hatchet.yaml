@@ -74,9 +74,10 @@ compute_cn:
   filter_std: 2.0
 
   # tolerances for locating balanced/clonal clusters
-  balanced_baf_tol: 0.03
-  toleranceRDR: 0.08
-  toleranceBAF: 0.04
+  bal_tost_margin: 0.03
+  tolerance: 0.03
+  bal_tost_alpha: 0.05
+  tol_nstd: 1.0
 
   # clone range
   minClone: 2

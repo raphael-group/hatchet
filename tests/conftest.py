@@ -4,6 +4,7 @@ import json
 import os
 
 import matplotlib
+
 matplotlib.use("Agg")
 
 import pytest
@@ -62,6 +63,7 @@ def cluster_bins_result(synthetic_data, tmp_path_factory):
 def _check_cbc_available():
     try:
         from pyomo import environ as pe
+
         return pe.SolverFactory("cbc").available(exception_flag=False)
     except Exception:
         return False
@@ -98,9 +100,10 @@ def compute_cn_result(cluster_bins_result, synthetic_data, tmp_path_factory):
         "filter_std": 2.0,
         "min_nbins": 10,
         "ub_nbins": 50,
-        "balanced_baf_tol": 0.04,
-        "toleranceRDR": 0.08,
-        "toleranceBAF": 0.04,
+        "bal_tost_margin": 0.04,
+        "tolerance": 0.03,
+        "bal_tost_alpha": 0.05,
+        "tol_nstd": 1.0,
         "minClone": 2,
         "maxClone": 2,
         "diploid": True,

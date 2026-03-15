@@ -66,7 +66,9 @@ def do_mstep(
 
     safe_Nk = np.maximum(Nk, tol)[:, None]  # (K, 1)
     rdr_means = np.einsum("nk,nm->km", posts_marg, X_rdrs) / safe_Nk
-    weighted_var = np.einsum("nk,nm->km", posts_marg, X_rdrs**2) / safe_Nk - rdr_means**2
+    weighted_var = (
+        np.einsum("nk,nm->km", posts_marg, X_rdrs**2) / safe_Nk - rdr_means**2
+    )
     if ig_alpha > 0:
         raw_SS = weighted_var * safe_Nk  # (K, M)
         rdr_vars = np.maximum(

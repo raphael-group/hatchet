@@ -121,7 +121,9 @@ def estimate_rdr_vars(
     diff_valid = diff_rdr[~boundary_mask]  # mask out cross-segment diffs
     mad = np.median(np.abs(diff_valid - np.median(diff_valid, axis=0)), axis=0)
     raw_global_var = (mad * 1.4826) ** 2 / 2.0
-    logging.info(f"RDR global var (pre-clip): {np.array2string(raw_global_var, precision=4)}")
+    logging.info(
+        f"RDR global var (pre-clip): {np.array2string(raw_global_var, precision=4)}"
+    )
     global_var = np.maximum(raw_global_var, min_var)  # (M,)
     return global_var[None, :]  # (1, M)
 
@@ -153,12 +155,35 @@ def compute_baf_se(k_labels, k_betas_phased, X_totals, k_baf_means, k_baf_taus, 
             beta_bins = k_betas_phased[mask, m]
             alpha_bins = X_totals[mask, m] - beta_bins
             fisher = tau**2 * np.sum(
-                polygamma(1, a) + polygamma(1, b)
+                polygamma(1, a)
+                + polygamma(1, b)
                 - polygamma(1, beta_bins + a)
                 - polygamma(1, alpha_bins + b)
             )
             baf_ses[ci, m] = 1.0 / np.sqrt(fisher) if fisher > 0 else np.inf
     return baf_ses
+
+
+def compute_rdr_se(k_labels, k_rdr_vars, k_cids):
+    """Standard error of cluster-level RDR means.
+
+    For the Gaussian emission model, SE = sqrt(var / n_bins).
+
+    Args:
+        k_labels:    (N,) cluster assignment per bin.
+        k_rdr_vars:  (K, M) fitted RDR variances per cluster per sample.
+        k_cids:      (K,) ordered active cluster IDs.
+
+    Returns:
+        rdr_ses: (K, M) standard errors of RDR means.
+    """
+    n_clusters, n_samples = k_rdr_vars.shape
+    rdr_ses = np.full((n_clusters, n_samples), np.nan)
+    for ci, c in enumerate(k_cids):
+        n_bins = np.sum(k_labels == c)
+        if n_bins > 0:
+            rdr_ses[ci, :] = np.sqrt(k_rdr_vars[ci, :] / n_bins)
+    return rdr_ses
 
 
 ##################################################
@@ -170,6 +195,7 @@ def mat2segs(
     k_baf_ses: np.ndarray,
     rdr_means: np.ndarray,
     rdr_vars: np.ndarray,
+    k_rdr_ses: np.ndarray,
     cluster_ids: np.ndarray,
 ):
     """Build the SEG summary DataFrame from per-bin BBC data and cluster parameters.
@@ -215,6 +241,7 @@ def mat2segs(
                     k_baf_ses[l, s],
                     baf_taus[s],
                     rdr_means[l, s],
+                    k_rdr_ses[l, s],
                     rdr_vars[l, s],
                 ]
             )
@@ -233,6 +260,7 @@ def mat2segs(
             "BAF-se",
             "BAF-tau",
             "RD",
+            "RD-se",
             "RD-var",
         ],
     )

@@ -16,8 +16,9 @@ def _ll_gauss(obs_rdrs, exp_rdr, rdr_var, floor_var=1e-12):
     if n == 0:
         return 0.0
     v = max(float(rdr_var), floor_var)
-    return float(-0.5 * np.sum((x - exp_rdr) ** 2) / v
-                 - 0.5 * n * np.log(2 * np.pi * v))
+    return float(
+        -0.5 * np.sum((x - exp_rdr) ** 2) / v - 0.5 * n * np.log(2 * np.pi * v)
+    )
 
 
 def _ll_betabinom(b_counts, total_counts, p, tau, eps=1e-9):
@@ -31,8 +32,13 @@ def _ll_betabinom(b_counts, total_counts, p, tau, eps=1e-9):
     p = float(np.clip(p, eps, 1.0 - eps))
     bb_alpha = tau * p
     bb_beta = tau * (1.0 - p)
-    ll = (betaln(b + bb_alpha, a_counts + bb_beta) - betaln(bb_alpha, bb_beta)
-          + gammaln(t + 1) - gammaln(b + 1) - gammaln(a_counts + 1))
+    ll = (
+        betaln(b + bb_alpha, a_counts + bb_beta)
+        - betaln(bb_alpha, bb_beta)
+        + gammaln(t + 1)
+        - gammaln(b + 1)
+        - gammaln(a_counts + 1)
+    )
     return float(np.sum(ll))
 
 

@@ -44,7 +44,9 @@ class TestComputeCnOutputFormat:
         for cn_val in bbc["cn_clone1"].unique():
             parts = str(cn_val).split("|")
             assert len(parts) == 2, f"CN format should be 'a|b', got '{cn_val}'"
-            assert parts[0].isdigit() and parts[1].isdigit(), f"CN parts should be integers: '{cn_val}'"
+            assert parts[0].isdigit() and parts[1].isdigit(), (
+                f"CN parts should be integers: '{cn_val}'"
+            )
 
     def test_proportions_sum_to_one(self, compute_cn_result):
         """Clone proportions should sum to ~1.0 for each row."""
@@ -60,7 +62,9 @@ class TestComputeCnOutputFormat:
         """Normal clone should always be 1|1."""
         result_dir, _ = compute_cn_result
         bbc = pd.read_table(os.path.join(result_dir, "best.bbc.ucn"), sep="\t")
-        assert (bbc["cn_normal"] == "1|1").all(), "Normal clone CN should be 1|1 everywhere"
+        assert (bbc["cn_normal"] == "1|1").all(), (
+            "Normal clone CN should be 1|1 everywhere"
+        )
 
 
 class TestComputeCnRecovery:
@@ -89,6 +93,4 @@ class TestComputeCnRecovery:
             names=["sample", "gamma_diploid", "gamma_tetraploid"],
         )
         gamma_dip = gammas["gamma_diploid"].iloc[0]
-        assert 1.5 < gamma_dip < 3.0, (
-            f"Expected gamma near 2.0, got {gamma_dip:.3f}"
-        )
+        assert 1.5 < gamma_dip < 3.0, f"Expected gamma near 2.0, got {gamma_dip:.3f}"

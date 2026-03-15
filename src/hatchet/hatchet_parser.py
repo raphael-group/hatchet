@@ -282,7 +282,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
-        "--balanced_baf_tol",
+        "--bal_tost_margin",
         required=False,
         default=3e-2,
         type=float,
@@ -290,20 +290,25 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
-        "-tR",
-        "--toleranceRDR",
+        "--tolerance",
         type=float,
         required=False,
-        default=0.08,
-        help="RDR tolerance, locate clonal cn cluster (default: 0.08)",
+        default=0.03,
+        help="Purity estimation tolerance between BAF and RDR (default: 0.03)",
     )
     parser.add_argument(
-        "-tB",
-        "--toleranceBAF",
+        "--bal_tost_alpha",
         type=float,
         required=False,
-        default=0.04,
-        help="BAF tolerance, locate clonal cn cluster (default: 0.04)",
+        default=0.05,
+        help="TOST equivalence test significance level (default: 0.05)",
+    )
+    parser.add_argument(
+        "--tol_nstd",
+        type=float,
+        required=False,
+        default=1.0,
+        help="Number of std deviations for CN scoring tolerance (default: 1.0)",
     )
 
     ##################################################

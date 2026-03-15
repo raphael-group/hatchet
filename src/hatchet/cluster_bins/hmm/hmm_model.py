@@ -284,7 +284,9 @@ def run_hmm(
         t_mstep_sum += t3_mstep - t2_fwdbwd
 
         if ig_alpha > 0:
-            ig_log_prior = np.sum(-(ig_alpha + 1) * np.log(rdr_vars) - ig_beta / rdr_vars)
+            ig_log_prior = np.sum(
+                -(ig_alpha + 1) * np.log(rdr_vars) - ig_beta / rdr_vars
+            )
             loglik_penalized = loglik + ig_log_prior
         else:
             loglik_penalized = loglik

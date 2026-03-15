@@ -10,6 +10,7 @@ from hatchet.cluster_bins.hmm.hmm_likelihoods import compute_loglik_single_clust
 from hatchet.cluster_bins.hmm.hmm_utils import convert_mhbafs
 from hatchet.cluster_bins.hmm.hmm_init_utils import *
 
+
 ##################################################
 def init_hmm_cna_plus_plus(
     X_rdrs,
@@ -132,7 +133,9 @@ def init_hmm_cna_plus_plus(
             candidates = rng.choice(np.arange(N), size=n_draw, replace=False, p=probs)
 
             # Batch-compute logliks for all candidate clusters at once
-            cand_baf = np.clip(X_bafs[candidates, :], baf_eps, 1 - baf_eps)  # (n_draw, M)
+            cand_baf = np.clip(
+                X_bafs[candidates, :], baf_eps, 1 - baf_eps
+            )  # (n_draw, M)
             cand_rdr = X_rdrs[candidates, :]  # (n_draw, M)
             cand_rdr_vars = np.tile(rdr_vars0[0], (n_draw, 1))  # (n_draw, M)
             cand_lls0, cand_lls1 = compute_loglik_single_cluster_batch(

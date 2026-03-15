@@ -1,298 +1,276 @@
+import math
 import sys
 import logging
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 
 
-# clonal cluster z (a,b)
-def get_purity_by_baf(bafz: float, a: int, b: int):
+def _build_cn_candidates(maxcn):
+    """Build imbalanced CN candidates: (a, b) with a > b, a + b <= maxcn."""
+    return [(1, 0)] + [
+        (c - b, b) for c in range(2, maxcn + 1) for b in range(c // 2 + 1) if c - b != b
+    ]
+
+
+def _score_pair(
+    purities,
+    gammas,
+    clusters,
+    samples,
+    baf,
+    baf_tau,
+    rdr,
+    rd_std,
+    nbins_total,
+    maxcn,
+    k,
+):
+    """Score a (s0, z) pair by total #BINS of clusters it can explain.
+
+    A cluster j is "explained" if there exists integer CN (a, b) with a >= 0, b >= 0,
+    and a + b <= maxcn such that for every sample p, the expected BAF and RDR
+    (given purities[p] and gammas[p]) fall within k * std of the observed values.
+
+    BAF std is computed from the expected BAF: sqrt(p*(1-p) / (tau_p + 1)).
+    RDR std is provided directly (sqrt of within-cluster RDR variance).
     """
-    compute tumor purity by BAF and copy-number (a,b)
-    """
-    num = 2 * bafz - 1
-    dom = (b - 1) - bafz * (a + b - 2)
-    return -1 if dom == 0 else num / dom
-
-
-def get_purity_by_rrd(rrdz: float, a: int, b: int, is_wgd=True):
-    """
-    compute tumor purity by RRD and copy-number (a,b)
-    assumes a + b > 2 when no WGD
-    """
-    num = 2 * rrdz - 2
-    if is_wgd:
-        dom = a + b - 2 - 2 * rrdz
-    else:
-        dom = a + b - 2
-    return -1 if dom == 0 else num / dom
-
-
-def purity_est_err(bafz: float, rrdz: float, a: int, b: int, is_wgd: bool):
-    """
-    estimate tumor purity by 1) BAF and 2) RRD with given cn (a,b)
-    return: estimation error
-    """
-    pbaf = get_purity_by_baf(bafz, a, b)
-    prrd = get_purity_by_rrd(rrdz, a, b, is_wgd)
-    if pbaf <= 0.0 or pbaf > 1.0:
-        return np.inf, pbaf, prrd
-    if prrd <= 0.0 or prrd > 1.0:
-        return np.inf, pbaf, prrd
-    return abs(pbaf - prrd), pbaf, prrd
-
-
-def get_gamma_WGD(rds: float, rdz: float, cz: int):
-    dom = (cz - 2) * rds - 2 * rdz
-    if dom == 0.0:
-        return -1
-    return (2 * cz - 8) / dom
-
-
-def _fit_cn(z, cn_candidates, is_wgd, samples, baf, rrdr, tol_err, is_cand_loh):
-    """
-    Try each (a,b) in cn_candidates using purity_est_err across all samples.
-    Returns ((a,b), purities_dict, min_err) on first match, or (None, None, min_err).
-    """
-    min_err = np.inf
-    for a, b in cn_candidates:
-        if b == 0 and not is_cand_loh[z]:
-            continue
-        purities = {}
-        for sample in samples:
-            perr, pbaf, prrd = purity_est_err(
-                baf.loc[z, sample], rrdr.loc[z, sample], a, b, is_wgd
-            )
-            min_err = min(min_err, perr)
-            if perr <= tol_err:
-                purities[sample] = (pbaf + prrd) / 2
-            else:
-                purities = None
+    score = 0
+    for j in clusters:
+        for c in range(maxcn + 1):
+            explained = False
+            for b in range(c + 1):
+                a = c - b
+                ok = True
+                for si, s in enumerate(samples):
+                    tau = purities[si]
+                    denom = 2 * (1 - tau) + (a + b) * tau
+                    if denom <= 0:
+                        ok = False
+                        break
+                    exp_baf = (1 - tau + b * tau) / denom
+                    exp_rdr = denom / gammas[si]
+                    baf_std = math.sqrt(
+                        exp_baf * (1 - exp_baf) / (baf_tau.loc[j, s] + 1)
+                    )
+                    if abs(baf.loc[j, s] - exp_baf) > k * baf_std:
+                        ok = False
+                        break
+                    if abs(rdr.loc[j, s] - exp_rdr) > k * rd_std.loc[j, s]:
+                        ok = False
+                        break
+                if ok:
+                    score += nbins_total[j]
+                    explained = True
+                    break
+            if explained:
                 break
-        if purities is not None:
-            return (a, b), purities, min_err
-    return None, None, min_err
+    return score
 
 
 def get_scaling_factor(
     samples: list,
     seg: pd.DataFrame,
-    balanced_baf_tol: float,
-    tol_rd_ratio: float,
-    tol_err: float,
+    bal_tost_alpha: float,
+    bal_tost_margin: float,
+    tol_nstd: float,
+    tolerance: float,
     maxcn: int,
     maxcn_wgd: int,
 ):
-    """Compute scaling factors.
+    """Infer RDR scaling factors (gamma) and tumor purities.
 
-    First identifies balanced/unbalanced clusters via balanced_baf_tol,
-    then estimates gamma and purity for noWGD and WGD scenarios.
+    Steps:
+      1. Classify clusters as balanced (BAF ≈ 0.5) or imbalanced via TOST
+         equivalence test. Select base cluster s0 = largest balanced cluster.
+      2. Compute noWGD gamma per sample: gamma_p = 2 / RDR(s0, p).
+      3. For each imbalanced cluster z and candidate CN (a, b), estimate purity
+         from BAF and RRD. When a+b equals base ploidy (2 noWGD, 4 WGD), RRD is
+         degenerate so BAF-only purity is used. For WGD, also compute gamma from
+         the (s0, z) RDR pair.
+      4. Score each valid (z, a, b) pair by counting total #BINS of clusters
+         explainable by some integer CN state within tol_nstd * std of observed
+         BAF/RDR. Select the highest-scoring pair for noWGD and WGD separately.
 
     Returns (s0, pair_noWGD, gammas_noWGD, purities_noWGD,
-             pair_WGD, gammas_WGD, purities_WGD,
-             balanced_s, unbalanced_z).
+             pair_WGD, gammas_WGD, purities_WGD).
     """
-    # identify balanced / unbalanced clusters
+    logging.info("Infer scaling factors & tumor purity")
+
     rdr = seg.pivot(index="#ID", columns="SAMPLE", values="RD")
     baf = seg.pivot(index="#ID", columns="SAMPLE", values="BAF")
-    baf_mat = seg.pivot(index="#ID", columns="SAMPLE", values="BAF")
-    clusters = baf_mat.index.tolist()
+    baf_se = seg.pivot(index="#ID", columns="SAMPLE", values="BAF-se")
+    baf_tau = seg.pivot(index="#ID", columns="SAMPLE", values="BAF-tau")
+    rd_var = seg.pivot(index="#ID", columns="SAMPLE", values="RD-var")
+    rd_std = np.sqrt(rd_var)
+    nbins = seg.pivot(index="#ID", columns="SAMPLE", values="#BINS")
+    clusters = baf.index.tolist()
+
     balanced_s = []
+    imbalanced_z = []
     for cid in clusters:
-        if np.all(np.abs(baf_mat.loc[cid, :] - 0.5) <= balanced_baf_tol):
+        is_balanced = True
+        for sample in samples:
+            diff = baf.loc[cid, sample] - 0.5
+            se = max(baf_se.loc[cid, sample], 1e-12)
+            p_tost = max(
+                norm.cdf((diff - bal_tost_margin) / se),
+                norm.sf((diff + bal_tost_margin) / se),
+            )
+            if p_tost >= bal_tost_alpha:
+                is_balanced = False
+                break
+        if is_balanced:
             balanced_s.append(cid)
+        else:
+            imbalanced_z.append(cid)
 
     if len(balanced_s) == 0:
-        potential_baf_tol = min(np.max(np.abs(baf_mat - 0.5), axis=1))
         logging.error(
-            f"failed to locate balanced clusters, increase balanced_baf_tol to at least {potential_baf_tol:.5f}"
+            "failed to locate balanced clusters via TOST equivalence test "
+            f"(alpha={bal_tost_alpha}, margin={bal_tost_margin}). "
+            "Consider increasing bal_tost_margin or checking clustering results."
         )
         sys.exit(1)
 
-    balanced_set = set(balanced_s)
-    unbalanced_z = [cid for cid in clusters if cid not in balanced_set]
+    s0 = max(balanced_s, key=lambda s: nbins.loc[s, samples].sum())
+    assert np.all(rdr.loc[s0, :] > 0), f"balanced cluster {s0} has RD<=0"
+    logging.info(f"balanced clusters={balanced_s}, base cluster s0={s0}")
 
-    gammas_noWGD = {}
-    purities_noWGD = {}
-    pair_noWGD = None
+    gammas_noWGD = {s: 2.0 / rdr.loc[s0, s] for s in samples}
+    logging.info(f"inferred scaling factor for no-WGD case {gammas_noWGD}")
+    assert all(g > 0 for g in gammas_noWGD.values()), (
+        "at least one sample has invalid scaling factor"
+    )
 
-    gammas_WGD = {}
-    purities_WGD = {}
-    pair_WGD = None
-
-    balanced_s = sorted(balanced_s, key=lambda s: rdr.loc[s, :].mean())
-
-    if len(balanced_s) >= 2:
-        # TODO also reason about (0,0) or (2,2) base?
-        s0, s1 = balanced_s[0], balanced_s[1]
-        pair_noWGD = (s0, s1, (1, 1), (2, 2))
-        logging.info(
-            f"found >1 balanced clusters, assign (1,1) and (2,2) to {s0} and {s1}"
+    if len(imbalanced_z) == 0:
+        logging.warning(
+            "no unbalanced clusters found, skip purity estimation & WGD case"
         )
-        for sample in samples:
-            gamma = 2 / rdr.loc[s0, sample]
-            gammas_noWGD[sample] = gamma
-            purity = (0.5 * rdr.loc[s1, sample] / gamma) - 1
-            purities_noWGD[sample] = purity
-        logging.info(
-            f"estimated purities (noWGD): { {s: f'{p:.4f}' for s, p in purities_noWGD.items()} }"
-        )
-        return (
-            s0,
-            pair_noWGD,
-            gammas_noWGD,
-            purities_noWGD,
-            pair_WGD,
-            gammas_WGD,
-            purities_WGD,
-            balanced_s,
-            unbalanced_z,
-        )
+        return (s0, None, gammas_noWGD, None, None, None, None)
 
-    # found one unbalanced cluster z that pairs with s0 across all samples
-    s0 = balanced_s[0]
-    assert np.all(rdr.loc[s0, :] > 0), f"balanced cluster {s0} has RD<=0, invalid value"
+    cn_nowgd_all = _build_cn_candidates(maxcn)
+    cn_wgd_all = _build_cn_candidates(maxcn_wgd)
+
+    nbins_total = nbins[samples].sum(axis=1)
+    gammas_nowgd_arr = np.array([gammas_noWGD[s] for s in samples])
+
+    valid_nowgd = {}
+    valid_wgd = {}
+
     rrdr = rdr / rdr.loc[s0, :]
-
-    is_cand_loh = {z: True for z in unbalanced_z}
-    # LOH cluster cannot have any lower-RD cluster also has lower BAF.
-    for z in unbalanced_z:
-        for _z in unbalanced_z:
-            if np.all(rdr.loc[_z] < rdr.loc[z]):
-                if np.any(baf.loc[_z] < baf.loc[z]):
-                    is_cand_loh[z] = False
-                    break
-
-    cn_nowgd_above = []
-    cn_wgd_above = []
-    # (3,0),(2,1),(4,0),(3,1),(5,0),(4,1),(3,2)...
-    for c in range(3, max(maxcn, maxcn_wgd) + 1):
-        for b in range(0, (c // 2) + 1):
-            a = c - b
-            if a == b:
-                continue
-            if c <= maxcn:
-                cn_nowgd_above.append((a, b))
-            if c <= maxcn_wgd and c >= 5:
-                cn_wgd_above.append((a, b))
-
-    cn_nowgd_below = [(1, 0)]
-    cn_wgd_below = [(1, 0), (2, 0), (3, 0), (2, 1)]
-
-    logging.debug(
-        f"candiate un-paired clonal states (no WGD): {cn_nowgd_below},{cn_nowgd_above}"
-    )
-    logging.debug(
-        f"candiate un-paired clonal states (WGD): {cn_wgd_below},{cn_wgd_above}"
-    )
-
-    err_noWGD = np.inf
-    err_WGD = np.inf
-    for z in sorted(unbalanced_z, key=lambda z: baf.loc[z, :].mean()):
-        rd_ratio_zs = rdr.loc[z] / rdr.loc[s0]
-        rd_dist_zs = rdr.loc[z] - rdr.loc[s0]
-        if np.all(np.abs(rd_ratio_zs - 1) <= tol_rd_ratio):
-            logging.debug(f"-----------z={z} pair {s0}")
-            # case 1: s0=(1,1), z=(2,0) — BAF only (RD ≈ same, RRD uninformative)
-            if pair_noWGD is None:
-                purities = {}
-                for sample in samples:
-                    pbaf = get_purity_by_baf(baf.loc[z, sample], 2, 0)
-                    if 0.0 < pbaf <= 1.0:
-                        purities[sample] = pbaf
-                    else:
-                        purities = None
-                        break
-                if purities is not None:
-                    pair_noWGD = (s0, z, (1, 1), (2, 0))
-                    purities_noWGD = purities
-
-            # case 2: s0=(2,2), z=(4,0)
-            if pair_WGD is None:
-                cn, purs, err = _fit_cn(
-                    z, [(4, 0)], True, samples, baf, rrdr, tol_err, is_cand_loh
-                )
-                err_WGD = min(err_WGD, err)
-                if cn is not None:
-                    pair_WGD = (s0, z, (2, 2), cn)
-                    purities_WGD = purs
-        elif np.all(rd_dist_zs > 0):
-            logging.debug(f"-----------z={z} above {s0}")
-            if pair_noWGD is None:
-                cn, purs, err = _fit_cn(
-                    z, cn_nowgd_above, False, samples, baf, rrdr, tol_err, is_cand_loh
-                )
-                err_noWGD = min(err_noWGD, err)
-                if cn is not None:
-                    pair_noWGD = (s0, z, (1, 1), cn)
-                    purities_noWGD = purs
-
-            if pair_WGD is None:
-                cn, purs, err = _fit_cn(
-                    z, cn_wgd_above, True, samples, baf, rrdr, tol_err, is_cand_loh
-                )
-                err_WGD = min(err_WGD, err)
-                if cn is not None:
-                    pair_WGD = (s0, z, (2, 2), cn)
-                    purities_WGD = purs
-        elif np.all(rd_dist_zs < 0):
-            logging.debug(f"-----------z={z} below {s0}")
-            if pair_noWGD is None:
-                cn, purs, err = _fit_cn(
-                    z, cn_nowgd_below, False, samples, baf, rrdr, tol_err, is_cand_loh
-                )
-                err_noWGD = min(err_noWGD, err)
-                if cn is not None:
-                    pair_noWGD = (s0, z, (1, 1), cn)
-                    purities_noWGD = purs
-
-            if pair_WGD is None:
-                cn, purs, err = _fit_cn(
-                    z, cn_wgd_below, True, samples, baf, rrdr, tol_err, is_cand_loh
-                )
-                err_WGD = min(err_WGD, err)
-                if cn is not None:
-                    pair_WGD = (s0, z, (2, 2), cn)
-                    purities_WGD = purs
-        else:
+    for z in imbalanced_z:
+        if not (
+            np.all(baf.loc[z, :] < 0.5 + bal_tost_margin)
+            or np.all(baf.loc[z, :] > 0.5 - bal_tost_margin)
+        ):
             logging.debug(
-                f"cluster {z} has inconsistent relative position to {s0} across samples"
+                f"cluster {z} has inconsistent BAF side across samples, skipping"
             )
-            logging.debug(f"RD-distance(z,s)={rd_dist_zs}")
-            logging.debug(f"RD-ratio(z,s)={rd_ratio_zs}")
+            continue
+        is_major = np.all(baf.loc[z, :] > 0.5)
 
-        if pair_noWGD is not None and pair_WGD is not None:
-            break
+        baf_z = baf.loc[z]
+        rrdr_z = rrdr.loc[z]
 
-    logging.debug(f"lowest purity-esimation error (noWGD)={err_noWGD}, bound={tol_err}")
-    logging.debug(f"lowest purity-esimation error (WGD)={err_WGD}, bound={tol_err}")
+        for is_wgd, cn_list in [(False, cn_nowgd_all), (True, cn_wgd_all)]:
+            mc = maxcn_wgd if is_wgd else maxcn
+            for a_orig, b_orig in cn_list:
+                a, b = (b_orig, a_orig) if is_major else (a_orig, b_orig)
 
-    # in noWGD case, pair is not required.
-    for sample in samples:
-        gamma = 2 / rdr.loc[s0, sample]
-        gammas_noWGD[sample] = gamma
+                rrd_degenerate = (a + b == 4) if is_wgd else (a + b == 2)
+                purities = np.empty(len(samples))
+                valid = True
+                for si, s in enumerate(samples):
+                    baf_val = baf_z[s]
+                    dom_baf = (b - 1) - baf_val * (a + b - 2)
+                    pbaf = -1 if dom_baf == 0 else (2 * baf_val - 1) / dom_baf
+                    if pbaf <= 0.0 or pbaf > 1.0:
+                        valid = False
+                        break
+                    if rrd_degenerate:
+                        purities[si] = pbaf
+                    else:
+                        rrd_val = rrdr_z[s]
+                        num_rrd = 2 * rrd_val - 2
+                        if is_wgd:
+                            dom_rrd = a + b - 2 - 2 * rrd_val
+                        else:
+                            dom_rrd = a + b - 2
+                        prrd = -1 if dom_rrd == 0 else num_rrd / dom_rrd
+                        if prrd <= 0.0 or prrd > 1.0 or abs(pbaf - prrd) > tolerance:
+                            valid = False
+                            break
+                        purities[si] = (pbaf + prrd) / 2
+                if not valid:
+                    continue
 
-    if pair_WGD is not None:
-        (_, z, (_, _), (za, zb)) = pair_WGD
-        for sample in samples:
-            gamma = get_gamma_WGD(rdr.loc[s0, sample], rdr.loc[z, sample], za + zb)
-            gammas_WGD[sample] = gamma
+                if is_wgd:
+                    gammas_arr = np.empty(len(samples))
+                    gamma_valid = True
+                    for si, s in enumerate(samples):
+                        cz = a + b
+                        dom = (cz - 2) * rdr.loc[s0, s] - 2 * rdr.loc[z, s]
+                        if dom == 0.0:
+                            gamma_valid = False
+                            break
+                        gammas_arr[si] = (2 * cz - 8) / dom
+                    if not gamma_valid or np.any(gammas_arr <= 0):
+                        continue
+                else:
+                    gammas_arr = gammas_nowgd_arr
 
-    if purities_noWGD:
+                score = _score_pair(
+                    purities,
+                    gammas_arr,
+                    clusters,
+                    samples,
+                    baf,
+                    baf_tau,
+                    rdr,
+                    rd_std,
+                    nbins_total,
+                    mc,
+                    tol_nstd,
+                )
+                if is_wgd:
+                    valid_wgd[(z, a, b)] = (score, purities, gammas_arr)
+                else:
+                    valid_nowgd[(z, a, b)] = (score, purities)
+
+    pair_nowgd, purities_nowgd = None, None
+    best_score = -1
+    for (z, a, b), (score, purs) in valid_nowgd.items():
+        logging.debug(f"  noWGD z={z} cn=({a},{b}) score={score}")
+        if score > best_score:
+            best_score = score
+            pair_nowgd = (s0, z, (1, 1), (a, b))
+            purities_nowgd = dict(zip(samples, purs))
+    if pair_nowgd is not None:
         logging.info(
-            f"estimated purities (noWGD): { {s: f'{p:.4f}' for s, p in purities_noWGD.items()} }"
+            f"best noWGD pair: z={pair_nowgd[1]} cn={pair_nowgd[3]} score={best_score}"
         )
-    if purities_WGD:
+
+    pair_wgd, purities_wgd, gammas_wgd = None, None, None
+    best_score = -1
+    for (z, a, b), (score, purs, gams) in valid_wgd.items():
+        logging.debug(f"  WGD z={z} cn=({a},{b}) score={score}")
+        if score > best_score:
+            best_score = score
+            pair_wgd = (s0, z, (2, 2), (a, b))
+            purities_wgd = dict(zip(samples, purs))
+            gammas_wgd = dict(zip(samples, gams))
+    if pair_wgd is not None:
         logging.info(
-            f"estimated purities (WGD): { {s: f'{p:.4f}' for s, p in purities_WGD.items()} }"
+            f"best WGD pair: z={pair_wgd[1]} cn={pair_wgd[3]} score={best_score}"
         )
+
     return (
         s0,
-        pair_noWGD,
+        pair_nowgd,
         gammas_noWGD,
-        purities_noWGD,
-        pair_WGD,
-        gammas_WGD,
-        purities_WGD,
-        balanced_s,
-        unbalanced_z,
+        purities_nowgd,
+        pair_wgd,
+        gammas_wgd,
+        purities_wgd,
     )

@@ -31,8 +31,8 @@ DEFAULT_REGIONS = [
 
 # Default tumor CN profile: (cn_a, cn_b) per region
 DEFAULT_CN_PROFILE = {
-    "chr1_p-arm": (1, 1),   # balanced diploid
-    "chr1_q-arm": (2, 1),   # gain
+    "chr1_p-arm": (1, 1),  # balanced diploid
+    "chr1_q-arm": (2, 1),  # gain
     "chr22_p-arm": (1, 1),  # balanced diploid
     "chr22_q-arm": (1, 0),  # LOH
 }
@@ -154,14 +154,16 @@ def simulate_bb_dir(
         snps_list.append(total_reads)
 
     # Write bb.tsv.gz
-    bb_df = pd.DataFrame({
-        "#CHR": chrs,
-        "START": starts,
-        "END": ends,
-        "region_id": region_ids,
-        "switchprobs": switchprobs,
-        "#SNPS": snps_list,
-    })
+    bb_df = pd.DataFrame(
+        {
+            "#CHR": chrs,
+            "START": starts,
+            "END": ends,
+            "region_id": region_ids,
+            "switchprobs": switchprobs,
+            "#SNPS": snps_list,
+        }
+    )
     bb_df.to_csv(
         os.path.join(bb_dir, "bb.tsv.gz"),
         sep="\t",
@@ -170,10 +172,12 @@ def simulate_bb_dir(
     )
 
     # Write sample_ids.tsv
-    sample_df = pd.DataFrame({
-        "SAMPLE": ["normal", "tumor1"],
-        "sample_type": ["normal", "tumor"],
-    })
+    sample_df = pd.DataFrame(
+        {
+            "SAMPLE": ["normal", "tumor1"],
+            "sample_type": ["normal", "tumor"],
+        }
+    )
     sample_df.to_csv(os.path.join(bb_dir, "sample_ids.tsv"), sep="\t", index=False)
 
     # Write NPZ files
@@ -222,7 +226,9 @@ def simulate_bb_dir(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Simulate synthetic bb_dir for HATCHet3")
+    parser = argparse.ArgumentParser(
+        description="Simulate synthetic bb_dir for HATCHet3"
+    )
     parser.add_argument(
         "--output_dir",
         default="tests/fixtures/synthetic_bb",

@@ -766,7 +766,15 @@ class ILPSubset:
                 U[:, _k] = v
         return U
 
-    def run(self, solver_type="gurobi", timelimit=None, write_path=None, solver=None, pool_size=1, pool_gap=None):
+    def run(
+        self,
+        solver_type="gurobi",
+        timelimit=None,
+        write_path=None,
+        solver=None,
+        pool_size=1,
+        pool_gap=None,
+    ):
         if solver is None:
             if solver_type in ("gurobipy", "gurobi"):
                 solver = pe.SolverFactory("gurobi", solver_io="python")
@@ -832,7 +840,10 @@ class ILPSubset:
         Pyomo variables to their Gurobi counterparts (avoids name-mismatch
         issues with getVarByName).
         """
-        if not hasattr(self, "_pyomo_solver") or self._solver_type not in ("gurobi", "gurobipy"):
+        if not hasattr(self, "_pyomo_solver") or self._solver_type not in (
+            "gurobi",
+            "gurobipy",
+        ):
             return []
 
         try:

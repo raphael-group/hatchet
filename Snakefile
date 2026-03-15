@@ -207,9 +207,10 @@ rule run_compute_cn:
         ),
         mode=str(config["compute_cn"]["mode"]),  # both|cd|ilp
         solver=str(config["compute_cn"]["solver"]),  # gurobi|cbc
-        balanced_baf_tol=float(config["compute_cn"]["balanced_baf_tol"]),
-        toleranceRDR=float(config["compute_cn"]["toleranceRDR"]),
-        toleranceBAF=float(config["compute_cn"]["toleranceBAF"]),
+        bal_tost_margin=float(config["compute_cn"]["bal_tost_margin"]),
+        tolerance=float(config["compute_cn"]["tolerance"]),
+        bal_tost_alpha=float(config["compute_cn"]["bal_tost_alpha"]),
+        tol_nstd=float(config["compute_cn"]["tol_nstd"]),
         minClone=int(config["compute_cn"]["minClone"]),
         maxClone=int(config["compute_cn"]["maxClone"]),
         reg_term=str(config["compute_cn"]["reg_term"]),
@@ -237,9 +238,10 @@ rule run_compute_cn:
             --solver {params.solver} \
             --genome_size {input.genome_size} \
             --region_bed {input.region_bed} \
-            --balanced_baf_tol {params.balanced_baf_tol} \
-            --toleranceRDR {params.toleranceRDR} \
-            --toleranceBAF {params.toleranceBAF} \
+            --bal_tost_margin {params.bal_tost_margin} \
+            --tolerance {params.tolerance} \
+            --bal_tost_alpha {params.bal_tost_alpha} \
+            --tol_nstd {params.tol_nstd} \
             --minClone {params.minClone} \
             --maxClone {params.maxClone} \
             --reg_term {params.reg_term} \

@@ -35,6 +35,7 @@ def run(args=None):
     os.makedirs(plot_dir, exist_ok=True)
     os.makedirs(sols_dir, exist_ok=True)
 
+    logging.info("load arguments")
     bbcs = read_bbc_file(bbc_file)
     segs = pd.read_table(seg_file, sep="\t")
 
@@ -64,23 +65,28 @@ def run(args=None):
 
     # infer balanced clusters and estimate RDR scaling factor
     (
-        s0, pair_noWGD, gammas_noWGD, purities_noWGD,
-        pair_WGD, gammas_WGD, purities_WGD,
-        balanced_s, unbalanced_z,
+        s0,
+        pair_noWGD,
+        gammas_noWGD,
+        purities_noWGD,
+        pair_WGD,
+        gammas_WGD,
+        purities_WGD,
     ) = get_scaling_factor(
         samples,
         segs,
-        args["balanced_baf_tol"],
-        args["toleranceRDR"],
-        args["toleranceBAF"],
-        args["diploidcmax"],
-        args["tetraploidcmax"],
+        bal_tost_alpha=args["bal_tost_alpha"],
+        bal_tost_margin=args["bal_tost_margin"],
+        tol_nstd=args["tol_nstd"],
+        tolerance=args["tolerance"],
+        maxcn=args["diploidcmax"],
+        maxcn_wgd=args["tetraploidcmax"],
     )
     gamma_outfile = os.path.join(out_dir, "gammas.tsv")
     with open(gamma_outfile, "w") as fd:
         for sample in samples:
             gamma_noWGD = gammas_noWGD.get(sample, 0)
-            gamma_WGD = gammas_WGD.get(sample, 0)
+            gamma_WGD = gammas_WGD.get(sample, 0) if gammas_WGD is not None else 0
             fd.write(f"{sample}\t{gamma_noWGD}\t{gamma_WGD}\n")
 
     segs_sorted = segs.sort_values(["#ID", "SAMPLE"])
@@ -92,8 +98,6 @@ def run(args=None):
         .set_index("#ID")["LENGTH"]
         .sort_index()
     )
-    for cid, length in bins.items():
-        logging.info(f"#{cid}\t{length}")
     weights = 100 * bins / sum(bins)
     cluster_ids = rdr.index.tolist()
     sample_ids = rdr.columns.tolist()
@@ -170,7 +174,9 @@ def run(args=None):
                     args["verbosity"],
                 )
                 tetraploid_sols[n] = (obj, imf_obj)
-                logging.info(f"tetraploid n={n} objective={obj} imf-objective={imf_obj}")
+                logging.info(
+                    f"tetraploid n={n} objective={obj} imf-objective={imf_obj}"
+                )
                 run_plot_cn(args, out_dir, plot_dir, gamma_outfile, "tetraploid", n)
         else:
             logging.warn(f"run_tetraploid=True, but failed to infer clonal pair")
@@ -198,8 +204,12 @@ def run(args=None):
             os.path.join(out_dir, f"results.diploid.n{n_dip}.seg.ucn.tsv"),
             os.path.join(out_dir, "chosen.diploid.seg.ucn"),
         )
-        logging.info(f"chosen diploid n={n_dip}: {os.path.join(out_dir, 'chosen.diploid.bbc.ucn')}")
-        logging.info(f"chosen diploid plots: {os.path.join(plot_dir, f'diploid_n{n_dip}')}")
+        logging.info(
+            f"chosen diploid n={n_dip}: {os.path.join(out_dir, 'chosen.diploid.bbc.ucn')}"
+        )
+        logging.info(
+            f"chosen diploid plots: {os.path.join(plot_dir, f'diploid_n{n_dip}')}"
+        )
 
     if n_tet > 0:
         shutil.copy2(
@@ -210,8 +220,12 @@ def run(args=None):
             os.path.join(out_dir, f"results.tetraploid.n{n_tet}.seg.ucn.tsv"),
             os.path.join(out_dir, "chosen.tetraploid.seg.ucn"),
         )
-        logging.info(f"chosen tetraploid n={n_tet}: {os.path.join(out_dir, 'chosen.tetraploid.bbc.ucn')}")
-        logging.info(f"chosen tetraploid plots: {os.path.join(plot_dir, f'tetraploid_n{n_tet}')}")
+        logging.info(
+            f"chosen tetraploid n={n_tet}: {os.path.join(out_dir, 'chosen.tetraploid.bbc.ucn')}"
+        )
+        logging.info(
+            f"chosen tetraploid plots: {os.path.join(plot_dir, f'tetraploid_n{n_tet}')}"
+        )
 
     if best_type != None:
         shutil.copy2(
@@ -223,7 +237,9 @@ def run(args=None):
             os.path.join(out_dir, "best.seg.ucn"),
         )
         best_n = {"diploid": n_dip, "tetraploid": n_tet}[best_type]
-        logging.info(f"model-selected result ({best_type}): {os.path.join(out_dir, 'best.bbc.ucn')}")
+        logging.info(
+            f"model-selected result ({best_type}): {os.path.join(out_dir, 'best.bbc.ucn')}"
+        )
         logging.info(f"best plots: {os.path.join(plot_dir, f'{best_type}_n{best_n}')}")
 
     return
@@ -285,7 +301,7 @@ def solve_wrapper(
     if args["purities"] is not None:
         purities = args["purities"]
         logging.info(f"purities overridden by user: {purities}")
-    elif purities:
+    elif purities is not None:
         logging.info(f"purities: {purities}")
 
     instances = solve(

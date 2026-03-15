@@ -28,8 +28,20 @@ class TestClusterBinsOutputFormat:
     def test_bbc_columns(self, cluster_bins_result):
         bbc_dir, _ = cluster_bins_result
         bbc = pd.read_table(os.path.join(bbc_dir, "bulk.bbc"), sep="\t")
-        required = {"#CHR", "START", "END", "SAMPLE", "#SNPS", "CLUSTER", "RD", "COV", "BAF"}
-        assert required.issubset(set(bbc.columns)), f"Missing columns: {required - set(bbc.columns)}"
+        required = {
+            "#CHR",
+            "START",
+            "END",
+            "SAMPLE",
+            "#SNPS",
+            "CLUSTER",
+            "RD",
+            "COV",
+            "BAF",
+        }
+        assert required.issubset(set(bbc.columns)), (
+            f"Missing columns: {required - set(bbc.columns)}"
+        )
 
     def test_bbc_rdr_positive(self, cluster_bins_result):
         bbc_dir, _ = cluster_bins_result
@@ -39,13 +51,17 @@ class TestClusterBinsOutputFormat:
     def test_bbc_baf_range(self, cluster_bins_result):
         bbc_dir, _ = cluster_bins_result
         bbc = pd.read_table(os.path.join(bbc_dir, "bulk.bbc"), sep="\t")
-        assert (bbc["BAF"] >= 0).all() and (bbc["BAF"] <= 1).all(), "BAF should be in [0, 1]"
+        assert (bbc["BAF"] >= 0).all() and (bbc["BAF"] <= 1).all(), (
+            "BAF should be in [0, 1]"
+        )
 
     def test_seg_columns(self, cluster_bins_result):
         bbc_dir, _ = cluster_bins_result
         seg = pd.read_table(os.path.join(bbc_dir, "bulk.seg"), sep="\t")
         required = {"#ID", "SAMPLE", "#BINS", "#SNPS", "LENGTH", "BAF", "RD"}
-        assert required.issubset(set(seg.columns)), f"Missing columns: {required - set(seg.columns)}"
+        assert required.issubset(set(seg.columns)), (
+            f"Missing columns: {required - set(seg.columns)}"
+        )
 
     def test_model_scores_format(self, cluster_bins_result):
         bbc_dir, _ = cluster_bins_result
@@ -69,4 +85,6 @@ class TestClusterBinsClusterSeparation:
         bbc = pd.read_table(os.path.join(bbc_dir, "bulk.bbc"), sep="\t")
         medians = bbc.groupby("CLUSTER")["RD"].median()
         rdr_range = medians.max() - medians.min()
-        assert rdr_range > 0.3, f"Cluster RDR range {rdr_range:.3f} too narrow (expected > 0.3)"
+        assert rdr_range > 0.3, (
+            f"Cluster RDR range {rdr_range:.3f} too narrow (expected > 0.3)"
+        )

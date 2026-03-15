@@ -54,7 +54,7 @@ def filtering(
         lb_baf = mv_baf[j] - fstd * stdv_baf[j]
         ub_baf = mv_baf[j] + fstd * stdv_baf[j]
         logging.debug(
-            f"{sample}\tRD-variance bound={(lb_rd, ub_rd)}\tBAF-variance bound={(lb_baf, ub_baf)}"
+            f"{sample} RD-var bound=({lb_rd:.6f}, {ub_rd:.6f}) BAF-var bound=({lb_baf:.6f}, {ub_baf:.6f})"
         )
 
     good_clusters = []
@@ -63,16 +63,22 @@ def filtering(
         nbins = seg[seg["#ID"] == cluster]["#BINS"].iloc[0]
         dv_rd = np.abs(var_rd_matrix[i, :] - mv_rd)
         dv_baf = np.abs(var_baf_matrix[i, :] - mv_baf)
-        logging.debug(
-            f"\t#ID={cluster}\t#bins={nbins}\tRD-variance={var_rd_matrix[i, :]}\tBAF-variance={var_baf_matrix[i, :]}"
-        )
-        logging.debug(f"\tZ(RD)={dv_rd / stdv_rd}\tZ(BAF)={dv_baf / stdv_baf}")
-        if (
+        z_rd = dv_rd / stdv_rd
+        z_baf = dv_baf / stdv_baf
+        is_outlier = (
             np.all(dv_rd > (fstd * stdv_rd))
             or np.all(dv_baf > (fstd * stdv_baf))
             or cluster_filtered[i]
-        ) and (nbins <= ub_nbins):
-            logging.info(f"cluster {cluster} is outlier, removed")
+        ) and (nbins <= ub_nbins)
+        status = "REMOVED" if is_outlier else "kept"
+        for j, sample in enumerate(samples):
+            logging.debug(
+                f"z={cluster} {sample} #bins={nbins} "
+                f"RD-var={var_rd_matrix[i, j]:.6f} Z(RD)={z_rd[j]:.4f} "
+                f"BAF-var={var_baf_matrix[i, j]:.6f} Z(BAF)={z_baf[j]:.4f} "
+                f"{status}"
+            )
+        if is_outlier:
             bad_clusters.append(cluster)
         else:
             good_clusters.append(cluster)
