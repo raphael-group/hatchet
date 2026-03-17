@@ -203,7 +203,7 @@ def build_seg_from_bbc(df: pd.DataFrame, regions: pd.DataFrame) -> pd.DataFrame:
 
     # Merge adjacent same-CN segments within each region
     merged_rows = []
-    for _, grp in seg.groupby(["SAMPLE", "#CHR", "_region"], sort=False):
+    for _, grp in seg.groupby(["SAMPLE", "#CHR", "_region"], sort=False, observed=True):
         grp = grp.sort_values("START").reset_index(drop=True)
         state_key = grp[cn_cols].apply(tuple, axis=1)
         grp["_run"] = (state_key != state_key.shift()).cumsum()
