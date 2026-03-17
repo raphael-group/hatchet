@@ -39,6 +39,7 @@ def solve(
     reg_stepsize: float,
     solver_type: str,
     solve_mode: str,
+    base: int = 1,
     max_iters=10,
     max_convergence_iters=2,
     n_seed=400,
@@ -67,6 +68,7 @@ def solve(
             reg_term=reg_term,
             reg_steps=reg_steps,
             reg_stepsize=reg_stepsize,
+            base=base,
         )
 
         # obj. value => (cA, cB, u) mapping
@@ -112,6 +114,7 @@ def solve(
             purities=purities,
             copy_numbers_fixed=copy_numbers_fixed,
             penalty_param=[reg_term if reg_term is not None else "RAW", 0.0],
+            base=base,
         )
         solver.create_model(pprint=verbose)
         if solve_mode == "both":

@@ -298,6 +298,7 @@ def solve_wrapper(
         ploidy
     ]
     ampdel = not args["no_ampdel"]
+    base = 1 if ploidy == "diploid" else 2
     if args["purities"] is not None:
         purities = args["purities"]
         logging.info(f"purities overridden by user: {purities}")
@@ -322,6 +323,7 @@ def solve_wrapper(
         reg_stepsize=args["reg_stepsize"],
         solver_type=args["solver"],
         solve_mode=solve_mode,
+        base=base,
         max_iters=args["cd_niters"],
         max_convergence_iters=args["cd_convergence_iters"],
         n_seed=args["cd_nseeds"],
