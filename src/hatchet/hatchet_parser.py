@@ -147,9 +147,9 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--tau_iters",
         required=False,
-        default=1,
+        default=0,
         type=int,
-        help="Number of EM iterations during which BAF dispersion tau is updated (default: 1)",
+        help="Number of EM iterations during which BAF dispersion tau is updated (default: 0)",
     )
 
     parser.add_argument(
