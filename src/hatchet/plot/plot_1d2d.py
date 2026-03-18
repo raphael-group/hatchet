@@ -759,7 +759,9 @@ def plot_rdr_baf(
             )
         fig.suptitle(f"sample={sample}")
         axes[0].grid(True, axis="y")
+        axes[0].grid(False, axis="x")
         axes[1].grid(True, axis="y")
+        axes[1].grid(False, axis="x")
         if cluster_labels is not None:
             ncol = max(1, int(np.ceil(len(unique_labels) / 10)))
             sns.move_legend(

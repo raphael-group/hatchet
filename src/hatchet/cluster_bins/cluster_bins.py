@@ -364,14 +364,12 @@ def run(args=None):
 
         for ci, c in enumerate(k_cids):
             mask = k_labels == c
-            emp_rdr = np.median(X_rdrs[mask], axis=0)
-            emp_mhbaf = np.median(np.minimum(k_bafs[mask], 1.0 - k_bafs[mask]), axis=0)
             inf_rdr = k_rdr_means_nat[ci]
             inf_mhbaf = np.minimum(k_baf_means[ci], 1.0 - k_baf_means[ci])
             logging.info(
                 f"K={K} cluster {c:2d} (n={mask.sum():5d}): "
-                f"RDR emp={np.round(emp_rdr, 3)} inf={np.round(inf_rdr, 3)} | "
-                f"mhBAF emp={np.round(emp_mhbaf, 3)} inf={np.round(inf_mhbaf, 3)}"
+                f"RDR={np.round(inf_rdr, 3)} | "
+                f"mhBAF={np.round(inf_mhbaf, 3)}"
             )
 
         plot_rdr_baf(
