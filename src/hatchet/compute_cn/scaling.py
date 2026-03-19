@@ -16,7 +16,8 @@ def _build_cn_candidates(maxcn):
 def _score_pair(
     purities,
     gammas,
-    clusters,
+    balanced_s,
+    imbalanced_z,
     samples,
     baf,
     baf_tau,
@@ -32,18 +33,11 @@ def _score_pair(
 ):
     """Score a (s0, z) pair by total #BINS of clusters it can explain.
 
-    A cluster j is "explained" if there exists integer CN (a, b) with a >= 0, b >= 0,
-    and a + b <= maxcn such that for every sample p, the expected BAF and RDR
-    (given purities[p] and gammas[p]) fall within k * std of the observed values.
+    Balanced clusters are only tested against balanced CN states (a == b),
+    and imbalanced clusters are only tested against imbalanced states (a != b).
 
-    s0 and z are excluded from scoring since they are the reference points used
-    to derive purity and gamma (counting them would be circular).
-
-    Before scoring, verifies that z is consistent with its assumed CN
-    (z_a, z_b) under the derived purities/gammas. If z fails, returns (0, {}).
-
-    BAF std is computed from the expected BAF: sqrt(p*(1-p) / (tau_p + 1)).
-    RDR std is provided directly (sqrt of within-cluster RDR variance).
+    s0 and z are excluded from scoring. Before scoring, verifies that z is
+    consistent with its assumed CN under the derived purities/gammas.
     """
     # Self-consistency check: z must match its assumed CN
     for si, s in enumerate(samples):
@@ -53,9 +47,7 @@ def _score_pair(
             return 0, float("inf"), {}
         exp_baf = (1 - tau + z_b * tau) / denom
         exp_rdr = denom / gammas[si]
-        baf_std = math.sqrt(
-            exp_baf * (1 - exp_baf) / (baf_tau.loc[z_cluster, s] + 1)
-        )
+        baf_std = math.sqrt(exp_baf * (1 - exp_baf) / (baf_tau.loc[z_cluster, s] + 1))
         if abs(baf.loc[z_cluster, s] - exp_baf) > k * baf_std:
             return 0, float("inf"), {}
         if abs(rdr.loc[z_cluster, s] - exp_rdr) > k * rd_std.loc[z_cluster, s]:
@@ -64,16 +56,21 @@ def _score_pair(
     score = 0
     loss = 0.0
     matches = {}
-    for j in clusters:
-        if j == s0_cluster or j == z_cluster:
-            continue
-        matched_cn = None
-        match_detail = None
-        best_loss = float("inf")
-        for c in range(maxcn + 1):
-            for b in range(c + 1):
-                a = c - b
-                ok = True
+    for j_is_balanced, cluster_list in [(True, balanced_s), (False, imbalanced_z)]:
+        for j in cluster_list:
+            if j == s0_cluster or j == z_cluster:
+                continue
+            matched_cn = None
+            match_detail = None
+            best_loss = float("inf")
+            for c in range(maxcn + 1):
+                for b in range(c + 1):
+                    a = c - b
+                    if j_is_balanced and a != b:
+                        continue
+                    if not j_is_balanced and a == b:
+                        continue
+                    ok = True
                 details = []
                 cn_loss = 0.0
                 for si, s in enumerate(samples):
@@ -103,10 +100,10 @@ def _score_pair(
                     best_loss = cn_loss
                     matched_cn = (a, b)
                     match_detail = details
-        if matched_cn is not None:
-            score += nbins_total[j]
-            loss += best_loss
-            matches[j] = (matched_cn, int(nbins_total[j]), match_detail)
+            if matched_cn is not None:
+                score += nbins_total[j]
+                loss += best_loss
+                matches[j] = (matched_cn, int(nbins_total[j]), match_detail)
     return score, loss, matches
 
 
@@ -199,7 +196,6 @@ def get_scaling_factor(
     valid_nowgd = {}
     valid_wgd = {}
 
-    rrdr = rdr / rdr.loc[s0, :]
     for z in imbalanced_z:
         if not (
             np.all(baf.loc[z, :] < 0.5 + bal_tost_margin)
@@ -212,14 +208,12 @@ def get_scaling_factor(
         is_major = np.all(baf.loc[z, :] > 0.5)
 
         baf_z = baf.loc[z]
-        rrdr_z = rrdr.loc[z]
 
         for is_wgd, cn_list in [(False, cn_nowgd_all), (True, cn_wgd_all)]:
             mc = maxcn_wgd if is_wgd else maxcn
             for a_orig, b_orig in cn_list:
                 a, b = (b_orig, a_orig) if is_major else (a_orig, b_orig)
 
-                rrd_degenerate = (a + b == 4) if is_wgd else (a + b == 2)
                 purities = np.empty(len(samples))
                 valid = True
                 for si, s in enumerate(samples):
@@ -251,7 +245,8 @@ def get_scaling_factor(
                 score, loss, matches = _score_pair(
                     purities,
                     gammas_arr,
-                    clusters,
+                    balanced_s,
+                    imbalanced_z,
                     samples,
                     baf,
                     baf_tau,
