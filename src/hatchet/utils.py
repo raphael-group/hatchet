@@ -1,11 +1,7 @@
 import os
-import sys
-import gzip
 import time
 import logging
 import resource
-import subprocess
-from io import StringIO
 from collections import OrderedDict
 from contextlib import contextmanager
 
@@ -123,6 +119,11 @@ def read_bbc_file(bbc_file: str):
 
 def read_seg_ucn_file(seg_ucn_file: str):
     segs_df = pd.read_table(seg_ucn_file, sep="\t")
+    return prepare_seg_ucn(segs_df)
+
+
+def prepare_seg_ucn(segs_df: pd.DataFrame):
+    """Add CNP/PROPS columns to a seg UCN DataFrame and return (df, clones, clone_props)."""
     segs_df = sort_df_chr(segs_df, pos="START")
 
     n_clones = len([cname for cname in segs_df.columns if cname.startswith("cn_")])
@@ -134,7 +135,8 @@ def read_seg_ucn_file(seg_ucn_file: str):
         func=lambda r: ";".join(str(r[f"u_{c}"]) for c in clones), axis=1
     )
 
-    # TODO fix 1clone
+    # Clone proportions are read from the first row; all rows share the same
+    # per-sample proportions for a given clone, so any row gives the same result.
     clone_props = segs_df[[f"u_{clone}" for clone in clones]].iloc[0].tolist()
     return segs_df, clones, clone_props
 
@@ -259,13 +261,17 @@ def setup_logging(args) -> None:
 def add_file_logging(out_dir: str, command: str = "hatchet") -> None:
     """Attach a FileHandler to the root logger so logs are also written to *out_dir/<command>.log*."""
     os.makedirs(out_dir, exist_ok=True)
-    level = logging.root.level if logging.root.level != logging.WARNING else logging.INFO
+    level = (
+        logging.root.level if logging.root.level != logging.WARNING else logging.INFO
+    )
     fh = logging.FileHandler(os.path.join(out_dir, f"{command}.log"), mode="w")
     fh.setLevel(level)
-    fh.setFormatter(logging.Formatter(
-        "%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    ))
+    fh.setFormatter(
+        logging.Formatter(
+            "%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
     logging.root.addHandler(fh)
     if logging.root.level > level:
         logging.root.setLevel(level)

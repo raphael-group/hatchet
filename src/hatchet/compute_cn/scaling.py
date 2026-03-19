@@ -25,6 +25,10 @@ def _score_pair(
     nbins_total,
     maxcn,
     k,
+    s0_cluster,
+    z_cluster,
+    z_a,
+    z_b,
 ):
     """Score a (s0, z) pair by total #BINS of clusters it can explain.
 
@@ -32,16 +36,46 @@ def _score_pair(
     and a + b <= maxcn such that for every sample p, the expected BAF and RDR
     (given purities[p] and gammas[p]) fall within k * std of the observed values.
 
+    s0 and z are excluded from scoring since they are the reference points used
+    to derive purity and gamma (counting them would be circular).
+
+    Before scoring, verifies that z is consistent with its assumed CN
+    (z_a, z_b) under the derived purities/gammas. If z fails, returns (0, {}).
+
     BAF std is computed from the expected BAF: sqrt(p*(1-p) / (tau_p + 1)).
     RDR std is provided directly (sqrt of within-cluster RDR variance).
     """
+    # Self-consistency check: z must match its assumed CN
+    for si, s in enumerate(samples):
+        tau = purities[si]
+        denom = 2 * (1 - tau) + (z_a + z_b) * tau
+        if denom <= 0:
+            return 0, float("inf"), {}
+        exp_baf = (1 - tau + z_b * tau) / denom
+        exp_rdr = denom / gammas[si]
+        baf_std = math.sqrt(
+            exp_baf * (1 - exp_baf) / (baf_tau.loc[z_cluster, s] + 1)
+        )
+        if abs(baf.loc[z_cluster, s] - exp_baf) > k * baf_std:
+            return 0, float("inf"), {}
+        if abs(rdr.loc[z_cluster, s] - exp_rdr) > k * rd_std.loc[z_cluster, s]:
+            return 0, float("inf"), {}
+
     score = 0
+    loss = 0.0
+    matches = {}
     for j in clusters:
+        if j == s0_cluster or j == z_cluster:
+            continue
+        matched_cn = None
+        match_detail = None
+        best_loss = float("inf")
         for c in range(maxcn + 1):
-            explained = False
             for b in range(c + 1):
                 a = c - b
                 ok = True
+                details = []
+                cn_loss = 0.0
                 for si, s in enumerate(samples):
                     tau = purities[si]
                     denom = 2 * (1 - tau) + (a + b) * tau
@@ -53,19 +87,27 @@ def _score_pair(
                     baf_std = math.sqrt(
                         exp_baf * (1 - exp_baf) / (baf_tau.loc[j, s] + 1)
                     )
-                    if abs(baf.loc[j, s] - exp_baf) > k * baf_std:
+                    obs_baf = baf.loc[j, s]
+                    obs_rdr = rdr.loc[j, s]
+                    if abs(obs_baf - exp_baf) > k * baf_std:
                         ok = False
                         break
-                    if abs(rdr.loc[j, s] - exp_rdr) > k * rd_std.loc[j, s]:
+                    if abs(obs_rdr - exp_rdr) > k * rd_std.loc[j, s]:
                         ok = False
                         break
-                if ok:
-                    score += nbins_total[j]
-                    explained = True
-                    break
-            if explained:
-                break
-    return score
+                    cn_loss += (obs_baf - exp_baf) ** 2 + (obs_rdr - exp_rdr) ** 2
+                    details.append(
+                        f"{s}: BAF={obs_baf:.4f}/{exp_baf:.4f} RDR={obs_rdr:.4f}/{exp_rdr:.4f}"
+                    )
+                if ok and cn_loss < best_loss:
+                    best_loss = cn_loss
+                    matched_cn = (a, b)
+                    match_detail = details
+        if matched_cn is not None:
+            score += nbins_total[j]
+            loss += best_loss
+            matches[j] = (matched_cn, int(nbins_total[j]), match_detail)
+    return score, loss, matches
 
 
 def get_scaling_factor(
@@ -74,7 +116,6 @@ def get_scaling_factor(
     bal_tost_alpha: float,
     bal_tost_margin: float,
     tol_nstd: float,
-    tolerance: float,
     maxcn: int,
     maxcn_wgd: int,
 ):
@@ -188,20 +229,7 @@ def get_scaling_factor(
                     if pbaf <= 0.0 or pbaf > 1.0:
                         valid = False
                         break
-                    if rrd_degenerate:
-                        purities[si] = pbaf
-                    else:
-                        rrd_val = rrdr_z[s]
-                        num_rrd = 2 * rrd_val - 2
-                        if is_wgd:
-                            dom_rrd = a + b - 2 - 2 * rrd_val
-                        else:
-                            dom_rrd = a + b - 2
-                        prrd = -1 if dom_rrd == 0 else num_rrd / dom_rrd
-                        if prrd <= 0.0 or prrd > 1.0 or abs(pbaf - prrd) > tolerance:
-                            valid = False
-                            break
-                        purities[si] = (pbaf + prrd) / 2
+                    purities[si] = pbaf
                 if not valid:
                     continue
 
@@ -220,7 +248,7 @@ def get_scaling_factor(
                 else:
                     gammas_arr = gammas_nowgd_arr
 
-                score = _score_pair(
+                score, loss, matches = _score_pair(
                     purities,
                     gammas_arr,
                     clusters,
@@ -232,37 +260,54 @@ def get_scaling_factor(
                     nbins_total,
                     mc,
                     tol_nstd,
+                    s0,
+                    z,
+                    a,
+                    b,
+                )
+                wgd_tag = "WGD" if is_wgd else "noWGD"
+                match_lines = []
+                for j, (cn, nb, details) in matches.items():
+                    det_str = "; ".join(details)
+                    match_lines.append(
+                        f"    j={j} cn=({cn[0]},{cn[1]}) #bins={nb} [{det_str}]"
+                    )
+                logging.debug(
+                    f"  {wgd_tag} z={z} cn=({a},{b}) purity={purities} score={score} loss={loss:.6f}\n"
+                    + "\n".join(match_lines)
                 )
                 if is_wgd:
-                    valid_wgd[(z, a, b)] = (score, purities, gammas_arr)
+                    valid_wgd[(z, a, b)] = (score, loss, purities, gammas_arr)
                 else:
-                    valid_nowgd[(z, a, b)] = (score, purities)
+                    valid_nowgd[(z, a, b)] = (score, loss, purities)
 
     pair_nowgd, purities_nowgd = None, None
-    best_score = -1
-    for (z, a, b), (score, purs) in valid_nowgd.items():
-        logging.debug(f"  noWGD z={z} cn=({a},{b}) score={score}")
-        if score > best_score:
-            best_score = score
+    best_key = (-1, float("-inf"))
+    for (z, a, b), (score, loss, purs) in valid_nowgd.items():
+        key = (score, -loss)
+        if key > best_key:
+            best_key = key
             pair_nowgd = (s0, z, (1, 1), (a, b))
             purities_nowgd = dict(zip(samples, purs))
     if pair_nowgd is not None:
         logging.info(
-            f"best noWGD pair: z={pair_nowgd[1]} cn={pair_nowgd[3]} score={best_score}"
+            f"best noWGD pair: z={pair_nowgd[1]} cn={pair_nowgd[3]} "
+            f"score={best_key[0]} loss={-best_key[1]:.6f}"
         )
 
     pair_wgd, purities_wgd, gammas_wgd = None, None, None
-    best_score = -1
-    for (z, a, b), (score, purs, gams) in valid_wgd.items():
-        logging.debug(f"  WGD z={z} cn=({a},{b}) score={score}")
-        if score > best_score:
-            best_score = score
+    best_key = (-1, float("-inf"))
+    for (z, a, b), (score, loss, purs, gams) in valid_wgd.items():
+        key = (score, -loss)
+        if key > best_key:
+            best_key = key
             pair_wgd = (s0, z, (2, 2), (a, b))
             purities_wgd = dict(zip(samples, purs))
             gammas_wgd = dict(zip(samples, gams))
     if pair_wgd is not None:
         logging.info(
-            f"best WGD pair: z={pair_wgd[1]} cn={pair_wgd[3]} score={best_score}"
+            f"best WGD pair: z={pair_wgd[1]} cn={pair_wgd[3]} "
+            f"score={best_key[0]} loss={-best_key[1]:.6f}"
         )
 
     return (

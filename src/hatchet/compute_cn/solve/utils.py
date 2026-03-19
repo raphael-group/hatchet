@@ -74,9 +74,7 @@ def store_instance_tofile(
     clone_cols = ["cn_normal\tu_normal"] + [
         f"cn_clone{i}\tu_clone{i}" for i in range(1, n)
     ]
-    header = "\t".join(
-        ["CLUSTER", "SAMPLE", "exp-baf", "fcn", "exp-fcn"] + clone_cols
-    )
+    header = "\t".join(["CLUSTER", "SAMPLE", "exp-baf", "fcn", "exp-fcn"] + clone_cols)
     with open(f"{tempdir}/{solve_mode}_objs.tsv", "w") as fd1:
         fd1.write("sol_id\tobjective\n")
         for i, (obj, cA, cB, u) in result.items():
@@ -122,9 +120,7 @@ def store_pool_tofile(
     clone_cols = ["cn_normal\tu_normal"] + [
         f"cn_clone{i}\tu_clone{i}" for i in range(1, n)
     ]
-    header = "\t".join(
-        ["CLUSTER", "SAMPLE", "exp-baf", "fcn", "exp-fcn"] + clone_cols
-    )
+    header = "\t".join(["CLUSTER", "SAMPLE", "exp-baf", "fcn", "exp-fcn"] + clone_cols)
 
     with open(f"{tempdir}/{solve_mode}_pool_objs.tsv", "w") as fd1:
         fd1.write("sol_id\tpool_idx\tobjective\n")
@@ -194,9 +190,13 @@ def compute_obj_IMF(weights, fA, fB, cA, cB, u):
     return obj
 
 
-def compute_obj_DROOT_SUM(weights, fA, fB, cA, cB, u):
-    """
-    DROOT: hamming distance between (a,b) and (1,1), for tumor clones, per cluster
+def compute_obj_DROOT_SUM(weights, _fA, _fB, cA, cB, _u):
+    """Compute weighted sum of CN distance from the diploid root (1,1) for tumor clones.
+
+    All regularisation objective functions share the same call signature
+    ``(weights, fA, fB, cA, cB, u)`` so they can be dispatched uniformly via a
+    dict in ``compute_individual_objs``.  Parameters not needed by this objective
+    are prefixed with ``_``.
     """
     distA = weights * np.abs(cA[:, 1:] - cA[:, :1])
     distB = weights * np.abs(cB[:, 1:] - cB[:, :1])
@@ -204,25 +204,33 @@ def compute_obj_DROOT_SUM(weights, fA, fB, cA, cB, u):
     return obj
 
 
-def compute_obj_DADJ_SUM(weights, fA, fB, cA, cB, u):
-    """
-    DADJ: hamming distance between (a,b) and (a',b'), for all clones, per cluster
+def compute_obj_DADJ_SUM(weights, _fA, _fB, cA, cB, _u):
+    """Compute weighted pairwise Hamming distance between clone CN states.
+
+    All regularisation objective functions share the same call signature
+    ``(weights, fA, fB, cA, cB, u)`` so they can be dispatched uniformly via a
+    dict in ``compute_individual_objs``.  Parameters not needed by this objective
+    are prefixed with ``_``.
     """
     obj = 0
-    (m, n) = cA.shape
-    for _m in range(m):
-        obj_m = 0.0
-        for _n1 in range(n - 1):
-            for _n2 in range(_n1 + 1, n):
-                obj_m += abs(cA[_m, _n1] - cA[_m, _n2])
-                obj_m += abs(cB[_m, _n1] - cB[_m, _n2])
-        obj += weights[_m, 0] * obj_m
+    num_clusters, num_clones = cA.shape
+    for cluster_idx in range(num_clusters):
+        obj_cluster = 0.0
+        for clone_i in range(num_clones - 1):
+            for clone_j in range(clone_i + 1, num_clones):
+                obj_cluster += abs(cA[cluster_idx, clone_i] - cA[cluster_idx, clone_j])
+                obj_cluster += abs(cB[cluster_idx, clone_i] - cB[cluster_idx, clone_j])
+        obj += weights[cluster_idx, 0] * obj_cluster
     return obj
 
 
-def compute_obj_MAXCN(weights, fA, fB, cA, cB, u):
-    """
-    MAXCN: weighted sum of cn-state per cluster
+def compute_obj_MAXCN(weights, _fA, _fB, cA, cB, _u):
+    """Compute weighted sum of maximum CN per cluster across tumor clones.
+
+    All regularisation objective functions share the same call signature
+    ``(weights, fA, fB, cA, cB, u)`` so they can be dispatched uniformly via a
+    dict in ``compute_individual_objs``.  Parameters not needed by this objective
+    are prefixed with ``_``.
     """
     maxA_w = np.dot(np.max(cA[:, 1:], axis=1), weights)[0]
     maxB_w = np.dot(np.max(cB[:, 1:], axis=1), weights)[0]
@@ -338,19 +346,27 @@ def model_selection_instance(
     pname: str,
     solve_mode: str,
     outdir: str,
+    pareto_img: str = None,
     verbose=False,
 ):
-    """
-    use elbow criterion to select best instance from either
-    1) ILP or CD+ILP with scalarized solutions, or
-    2) CD only solutions
+    """Select the best instance from a regularisation path using the elbow criterion.
 
-    if solve_mode != cd, float-number error will be estimated.
+    Supports three solve modes:
+    1) ``ilp`` or ``both`` (CD warm-starting ILP): instance keys are lambda (float),
+       float-error is computed as ``tobj - (imf_obj + lambda * reg_obj)``.
+    2) ``cd`` only: instance keys are seed-rank integers; float-error is
+       computed as ``tobj - imf_obj`` (no lambda scaling).
+
+    In both cases the Pareto frontier over (reg_obj, imf_obj) is computed and the
+    elbow of the frontier curve is returned as the selected instance.
     """
     assert len(instances) > 0, "ERROR! there is no solution to be selected"
 
     if pname is None or len(instances) == 1:
-        return instances[0], instances[0][0]
+        # For cd mode the first key is integer 0; for ilp mode it is float 0.0.
+        # Python int-float equality (0 == 0.0) makes both work here.
+        first_instance = instances[0]
+        return first_instance, first_instance[0]
 
     data = []
     errv = 0.0
@@ -387,8 +403,7 @@ def model_selection_instance(
         subset=["IMF-objective", f"{pname}-objective"], keep="first", ignore_index=True
     )
 
-    pareto_img = None
-    if outdir is not None:
+    if pareto_img is None and outdir is not None:
         pareto_img = f"{outdir}/pareto_curve.{solve_mode}.{pname}.png"
 
     df, sol_index = model_select_elbow(

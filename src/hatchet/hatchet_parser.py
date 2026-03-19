@@ -306,13 +306,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
-        "--tolerance",
-        type=float,
-        required=False,
-        default=0.03,
-        help="Purity estimation tolerance between BAF and RDR (default: 0.03)",
-    )
-    parser.add_argument(
         "--bal_tost_alpha",
         type=float,
         required=False,

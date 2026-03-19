@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 import numpy as np
 
-from hatchet.utils import read_region_bed, sort_df_chr, build_seg_from_bbc
+from hatchet.utils import read_region_bed, build_seg_from_bbc
 from hatchet.plot import plot_cn as _plot_cn
 
 
@@ -16,17 +16,33 @@ def filtering(
     min_nbins=10,
     ub_nbins=50,
 ):
-    """
-    filter&merge clusters before optimization step
-    0. filter any cluster has #bins<min_nbins
-    1. compute per-sample per-cluster variance SCV,
-    2. compute per-sample MV and STDV
-    3. filter a cluster if it has |SCV - MV| >= 2 * STDV and below ub_nbins for all samples.
+    """Filter clusters before the optimization step using variance outlier detection.
+
+    Steps:
+        0. Remove any cluster with fewer than ``min_nbins`` bins.
+        1. Compute per-sample, per-cluster RD and BAF variance (SCV).
+        2. Compute per-sample mean variance (MV) and standard deviation (STDV)
+           across clusters that passed step 0.
+        3. Mark a cluster as an outlier if, across all samples, its SCV deviates
+           from MV by more than ``fstd`` standard deviations, AND the cluster
+           has at most ``ub_nbins`` bins.
+
+    Args:
+        bbc: Bin-level DataFrame with columns ``SAMPLE``, ``CLUSTER``, ``RD``, ``BAF``.
+        seg: Segment-level DataFrame with columns ``SAMPLE``, ``#ID``, ``RD``, ``BAF``,
+            ``#BINS``.
+        samples: Ordered list of sample identifiers.
+        clusters: Ordered list of cluster identifiers.
+        fstd: Number of standard deviations used as the outlier threshold.
+        min_nbins: Clusters with fewer bins than this are always removed.
+        ub_nbins: Outlier detection only applies to clusters with at most this
+            many bins (large clusters are kept regardless of variance).
 
     Returns:
-    1. list of remaining cluster IDs
+        A tuple ``(good_clusters, bad_clusters)`` where each element is a list
+        of cluster IDs.
     """
-    logging.info(f"preprocessing, filtering clusters")
+    logging.info("preprocessing, filtering clusters")
 
     var_rd_matrix = np.zeros((len(clusters), len(samples)), dtype=np.float64)
     var_baf_matrix = np.zeros((len(clusters), len(samples)), dtype=np.float64)
@@ -87,7 +103,6 @@ def filtering(
     return good_clusters, bad_clusters
 
 
-##################################################
 def segmentation(
     cA,
     cB,
@@ -99,6 +114,30 @@ def segmentation(
     bbc_out_file=None,
     seg_out_file=None,
 ):
+    """Annotate bins with inferred CN states and build a segment-level DataFrame.
+
+    Merges the inferred allele-specific copy numbers (``cA``, ``cB``) and clone
+    proportions (``u``) into the bin-level BBC DataFrame, then calls
+    ``build_seg_from_bbc`` to merge adjacent bins with identical CN states into
+    segments (respecting region boundaries).
+
+    Args:
+        cA: List of shape (num_clusters, num_clones) with allele-A CN integers.
+        cB: List of shape (num_clusters, num_clones) with allele-B CN integers.
+        u: List of shape (num_clones, num_samples) with clone proportions.
+        cluster_ids: Ordered cluster identifiers matching the row order of cA/cB.
+        sample_ids: Ordered sample identifiers matching the column order of u.
+        bbcs: Bin-level DataFrame; must contain at least ``#CHR``, ``START``,
+            ``END``, ``SAMPLE``, ``CLUSTER``.
+        region_file: Path to the BED file of genomic regions used as segment
+            merge barriers.
+        bbc_out_file: If provided, write the annotated bin-level TSV to this path.
+        seg_out_file: If provided, write the segment-level TSV to this path.
+
+    Returns:
+        The segment-level DataFrame (always returned regardless of whether
+        ``seg_out_file`` is set).
+    """
     df = bbcs.copy()
 
     n_clone = len(cA[0])
@@ -121,16 +160,15 @@ def segmentation(
         orig_cols = df.columns[: -2 * n_clone].tolist()
         df[orig_cols + extra_columns].to_csv(bbc_out_file, sep="\t", index=False)
 
+    regions = read_region_bed(region_file)
+    seg_df = build_seg_from_bbc(df, regions)
     if seg_out_file is not None:
-        regions = read_region_bed(region_file)
-        out = build_seg_from_bbc(df, regions)
-        out.to_csv(seg_out_file, sep="\t", index=False)
+        seg_df.to_csv(seg_out_file, sep="\t", index=False)
+
+    return seg_df
 
 
-##################################################
-def run_plot_cn(args, out_dir, plot_dir, gamma_file, ploidy, n):
-    bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
-    seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
+def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy):
     if not os.path.exists(bbc) or not os.path.exists(seg):
         return
     _plot_cn.run(
@@ -141,7 +179,7 @@ def run_plot_cn(args, out_dir, plot_dir, gamma_file, ploidy, n):
             "region_bed": args["region_bed"],
             "gamma_file": gamma_file,
             "solfile": None,
-            "plot_dir": os.path.join(plot_dir, f"{ploidy}_n{n}"),
+            "plot_dir": plot_dir,
             "dpi": 150,
             "img_type": "png",
             "transparent": False,
