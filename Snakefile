@@ -208,7 +208,6 @@ rule run_compute_cn:
         mode=str(config["compute_cn"]["mode"]),  # both|cd|ilp
         solver=str(config["compute_cn"]["solver"]),  # gurobi|cbc
         bal_tost_margin=float(config["compute_cn"]["bal_tost_margin"]),
-        tolerance=float(config["compute_cn"]["tolerance"]),
         bal_tost_alpha=float(config["compute_cn"]["bal_tost_alpha"]),
         tol_nstd=float(config["compute_cn"]["tol_nstd"]),
         minClone=int(config["compute_cn"]["minClone"]),
@@ -239,7 +238,6 @@ rule run_compute_cn:
             --genome_size {input.genome_size} \
             --region_bed {input.region_bed} \
             --bal_tost_margin {params.bal_tost_margin} \
-            --tolerance {params.tolerance} \
             --bal_tost_alpha {params.bal_tost_alpha} \
             --tol_nstd {params.tol_nstd} \
             --minClone {params.minClone} \

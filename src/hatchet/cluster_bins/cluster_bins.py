@@ -93,9 +93,15 @@ def run(args=None):
     X_depths_tumor = X_depths[:, tumor_sidx:]
 
     X_rdrs = np.load(rdr_mfile)["mat"].astype(np.float32)
-    X_alphas = np.load(a_mfile)["mat"][:, tumor_sidx:].astype(np.int32)
-    X_betas = np.load(b_mfile)["mat"][:, tumor_sidx:].astype(np.int32)
-    X_totals = np.load(t_mfile)["mat"][:, tumor_sidx:].astype(np.int32)
+    X_alphas_all = np.load(a_mfile)["mat"].astype(np.int32)
+    X_betas_all = np.load(b_mfile)["mat"].astype(np.int32)
+    X_totals_all = np.load(t_mfile)["mat"].astype(np.int32)
+    if not no_normal:
+        X_alphas_normal = X_alphas_all[:, 0]
+        X_betas_normal = X_betas_all[:, 0]
+    X_alphas = X_alphas_all[:, tumor_sidx:]
+    X_betas = X_betas_all[:, tumor_sidx:]
+    X_totals = X_totals_all[:, tumor_sidx:]
     nbbs, ntumor_samples = X_rdrs.shape
     assert len(bbs) == nbbs, f"unmatched {len(bbs)} and {nbbs}"
 
@@ -157,15 +163,24 @@ def run(args=None):
         dpi=100,
     )
 
-    baf_taus0 = estimate_BB_dispersion_balanced(
-        X_alphas,
-        X_betas,
-        X_bafs,
-        ntumor_samples,
-        min_tau=min_tau,
-        max_tau=max_tau,
-        bb_quantile=bb_quantile,
-    )
+    if not no_normal:
+        baf_taus0 = estimate_BB_dispersion_normal(
+            X_alphas_normal,
+            X_betas_normal,
+            ntumor_samples,
+            min_tau=min_tau,
+            max_tau=max_tau,
+        )
+    else:
+        baf_taus0 = estimate_BB_dispersion_segment(
+            X_alphas,
+            X_betas,
+            X_bafs,
+            X_lengths,
+            ntumor_samples,
+            min_tau=min_tau,
+            max_tau=max_tau,
+        )
     logging.info("estimated BAF per-sample dispersion:      %s", np.round(baf_taus0, 3))
     rdr_vars0 = estimate_rdr_vars(X_hmm_rdrs, X_lengths, min_var=min_covar)
     logging.info("estimated RDR per-sample variance:      %s", np.round(rdr_vars0, 3))
@@ -349,14 +364,12 @@ def run(args=None):
 
         for ci, c in enumerate(k_cids):
             mask = k_labels == c
-            emp_rdr = np.median(X_rdrs[mask], axis=0)
-            emp_mhbaf = np.median(np.minimum(k_bafs[mask], 1.0 - k_bafs[mask]), axis=0)
             inf_rdr = k_rdr_means_nat[ci]
             inf_mhbaf = np.minimum(k_baf_means[ci], 1.0 - k_baf_means[ci])
             logging.info(
                 f"K={K} cluster {c:2d} (n={mask.sum():5d}): "
-                f"RDR emp={np.round(emp_rdr, 3)} inf={np.round(inf_rdr, 3)} | "
-                f"mhBAF emp={np.round(emp_mhbaf, 3)} inf={np.round(inf_mhbaf, 3)}"
+                f"RDR={np.round(inf_rdr, 3)} | "
+                f"mhBAF={np.round(inf_mhbaf, 3)}"
             )
 
         plot_rdr_baf(

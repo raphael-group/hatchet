@@ -1,18 +1,15 @@
-import os
-import sys
-import time
+"""Standalone script to plot a CNP panel over multiple samples."""
+
+import re
 import logging
 import argparse
+
 import numpy as np
 import pandas as pd
 
 from hatchet.utils import *
 from hatchet.hatchet_parser import add_arguments_plot_panel
 from hatchet.plot.plot_cn_utils import *
-
-"""
-Standalone script, plot CNP panel over multiple samples    
-"""
 
 
 def run(args=None):
@@ -56,13 +53,11 @@ def run(args=None):
         seg_ucn = row["PATH_TO_SEG"]
         seg_info, clones, clone_props = read_seg_ucn_file(seg_ucn)
 
-        # all replicates shared same CNP
         dummy_sample = seg_info["SAMPLE"].iloc[0]
         seg_info = seg_info.loc[seg_info["SAMPLE"] == dummy_sample, :].reset_index(
             drop=True
         )
 
-        # assumes single-sample TODO
         tumor_purity = round(np.sum(clone_props[1:]), 2)
         tumor_ploidy = round(
             compute_tumor_ploidy(seg_info, clones, np.sum(clone_props[1:])), 2
@@ -89,6 +84,83 @@ def run(args=None):
 
     logging.info("Done")
     return
+
+
+def _format_pool_label(tag):
+    """Convert 'pool_p0.05_s1' to 'p=0.05,s=1'."""
+    m = re.match(r"pool_p([^_]+)_s(\d+)", tag)
+    if m:
+        return f"p={m.group(1)},s={m.group(2)}"
+    return tag
+
+
+def plot_pool_cnp(
+    pool_entries, region_bed, out_file, title=None, width=20, height=1, dpi=150
+):
+    """Plot a multi-row CNP panel PDF, one row per Pareto-optimal pool solution.
+
+    pool_entries: list of (label, seg_df, imf_obj, is_pareto) tuples,
+                  where seg_df is an in-memory seg UCN DataFrame.
+    """
+    plt.rcParams["pdf.fonttype"] = 42
+    plt.rcParams["ps.fonttype"] = 42
+    plt.rcParams["svg.fonttype"] = "none"
+
+    regions = read_region_bed(region_bed)
+
+    valid = [(label, df, obj) for label, df, obj, pareto in pool_entries if pareto]
+    if not valid:
+        logging.warning(f"plot_pool_cnp: no Pareto solutions, skipping {out_file}")
+        return
+
+    nrows = len(valid)
+    fig, axes = plt.subplots(
+        nrows=nrows + 1,
+        ncols=1,
+        figsize=(width, height * nrows),
+        gridspec_kw={"height_ratios": [height] * nrows + [2 * height]},
+    )
+    if nrows == 1:
+        axes = [axes[0], axes[1]]
+    main_axes = axes[:-1]
+    ax_leg = axes[-1]
+
+    for i, (label, seg_df, obj) in enumerate(valid):
+        seg_info, clones, clone_props = prepare_seg_ucn(seg_df)
+        dummy_sample = seg_info["SAMPLE"].iloc[0]
+        seg_info = seg_info.loc[seg_info["SAMPLE"] == dummy_sample, :].reset_index(
+            drop=True
+        )
+
+        tumor_purity = round(np.sum(clone_props[1:]), 2)
+        tumor_ploidy = round(
+            compute_tumor_ploidy(seg_info, clones, np.sum(clone_props[1:])), 2
+        )
+
+        plot_cnv_profile(
+            main_axes[i],
+            seg_info,
+            regions,
+            plot_chrname=i == 0,
+            width=width,
+            height=height,
+            show_clone_name=True,
+            show_prop=True,
+        )
+        short_label = _format_pool_label(label)
+        ylabel = (
+            f"{short_label}\nimf {round(obj, 2)}"
+            f"\npurity {tumor_purity}\nploidy {tumor_ploidy}"
+        )
+        main_axes[i].set_ylabel(ylabel, rotation=0, ha="right", va="center")
+
+    plot_cnv_legend(ax_leg)
+
+    if title:
+        main_axes[0].set_title(title)
+    plt.savefig(out_file, dpi=dpi, bbox_inches="tight")
+    plt.close()
+    logging.info(f"pool CNP panel saved to {out_file}")
 
 
 if __name__ == "__main__":

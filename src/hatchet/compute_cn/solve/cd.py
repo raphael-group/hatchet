@@ -209,6 +209,7 @@ class CoordinateDescent:
         reg_term=None,
         reg_steps=0,
         reg_stepsize=0.0,
+        base=1,
     ):
         self.reg_name = reg_term if reg_term is not None else "RAW"
         self.reg_steps = reg_steps
@@ -227,6 +228,7 @@ class CoordinateDescent:
             purities=purities,
             copy_numbers_fixed=copy_numbers_fixed,
             penalty_param=[self.reg_name, 0.0],
+            base=base,
         )
         # Building the model here is not strictly necessary, as, during execution,
         #   self.carch and c.uarch will copy self.ilp and create+run those models.

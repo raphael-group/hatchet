@@ -1,4 +1,20 @@
+import logging
 import argparse
+
+
+def solver_available(solver_type: str):
+    from pyomo import environ as pe
+
+    found_solver = False
+    if solver_type == "gurobi":
+        found_solver = pe.SolverFactory("gurobi", solver_io="python").available(
+            exception_flag=False
+        )
+    else:
+        found_solver = pe.SolverFactory(solver_type).available(exception_flag=False)
+    if found_solver:
+        logging.info(f"solver={solver_type} is available.")
+    return found_solver
 
 
 ##################################################
@@ -147,9 +163,9 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--tau_iters",
         required=False,
-        default=1,
+        default=0,
         type=int,
-        help="Number of EM iterations during which BAF dispersion tau is updated (default: 1)",
+        help="Number of EM iterations during which BAF dispersion tau is updated (default: 0)",
     )
 
     parser.add_argument(
@@ -289,13 +305,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         help="BAF-tolerance, locate balanced clusters (default: 0.03)",
     )
 
-    parser.add_argument(
-        "--tolerance",
-        type=float,
-        required=False,
-        default=0.03,
-        help="Purity estimation tolerance between BAF and RDR (default: 0.03)",
-    )
     parser.add_argument(
         "--bal_tost_alpha",
         type=float,
@@ -493,8 +502,6 @@ def parse_arguments_compute_cn(argv=None):
 
     # Validate solver availability only when ILP is needed
     if args.mode in ("ilp", "both"):
-        from hatchet.compute_cn.solve import solver_available
-
         if not solver_available(args.solver):
             if args.solver == "gurobi":
                 parser.error(

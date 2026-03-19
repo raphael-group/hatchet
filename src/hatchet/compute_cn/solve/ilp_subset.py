@@ -34,6 +34,7 @@ class ILPSubset:
         purities: dict,
         copy_numbers_fixed: dict,
         penalty_param: list,
+        base: int = 1,
         # TODO make as parameters
         zero_cn_thres=0.005,
         tol=0.001,
@@ -62,6 +63,7 @@ class ILPSubset:
         self.w = w
         self.purities = purities
 
+        self._base = base
         self.zero_cn_thres = zero_cn_thres
         self.tol = tol
 
@@ -97,6 +99,7 @@ class ILPSubset:
         new.copy_numbers = self.copy_numbers
         new.copy_numbers_fixed = self.copy_numbers_fixed
         new.penalty_param = self.penalty_param
+        new._base = self._base
         new.w = self.w
         new.purities = self.purities
         new.zero_cn_thres = self.zero_cn_thres
@@ -136,7 +139,7 @@ class ILPSubset:
 
     @property
     def base(self):
-        return min(2, len(self.copy_numbers))
+        return self._base
 
     @staticmethod
     def symmCoeff(i):

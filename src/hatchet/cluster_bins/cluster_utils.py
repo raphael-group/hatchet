@@ -45,6 +45,95 @@ def mle_BB_dispersion(
     return tau
 
 
+def estimate_BB_dispersion_normal(
+    X_alphas_normal: np.ndarray,
+    X_betas_normal: np.ndarray,
+    M: int,
+    min_tau=50,
+    max_tau=500,
+):
+    """Estimate BB dispersion tau from the normal sample, shared by all tumor samples.
+
+    The normal sample is diploid (BAF ≈ 0.5 genome-wide), so it provides a
+    clean estimate of the sequencing/technical dispersion without copy-number
+    confounding.  A single tau is estimated from the normal and broadcast to
+    all M tumor samples.
+
+    Args:
+        X_alphas_normal: (N,) A-allele counts for the normal sample.
+        X_betas_normal:  (N,) B-allele counts for the normal sample.
+        M:               Number of tumor samples (for output shape).
+        min_tau, max_tau: Bounds passed to mle_BB_dispersion.
+
+    Returns:
+        bb_taus: (M,) float32 array with the same tau for every sample.
+    """
+    logging.info("estimate BB dispersion from normal sample (shared across tumor samples)")
+    logging.info(f"tau bound=[{min_tau},{max_tau}]")
+    tau = mle_BB_dispersion(
+        X_alphas_normal, X_betas_normal, p=0.5, min_tau=min_tau, max_tau=max_tau
+    )
+    bb_taus = np.full(M, tau, dtype=np.float32)
+    return bb_taus
+
+
+def estimate_BB_dispersion_segment(
+    X_alphas: np.ndarray,
+    X_betas: np.ndarray,
+    X_bafs: np.ndarray,
+    X_lengths: np.ndarray,
+    M: int,
+    min_tau=50,
+    max_tau=500,
+):
+    """Estimate BB dispersion tau from the most balanced segment.
+
+    When no normal sample is available, picks the segment whose bins have
+    the smallest mean |BAF - 0.5| across samples (most likely diploid),
+    and estimates tau from that segment's bins.  A single tau is estimated
+    per sample.
+
+    Args:
+        X_alphas, X_betas: (N, M) allele count arrays (tumor only).
+        X_bafs:            (N, M) observed BAF values (tumor only).
+        X_lengths:         (S,) number of bins per segment.
+        M:                 Number of tumor samples.
+        min_tau, max_tau:  Bounds passed to mle_BB_dispersion.
+
+    Returns:
+        bb_taus: (M,) float32 array of per-sample tau estimates.
+    """
+    # TODO: support panel-of-normals (PON) file as an alternative source
+    logging.info("estimate BB dispersion from most balanced segment (no normal sample)")
+    logging.info(f"tau bound=[{min_tau},{max_tau}]")
+
+    seg_starts = np.concatenate(([0], np.cumsum(X_lengths[:-1])))
+    best_seg = -1
+    best_dev = np.inf
+    for s, (start, length) in enumerate(zip(seg_starts, X_lengths)):
+        seg_bafs = X_bafs[start : start + length]
+        mean_dev = np.mean(np.abs(seg_bafs - 0.5))
+        if mean_dev < best_dev:
+            best_dev = mean_dev
+            best_seg = s
+
+    start = int(seg_starts[best_seg])
+    length = int(X_lengths[best_seg])
+    logging.info(
+        f"selected segment {best_seg} ({length} bins, mean |BAF-0.5|={best_dev:.4f})"
+    )
+
+    bb_taus = np.zeros(M, dtype=np.float32)
+    for si in range(M):
+        bb_taus[si] = mle_BB_dispersion(
+            X_alphas[start : start + length, si],
+            X_betas[start : start + length, si],
+            min_tau=min_tau,
+            max_tau=max_tau,
+        )
+    return bb_taus
+
+
 def estimate_BB_dispersion_balanced(
     X_alphas: np.ndarray,
     X_betas: np.ndarray,
