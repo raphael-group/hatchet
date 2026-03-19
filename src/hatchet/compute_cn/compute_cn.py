@@ -15,7 +15,9 @@ from hatchet.compute_cn.scaling import get_scaling_factor
 from hatchet.compute_cn.model_select import *
 from hatchet.hatchet_parser import parse_arguments_compute_cn
 
-from hatchet.compute_cn.solve import *
+from hatchet.compute_cn.solve.utils import store_solve_input, store_instance_tofile, store_pool_tofile, model_selection_instance
+from hatchet.compute_cn.solve.ilp_subset import ILPSubset
+from hatchet.compute_cn.solve.cd import CoordinateDescent
 
 
 def run(args=None):
@@ -120,18 +122,22 @@ def run(args=None):
             logging.info(f"Inferred diploid RD scaling factor gamma per sample:")
             for sample, gamma in gammas_noWGD.items():
                 logging.info(f"{sample}\tgamma={gamma}")
+            gammas_dip = pd.Series(gammas_noWGD).sort_index()
+            fcn_dip = rdr * gammas_dip
+            fb_dip = fcn_dip * baf
+            fa_dip = fcn_dip - fb_dip
             for n in range(minClone, maxClone):
                 logging.info(f"running diploid with n={n}")
-                (obj, imf_obj) = solve_wrapper(
+                (obj, imf_obj) = solve(
                     n,
                     clonal_dip,
-                    gammas_noWGD,
                     args,
                     "diploid",
                     out_dir,
                     bbcs,
-                    rdr,
-                    baf,
+                    fcn_dip,
+                    fa_dip,
+                    fb_dip,
                     weights,
                     cluster_ids,
                     sample_ids,
@@ -154,18 +160,22 @@ def run(args=None):
             for sample, gamma in gammas_WGD.items():
                 logging.info(f"{sample}\tgamma={gamma}")
             clonal_tet = {s: (sa, sb), z: (za, zb)}
+            gammas_tet = pd.Series(gammas_WGD).sort_index()
+            fcn_tet = rdr * gammas_tet
+            fb_tet = fcn_tet * baf
+            fa_tet = fcn_tet - fb_tet
             for n in range(minClone, maxClone):
                 logging.info(f"running tetraploid with n={n}")
-                (obj, imf_obj) = solve_wrapper(
+                (obj, imf_obj) = solve(
                     n,
                     clonal_tet,
-                    gammas_WGD,
                     args,
                     "tetraploid",
                     out_dir,
                     bbcs,
-                    rdr,
-                    baf,
+                    fcn_tet,
+                    fa_tet,
+                    fb_tet,
                     weights,
                     cluster_ids,
                     sample_ids,
@@ -245,16 +255,16 @@ def run(args=None):
     return
 
 
-def solve_wrapper(
+def solve(
     n: int,
     clonal: dict,
-    gammas: dict,
     args: dict,
     ploidy: str,
     out_dir: str,
     bbcs: pd.DataFrame,
-    rdr: pd.DataFrame,
-    baf: pd.DataFrame,
+    fcn: pd.DataFrame,
+    f_a: pd.DataFrame,
+    f_b: pd.DataFrame,
     weights: pd.Series,
     cluster_ids: list,
     sample_ids: list,
@@ -262,10 +272,13 @@ def solve_wrapper(
     solve_mode="ilp",
     verbosity=0,
 ):
-    """
-    execute optimization prog
-    return:
-    obj
+    """Solve for allele-specific integer copy numbers and clone proportions.
+
+    Runs coordinate descent (CD), integer linear programming (ILP), or both
+    (CD warm-starting ILP) over a regularization path, selects the best
+    instance via Pareto-elbow model selection, and writes BBC/SEG UCN output.
+
+    Returns (objective, IMF-objective) of the selected solution.
     """
     sol_dir = os.path.join(out_dir, f"sols/{ploidy}_n{n}")
     instances_dir = os.path.join(sol_dir, "instances")
@@ -275,18 +288,11 @@ def solve_wrapper(
     out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
     out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
 
-    gammas_ = pd.Series(gammas).sort_index()
-    fcn = rdr * gammas_
-    f_b = fcn * baf
-    f_a = fcn - f_b
-
     # check all user-defined fixed clonal states & fixed clone proportions. TODO
     copy_number_fixed = None
 
     store_solve_input(
         os.path.join(sol_dir, "input.tsv"),
-        baf,
-        rdr,
         fcn,
         f_a,
         f_b,
@@ -298,53 +304,143 @@ def solve_wrapper(
         ploidy
     ]
     ampdel = not args["no_ampdel"]
-    base = 1 if ploidy == "diploid" else 2
+    base = {"diploid": 1, "tetraploid": 2}[ploidy]
     if args["purities"] is not None:
         purities = args["purities"]
         logging.info(f"purities overridden by user: {purities}")
     elif purities is not None:
         logging.info(f"purities: {purities}")
 
-    instances = solve(
-        f_a=f_a,
-        f_b=f_b,
-        n=n,
-        minprop=args["min_prop"],
-        max_ncns_seg=args["num_cnstates"],
-        cn_max=cn_max,
-        weights=weights,
-        ampdel=ampdel,
-        clonal=clonal,
-        purities=purities,
-        baf=baf,
-        copy_numbers_fixed=copy_number_fixed,
-        reg_term=args["reg_term"],
-        reg_steps=args["reg_steps"],
-        reg_stepsize=args["reg_stepsize"],
-        solver_type=args["solver"],
-        solve_mode=solve_mode,
-        base=base,
-        max_iters=args["cd_niters"],
-        max_convergence_iters=args["cd_convergence_iters"],
-        n_seed=args["cd_nseeds"],
-        n_worker=args["cd_njobs"],
-        random_seed=args["cd_seed"],
-        timelimit=args["timelimit"],
-        instances_dir=instances_dir,
-        verbose=verbosity >= 1,
-        pool_size=args.get("pool_size", 1),
-        pool_gap=args.get("pool_gap", None),
-    )
+    reg_term = args["reg_term"]
+    reg_steps = args["reg_steps"]
+    reg_stepsize = args["reg_stepsize"]
+    solver_type = args["solver"]
+    verbose = verbosity >= 1
+    timelimit = args["timelimit"]
+    pool_size = args.get("pool_size", 1)
+    pool_gap = args.get("pool_gap", None)
+
+    cd_instances = None
+    if solve_mode in ("cd", "both"):
+        cd = CoordinateDescent(
+            f_a=f_a,
+            f_b=f_b,
+            n=n,
+            minprop=args["min_prop"],
+            max_ncns_seg=args["num_cnstates"],
+            cn_max=cn_max,
+            w=weights,
+            ampdel=ampdel,
+            cn=clonal,
+            purities=purities,
+            copy_numbers_fixed=copy_number_fixed,
+            reg_term=reg_term,
+            reg_steps=reg_steps,
+            reg_stepsize=reg_stepsize,
+            base=base,
+        )
+
+        u0_tsv_path = (
+            os.path.join(instances_dir, "u0_seeds.tsv")
+            if instances_dir is not None
+            else None
+        )
+        cd_instances = cd.run(
+            solver_type=solver_type,
+            max_iters=args["cd_niters"],
+            max_convergence_iters=args["cd_convergence_iters"],
+            n_seed=args["cd_nseeds"],
+            j=args["cd_njobs"],
+            random_seed=args["cd_seed"],
+            timelimit=timelimit,
+            u0_tsv_path=u0_tsv_path,
+        )
+        if instances_dir is not None:
+            store_instance_tofile(
+                cd_instances,
+                f_a,
+                f_b,
+                instances_dir,
+                "cd",
+                n,
+            )
+
+    sol_instances = None
+    if solve_mode in ("ilp", "both"):
+        sol_instances = {}
+        solver = ILPSubset(
+            n,
+            cn_max,
+            max_ncns_seg=args["num_cnstates"],
+            minprop=args["min_prop"],
+            ampdel=ampdel,
+            copy_numbers=clonal,
+            f_a=f_a,
+            f_b=f_b,
+            w=weights,
+            purities=purities,
+            copy_numbers_fixed=copy_number_fixed,
+            penalty_param=[reg_term if reg_term is not None else "RAW", 0.0],
+            base=base,
+        )
+        solver.create_model(pprint=verbose)
+        if solve_mode == "both":
+            _, [obj_, cA_, cB_, _] = min(cd_instances.items(), key=lambda tp: tp[1][0])
+            logging.info(f"use CD local opt with obj={obj_} to initialize ILP model")
+            solver.hot_start(cA_, cB_)
+
+        pool_instances = {}
+        for i0 in range(0, reg_steps + 1):
+            if verbose:
+                logging.info(f"running instance {i0}/{reg_steps}")
+            pparam = reg_stepsize * i0
+            solver.model.pparam = pparam
+            if i0 > 0:
+                cA_, cB_ = sol_instances[0][1:3]
+                solver.hot_start(cA_, cB_)
+            sol_instances[pparam] = solver.run(
+                solver_type=solver_type,
+                timelimit=timelimit,
+                pool_size=pool_size,
+                pool_gap=pool_gap,
+            )
+            assert sol_instances[pparam] is not None, "optimization failed"
+
+            if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
+                pool_sols = solver.get_pool_solutions(pool_size=pool_size)
+                if pool_sols:
+                    pool_instances[pparam] = pool_sols
+
+        if instances_dir is not None:
+            store_instance_tofile(
+                sol_instances,
+                f_a,
+                f_b,
+                instances_dir,
+                solve_mode,
+                n,
+            )
+            if pool_instances:
+                store_pool_tofile(
+                    pool_instances,
+                    f_a,
+                    f_b,
+                    instances_dir,
+                    solve_mode,
+                    n,
+                )
+
+    instances = cd_instances if solve_mode == "cd" else sol_instances
 
     best_instance, imf_obj = model_selection_instance(
         f_a,
         f_b,
         weights,
         instances,
-        args["reg_term"],
+        reg_term,
         solve_mode,
         sol_dir,
-        verbose=verbosity >= 1,
+        verbose=verbose,
     )
 
     assert best_instance != None, f"no solution for {ploidy} and n={n}"

@@ -31,8 +31,6 @@ class Random:
 
 def store_solve_input(
     out_file: str,
-    baf: pd.DataFrame,
-    rdr: pd.DataFrame,
     fcn: pd.DataFrame,
     f_a: pd.DataFrame,
     f_b: pd.DataFrame,
@@ -41,7 +39,7 @@ def store_solve_input(
     cluster_ids = f_a.index.tolist()
     sample_ids = f_a.columns.tolist()
     with open(out_file, "w") as fd:
-        fd.write("CLUSTER\tSAMPLE\tBAF\tRDR\tFCN\tF_A\tF_B\tweight\n")
+        fd.write("CLUSTER\tSAMPLE\tFCN\tF_A\tF_B\tweight\n")
         for sample in sample_ids:
             for cid in cluster_ids:
                 fd.write(
@@ -49,8 +47,6 @@ def store_solve_input(
                         [
                             str(cid),
                             str(sample),
-                            str(baf.loc[cid, sample]),
-                            str(rdr.loc[cid, sample]),
                             str(fcn.loc[cid, sample]),
                             str(f_a.loc[cid, sample]),
                             str(f_b.loc[cid, sample]),
@@ -65,14 +61,12 @@ def store_instance_tofile(
     result: dict,
     f_a: pd.DataFrame,
     f_b: pd.DataFrame,
-    baf: pd.DataFrame,
     tempdir: str,
     solve_mode: str,
     n: int,
 ):
     """
     store temporary solution(s) from optimization.
-    TODO add expected BAF and FCN from cn result as well to directly see fitness
     """
     assert tempdir is not None
     cluster_ids = f_a.index.tolist()
@@ -81,7 +75,7 @@ def store_instance_tofile(
         f"cn_clone{i}\tu_clone{i}" for i in range(1, n)
     ]
     header = "\t".join(
-        ["CLUSTER", "SAMPLE", "baf", "exp-baf", "fcn", "exp-fcn"] + clone_cols
+        ["CLUSTER", "SAMPLE", "exp-baf", "fcn", "exp-fcn"] + clone_cols
     )
     with open(f"{tempdir}/{solve_mode}_objs.tsv", "w") as fd1:
         fd1.write("sol_id\tobjective\n")
@@ -100,7 +94,6 @@ def store_instance_tofile(
                         fields = [
                             cid,
                             sample,
-                            baf.loc[cid, sample],
                             exp_baf,
                             fcn,
                             exp_fcn,
@@ -115,7 +108,6 @@ def store_pool_tofile(
     pool_instances: dict,
     f_a: pd.DataFrame,
     f_b: pd.DataFrame,
-    baf: pd.DataFrame,
     tempdir: str,
     solve_mode: str,
     n: int,
@@ -131,7 +123,7 @@ def store_pool_tofile(
         f"cn_clone{i}\tu_clone{i}" for i in range(1, n)
     ]
     header = "\t".join(
-        ["CLUSTER", "SAMPLE", "baf", "exp-baf", "fcn", "exp-fcn"] + clone_cols
+        ["CLUSTER", "SAMPLE", "exp-baf", "fcn", "exp-fcn"] + clone_cols
     )
 
     with open(f"{tempdir}/{solve_mode}_pool_objs.tsv", "w") as fd1:
@@ -154,7 +146,6 @@ def store_pool_tofile(
                             fields = [
                                 cid,
                                 sample,
-                                baf.loc[cid, sample],
                                 exp_baf,
                                 fcn,
                                 exp_fcn,

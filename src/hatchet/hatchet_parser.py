@@ -1,4 +1,20 @@
+import logging
 import argparse
+
+
+def solver_available(solver_type: str):
+    from pyomo import environ as pe
+
+    found_solver = False
+    if solver_type == "gurobi":
+        found_solver = pe.SolverFactory("gurobi", solver_io="python").available(
+            exception_flag=False
+        )
+    else:
+        found_solver = pe.SolverFactory(solver_type).available(exception_flag=False)
+    if found_solver:
+        logging.info(f"solver={solver_type} is available.")
+    return found_solver
 
 
 ##################################################
@@ -493,8 +509,6 @@ def parse_arguments_compute_cn(argv=None):
 
     # Validate solver availability only when ILP is needed
     if args.mode in ("ilp", "both"):
-        from hatchet.compute_cn.solve import solver_available
-
         if not solver_available(args.solver):
             if args.solver == "gurobi":
                 parser.error(
