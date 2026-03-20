@@ -91,6 +91,7 @@ def snakemake_result(tmp_path_factory):
             "cd_nseeds": 400,
             "cd_njobs": 1,
             "cd_seed": 42,
+            "fcn_ci_alpha": 0.05,
         },
         "plot_cn": {
             "dpi": 100,

@@ -271,13 +271,15 @@ def filter_non_pareto(points: np.ndarray):
 
 
 def model_select_elbow(df: pd.DataFrame, xid: str, yid: str, pareto_img: str):
-    """
-    given the set of solutions with two minimizing objective <xid> and <yid>
-    1) select the pareto-optimal set,
-    2) decide the best solution based elbow criterion. If failed, select the
-       Pareto point with the lowest yid (best IMF fit).
+    """Select the best solution from a two-objective Pareto front using the elbow criterion.
 
-    Pareto points are sorted by xid ascending before elbow detection so that
+    Given a set of solutions with two minimising objectives ``xid`` and ``yid``:
+    1. Select the Pareto-optimal subset.
+    2. Pick the best solution using the elbow/knee criterion on the Pareto curve.
+       If elbow detection fails, fall back to the Pareto point with the lowest
+       ``yid`` (best IMF fit).
+
+    Pareto points are sorted by ``xid`` ascending before elbow detection so that
     KneeLocator always receives a monotone-increasing x sequence.
     """
     df.loc[:, "is_pareto"] = filter_non_pareto(df[[xid, yid]].to_numpy())
@@ -300,38 +302,41 @@ def model_select_elbow(df: pd.DataFrame, xid: str, yid: str, pareto_img: str):
 
     sol_index = pids_sorted[-1]
 
+    # Run elbow detection only when enough Pareto points exist for a meaningful curve.
+    elbow_x, elbow_y = None, None
     if len(pids_sorted) >= 3:
         kl = kneed.KneeLocator(x=xs, y=ys, curve="convex", direction="decreasing")
         elbow_x, elbow_y = kl.elbow, kl.elbow_y
-
-        if pareto_img is not None:
-            fig, ax = plt.subplots()
-            if (~df["is_pareto"]).any():
-                ax.scatter(
-                    df.loc[~df["is_pareto"], xid].to_numpy(),
-                    df.loc[~df["is_pareto"], yid].to_numpy(),
-                    c="gray",
-                    marker="x",
-                    alpha=0.6,
-                    label="non-Pareto",
-                )
-            ax.scatter(xs, ys, c="green", marker="o", zorder=3, label="Pareto")
-            if elbow_x is not None:
-                ax.axvline(
-                    elbow_x, linestyle="--", color="steelblue", label="knee/elbow"
-                )
-            ax.set_xlabel(xid)
-            ax.set_ylabel(yid)
-            ax.set_title("Model Selection Pareto Curve")
-            ax.legend()
-            plt.savefig(pareto_img, dpi=150)
-            plt.close()
-
         if elbow_x is not None and elbow_x != xs[0]:
             sol_indices = np.where(ys <= elbow_y)[0]
             if len(sol_indices) > 0:
                 sol_index = pids_sorted[sol_indices[0]]
                 logging.info(f"Model selection elbow at index={sol_index}")
+
+    # Always write the Pareto plot when a path is given, regardless of point count.
+    if pareto_img is not None:
+        fig, ax = plt.subplots()
+        if (~df["is_pareto"]).any():
+            ax.scatter(
+                df.loc[~df["is_pareto"], xid].to_numpy(),
+                df.loc[~df["is_pareto"], yid].to_numpy(),
+                c="gray",
+                marker="x",
+                alpha=0.6,
+                label="non-Pareto",
+            )
+        ax.plot(xs, ys, c="green", linewidth=1, zorder=2)
+        ax.scatter(xs, ys, c="green", marker="o", zorder=3, label="Pareto")
+        if elbow_x is not None:
+            ax.axvline(
+                elbow_x, linestyle="--", color="steelblue", label="knee/elbow"
+            )
+        ax.set_xlabel(xid)
+        ax.set_ylabel(yid)
+        ax.set_title("Model Selection Pareto Curve")
+        ax.legend()
+        plt.savefig(pareto_img, dpi=150)
+        plt.close()
 
     df.loc[sol_index, "selected"] = "*"
     return df, sol_index

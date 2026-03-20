@@ -1,7 +1,9 @@
 from copy import copy
+import logging
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+import numpy as np
 import pandas as pd
 from pyomo import environ as pe
 
@@ -248,6 +250,12 @@ class CoordinateDescent:
 
         self.seeds = None
 
+    def _u_is_determined(self):
+        """True when purities fix all clone proportions (n=2 with known purities)."""
+        if self.ilp.n != 2 or self.ilp.purities is None:
+            return False
+        return all(sid in self.ilp.purities for sid in self.ilp.sample_ids)
+
     def run(
         self,
         solver_type="gurobi",
@@ -259,8 +267,19 @@ class CoordinateDescent:
         timelimit=None,
         u0_tsv_path=None,
     ):
-        with Random(random_seed):
-            seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
+        # When n=2 and purities are provided for all samples, u is fully
+        # determined: u[0,j] = 1-purity, u[1,j] = purity.  No random
+        # restarts over proportions are needed.
+        if self._u_is_determined():
+            logging.info("CD: n=2 with known purities, using single deterministic u")
+            u_fixed = np.empty((self.ilp.n, self.ilp.k))
+            for j_idx, sid in enumerate(self.ilp.sample_ids):
+                u_fixed[0, j_idx] = 1 - self.ilp.purities[sid]
+                u_fixed[1, j_idx] = self.ilp.purities[sid]
+            seeds = [u_fixed]
+        else:
+            with Random(random_seed):
+                seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
 
         if u0_tsv_path is not None:
             sample_ids = list(self.ilp.sample_ids)
@@ -302,8 +321,8 @@ class CoordinateDescent:
         if len(instances) == 0:
             raise RuntimeError("Not a single feasible solution found!")
 
-        instances_s = {}
+        sorted_instances = {}
         for idx, instance in enumerate(sorted(instances, key=lambda elem: elem[0])):
-            instances_s[idx] = instance
+            sorted_instances[idx] = instance
 
-        return instances_s
+        return sorted_instances

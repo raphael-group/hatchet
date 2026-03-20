@@ -36,7 +36,6 @@ def run(args=None):
     # parameters
     row_width = 20
     row_height = 6
-    dpi = args["dpi"]
 
     plt.rcParams["pdf.fonttype"] = 42
     plt.rcParams["ps.fonttype"] = 42
@@ -56,7 +55,6 @@ def run(args=None):
     maxlim_fcn = args["maxlim_fcn"]
 
     tol = 1e-2
-    get_title = lambda sid: f"Sample: {sid}"
     get_filename = lambda sid: str(sid) + (f".{solID}" if solID != "" else "")
     ##################################################
     # load files
@@ -77,7 +75,7 @@ def run(args=None):
     clusters = sorted(bbcs["CLUSTER"].unique().tolist())
 
     solID = ""
-    if solfile != None:
+    if solfile is not None:
         bbcs, segs, n_clones, n_tumors, solID = override_solution(
             bbcs, samples, clusters, n_clones, solfile, regions
         )
@@ -190,7 +188,7 @@ def run(args=None):
                 show_legend=False,
             )
 
-        plot_cnv_profile(
+        plot_ascn_profile(
             main_axes[2],
             seg_info,
             regions,
@@ -200,7 +198,7 @@ def run(args=None):
             show_clone_name=True,
             show_prop=True,
         )
-        plot_cnv_legend(ax_leg)
+        plot_ascn_legend(ax_leg)
 
         fig.suptitle(f"sample={sample}; purity={tumor_purity}; ploidy={tumor_ploidy}")
         axes[1].set_ylabel("mhBAF")

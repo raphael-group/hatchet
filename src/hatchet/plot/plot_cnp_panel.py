@@ -93,11 +93,28 @@ def _format_pool_label(tag):
 
 
 def plot_pool_cnp(
-    pool_entries, region_bed, out_file, title=None, width=20, height=1, dpi=150
+    pool_entries,
+    region_bed,
+    out_file,
+    title=None,
+    width=20,
+    height=1,
+    dpi=150,
+    style="ascn",
 ):
     """Plot a multi-row CNP panel PDF, one row per Pareto-optimal pool solution.
 
-    pool_entries: list of (label, seg_df, imf_obj, is_pareto, is_selected) tuples.
+    Args:
+        pool_entries: List of ``(label, seg_df, imf_obj, is_pareto, is_selected)``
+            tuples. Only entries where ``is_pareto`` is True are plotted.
+        region_bed: Path to the whitelist region BED file.
+        out_file: Output file path for the saved figure.
+        title: Optional figure title placed above the top row.
+        width: Figure width in inches.
+        height: Height in inches per profile row (legend row is 2x this).
+        dpi: Output resolution.
+        style: ``"ascn"`` (default) draws allele-specific A/B bars per clone;
+            ``"cnv"`` draws total-CN colored bars.
     """
     plt.rcParams["pdf.fonttype"] = 42
     plt.rcParams["ps.fonttype"] = 42
@@ -121,8 +138,6 @@ def plot_pool_cnp(
         figsize=(width, height * nrows),
         gridspec_kw={"height_ratios": [height] * nrows + [2 * height]},
     )
-    if nrows == 1:
-        axes = [axes[0], axes[1]]
     main_axes = axes[:-1]
     ax_leg = axes[-1]
 
@@ -138,7 +153,8 @@ def plot_pool_cnp(
             compute_tumor_ploidy(seg_info, clones, np.sum(clone_props[1:])), 2
         )
 
-        plot_cnv_profile(
+        profile_fn = plot_ascn_profile if style == "ascn" else plot_cnv_profile
+        profile_fn(
             main_axes[i],
             seg_info,
             regions,
@@ -160,7 +176,8 @@ def plot_pool_cnp(
             ylabel, rotation=0, ha="right", va="center", color=color
         )
 
-    plot_cnv_legend(ax_leg)
+    legend_fn = plot_ascn_legend if style == "ascn" else plot_cnv_legend
+    legend_fn(ax_leg)
 
     if title:
         main_axes[0].set_title(title)
