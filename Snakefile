@@ -210,6 +210,7 @@ rule run_compute_cn:
         bal_tost_margin=float(config["compute_cn"]["bal_tost_margin"]),
         bal_tost_alpha=float(config["compute_cn"]["bal_tost_alpha"]),
         tol_nstd=float(config["compute_cn"]["tol_nstd"]),
+        fcn_ci_alpha=float(config["compute_cn"]["fcn_ci_alpha"]),
         minClone=int(config["compute_cn"]["minClone"]),
         maxClone=int(config["compute_cn"]["maxClone"]),
         reg_term=str(config["compute_cn"]["reg_term"]),
@@ -240,6 +241,7 @@ rule run_compute_cn:
             --bal_tost_margin {params.bal_tost_margin} \
             --bal_tost_alpha {params.bal_tost_alpha} \
             --tol_nstd {params.tol_nstd} \
+            --fcn_ci_alpha {params.fcn_ci_alpha} \
             --minClone {params.minClone} \
             --maxClone {params.maxClone} \
             --reg_term {params.reg_term} \

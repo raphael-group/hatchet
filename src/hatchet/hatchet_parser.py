@@ -319,6 +319,13 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         default=1.0,
         help="Number of std deviations for CN scoring tolerance (default: 1.0)",
     )
+    parser.add_argument(
+        "--fcn_ci_alpha",
+        type=float,
+        required=False,
+        default=0.05,
+        help="Significance level for fractional CN confidence intervals (default: 0.05)",
+    )
 
     ##################################################
     # model parameters
@@ -566,7 +573,11 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         help="Directory for output files",
     )
     parser.add_argument(
-        "--dpi", required=False, type=int, help="image resolution (default: 300)", default=300
+        "--dpi",
+        required=False,
+        type=int,
+        help="image resolution (default: 300)",
+        default=300,
     )
     parser.add_argument(
         "--img_type",
@@ -648,7 +659,11 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         help="Reference chromosome BED file (e.g., hg19.chrom.bed)",
     )
     parser.add_argument(
-        "--width", required=False, type=int, help="panel image width (default: 20)", default=20
+        "--width",
+        required=False,
+        type=int,
+        help="panel image width (default: 20)",
+        default=20,
     )
     parser.add_argument(
         "--height",
@@ -672,7 +687,11 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         help="plot clone proportion (default: False)",
     )
     parser.add_argument(
-        "--dpi", required=False, type=int, help="image resolution (default: 300)", default=300
+        "--dpi",
+        required=False,
+        type=int,
+        help="image resolution (default: 300)",
+        default=300,
     )
     parser.add_argument(
         "--transparent",
@@ -682,7 +701,11 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         help="transparent background (default: False)",
     )
     parser.add_argument(
-        "--title", required=False, type=str, default="panel", help="plot title (default: panel)"
+        "--title",
+        required=False,
+        type=str,
+        default="panel",
+        help="plot title (default: panel)",
     )
     parser.add_argument(
         "-o",

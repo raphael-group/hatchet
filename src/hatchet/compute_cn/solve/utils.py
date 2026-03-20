@@ -1,3 +1,4 @@
+import os
 import logging
 import numpy as np
 import pandas as pd
@@ -30,125 +31,116 @@ class Random:
 
 
 def store_solve_input(
-    out_file: str,
-    fcn: pd.DataFrame,
-    f_a: pd.DataFrame,
-    f_b: pd.DataFrame,
-    weights: pd.Series,
+    out_file: str, fcn_data: dict, weights: pd.Series, nbins: pd.DataFrame
 ):
-    cluster_ids = f_a.index.tolist()
-    sample_ids = f_a.columns.tolist()
+    """Write fractional CN data to TSV."""
+    fa = fcn_data["fa"]
+    cluster_ids = fa.index.tolist()
+    sample_ids = fa.columns.tolist()
+    cols = ["fcn", "fa", "fb", "fa_lo", "fa_hi", "fb_lo", "fb_hi"]
+    header = "CLUSTER\tSAMPLE\t#BINS\t" + "\t".join(cols) + "\tweight"
     with open(out_file, "w") as fd:
-        fd.write("CLUSTER\tSAMPLE\tFCN\tF_A\tF_B\tweight\n")
+        fd.write(header + "\n")
         for sample in sample_ids:
             for cid in cluster_ids:
+                nb = int(nbins.loc[cid, sample])
+                vals = [str(fcn_data[c].loc[cid, sample]) for c in cols]
                 fd.write(
-                    "\t".join(
-                        [
-                            str(cid),
-                            str(sample),
-                            str(fcn.loc[cid, sample]),
-                            str(f_a.loc[cid, sample]),
-                            str(f_b.loc[cid, sample]),
-                            str(weights[cid]),
-                        ]
-                    )
-                    + "\n"
+                    f"{cid}\t{sample}\t{nb}\t" + "\t".join(vals) + f"\t{weights[cid]}\n"
                 )
 
 
-def store_instance_tofile(
-    result: dict,
-    f_a: pd.DataFrame,
-    f_b: pd.DataFrame,
-    tempdir: str,
-    solve_mode: str,
-    n: int,
+def _write_solution_tsv(
+    fd, f_a, f_b, cA, cB, u, n, cluster_ids, sample_ids, header, fcn_data, nbins
 ):
-    """
-    store temporary solution(s) from optimization.
-    """
-    assert tempdir is not None
-    cluster_ids = f_a.index.tolist()
-    sample_ids = f_a.columns.tolist()
-    clone_cols = ["cn_normal\tu_normal"] + [
-        f"cn_clone{i}\tu_clone{i}" for i in range(1, n)
-    ]
-    header = "\t".join(["CLUSTER", "SAMPLE", "exp-baf", "fcn", "exp-fcn"] + clone_cols)
-    with open(f"{tempdir}/{solve_mode}_objs.tsv", "w") as fd1:
-        fd1.write("sol_id\tobjective\n")
-        for i, (obj, cA, cB, u) in result.items():
-            fd1.write(f"{i}\t{obj}\n")
-            with open(f"{tempdir}/{solve_mode}_sol{i}.tsv", "w") as fd2:
-                fd2.write(header + "\n")
-                for ci, cid in enumerate(cluster_ids):
-                    for si, sample in enumerate(sample_ids):
-                        fcn = f_a.loc[cid, sample] + f_b.loc[cid, sample]
-                        exp_fcn = sum(
-                            (cA[ci][oi] + cB[ci][oi]) * u[oi][si] for oi in range(n)
-                        )
-                        exp_bcount = sum(cB[ci][oi] * u[oi][si] for oi in range(n))
-                        exp_baf = exp_bcount / exp_fcn if exp_fcn != 0 else -1
-                        fields = [
-                            cid,
-                            sample,
-                            exp_baf,
-                            fcn,
-                            exp_fcn,
-                        ]
-                        for oi in range(n):
-                            fields.extend([f"{cA[ci][oi]}|{cB[ci][oi]}", u[oi][si]])
-                        fd2.write("\t".join(str(v) for v in fields) + "\n")
-    return
+    """Write a single solution's per-cluster/sample details to an open file."""
+    cA_ = np.array(cA)
+    cB_ = np.array(cB)
+    u_ = np.array(u)
+    exp_a = cA_ @ u_
+    exp_b = cB_ @ u_
+
+    fd.write(header + "\n")
+    for ci, cid in enumerate(cluster_ids):
+        for si, sample in enumerate(sample_ids):
+            fa_lo = fcn_data["fa_lo"].iloc[ci, si]
+            fa_hi = fcn_data["fa_hi"].iloc[ci, si]
+            fb_lo = fcn_data["fb_lo"].iloc[ci, si]
+            fb_hi = fcn_data["fb_hi"].iloc[ci, si]
+            ea, eb = exp_a[ci, si], exp_b[ci, si]
+            accepted = ea >= fa_lo and ea <= fa_hi and eb >= fb_lo and eb <= fb_hi
+            fields = [
+                cid,
+                sample,
+                int(nbins.loc[cid, sample]),
+                f_a.loc[cid, sample],
+                f_b.loc[cid, sample],
+                ea,
+                eb,
+                fa_lo,
+                fa_hi,
+                fb_lo,
+                fb_hi,
+            ]
+            for oi in range(n):
+                fields.extend([f"{cA[ci][oi]}|{cB[ci][oi]}", u[oi][si]])
+            fields.append(accepted)
+            fd.write("\t".join(str(v) for v in fields) + "\n")
 
 
-def store_pool_tofile(
+def store_instance_tofile(
     pool_instances: dict,
     f_a: pd.DataFrame,
     f_b: pd.DataFrame,
-    tempdir: str,
+    outdir: str,
     solve_mode: str,
     n: int,
+    fcn_data: dict,
+    nbins: pd.DataFrame,
 ):
-    """Store solution-pool alternatives alongside primary solutions.
-
-    pool_instances: {pparam: [(obj, cA, cB, u), ...]}
-    """
-    assert tempdir is not None
+    """Store all solution detail TSVs with naming: sol{pparam}_pool{idx}.tsv."""
     cluster_ids = f_a.index.tolist()
     sample_ids = f_a.columns.tolist()
     clone_cols = ["cn_normal\tu_normal"] + [
         f"cn_clone{i}\tu_clone{i}" for i in range(1, n)
     ]
-    header = "\t".join(["CLUSTER", "SAMPLE", "exp-baf", "fcn", "exp-fcn"] + clone_cols)
+    cols = (
+        [
+            "CLUSTER",
+            "SAMPLE",
+            "#BINS",
+            "f_a",
+            "f_b",
+            "exp_f_a",
+            "exp_f_b",
+            "fa_lo",
+            "fa_hi",
+            "fb_lo",
+            "fb_hi",
+        ]
+        + clone_cols
+        + ["ci_accepted"]
+    )
+    header = "\t".join(cols)
 
-    with open(f"{tempdir}/{solve_mode}_pool_objs.tsv", "w") as fd1:
-        fd1.write("sol_id\tpool_idx\tobjective\n")
-        for pparam, solutions in pool_instances.items():
-            for pool_idx, (obj, cA, cB, u) in enumerate(solutions, start=1):
-                fd1.write(f"{pparam}\t{pool_idx}\t{obj}\n")
-                with open(
-                    f"{tempdir}/{solve_mode}_sol{pparam}_pool{pool_idx}.tsv", "w"
-                ) as fd2:
-                    fd2.write(header + "\n")
-                    for ci, cid in enumerate(cluster_ids):
-                        for si, sample in enumerate(sample_ids):
-                            fcn = f_a.loc[cid, sample] + f_b.loc[cid, sample]
-                            exp_fcn = sum(
-                                (cA[ci][oi] + cB[ci][oi]) * u[oi][si] for oi in range(n)
-                            )
-                            exp_bcount = sum(cB[ci][oi] * u[oi][si] for oi in range(n))
-                            exp_baf = exp_bcount / exp_fcn if exp_fcn != 0 else -1
-                            fields = [
-                                cid,
-                                sample,
-                                exp_baf,
-                                fcn,
-                                exp_fcn,
-                            ]
-                            for oi in range(n):
-                                fields.extend([f"{cA[ci][oi]}|{cB[ci][oi]}", u[oi][si]])
-                            fd2.write("\t".join(str(v) for v in fields) + "\n")
+    for pparam, solutions in pool_instances.items():
+        for pool_idx, (obj, cA, cB, u) in enumerate(solutions):
+            path = os.path.join(outdir, f"{solve_mode}_sol{pparam}_pool{pool_idx}.tsv")
+            with open(path, "w") as fd:
+                _write_solution_tsv(
+                    fd,
+                    f_a,
+                    f_b,
+                    cA,
+                    cB,
+                    u,
+                    n,
+                    cluster_ids,
+                    sample_ids,
+                    header,
+                    fcn_data,
+                    nbins,
+                )
 
 
 def compute_individual_objs(
@@ -259,9 +251,7 @@ def filter_non_pareto(points: np.ndarray):
     return is_pareto
 
 
-def model_select_elbow(
-    df: pd.DataFrame, xid: str, yid: str, pareto_img: str, verbose: bool
-):
+def model_select_elbow(df: pd.DataFrame, xid: str, yid: str, pareto_img: str):
     """
     given the set of solutions with two minimizing objective <xid> and <yid>
     1) select the pareto-optimal set,
@@ -271,14 +261,12 @@ def model_select_elbow(
     Pareto points are sorted by xid ascending before elbow detection so that
     KneeLocator always receives a monotone-increasing x sequence.
     """
-    # filter non pareto-optimal solutions
     df.loc[:, "is_pareto"] = filter_non_pareto(df[[xid, yid]].to_numpy())
     df.loc[:, "selected"] = ""
 
     pids = df.loc[df["is_pareto"]].index.to_numpy()
 
-    if verbose:
-        logging.info(f"model selection, #pareto={len(pids)}/{len(df)}")
+    logging.info(f"model selection, #pareto={len(pids)}/{len(df)}")
 
     if len(pids) == 0:
         logging.info("WARN! no Pareto points found; falling back to row 0")
@@ -286,13 +274,11 @@ def model_select_elbow(
         df.loc[sol_index, "selected"] = "*"
         return df, sol_index
 
-    # Sort Pareto points by xid ascending so KneeLocator receives increasing x.
     pareto_df = df.loc[pids].sort_values(xid)
     pids_sorted = pareto_df.index.to_numpy()
     xs = pareto_df[xid].to_numpy()
     ys = pareto_df[yid].to_numpy()
 
-    # Default: no regularization = highest reg-obj, lowest imf-obj (best fit), last in sorted order.
     sol_index = pids_sorted[-1]
 
     if len(pids_sorted) >= 3:
@@ -300,128 +286,155 @@ def model_select_elbow(
         elbow_x, elbow_y = kl.elbow, kl.elbow_y
 
         if pareto_img is not None:
-            kl.plot_knee(
-                title="Model Selection Pareto Curve",
-                xlabel=xid,
-                ylabel=yid,
-            )
-            if len(pids) < len(df):
-                plt.scatter(
-                    x=df.loc[~df["is_pareto"], xid].to_numpy(),
-                    y=df.loc[~df["is_pareto"], yid].to_numpy(),
+            fig, ax = plt.subplots()
+            if (~df["is_pareto"]).any():
+                ax.scatter(
+                    df.loc[~df["is_pareto"], xid].to_numpy(),
+                    df.loc[~df["is_pareto"], yid].to_numpy(),
                     c="gray",
                     marker="x",
                     alpha=0.6,
+                    label="non-Pareto",
                 )
-            plt.scatter(
-                x=xs,
-                y=ys,
-                c="green",
-                marker="o",
-                alpha=1.0,
-            )
+            ax.scatter(xs, ys, c="green", marker="o", zorder=3, label="Pareto")
+            if elbow_x is not None:
+                ax.axvline(
+                    elbow_x, linestyle="--", color="steelblue", label="knee/elbow"
+                )
+            ax.set_xlabel(xid)
+            ax.set_ylabel(yid)
+            ax.set_title("Model Selection Pareto Curve")
+            ax.legend()
             plt.savefig(pareto_img, dpi=150)
             plt.close()
 
         if elbow_x is not None and elbow_x != xs[0]:
-            # xs ascending = reg ascending, ys decreasing = imf decreasing (better fit).
-            # Pick the first point where yid <= elbow_y (at or past the knee, toward better fit).
-            # Skip override if the elbow falls on the first Pareto point (worst IMF) — no real
-            # knee detected, so keep the default (last point = best IMF).
             sol_indices = np.where(ys <= elbow_y)[0]
             if len(sol_indices) > 0:
                 sol_index = pids_sorted[sol_indices[0]]
-                if verbose:
-                    logging.info(f"Model selection elbow at index={sol_index}")
+                logging.info(f"Model selection elbow at index={sol_index}")
 
     df.loc[sol_index, "selected"] = "*"
     return df, sol_index
+
+
+def _count_ci_violations(cA, cB, u, fcn_data, nbins):
+    """Count bins where expected FCN falls outside the CI.
+
+    nbins: DataFrame (clusters x samples) of bin counts per cluster/sample.
+    """
+    cA_ = np.array(cA)
+    cB_ = np.array(cB)
+    u_ = np.array(u)
+    exp_a = cA_ @ u_  # (n_clusters, n_samples)
+    exp_b = cB_ @ u_
+
+    fa_lo = fcn_data["fa_lo"].to_numpy()
+    fa_hi = fcn_data["fa_hi"].to_numpy()
+    fb_lo = fcn_data["fb_lo"].to_numpy()
+    fb_hi = fcn_data["fb_hi"].to_numpy()
+    nb = nbins.to_numpy()
+
+    violations = (exp_a < fa_lo) | (exp_a > fa_hi) | (exp_b < fb_lo) | (exp_b > fb_hi)
+    n_violated_bins = int(np.sum(violations * nb))
+    n_total_bins = int(np.sum(nb))
+    ratio = n_violated_bins / n_total_bins if n_total_bins > 0 else float("nan")
+    return n_violated_bins, ratio
 
 
 def model_selection_instance(
     f_a: pd.DataFrame,
     f_b: pd.DataFrame,
     weights: pd.Series,
-    instances: dict,
+    pool_instances: dict,
     pname: str,
     solve_mode: str,
     outdir: str,
+    fcn_data: dict,
+    nbins: pd.DataFrame,
     pareto_img: str = None,
-    verbose=False,
 ):
-    """Select the best instance from a regularisation path using the elbow criterion.
+    """Select the best solution from a regularisation path using the elbow criterion.
 
-    Supports three solve modes:
-    1) ``ilp`` or ``both`` (CD warm-starting ILP): instance keys are lambda (float),
-       float-error is computed as ``tobj - (imf_obj + lambda * reg_obj)``.
-    2) ``cd`` only: instance keys are seed-rank integers; float-error is
-       computed as ``tobj - imf_obj`` (no lambda scaling).
-
-    In both cases the Pareto frontier over (reg_obj, imf_obj) is computed and the
-    elbow of the frontier curve is returned as the selected instance.
+    pool_instances: {pparam: [(obj, cA, cB, u), ...]} where index 0 is the
+    primary solution and index 1+ are pool alternatives.
     """
-    assert len(instances) > 0, "ERROR! there is no solution to be selected"
+    assert len(pool_instances) > 0, "no solutions to select from"
 
-    if pname is None or len(instances) == 1:
-        # For cd mode the first key is integer 0; for ilp mode it is float 0.0.
-        # Python int-float equality (0 == 0.0) makes both work here.
-        first_instance = instances[0]
-        return first_instance, first_instance[0]
-
-    data = []
-    errv = 0.0
-    for instance_id, [tobj, cA, cB, u] in sorted(
-        instances.items(), key=lambda tp: tp[0]
-    ):
+    def _build_row(pparam, pool_idx, tobj, cA, cB, u):
         [imf_obj, reg_obj] = compute_individual_objs(
             pname, weights, f_a, f_b, cA, cB, u
         )
         if solve_mode != "cd":
-            # instance_id is the λ value; used in scalarized-objective error check
-            lambda_val = float(instance_id)
+            lambda_val = float(pparam)
             errv = tobj - (imf_obj + lambda_val * reg_obj)
         else:
-            # instance_id is a seed rank index; λ is not meaningful at this level
-            # (regularization was applied inside each C-step, not across seeds)
             lambda_val = float("nan")
             errv = tobj - imf_obj
-        data.append([instance_id, lambda_val, tobj, imf_obj, reg_obj, errv])
+        n_viol, viol_ratio = _count_ci_violations(cA, cB, u, fcn_data, nbins)
+        return [
+            pparam,
+            pool_idx,
+            lambda_val,
+            tobj,
+            imf_obj,
+            reg_obj,
+            errv,
+            n_viol,
+            round(viol_ratio, 4),
+        ]
 
-    df = pd.DataFrame(
-        data=data,
-        columns=[
-            "instance_id",
-            "Lambda",
-            "Objective",
-            "IMF-objective",
-            f"{pname}-objective",
-            "float-error",
-        ],
-    )
+    data = []
+    all_solutions = {}
+    for pparam, solutions in sorted(pool_instances.items(), key=lambda tp: tp[0]):
+        for pool_idx, (tobj, cA, cB, u) in enumerate(solutions):
+            data.append(_build_row(pparam, pool_idx, tobj, cA, cB, u))
+            all_solutions[(pparam, pool_idx)] = (tobj, cA, cB, u)
 
+    if pname is None or len(data) == 1:
+        key = next(iter(all_solutions))
+        return all_solutions[key], all_solutions[key][0], key
+
+    columns = [
+        "instance_id",
+        "pool_idx",
+        "Lambda",
+        "Objective",
+        "IMF-objective",
+        f"{pname}-objective",
+        "float-error",
+        "ci_violations",
+        "ci_violation_ratio",
+    ]
+
+    df = pd.DataFrame(data=data, columns=columns)
     df = df.drop_duplicates(
-        subset=["IMF-objective", f"{pname}-objective"], keep="first", ignore_index=True
+        subset=["IMF-objective", f"{pname}-objective"],
+        keep="first",
+        ignore_index=True,
     )
 
-    if pareto_img is None and outdir is not None:
-        pareto_img = f"{outdir}/pareto_curve.{solve_mode}.{pname}.png"
+    if pareto_img is None:
+        pareto_img = os.path.join(outdir, f"pareto_curve.{solve_mode}.{pname}.png")
 
     df, sol_index = model_select_elbow(
         df,
         f"{pname}-objective",
         "IMF-objective",
         pareto_img,
-        verbose,
     )
 
-    if outdir is not None:
-        df.to_csv(
-            f"{outdir}/model_selections.{solve_mode}.{pname}.tsv",
-            sep="\t",
-            header=True,
-            index=False,
-        )
+    df = df.sort_values(["instance_id", "pool_idx"]).reset_index(drop=True)
 
-    return instances[df.loc[sol_index, "instance_id"]], df.loc[
-        sol_index, "IMF-objective"
-    ]
+    sols_parent = os.path.dirname(outdir)
+    subdir_name = os.path.basename(outdir)
+    df.to_csv(
+        os.path.join(sols_parent, f"{subdir_name}.solutions.{solve_mode}.{pname}.tsv"),
+        sep="\t",
+        header=True,
+        index=False,
+    )
+
+    sel = df.loc[sol_index]
+    key = (sel["instance_id"], int(sel["pool_idx"]))
+    return all_solutions[key], sel["IMF-objective"], key

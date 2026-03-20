@@ -19,7 +19,6 @@ def run(args=None):
 
     title = args["title"]
     panel_file = args["panel_file"]
-    genome_size = args["genome_size"]
     region_bed = args["region_bed"]
     out_file = args["out_file"]
 
@@ -49,7 +48,6 @@ def run(args=None):
 
     for i, row in panel.iterrows():
         sample = row["SAMPLE"]
-        ploidy = row["PLOIDY"]
         seg_ucn = row["PATH_TO_SEG"]
         seg_info, clones, clone_props = read_seg_ucn_file(seg_ucn)
 
@@ -99,8 +97,7 @@ def plot_pool_cnp(
 ):
     """Plot a multi-row CNP panel PDF, one row per Pareto-optimal pool solution.
 
-    pool_entries: list of (label, seg_df, imf_obj, is_pareto) tuples,
-                  where seg_df is an in-memory seg UCN DataFrame.
+    pool_entries: list of (label, seg_df, imf_obj, is_pareto, is_selected) tuples.
     """
     plt.rcParams["pdf.fonttype"] = 42
     plt.rcParams["ps.fonttype"] = 42
@@ -108,7 +105,11 @@ def plot_pool_cnp(
 
     regions = read_region_bed(region_bed)
 
-    valid = [(label, df, obj) for label, df, obj, pareto in pool_entries if pareto]
+    valid = [
+        (label, df, obj, selected)
+        for label, df, obj, pareto, selected in pool_entries
+        if pareto
+    ]
     if not valid:
         logging.warning(f"plot_pool_cnp: no Pareto solutions, skipping {out_file}")
         return
@@ -125,7 +126,7 @@ def plot_pool_cnp(
     main_axes = axes[:-1]
     ax_leg = axes[-1]
 
-    for i, (label, seg_df, obj) in enumerate(valid):
+    for i, (label, seg_df, obj, is_selected) in enumerate(valid):
         seg_info, clones, clone_props = prepare_seg_ucn(seg_df)
         dummy_sample = seg_info["SAMPLE"].iloc[0]
         seg_info = seg_info.loc[seg_info["SAMPLE"] == dummy_sample, :].reset_index(
@@ -148,11 +149,16 @@ def plot_pool_cnp(
             show_prop=True,
         )
         short_label = _format_pool_label(label)
+        if is_selected:
+            short_label += " *"
         ylabel = (
             f"{short_label}\nimf {round(obj, 2)}"
             f"\npurity {tumor_purity}\nploidy {tumor_ploidy}"
         )
-        main_axes[i].set_ylabel(ylabel, rotation=0, ha="right", va="center")
+        color = "red" if is_selected else "black"
+        main_axes[i].set_ylabel(
+            ylabel, rotation=0, ha="right", va="center", color=color
+        )
 
     plot_cnv_legend(ax_leg)
 

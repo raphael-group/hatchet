@@ -14,7 +14,6 @@ from hatchet.hatchet_parser import parse_arguments_compute_cn
 from hatchet.compute_cn.solve.utils import (
     store_solve_input,
     store_instance_tofile,
-    store_pool_tofile,
     model_selection_instance,
     compute_individual_objs,
     filter_non_pareto,
@@ -94,6 +93,9 @@ def run(args=None):
     segs_sorted = segs.sort_values(["#ID", "SAMPLE"])
     rdr = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD")
     baf = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF")
+    rdr_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD-se")
+    baf_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF-se")
+    nbins = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="#BINS")
     samples_sorted = sorted(segs["SAMPLE"].unique().tolist())
     bins = (
         segs.loc[segs["SAMPLE"] == samples_sorted[0]]
@@ -123,9 +125,20 @@ def run(args=None):
             for sample, gamma in gammas_noWGD.items():
                 logging.info(f"{sample}\tgamma={gamma}")
             gammas_dip = pd.Series(gammas_noWGD).sort_index()
-            fcn_dip = rdr * gammas_dip
-            fb_dip = fcn_dip * baf
-            fa_dip = fcn_dip - fb_dip
+            fcn_dip = compute_fractional_cn(
+                rdr,
+                baf,
+                rdr_se,
+                baf_se,
+                gammas_dip,
+                alpha=args.get("fcn_ci_alpha", 0.05),
+            )
+            store_solve_input(
+                os.path.join(out_dir, "sols", "diploid_input.tsv"),
+                fcn_dip,
+                weights,
+                nbins,
+            )
             for n in range(minClone, maxClone):
                 logging.info(f"running diploid with n={n}")
                 obj, imf_obj, pool = solve(
@@ -137,12 +150,11 @@ def run(args=None):
                     plot_dir,
                     bbcs,
                     fcn_dip,
-                    fa_dip,
-                    fb_dip,
                     weights,
                     cluster_ids,
                     sample_ids,
                     purities_noWGD,
+                    nbins,
                     args["mode"],
                     args["verbosity"],
                 )
@@ -160,8 +172,8 @@ def run(args=None):
                 )
                 if pool:
                     pool_entries = [
-                        (tag, seg_df, obj_, pareto)
-                        for tag, (seg_df, obj_, pareto) in pool.items()
+                        (tag, seg_df, obj_, pareto, selected)
+                        for tag, (seg_df, obj_, pareto, selected) in pool.items()
                     ]
                     plot_pool_cnp(
                         pool_entries,
@@ -181,9 +193,20 @@ def run(args=None):
             logging.info(f"{sample}\tgamma={gamma}")
         clonal_tet = {s: (sa, sb), z: (za, zb)}
         gammas_tet = pd.Series(gammas_WGD).sort_index()
-        fcn_tet = rdr * gammas_tet
-        fb_tet = fcn_tet * baf
-        fa_tet = fcn_tet - fb_tet
+        fcn_tet = compute_fractional_cn(
+            rdr,
+            baf,
+            rdr_se,
+            baf_se,
+            gammas_tet,
+            alpha=args.get("fcn_ci_alpha", 0.05),
+        )
+        store_solve_input(
+            os.path.join(out_dir, "sols", "tetraploid_input.tsv"),
+            fcn_tet,
+            weights,
+            nbins,
+        )
         for n in range(minClone, maxClone):
             logging.info(f"running tetraploid with n={n}")
             obj, imf_obj, pool = solve(
@@ -195,12 +218,11 @@ def run(args=None):
                 plot_dir,
                 bbcs,
                 fcn_tet,
-                fa_tet,
-                fb_tet,
                 weights,
                 cluster_ids,
                 sample_ids,
                 purities_WGD,
+                nbins,
                 args["mode"],
                 args["verbosity"],
             )
@@ -301,13 +323,12 @@ def solve(
     out_dir: str,
     plot_dir: str,
     bbcs: pd.DataFrame,
-    fcn: pd.DataFrame,
-    f_a: pd.DataFrame,
-    f_b: pd.DataFrame,
+    fcn_data: dict,
     weights: pd.Series,
     cluster_ids: list,
     sample_ids: list,
     purities: dict,
+    nbins: pd.DataFrame,
     solve_mode="ilp",
     verbosity=0,
 ):
@@ -319,24 +340,17 @@ def solve(
 
     Returns (objective, IMF-objective, pool_dict) of the selected solution.
     """
+    f_a = fcn_data["fa"]
+    f_b = fcn_data["fb"]
+
     sol_dir = os.path.join(out_dir, f"sols/{ploidy}_n{n}")
-    instances_dir = os.path.join(sol_dir, "instances")
     os.makedirs(sol_dir, exist_ok=True)
-    os.makedirs(instances_dir, exist_ok=True)
 
     out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
     out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
 
     # TODO: support user-defined fixed clonal states & fixed clone proportions
     copy_number_fixed = None
-
-    store_solve_input(
-        os.path.join(sol_dir, "input.tsv"),
-        fcn,
-        f_a,
-        f_b,
-        weights,
-    )
 
     cn_max = {"diploid": args["diploidcmax"], "tetraploid": args["tetraploidcmax"]}[
         ploidy
@@ -380,9 +394,7 @@ def solve(
         )
 
         u0_tsv_path = (
-            os.path.join(instances_dir, "u0_seeds.tsv")
-            if instances_dir is not None
-            else None
+            os.path.join(sol_dir, "u0_seeds.tsv") if sol_dir is not None else None
         )
         cd_instances = cd.run(
             solver_type=solver_type,
@@ -394,15 +406,17 @@ def solve(
             timelimit=timelimit,
             u0_tsv_path=u0_tsv_path,
         )
-        if instances_dir is not None:
-            store_instance_tofile(
-                cd_instances,
-                f_a,
-                f_b,
-                instances_dir,
-                "cd",
-                n,
-            )
+        pool_instances = {k: [v] for k, v in cd_instances.items()}
+        store_instance_tofile(
+            pool_instances,
+            f_a,
+            f_b,
+            sol_dir,
+            "cd",
+            n,
+            fcn_data=fcn_data,
+            nbins=nbins,
+        )
 
     sol_instances = None
     if solve_mode in ("ilp", "both"):
@@ -430,8 +444,7 @@ def solve(
 
         pool_instances = {}
         for i0 in range(0, reg_steps + 1):
-            if verbose:
-                logging.info(f"running instance {i0}/{reg_steps}")
+            logging.debug(f"running instance {i0}/{reg_steps}")
             pparam = reg_stepsize * i0
             solver.model.pparam = pparam
             if i0 > 0:
@@ -445,45 +458,37 @@ def solve(
             )
             assert sol_instances[pparam] is not None, "optimization failed"
 
+            pool_instances[pparam] = [sol_instances[pparam]]
             if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
                 pool_sols = solver.get_pool_solutions(pool_size=pool_size)
                 if pool_sols:
-                    pool_instances[pparam] = pool_sols
+                    pool_instances[pparam].extend(pool_sols)
 
-        if instances_dir is not None:
-            store_instance_tofile(
-                sol_instances,
-                f_a,
-                f_b,
-                instances_dir,
-                solve_mode,
-                n,
-            )
-            if pool_instances:
-                store_pool_tofile(
-                    pool_instances,
-                    f_a,
-                    f_b,
-                    instances_dir,
-                    solve_mode,
-                    n,
-                )
-
-    instances = cd_instances if solve_mode == "cd" else sol_instances
+        store_instance_tofile(
+            pool_instances,
+            f_a,
+            f_b,
+            sol_dir,
+            solve_mode,
+            n,
+            fcn_data=fcn_data,
+            nbins=nbins,
+        )
 
     pareto_img = os.path.join(
         plot_dir, f"{ploidy}_n{n}_pareto_curve.{solve_mode}.{reg_term}.png"
     )
-    best_instance, imf_obj = model_selection_instance(
+    best_instance, imf_obj, selected_key = model_selection_instance(
         f_a,
         f_b,
         weights,
-        instances,
+        pool_instances,
         reg_term,
         solve_mode,
         sol_dir,
+        fcn_data,
+        nbins,
         pareto_img=pareto_img,
-        verbose=verbose,
     )
 
     assert best_instance is not None, f"no solution for {ploidy} and n={n}"
@@ -501,32 +506,34 @@ def solve(
     )
 
     all_pool = {}
-    if pool_instances:
-        pool_objs = []
-        pool_tags = []
-        for pparam, sols in pool_instances.items():
-            for pidx, (pobj, pcA, pcB, pu) in enumerate(sols, start=1):
-                tag = f"pool_p{pparam}_s{pidx}"
-                seg_df = segmentation(
-                    pcA,
-                    pcB,
-                    pu,
-                    cluster_ids,
-                    sample_ids,
-                    bbcs=bbcs,
-                    region_file=args["region_bed"],
-                )
-                p_imf, p_reg = compute_individual_objs(
-                    reg_term, weights, f_a, f_b, pcA, pcB, pu
-                )
-                pool_objs.append([p_imf, p_reg])
-                pool_tags.append(tag)
-                all_pool[tag] = (seg_df, p_imf, False)
+    pool_objs = []
+    pool_tags = []
+    pool_keys = []
+    for pparam, sols in pool_instances.items():
+        for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
+            tag = f"pool_p{pparam}_s{pidx}"
+            seg_df = segmentation(
+                pcA,
+                pcB,
+                pu,
+                cluster_ids,
+                sample_ids,
+                bbcs=bbcs,
+                region_file=args["region_bed"],
+            )
+            p_imf, p_reg = compute_individual_objs(
+                reg_term, weights, f_a, f_b, pcA, pcB, pu
+            )
+            pool_objs.append([p_imf, p_reg])
+            pool_tags.append(tag)
+            pool_keys.append((pparam, pidx))
+            all_pool[tag] = (seg_df, p_imf, False, False)
 
-        is_pareto = filter_non_pareto(np.array(pool_objs))
-        for tag, pareto in zip(pool_tags, is_pareto):
-            seg_df_, obj_, _ = all_pool[tag]
-            all_pool[tag] = (seg_df_, obj_, bool(pareto))
+    is_pareto = filter_non_pareto(np.array(pool_objs))
+    for tag, key, pareto in zip(pool_tags, pool_keys, is_pareto):
+        seg_df_, obj_, _, _ = all_pool[tag]
+        is_selected = key == selected_key
+        all_pool[tag] = (seg_df_, obj_, bool(pareto), is_selected)
 
     return obj, imf_obj, all_pool
 

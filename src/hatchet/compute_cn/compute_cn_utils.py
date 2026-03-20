@@ -103,6 +103,47 @@ def filtering(
     return good_clusters, bad_clusters
 
 
+def compute_fractional_cn(rdr, baf, rdr_se, baf_se, gammas, alpha=0.05):
+    """Compute fractional copy numbers and confidence intervals.
+
+    fcn = gamma * rdr
+    fb  = fcn * baf        (B-allele fractional CN)
+    fa  = fcn * (1 - baf)  (A-allele fractional CN)
+
+    SE propagation uses the delta method for products of independent MLEs:
+        SE^2(X*Y) = mu_X^2 * SE_Y^2 + mu_Y^2 * SE_X^2 + SE_X^2 * SE_Y^2
+
+    Returns a dict with keys: fcn, fa, fb, fa_lo, fa_hi, fb_lo, fb_hi.
+    CI bounds use (1-alpha) normal approximation.
+    """
+    from scipy.stats import norm
+
+    fcn = rdr * gammas
+    fb = fcn * baf
+    fa = fcn - fb
+
+    g2 = gammas**2
+    se_r2 = rdr_se**2
+    se_b2 = baf_se**2
+    r2 = rdr**2
+    b2 = baf**2
+
+    fb_se = np.sqrt(g2 * (r2 * se_b2 + b2 * se_r2 + se_r2 * se_b2))
+    one_minus_b2 = (1 - baf) ** 2
+    fa_se = np.sqrt(g2 * (r2 * se_b2 + one_minus_b2 * se_r2 + se_r2 * se_b2))
+
+    z = norm.ppf(1 - alpha / 2)
+    return {
+        "fcn": fcn,
+        "fa": fa,
+        "fb": fb,
+        "fa_lo": fa - z * fa_se,
+        "fa_hi": fa + z * fa_se,
+        "fb_lo": fb - z * fb_se,
+        "fb_hi": fb + z * fb_se,
+    }
+
+
 def segmentation(
     cA,
     cB,
