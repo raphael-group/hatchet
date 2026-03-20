@@ -42,6 +42,8 @@ if bool(config["compute_cn"]["diploid"]):
     compute_cn_args_list.append("--diploid")
 if bool(config["compute_cn"]["tetraploid"]):
     compute_cn_args_list.append("--tetraploid")
+if bool(config["compute_cn"].get("segment", False)):
+    compute_cn_args_list.append("--segment")
 if bool(config["compute_cn"]["no_ampdel"]):
     compute_cn_args_list.append("--no_ampdel")
 if config["compute_cn"].get("purities"):

@@ -298,6 +298,14 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
+        "--segment",
+        action="store_true",
+        default=False,
+        required=False,
+        help="Use genomic-segment-level data instead of cluster-level summaries (default: false)",
+    )
+
+    parser.add_argument(
         "--bal_tost_margin",
         required=False,
         default=3e-2,

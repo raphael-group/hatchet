@@ -58,6 +58,9 @@ compute_cn:
   # manually select cluster_bins bbc/seg by cluster <k> (null = auto)
   k: null
 
+  # use genomic-segment-level data instead of cluster-level summaries
+  segment: false
+
   # solver mode: ilp | cd | both
   mode: ilp
   # ILP solver backend: gurobi | cbc

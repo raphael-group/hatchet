@@ -90,19 +90,16 @@ def run(args=None):
             gamma_WGD = gammas_WGD.get(sample, 0) if gammas_WGD is not None else 0
             fd.write(f"{sample}\t{gamma_noWGD}\t{gamma_WGD}\n")
 
-    segs_sorted = segs.sort_values(["#ID", "SAMPLE"])
-    rdr = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD")
-    baf = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF")
-    rdr_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD-se")
-    baf_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF-se")
-    nbins = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="#BINS")
-    samples_sorted = sorted(segs["SAMPLE"].unique().tolist())
-    bins = (
-        segs.loc[segs["SAMPLE"] == samples_sorted[0]]
-        .set_index("#ID")["LENGTH"]
-        .sort_index()
-    )
-    weights = 100 * bins / sum(bins)
+    if args.get("segment", False):
+        seg_data = build_segment_data(bbcs, segs)
+    else:
+        seg_data = build_cluster_data(segs)
+    rdr = seg_data["rdr"]
+    baf = seg_data["baf"]
+    rdr_se = seg_data["rdr_se"]
+    baf_se = seg_data["baf_se"]
+    nbins = seg_data["nbins"]
+    weights = seg_data["weights"]
     cluster_ids = rdr.index.tolist()
     sample_ids = rdr.columns.tolist()
 

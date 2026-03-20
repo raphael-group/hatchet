@@ -7,6 +7,136 @@ from hatchet.utils import read_region_bed, build_seg_from_bbc
 from hatchet.plot import plot_cn as _plot_cn
 
 
+def build_cluster_data(segs):
+    """Pivot cluster-level SEG into (cluster x sample) DataFrames.
+
+    Returns a dict with keys ``rdr``, ``baf``, ``rdr_se``, ``baf_se``,
+    ``nbins``, ``weights`` — the same interface as ``build_segment_data``.
+    """
+    segs_sorted = segs.sort_values(["#ID", "SAMPLE"])
+    rdr = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD")
+    baf = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF")
+    rdr_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD-se")
+    baf_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF-se")
+    nbins = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="#BINS")
+    first_sample = sorted(segs["SAMPLE"].unique())[0]
+    lengths = (
+        segs.loc[segs["SAMPLE"] == first_sample]
+        .set_index("#ID")["LENGTH"]
+        .sort_index()
+    )
+    weights = 100 * lengths / lengths.sum()
+    return {
+        "rdr": rdr,
+        "baf": baf,
+        "rdr_se": rdr_se,
+        "baf_se": baf_se,
+        "nbins": nbins,
+        "weights": weights,
+    }
+
+
+def build_segment_data(bbcs, segs):
+    """Build genomic-segment-level DataFrames from bin-level BBC and cluster-level SEG.
+
+    A genomic segment is a maximal contiguous run of bins with the same CLUSTER
+    on the same chromosome.  Each segment inherits its RD, BAF, and associated
+    standard-error columns from the cluster-level ``segs`` DataFrame (no
+    recomputation from bin values).
+
+    Parameters
+    ----------
+    bbcs : pd.DataFrame
+        Bin-level BBC DataFrame with columns ``#CHR``, ``START``, ``END``,
+        ``SAMPLE``, ``CLUSTER``.
+    segs : pd.DataFrame
+        Cluster-level SEG DataFrame with columns ``#ID``, ``SAMPLE``, ``RD``,
+        ``BAF``, ``RD-se``, ``BAF-se``, ``#BINS``, ``LENGTH``.
+
+    Returns
+    -------
+    dict
+        Keys: ``rdr``, ``baf``, ``rdr_se``, ``baf_se``, ``nbins`` (DataFrames
+        of shape ``(num_segments, num_samples)``), ``weights`` (Series of
+        length ``num_segments``), ``seg_to_cluster`` (Series mapping segment
+        index to cluster ID).
+    """
+    bbcs = bbcs.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
+    samples_sorted = sorted(bbcs["SAMPLE"].unique())
+    first_sample = samples_sorted[0]
+
+    # Identify segment boundaries using only the first sample's rows
+    mask = bbcs["SAMPLE"] == first_sample
+    first_df = bbcs.loc[mask].reset_index(drop=True)
+
+    seg_boundary = (
+        (first_df["CLUSTER"] != first_df["CLUSTER"].shift())
+        | (first_df["#CHR"] != first_df["#CHR"].shift())
+    )
+    seg_ids_first = seg_boundary.cumsum() - 1  # 0-based segment IDs
+
+    # Map segment IDs back to all rows (same positional order per sample)
+    n_bins_per_sample = len(first_df)
+    bbcs["_seg_id"] = np.tile(seg_ids_first.values, len(samples_sorted))
+
+    # Aggregate per (segment, sample)
+    agg = (
+        bbcs.groupby(["_seg_id", "SAMPLE"])
+        .agg(
+            CHR=("#CHR", "first"),
+            START=("START", "min"),
+            END=("END", "max"),
+            CLUSTER=("CLUSTER", "first"),
+            NBINS=("CLUSTER", "count"),
+        )
+        .reset_index()
+    )
+    agg["LENGTH"] = agg["END"] - agg["START"]
+
+    # Join cluster-level statistics from segs
+    seg_cols = ["#ID", "SAMPLE", "RD", "BAF", "RD-se", "BAF-se"]
+    agg = agg.merge(
+        segs[seg_cols],
+        left_on=["CLUSTER", "SAMPLE"],
+        right_on=["#ID", "SAMPLE"],
+        how="left",
+    )
+
+    # Pivot into (seg_id x sample) DataFrames
+    rdr = agg.pivot(index="_seg_id", columns="SAMPLE", values="RD")
+    baf = agg.pivot(index="_seg_id", columns="SAMPLE", values="BAF")
+    rdr_se = agg.pivot(index="_seg_id", columns="SAMPLE", values="RD-se")
+    baf_se = agg.pivot(index="_seg_id", columns="SAMPLE", values="BAF-se")
+    nbins = agg.pivot(index="_seg_id", columns="SAMPLE", values="NBINS")
+
+    # Weights: segment length as percentage of genome (from first sample)
+    first_agg = agg.loc[agg["SAMPLE"] == first_sample].set_index("_seg_id")
+    seg_lengths = first_agg["LENGTH"]
+    weights = 100 * seg_lengths / seg_lengths.sum()
+
+    # Cluster assignment per segment
+    seg_to_cluster = first_agg["CLUSTER"]
+
+    bbcs.drop(columns=["_seg_id"], inplace=True)
+
+    n_segs = rdr.shape[0]
+    n_samples = rdr.shape[1]
+    logging.info(
+        f"segment mode: {n_segs} genomic segments x {n_samples} samples "
+        f"(from {len(segs['#ID'].unique())} clusters)"
+    )
+
+    return {
+        "rdr": rdr,
+        "baf": baf,
+        "rdr_se": rdr_se,
+        "baf_se": baf_se,
+        "nbins": nbins,
+        "weights": weights,
+        "seg_to_cluster": seg_to_cluster,
+    }
+
+
 def filtering(
     bbc: pd.DataFrame,
     seg: pd.DataFrame,
