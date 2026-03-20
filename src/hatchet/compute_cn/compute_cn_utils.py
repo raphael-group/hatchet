@@ -59,7 +59,9 @@ def build_segment_data(bbcs, segs):
         Keys: ``rdr``, ``baf``, ``rdr_se``, ``baf_se``, ``nbins`` (DataFrames
         of shape ``(num_segments, num_samples)``), ``weights`` (Series of
         length ``num_segments``), ``seg_to_cluster`` (Series mapping segment
-        index to cluster ID).
+        index to cluster ID), ``chr_boundaries`` (boolean array of length
+        ``num_segments`` where True marks the first segment of each
+        chromosome).
     """
     bbcs = bbcs.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
     samples_sorted = sorted(bbcs["SAMPLE"].unique())
@@ -117,6 +119,9 @@ def build_segment_data(bbcs, segs):
     # Cluster assignment per segment
     seg_to_cluster = first_agg["CLUSTER"]
 
+    # Chromosome boundaries: True at the first segment of each chromosome
+    chr_boundaries = (first_agg["CHR"] != first_agg["CHR"].shift()).values
+
     bbcs.drop(columns=["_seg_id"], inplace=True)
 
     n_segs = rdr.shape[0]
@@ -134,6 +139,7 @@ def build_segment_data(bbcs, segs):
         "nbins": nbins,
         "weights": weights,
         "seg_to_cluster": seg_to_cluster,
+        "chr_boundaries": chr_boundaries,
     }
 
 
