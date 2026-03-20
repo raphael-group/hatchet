@@ -16,8 +16,8 @@ class ILPSubset:
     their mixture proportions (u) across k samples. The objective minimizes a
     weighted L1 deviation between observed fractional copy numbers (f_a, f_b)
     and the mixture-model predictions. Supports optional regularization terms
-    (MAXCN, DROOT_SUM, DADJ_SUM) and a coordinate-descent alternation mode
-    (CARCH / UARCH) in which either c or u is held fixed.
+    (MAXCN, DROOT_SUM, DADJ_SUM, DMRCA_SUM) and a coordinate-descent alternation
+    mode (CARCH / UARCH) in which either c or u is held fixed.
     """
 
     def __init__(
@@ -528,6 +528,52 @@ class ILPSubset:
                         objective_sec += (
                             pparam * self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
                         )
+            elif pname == "DMRCA_SUM":
+                # total distance from subclonal tumor clones (cols 2+) to MRCA clone (col 1)
+                # requires n >= 3: col 0 = normal, col 1 = MRCA, cols 2+ = subclonal clones
+                if n >= 3:
+                    manhat_vars = {}
+                    for _m in range(m):
+                        for _n in range(2, n):
+                            manhat_vars[(_m, _n, "a")] = pe.Var(
+                                bounds=(0, np.inf), domain=pe.Reals
+                            )
+                            # "MMDA_" prefix (double-M) distinguishes these from the
+                            # "MDA_" variables added by DROOT_SUM, avoiding name collisions
+                            # if both objectives were ever used in the same model
+                            model.add_component(
+                                f"MMDA_{_m}_{_n}", manhat_vars[(_m, _n, "a")]
+                            )
+                            manhat_vars[(_m, _n, "b")] = pe.Var(
+                                bounds=(0, np.inf), domain=pe.Reals
+                            )
+                            model.add_component(
+                                f"MMDB_{_m}_{_n}", manhat_vars[(_m, _n, "b")]
+                            )
+                            model.constraints.add(
+                                self.cA[_m][_n] - self.cA[_m][1]
+                                <= manhat_vars[(_m, _n, "a")]
+                            )
+                            model.constraints.add(
+                                self.cA[_m][1] - self.cA[_m][_n]
+                                <= manhat_vars[(_m, _n, "a")]
+                            )
+                            model.constraints.add(
+                                self.cB[_m][_n] - self.cB[_m][1]
+                                <= manhat_vars[(_m, _n, "b")]
+                            )
+                            model.constraints.add(
+                                self.cB[_m][1] - self.cB[_m][_n]
+                                <= manhat_vars[(_m, _n, "b")]
+                            )
+                    for _m, cluster_id in enumerate(self.cluster_ids):
+                        for _n in range(2, n):
+                            objective_sec += (
+                                pparam * self.w[cluster_id] * manhat_vars[(_m, _n, "a")]
+                            )
+                            objective_sec += (
+                                pparam * self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
+                            )
             elif pname == "DADJ_SUM":
                 # total distance for all pairs of clones per cluster
                 manhat_vars = {}

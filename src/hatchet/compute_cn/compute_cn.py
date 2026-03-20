@@ -439,9 +439,15 @@ def solve(
             logging.info(f"use CD local opt with obj={obj_} to initialize ILP model")
             solver.hot_start(cA_, cB_)
 
+        # DMRCA_SUM only penalises clones at index >= 2; with n <= 2 there are no
+        # subclonal clones beyond the MRCA, so the regularisation path has no effect
+        # and a single unregularised solve (i0=0, lambda=0) is sufficient.
+        dmrca_no_effect = reg_term == "DMRCA_SUM" and n <= 2
+        effective_reg_steps = 0 if dmrca_no_effect else reg_steps
+
         pool_instances = {}
-        for i0 in range(0, reg_steps + 1):
-            logging.debug(f"running instance {i0}/{reg_steps}")
+        for i0 in range(0, effective_reg_steps + 1):
+            logging.debug(f"running instance {i0}/{effective_reg_steps}")
             pparam = reg_stepsize * i0
             solver.model.pparam = pparam
             if i0 > 0:

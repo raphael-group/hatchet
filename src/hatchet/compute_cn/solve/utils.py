@@ -167,6 +167,7 @@ def compute_individual_objs(
         "MAXCN": compute_obj_MAXCN,
         "DROOT_SUM": compute_obj_DROOT_SUM,
         "DADJ_SUM": compute_obj_DADJ_SUM,
+        "DMRCA_SUM": compute_obj_DMRCA_SUM,
     }
     sub_obj = reg_objs[pname](w_, fA_, fB_, cA_, cB_, u_) if pname in reg_objs else 0.0
     return [imf_obj, sub_obj]
@@ -194,6 +195,24 @@ def compute_obj_DROOT_SUM(weights, _fA, _fB, cA, cB, _u):
     distB = weights * np.abs(cB[:, 1:] - cB[:, :1])
     obj = np.sum(distA) + np.sum(distB)
     return obj
+
+
+def compute_obj_DMRCA_SUM(weights, _fA, _fB, cA, cB, _u):
+    """Compute weighted sum of Manhattan distance from the MRCA clone to all subclonal clones.
+
+    Clone layout: col 0 = normal, col 1 = MRCA, cols 2+ = subclonal tumor clones.
+    Returns 0.0 when n < 3 (no subclonal clones exist beyond the MRCA).
+
+    All regularisation objective functions share the same call signature
+    ``(weights, fA, fB, cA, cB, u)`` so they can be dispatched uniformly via a
+    dict in ``compute_individual_objs``.  Parameters not needed by this objective
+    are prefixed with ``_``.
+    """
+    if cA.shape[1] < 3:
+        return 0.0
+    distA = weights * np.abs(cA[:, 2:] - cA[:, 1:2])
+    distB = weights * np.abs(cB[:, 2:] - cB[:, 1:2])
+    return np.sum(distA) + np.sum(distB)
 
 
 def compute_obj_DADJ_SUM(weights, _fA, _fB, cA, cB, _u):

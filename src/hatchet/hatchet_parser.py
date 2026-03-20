@@ -372,7 +372,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--reg_term",
         required=False,
-        choices=["RAW", "MAXCN", "DROOT_SUM", "DADJ_SUM"],
+        choices=["RAW", "MAXCN", "DROOT_SUM", "DADJ_SUM", "DMRCA_SUM"],
         type=str,
         help="regularization term (default: MAXCN)",
         default="MAXCN",

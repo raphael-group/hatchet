@@ -69,10 +69,15 @@ class Worker:
             carch.hot_start(_cA, _cB)
 
             if self.reg_name != "RAW":
-                # Regularization path: sweep λ values, warm-starting each from the previous
+                # Regularization path: sweep λ values, warm-starting each from the previous.
+                # DMRCA_SUM only penalises clones at index >= 2; with n <= 2 there are no
+                # subclonal clones beyond the MRCA, so a single unregularised solve suffices.
+                dmrca_no_effect = self.reg_name == "DMRCA_SUM" and self.ilp.n <= 2
+                effective_reg_steps = 0 if dmrca_no_effect else self.reg_steps
+
                 carch_instances = {}
                 prev_pparam = None
-                for i0 in range(0, self.reg_steps + 1):
+                for i0 in range(0, effective_reg_steps + 1):
                     pparam = self.reg_ssize * i0
                     carch.model.pparam = pparam
                     if prev_pparam is not None:
