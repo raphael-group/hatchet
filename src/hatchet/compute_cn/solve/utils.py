@@ -369,14 +369,40 @@ def model_selection_instance(
     pname: str,
     solve_mode: str,
     outdir: str,
-    fcn_data: dict,
-    nbins: pd.DataFrame,
+    fcn_data: dict = None,
+    nbins: pd.DataFrame = None,
     pareto_img: str = None,
 ):
     """Select the best solution from a regularisation path using the elbow criterion.
 
-    pool_instances: {pparam: [(obj, cA, cB, u), ...]} where index 0 is the
-    primary solution and index 1+ are pool alternatives.
+    Args:
+        f_a: DataFrame of observed fractional A copy numbers (clusters x samples).
+        f_b: DataFrame of observed fractional B copy numbers (clusters x samples).
+        weights: Series of per-cluster weights.
+        pool_instances: Mapping ``{pparam: [(obj, cA, cB, u), ...]}``, where index 0
+            is the primary solution and index 1+ are pool alternatives.
+        pname: Regularisation objective name (e.g. ``"DROOT_SUM"``), or None for
+            raw (unregularised) selection.
+        solve_mode: Either ``"cd"`` (coordinate-descent inner loop) or a string
+            label used in output filenames (ILP path). When ``"cd"``, the error
+            residual is computed as ``tobj - imf_obj``; otherwise it is computed as
+            ``tobj - (imf_obj + lambda * reg_obj)``.  Must be exactly ``"cd"`` when
+            called from the CD worker — a descriptive label string will silently
+            activate the ILP error formula and produce incorrect diagnostics.
+        outdir: Directory for TSV and PNG output, or None to suppress all file I/O.
+            Ignored when ``pareto_img`` is supplied explicitly.
+        fcn_data: Dict of fractional-CN DataFrames used for CI-violation counting,
+            or None to skip CI accounting.
+        nbins: DataFrame of bin counts per cluster/sample used for CI-violation
+            counting, or None to skip CI accounting.
+        pareto_img: Explicit path for the Pareto-curve PNG.  Takes priority over
+            the ``outdir``-based auto-constructed path.  Pass None (default) to
+            let the function derive the path from ``outdir``.
+
+    Returns:
+        Tuple ``(best_solution, imf_obj, key)`` where ``best_solution`` is the
+        ``(obj, cA, cB, u)`` tuple for the selected solution, ``imf_obj`` is its
+        unregularised IMF objective value, and ``key`` is ``(pparam, pool_idx)``.
     """
     assert len(pool_instances) > 0, "no solutions to select from"
 
@@ -390,7 +416,10 @@ def model_selection_instance(
         else:
             lambda_val = float("nan")
             errv = tobj - imf_obj
-        n_viol, viol_ratio = _count_ci_violations(cA, cB, u, fcn_data, nbins)
+        if fcn_data is not None and nbins is not None:
+            n_viol, viol_ratio = _count_ci_violations(cA, cB, u, fcn_data, nbins)
+        else:
+            n_viol, viol_ratio = 0, 0.0
         return [
             pparam,
             pool_idx,
@@ -433,7 +462,7 @@ def model_selection_instance(
         ignore_index=True,
     )
 
-    if pareto_img is None:
+    if pareto_img is None and outdir is not None:
         pareto_img = os.path.join(outdir, f"pareto_curve.{solve_mode}.{pname}.png")
 
     df, sol_index = model_select_elbow(
@@ -445,14 +474,15 @@ def model_selection_instance(
 
     df = df.sort_values(["instance_id", "pool_idx"]).reset_index(drop=True)
 
-    sols_parent = os.path.dirname(outdir)
-    subdir_name = os.path.basename(outdir)
-    df.to_csv(
-        os.path.join(sols_parent, f"{subdir_name}.solutions.{solve_mode}.{pname}.tsv"),
-        sep="\t",
-        header=True,
-        index=False,
-    )
+    if outdir is not None:
+        sols_parent = os.path.dirname(outdir)
+        subdir_name = os.path.basename(outdir)
+        df.to_csv(
+            os.path.join(sols_parent, f"{subdir_name}.solutions.{solve_mode}.{pname}.tsv"),
+            sep="\t",
+            header=True,
+            index=False,
+        )
 
     sel = df.loc[sol_index]
     key = (sel["instance_id"], int(sel["pool_idx"]))

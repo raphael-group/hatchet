@@ -81,7 +81,9 @@ class Worker:
                     pparam = self.reg_ssize * i0
                     carch.model.pparam = pparam
                     if prev_pparam is not None:
-                        prev_cA, prev_cB = carch_instances[prev_pparam][1:3]
+                        # carch_instances[pparam] is a single-element list [result];
+                        # index [0] unwraps it to the (obj, cA, cB, u) tuple.
+                        _, prev_cA, prev_cB, _ = carch_instances[prev_pparam][0]
                         carch.hot_start(prev_cA, prev_cB)
                     result = carch.run(
                         solver_type=self.solver_type,
@@ -90,16 +92,19 @@ class Worker:
                     )
                     if result is None:
                         return None
-                    carch_instances[pparam] = result
+                    carch_instances[pparam] = [result]
                     prev_pparam = pparam
 
-                best_result, _ = model_selection_instance(
+                # Pass solve_mode="cd" so model_selection_instance uses the
+                # unregularised error formula (errv = tobj - imf_obj).
+                # outdir=None suppresses TSV/PNG output during the inner CD loop.
+                best_result, _imf_obj, _selected_key = model_selection_instance(
                     self.ilp.f_a,
                     self.ilp.f_b,
                     self.ilp.w,
                     carch_instances,
                     self.reg_name,
-                    f"cd_{self.work_id}_{_iters}",
+                    "cd",
                     None,
                 )
                 _obj_c, _cA, _cB, _ = best_result
@@ -292,7 +297,7 @@ class CoordinateDescent:
                 instance = future.result()
                 if instance is not None:
                     obj, cA, cB, u = instance
-                    instances.append([obj, cA, cB, u])
+                    instances.append((obj, cA, cB, u))
 
         if len(instances) == 0:
             raise RuntimeError("Not a single feasible solution found!")
