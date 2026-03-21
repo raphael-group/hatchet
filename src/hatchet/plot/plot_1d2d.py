@@ -216,19 +216,25 @@ def plot_1d(
             linewidth=bd_linewidth,
         )
 
-    if not exp_colname is None:
-        # plot expected values as hlines
+    if exp_colname is not None:
+        # plot expected values as hlines, merging consecutive same-value bins
+        exp_vals = bin_info[exp_colname].to_numpy()
+        abs_starts = bin_info["abs_start"].to_numpy()
+        abs_ends = bin_info["abs_end"].to_numpy()
+
         exp_lines = []
-        exp_colors = [linecolor] * len(bin_info)
-        for _, row in bin_info.iterrows():
-            exp_lines.append(
-                [
-                    (row["abs_start"], row[exp_colname]),
-                    (row["abs_end"], row[exp_colname]),
-                ]
-            )
+        i = 0
+        while i < len(exp_vals):
+            j = i + 1
+            while j < len(exp_vals) and exp_vals[j] == exp_vals[i]:
+                j += 1
+            exp_lines.append([
+                (abs_starts[i], exp_vals[i]),
+                (abs_ends[j - 1], exp_vals[i]),
+            ])
+            i = j
         ax.add_collection(
-            LineCollection(exp_lines, linewidth=exp_linewidth, colors=exp_colors)
+            LineCollection(exp_lines, linewidth=exp_linewidth, colors=[linecolor] * len(exp_lines))
         )
 
     ax.vlines(
