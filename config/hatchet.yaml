@@ -87,7 +87,7 @@ compute_cn:
   diploid: false
   tetraploid: false
 
-  # regularization term: RAW | MAXCN | DROOT_SUM | DADJ_SUM
+  # regularization term: RAW | MAXCN | DROOT_SUM | DADJ_SUM | DMRCA_SUM
   reg_term: "MAXCN"
   reg_steps: 10
   reg_stepsize: 0.01
