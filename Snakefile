@@ -147,7 +147,6 @@ rule run_cluster_bins:
         decode_method=str(config["cluster_bins"]["decode_method"]),
         score_method=str(config["cluster_bins"]["score_method"]),
         init_method=str(config["cluster_bins"]["init_method"]),
-        bb_quantile=float(config["cluster_bins"]["bb_quantile"]),
         min_tau=float(config["cluster_bins"]["min_tau"]),
         max_tau=float(config["cluster_bins"]["max_tau"]),
         baf_eps=float(config["cluster_bins"]["baf_eps"]),
@@ -171,7 +170,6 @@ rule run_cluster_bins:
             --decode_method {params.decode_method} \
             --score_method {params.score_method} \
             --init_method {params.init_method} \
-            --bb_quantile {params.bb_quantile} \
             --min_tau {params.min_tau} \
             --max_tau {params.max_tau} \
             --baf_eps {params.baf_eps} \

@@ -134,47 +134,6 @@ def estimate_BB_dispersion_segment(
     return bb_taus
 
 
-def estimate_BB_dispersion_balanced(
-    X_alphas: np.ndarray,
-    X_betas: np.ndarray,
-    X_bafs: np.ndarray,
-    M: int,
-    min_tau=50,
-    max_tau=100,
-    bb_quantile=0.2,
-):
-    """Estimate per-sample BB dispersion tau from near-balanced bins.
-
-    Selects the `bb_quantile` fraction of bins with the smallest mean
-    |BAF - 0.5| deviation (i.e., most balanced) and fits tau via MLE
-    independently for each tumor sample.
-
-    Args:
-        X_alphas, X_betas: (N, M) allele count arrays.
-        X_bafs:            (N, M) observed BAF values.
-        M:                 Number of tumor samples.
-        min_tau, max_tau:  Bounds passed to mle_BB_dispersion.
-        bb_quantile:       Fraction of balanced bins to use (default 0.2).
-
-    Returns:
-        bb_taus: (M,) float32 array of per-sample tau estimates.
-    """
-    logging.info("initialize BB dispersion parameter via MLE on balanced bins")
-    logging.info(
-        f"tau bound=[{min_tau},{max_tau}], balanced quantile={bb_quantile:.3%}"
-    )
-    mean_baf_dev = np.mean(np.abs(X_bafs - 0.5), axis=1)
-    balanced_idx = np.where(mean_baf_dev <= np.quantile(mean_baf_dev, bb_quantile))[0]
-    bb_taus = np.zeros(M, dtype=np.float32)
-    for si in range(M):
-        bb_taus[si] = mle_BB_dispersion(
-            X_alphas[balanced_idx][:, si],
-            X_betas[balanced_idx][:, si],
-            min_tau=min_tau,
-            max_tau=max_tau,
-        )
-    return bb_taus
-
 
 ##################################################
 def estimate_rdr_vars(

@@ -113,14 +113,6 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
-        "--bb_quantile",
-        required=False,
-        default=0.2,
-        type=float,
-        help="Fraction of near-balanced bins (BAF ≈ 0.5) used to initialize Beta-Binomial dispersion (default: 0.2)",
-    )
-
-    parser.add_argument(
         "--min_tau",
         required=False,
         default=50,

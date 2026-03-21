@@ -50,7 +50,6 @@ def snakemake_result(tmp_path_factory):
             "restarts": 3,
             "top_restarts": 2,
             "niters": 5,
-            "bb_quantile": 0.2,
             "min_tau": 50,
             "max_tau": 500,
             "baf_eps": 1e-3,

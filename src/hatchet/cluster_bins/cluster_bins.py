@@ -52,7 +52,6 @@ def run(args=None):
     genome_size = args["genome_size"]
     out_dir = args["bbc_dir"]
 
-    bb_quantile = args["bb_quantile"]
     min_tau = args["min_tau"]
     max_tau = args["max_tau"]
     baf_eps = args["baf_eps"]

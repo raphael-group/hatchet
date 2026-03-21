@@ -30,8 +30,6 @@ cluster_bins:
   niters: 50
 
   # Beta-Binomial dispersion
-  # fraction of near-balanced bins to estimate initial tau
-  bb_quantile: 0.2
   min_tau: 50
   max_tau: 500
   # BAF mean Brent search bounds [baf_eps, 1-baf_eps]

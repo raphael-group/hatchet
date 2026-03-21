@@ -38,7 +38,6 @@ output/my_sample/
 | `--decode_method` | `map` | HMM decoding method: `viterbi` (most-likely path) or `map` (marginal per-bin posterior) |
 | `--score_method` | `icl` | Model selection criterion: `bic` or `icl` |
 | `--init_method` | `cna_plus_plus` | Initialization method: `cna_plus_plus` (HMM-aware seeding) or `kmeans_plus_plus` (sklearn KMeans++) |
-| `--bb_quantile` | 0.2 | Fraction of near-balanced bins (BAF ≈ 0.5) used to initialize Beta-Binomial dispersion |
 | `--min_tau` | 50 | Minimum Beta-Binomial dispersion tau |
 | `--max_tau` | 500 | Maximum Beta-Binomial dispersion tau |
 | `--baf_eps` | 1e-3 | BAF mean Brent search bounds [baf_eps, 1-baf_eps]; related to sequencing error floor |

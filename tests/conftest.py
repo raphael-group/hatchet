@@ -42,7 +42,6 @@ def cluster_bins_result(synthetic_data, tmp_path_factory):
         "n_local_trials": 2,
         "niters": 5,
         "t": 1e-6,
-        "bb_quantile": 0.2,
         "min_tau": 50,
         "max_tau": 500,
         "baf_eps": 1e-3,
