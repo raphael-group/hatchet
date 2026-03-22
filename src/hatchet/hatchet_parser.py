@@ -313,13 +313,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         help="TOST equivalence test significance level (default: 0.05)",
     )
     parser.add_argument(
-        "--tol_nstd",
-        type=float,
-        required=False,
-        default=1.0,
-        help="Number of std deviations for CN scoring tolerance (default: 1.0)",
-    )
-    parser.add_argument(
         "--fcn_ci_alpha",
         type=float,
         required=False,

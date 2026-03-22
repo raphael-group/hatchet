@@ -803,16 +803,33 @@ class ILPSubset:
 
         with Random(random_seed):
             for _k in range(self.k):
-                # Generate 2 random ints between [1, n] and take the max - biasing towards larger numbers
-                _n0 = np.random.randint(1, self.n + 1)
-                _n1 = np.random.randint(1, self.n + 1)
-                n_parts = min(
-                    max(_n0, _n1), size_bubbles
-                )  # no. of clones with non-zero proportion in the mix
-                v = _build_partition_vector(
-                    self.n, n_parts, size_bubbles, minprop=self.minprop
-                )
-                U[:, _k] = v
+                sid = self.sample_ids[_k]
+                if self.purities is not None and sid in self.purities:
+                    # Fix u[0] to 1-purity; randomly split purity among tumor clones
+                    purity = self.purities[sid]
+                    U[0, _k] = 1 - purity
+                    n_tumor = self.n - 1
+                    if n_tumor == 1:
+                        U[1, _k] = purity
+                    else:
+                        _n0 = np.random.randint(1, n_tumor + 1)
+                        _n1 = np.random.randint(1, n_tumor + 1)
+                        n_parts = min(max(_n0, _n1), size_bubbles)
+                        v = _build_partition_vector(
+                            n_tumor, n_parts, size_bubbles, minprop=self.minprop
+                        )
+                        U[1:, _k] = purity * v
+                else:
+                    # No purity constraint: fully random partition across all clones
+                    _n0 = np.random.randint(1, self.n + 1)
+                    _n1 = np.random.randint(1, self.n + 1)
+                    n_parts = min(
+                        max(_n0, _n1), size_bubbles
+                    )
+                    v = _build_partition_vector(
+                        self.n, n_parts, size_bubbles, minprop=self.minprop
+                    )
+                    U[:, _k] = v
         return U
 
     def run(

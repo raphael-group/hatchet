@@ -79,7 +79,6 @@ def run(args=None):
         segs,
         bal_tost_alpha=args["bal_tost_alpha"],
         bal_tost_margin=args["bal_tost_margin"],
-        tol_nstd=args["tol_nstd"],
         maxcn=args["diploidcmax"],
         maxcn_wgd=args["tetraploidcmax"],
     )

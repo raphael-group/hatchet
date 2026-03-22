@@ -77,7 +77,6 @@ compute_cn:
   # tolerances for locating balanced/clonal clusters
   bal_tost_margin: 0.03
   bal_tost_alpha: 0.05
-  tol_nstd: 1.0
   # significance level for fractional CN confidence intervals
   fcn_ci_alpha: 0.05
 

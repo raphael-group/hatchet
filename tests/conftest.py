@@ -102,7 +102,6 @@ def compute_cn_result(cluster_bins_result, synthetic_data, tmp_path_factory):
         "bal_tost_margin": 0.04,
         "tolerance": 0.03,
         "bal_tost_alpha": 0.05,
-        "tol_nstd": 1.0,
         "minClone": 2,
         "maxClone": 2,
         "diploid": True,
