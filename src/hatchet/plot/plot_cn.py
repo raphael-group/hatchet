@@ -101,7 +101,7 @@ def run(args=None):
         cnp_ids = bin_info["CNP"].to_numpy()
         clone_states = bin_info["CNP"].unique().tolist()
         clone_props = bin_info.iloc[0][[f"u_{clone}" for clone in clones]].to_numpy()
-        palette = make_cnp_palette(clone_states, clone_props, state_style)
+        palette = make_cnp_palette(clone_states, clone_props, state_style, style="cnv")
 
         # compute per-segment FCN
         bin_info["FCN"] = bin_info.apply(
