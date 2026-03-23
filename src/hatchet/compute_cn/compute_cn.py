@@ -117,68 +117,71 @@ def run(args=None):
             (s, z, (sa, sb), (za, zb)) = pair_noWGD
             logging.info(f"Inferred clonal pair: {s}:({sa},{sb}), {z}:({za},{zb})")
             clonal_dip = {s: (sa, sb), z: (za, zb)}
-            logging.info("Inferred diploid RD scaling factor gamma per sample:")
-            for sample, gamma in gammas_noWGD.items():
-                logging.info(f"{sample}\tgamma={gamma}")
-            gammas_dip = pd.Series(gammas_noWGD).sort_index()
-            fcn_dip = compute_fractional_cn(
-                rdr,
-                baf,
-                rdr_se,
-                baf_se,
-                gammas_dip,
-                alpha=args.get("fcn_ci_alpha", 0.05),
-            )
-            store_solve_input(
-                os.path.join(out_dir, "sols", "diploid_input.tsv"),
+        else:
+            logging.warning("no clonal pair inferred, using s0 only")
+            clonal_dip = {s0: (1, 1)}
+            purities_noWGD = {s: 0.0 for s in samples}
+
+        logging.info("Inferred diploid RD scaling factor gamma per sample:")
+        for sample, gamma in gammas_noWGD.items():
+            logging.info(f"{sample}\tgamma={gamma}")
+        gammas_dip = pd.Series(gammas_noWGD).sort_index()
+        fcn_dip = compute_fractional_cn(
+            rdr,
+            baf,
+            rdr_se,
+            baf_se,
+            gammas_dip,
+            alpha=args.get("fcn_ci_alpha", 0.05),
+        )
+        store_solve_input(
+            os.path.join(out_dir, "sols", "diploid_input.tsv"),
+            fcn_dip,
+            weights,
+            nbins,
+        )
+        for n in range(minClone, maxClone):
+            logging.info(f"running diploid with n={n}")
+            obj, imf_obj, pool = solve(
+                n,
+                clonal_dip,
+                args,
+                "diploid",
+                out_dir,
+                plot_dir,
+                bbcs,
                 fcn_dip,
                 weights,
+                cluster_ids,
+                sample_ids,
+                purities_noWGD,
                 nbins,
+                args["mode"],
+                args["verbosity"],
             )
-            for n in range(minClone, maxClone):
-                logging.info(f"running diploid with n={n}")
-                obj, imf_obj, pool = solve(
-                    n,
-                    clonal_dip,
-                    args,
-                    "diploid",
-                    out_dir,
-                    plot_dir,
-                    bbcs,
-                    fcn_dip,
-                    weights,
-                    cluster_ids,
-                    sample_ids,
-                    purities_noWGD,
-                    nbins,
-                    args["mode"],
-                    args["verbosity"],
+            diploid_sols[n] = (obj, imf_obj)
+            logging.info(f"diploid n={n} objective={obj} imf-objective={imf_obj}")
+            out_bbc = os.path.join(out_dir, f"results.diploid.n{n}.bbc.ucn.tsv")
+            out_seg = os.path.join(out_dir, f"results.diploid.n{n}.seg.ucn.tsv")
+            run_plot_cn(
+                args,
+                out_bbc,
+                out_seg,
+                gamma_outfile,
+                os.path.join(plot_dir, f"diploid_n{n}"),
+                "diploid",
+            )
+            if pool:
+                pool_entries = [
+                    (tag, seg_df, obj_, pareto, selected)
+                    for tag, (seg_df, obj_, pareto, selected) in pool.items()
+                ]
+                plot_pool_cnp(
+                    pool_entries,
+                    args["region_bed"],
+                    os.path.join(plot_dir, f"diploid_n{n}_pool_pareto.pdf"),
+                    title=f"diploid n={n} pool solutions",
                 )
-                diploid_sols[n] = (obj, imf_obj)
-                logging.info(f"diploid n={n} objective={obj} imf-objective={imf_obj}")
-                out_bbc = os.path.join(out_dir, f"results.diploid.n{n}.bbc.ucn.tsv")
-                out_seg = os.path.join(out_dir, f"results.diploid.n{n}.seg.ucn.tsv")
-                run_plot_cn(
-                    args,
-                    out_bbc,
-                    out_seg,
-                    gamma_outfile,
-                    os.path.join(plot_dir, f"diploid_n{n}"),
-                    "diploid",
-                )
-                if pool:
-                    pool_entries = [
-                        (tag, seg_df, obj_, pareto, selected)
-                        for tag, (seg_df, obj_, pareto, selected) in pool.items()
-                    ]
-                    plot_pool_cnp(
-                        pool_entries,
-                        args["region_bed"],
-                        os.path.join(plot_dir, f"diploid_n{n}_pool_pareto.pdf"),
-                        title=f"diploid n={n} pool solutions",
-                    )
-        else:
-            logging.warning("run_diploid=True, but failed to infer clonal pair")
 
     tetraploid_sols = {}
     if run_tetraploid and pair_WGD is not None:
