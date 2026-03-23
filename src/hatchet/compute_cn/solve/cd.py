@@ -156,13 +156,13 @@ def _init_worker(cd, log_level):
     global _cd_global
     _cd_global = cd
     logging.basicConfig(
-        level=log_level,
+        level=logging.ERROR,
         format="%(asctime)s.%(msecs)03d %(levelname)s [worker] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         force=True,
     )
     for name in ("pyomo", "pyomo.core"):
-        logging.getLogger(name).setLevel(logging.WARNING)
+        logging.getLogger(name).setLevel(logging.ERROR)
 
 
 def _work(work_id, u, solver_type, max_iters, max_convergence_iters, timelimit):
@@ -286,12 +286,13 @@ class CoordinateDescent:
         to_do = []
         n_workers = min(j, len(seeds))
         logging.info(f"CD: launching {len(seeds)} seed(s) across {n_workers} worker(s)")
-        with ProcessPoolExecutor(
+        executor = ProcessPoolExecutor(
             max_workers=n_workers,
             mp_context=multiprocessing.get_context("spawn"),
             initializer=_init_worker,
             initargs=(self, logging.root.level),
-        ) as executor:
+        )
+        try:
             for i, u in enumerate(seeds):
                 future = executor.submit(
                     _work,
@@ -309,13 +310,15 @@ class CoordinateDescent:
                     instance = future.result()
                 except Exception as e:
                     logging.error(f"CD worker failed with exception: {e}")
-                    continue
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    raise RuntimeError(f"CD worker failed: {e}") from e
                 if instance is not None:
                     obj, cA, cB, u = instance
                     instances.append((obj, cA, cB, u))
-                    logging.debug(f"CD: worker returned obj={obj:.4f}")
                 else:
-                    logging.warning("CD: worker returned None (infeasible)")
+                    logging.debug("CD: worker returned None (infeasible)")
+        finally:
+            executor.shutdown(wait=True, cancel_futures=True)
 
         if len(instances) == 0:
             raise RuntimeError("Not a single feasible solution found!")
