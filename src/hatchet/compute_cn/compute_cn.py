@@ -17,6 +17,7 @@ from hatchet.compute_cn.solve.utils import (
     model_selection_instance,
     compute_individual_objs,
     filter_non_pareto,
+    dedup_solutions,
 )
 from hatchet.compute_cn.solve.ilp_subset import ILPSubset
 from hatchet.compute_cn.solve.cd import CoordinateDescent
@@ -514,6 +515,9 @@ def solve(
     pool_objs = []
     pool_tags = []
     pool_keys = []
+    # Deduplicate pool solutions by CN states (up to clone reordering)
+    for pparam in pool_instances:
+        pool_instances[pparam] = dedup_solutions(pool_instances[pparam])
     for pparam, sols in pool_instances.items():
         for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
             tag = f"pool_p{pparam}_s{pidx}"

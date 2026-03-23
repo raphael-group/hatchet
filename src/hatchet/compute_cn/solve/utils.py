@@ -88,6 +88,48 @@ def _write_solution_tsv(
             fd.write("\t".join(str(v) for v in fields) + "\n")
 
 
+def dedup_solutions(solutions, u_atol=1e-3):
+    """Remove duplicate (obj, cA, cB, u) tuples that differ only by clone ordering.
+
+    Two solutions are duplicates if their CN profiles (cA, cB) are identical
+    after sorting clones into a canonical order and their clone proportions (u)
+    agree within ``u_atol``.
+
+    Args:
+        solutions: List of ``(obj, cA, cB, u)`` tuples.
+        u_atol: Absolute tolerance for comparing clone proportions.
+
+    Returns:
+        Deduplicated list (order preserved, first occurrence kept).
+    """
+    if len(solutions) <= 1:
+        return solutions
+
+    def _canon(cA, cB, u):
+        arr = np.array(cA + cB)
+        u_arr = np.array(u)
+        order = np.lexsort(arr[::-1])
+        return arr[:, order], u_arr[order]
+
+    keep = []
+    canon_cache = []
+    for sol in solutions:
+        _, cA, cB, u = sol
+        cn_c, u_c = _canon(cA, cB, u)
+        is_dup = False
+        for cn_k, u_k in canon_cache:
+            if np.array_equal(cn_c, cn_k) and np.allclose(u_c, u_k, atol=u_atol):
+                is_dup = True
+                break
+        if not is_dup:
+            keep.append(sol)
+            canon_cache.append((cn_c, u_c))
+    n_removed = len(solutions) - len(keep)
+    if n_removed > 0:
+        logging.info(f"removed {n_removed} duplicate solutions (same CN up to clone reordering)")
+    return keep
+
+
 def store_instance_tofile(
     pool_instances: dict,
     f_a: pd.DataFrame,
@@ -461,11 +503,16 @@ def model_selection_instance(
     ]
 
     df = pd.DataFrame(data=data, columns=columns)
-    df = df.drop_duplicates(
-        subset=["IMF-objective", f"{pname}-objective"],
-        keep="first",
-        ignore_index=True,
-    )
+
+    # Deduplicate by actual CN states (up to clone reordering) + purity tolerance
+    keys = list(all_solutions.keys())
+    all_sols_list = [all_solutions[k] for k in keys]
+    deduped = dedup_solutions(all_sols_list)
+    if len(deduped) < len(all_sols_list):
+        deduped_set = set(id(s) for s in deduped)
+        keep_mask = [id(all_sols_list[i]) in deduped_set for i in range(len(keys))]
+        df = df.loc[keep_mask].reset_index(drop=True)
+        all_solutions = {keys[i]: all_sols_list[i] for i, k in enumerate(keep_mask) if k}
 
     if pareto_img is None and outdir is not None:
         pareto_img = os.path.join(outdir, f"pareto_curve.{solve_mode}.{pname}.png")
