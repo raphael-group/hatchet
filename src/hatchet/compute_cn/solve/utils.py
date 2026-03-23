@@ -126,7 +126,9 @@ def dedup_solutions(solutions, u_atol=1e-3):
             canon_cache.append((cn_c, u_c))
     n_removed = len(solutions) - len(keep)
     if n_removed > 0:
-        logging.info(f"removed {n_removed} duplicate solutions (same CN up to clone reordering)")
+        logging.info(
+            f"removed {n_removed} duplicate solutions (same CN up to clone reordering)"
+        )
     return keep
 
 
@@ -370,9 +372,7 @@ def model_select_elbow(df: pd.DataFrame, xid: str, yid: str, pareto_img: str):
         ax.plot(xs, ys, c="green", linewidth=1, zorder=2)
         ax.scatter(xs, ys, c="green", marker="o", zorder=3, label="Pareto")
         if elbow_x is not None:
-            ax.axvline(
-                elbow_x, linestyle="--", color="steelblue", label="knee/elbow"
-            )
+            ax.axvline(elbow_x, linestyle="--", color="steelblue", label="knee/elbow")
         ax.set_xlabel(xid)
         ax.set_ylabel(yid)
         ax.set_title("Model Selection Pareto Curve")
@@ -430,12 +430,7 @@ def model_selection_instance(
             is the primary solution and index 1+ are pool alternatives.
         pname: Regularisation objective name (e.g. ``"DROOT_SUM"``), or None for
             raw (unregularised) selection.
-        solve_mode: Either ``"cd"`` (coordinate-descent inner loop) or a string
-            label used in output filenames (ILP path). When ``"cd"``, the error
-            residual is computed as ``tobj - imf_obj``; otherwise it is computed as
-            ``tobj - (imf_obj + lambda * reg_obj)``.  Must be exactly ``"cd"`` when
-            called from the CD worker — a descriptive label string will silently
-            activate the ILP error formula and produce incorrect diagnostics.
+        solve_mode: Label used in output filenames (e.g. ``"cd"`` or ``"ilp"``).
         outdir: Directory for TSV and PNG output, or None to suppress all file I/O.
             Ignored when ``pareto_img`` is supplied explicitly.
         fcn_data: Dict of fractional-CN DataFrames used for CI-violation counting,
@@ -457,12 +452,7 @@ def model_selection_instance(
         [imf_obj, reg_obj] = compute_individual_objs(
             pname, weights, f_a, f_b, cA, cB, u
         )
-        if solve_mode != "cd":
-            lambda_val = float(pparam)
-            errv = tobj - (imf_obj + lambda_val * reg_obj)
-        else:
-            lambda_val = float("nan")
-            errv = tobj - imf_obj
+        lambda_val = float(pparam)
         if fcn_data is not None and nbins is not None:
             n_viol, viol_ratio = _count_ci_violations(cA, cB, u, fcn_data, nbins)
         else:
@@ -474,7 +464,6 @@ def model_selection_instance(
             tobj,
             imf_obj,
             reg_obj,
-            errv,
             n_viol,
             round(viol_ratio, 4),
         ]
@@ -497,7 +486,6 @@ def model_selection_instance(
         "Objective",
         "IMF-objective",
         f"{pname}-objective",
-        "float-error",
         "ci_violations",
         "ci_violation_ratio",
     ]
@@ -512,7 +500,9 @@ def model_selection_instance(
         deduped_set = set(id(s) for s in deduped)
         keep_mask = [id(all_sols_list[i]) in deduped_set for i in range(len(keys))]
         df = df.loc[keep_mask].reset_index(drop=True)
-        all_solutions = {keys[i]: all_sols_list[i] for i, k in enumerate(keep_mask) if k}
+        all_solutions = {
+            keys[i]: all_sols_list[i] for i, k in enumerate(keep_mask) if k
+        }
 
     if pareto_img is None and outdir is not None:
         pareto_img = os.path.join(outdir, f"pareto_curve.{solve_mode}.{pname}.png")
@@ -530,7 +520,9 @@ def model_selection_instance(
         sols_parent = os.path.dirname(outdir)
         subdir_name = os.path.basename(outdir)
         df.to_csv(
-            os.path.join(sols_parent, f"{subdir_name}.solutions.{solve_mode}.{pname}.tsv"),
+            os.path.join(
+                sols_parent, f"{subdir_name}.solutions.{solve_mode}.{pname}.tsv"
+            ),
             sep="\t",
             header=True,
             index=False,

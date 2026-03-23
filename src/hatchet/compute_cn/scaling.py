@@ -12,8 +12,15 @@ def _build_cn_candidates(maxcn):
     ]
 
 
-def _compute_d2(cluster, a, b, purities, gammas, samples, baf, rdr, baf_tau, rd_std):
-    """Compute D² (sum of BAF and RDR z-score²) for a cluster under CN (a, b)."""
+def _compute_chi2_pweight(
+    cluster, a, b, purities, gammas, samples, baf, rdr, baf_tau, rd_std, nbins_total, df
+):
+    """Compute chi2 p-value weighted by cluster bin count under CN (a, b).
+
+    Returns ``chi2.sf(D², df) * nbins_total[cluster]``, where D² is the
+    sum of squared BAF and RDR z-scores across samples.  Returns None if
+    the expected values are invalid (denom <= 0).
+    """
     d2 = 0.0
     for si, s in enumerate(samples):
         denom = 2 * (1 - purities[si]) + (a + b) * purities[si]
@@ -24,7 +31,7 @@ def _compute_d2(cluster, a, b, purities, gammas, samples, baf, rdr, baf_tau, rd_
         baf_std = np.sqrt(exp_baf * (1 - exp_baf) / (baf_tau.loc[cluster, s] + 1))
         d2 += ((baf.loc[cluster, s] - exp_baf) / baf_std) ** 2
         d2 += ((rdr.loc[cluster, s] - exp_rdr) / rd_std.loc[cluster, s]) ** 2
-    return d2
+    return chi2.sf(d2, df) * nbins_total[cluster]
 
 
 def get_scaling_factor(
@@ -101,15 +108,25 @@ def get_scaling_factor(
     nbins_total = nbins[samples].sum(axis=1)
     gammas_nowgd_arr = np.array([gammas_noWGD[s] for s in samples])
     rdr_s0 = rdr.loc[s0, :]
-    d2_args = dict(samples=samples, baf=baf, rdr=rdr, baf_tau=baf_tau, rd_std=rd_std)
     df = 2 * len(samples)
+    chi2_args = dict(
+        samples=samples,
+        baf=baf,
+        rdr=rdr,
+        baf_tau=baf_tau,
+        rd_std=rd_std,
+        nbins_total=nbins_total,
+        df=df,
+    )
 
     valid_nowgd = {}
     valid_wgd = {}
 
     for z in imbalanced_z:
-        if not (np.all(baf.loc[z, :] < 0.5 + bal_tost_margin)
-                or np.all(baf.loc[z, :] > 0.5 - bal_tost_margin)):
+        if not (
+            np.all(baf.loc[z, :] < 0.5 + bal_tost_margin)
+            or np.all(baf.loc[z, :] > 0.5 - bal_tost_margin)
+        ):
             logging.debug(f"cluster {z} inconsistent BAF side across samples, skip")
             continue
         if not (np.all(rdr.loc[z, :] > rdr_s0) or np.all(rdr.loc[z, :] < rdr_s0)):
@@ -153,8 +170,10 @@ def get_scaling_factor(
                             break
                         purities_rdr[si] = prdr
 
-                        var_pbaf = ((b - a) / dom ** 2) ** 2 * baf_se.loc[z, s] ** 2
-                        var_prdr = (gammas_nowgd_arr[si] / (a + b - 2)) ** 2 * rd_std.loc[z, s] ** 2
+                        var_pbaf = ((b - a) / dom**2) ** 2 * baf_se.loc[z, s] ** 2
+                        var_prdr = (
+                            gammas_nowgd_arr[si] / (a + b - 2)
+                        ) ** 2 * rd_std.loc[z, s] ** 2
                         se_diff = np.sqrt(var_pbaf + var_prdr)
                         if se_diff > 0:
                             z_stat = abs(pbaf - prdr) / se_diff
@@ -191,17 +210,22 @@ def get_scaling_factor(
                     min_rdr = 2 * (1 - p) / gammas_arr[si]
                     max_rdr = denom_max / gammas_arr[si]
                     for cid in clusters:
-                        if (baf.loc[cid, s] < min_baf or baf.loc[cid, s] > max_baf
-                                or rdr.loc[cid, s] < min_rdr or rdr.loc[cid, s] > max_rdr):
+                        if (
+                            baf.loc[cid, s] < min_baf
+                            or baf.loc[cid, s] > max_baf
+                            or rdr.loc[cid, s] < min_rdr
+                            or rdr.loc[cid, s] > max_rdr
+                        ):
                             grid_ok = False
                 if not grid_ok:
                     continue
 
                 # --- score anchor z ---
-                d2_z = _compute_d2(z, a, b, purities, gammas_arr, **d2_args)
-                if d2_z is None:
+                score_z = _compute_chi2_pweight(
+                    z, a, b, purities, gammas_arr, **chi2_args
+                )
+                if score_z is None:
                     continue
-                score_z = chi2.sf(d2_z, df) * nbins_total[z]
 
                 # --- find single best-supporting cluster j ---
                 best_j, best_j_cn, best_j_score = None, None, 0.0
@@ -215,9 +239,10 @@ def get_scaling_factor(
                             continue
                         if j_below and (aa + bb) > base_ploidy:
                             continue
-                        d2 = _compute_d2(j, aa, bb, purities, gammas_arr, **d2_args)
-                        if d2 is not None:
-                            s_j = chi2.sf(d2, df) * nbins_total[j]
+                        s_j = _compute_chi2_pweight(
+                            j, aa, bb, purities, gammas_arr, **chi2_args
+                        )
+                        if s_j is not None:
                             if s_j > best_j_score:
                                 best_j_score = s_j
                                 best_j = j
@@ -230,9 +255,14 @@ def get_scaling_factor(
                     best_z_score = score
                     j_info = (
                         f"j={best_j} jcn={best_j_cn}"
-                        if best_j is not None else "j=None"
+                        if best_j is not None
+                        else "j=None"
                     )
-                    rdr_info = f"pRDR={purities_rdr}" if purities_rdr is not None else "pRDR=N/A"
+                    rdr_info = (
+                        f"pRDR={purities_rdr}"
+                        if purities_rdr is not None
+                        else "pRDR=N/A"
+                    )
                     best_z_log = (
                         f"  {wgd_tag} z={z} cn=({a},{b}) pBAF={purities_baf} {rdr_info} "
                         f"score={score:.2f} {j_info}"

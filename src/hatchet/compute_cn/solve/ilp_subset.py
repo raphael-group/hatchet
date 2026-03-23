@@ -32,7 +32,6 @@ class ILPSubset:
         f_b: pd.DataFrame,
         w: pd.Series,
         purities: dict,
-        copy_numbers_fixed: dict,
         penalty_param: list,
         base: int = 1,
         # TODO make as parameters
@@ -58,7 +57,6 @@ class ILPSubset:
         self.minprop = minprop
         self.ampdel = ampdel
         self.copy_numbers = copy_numbers
-        self.copy_numbers_fixed = copy_numbers_fixed  # TODO
         self.penalty_param = penalty_param
         self.w = w
         self.purities = purities
@@ -97,7 +95,6 @@ class ILPSubset:
         new.minprop = self.minprop
         new.ampdel = self.ampdel
         new.copy_numbers = self.copy_numbers
-        new.copy_numbers_fixed = self.copy_numbers_fixed
         new.penalty_param = self.penalty_param
         new._base = self._base
         new.w = self.w
@@ -176,7 +173,6 @@ class ILPSubset:
         max_ncns_seg = self.max_ncns_seg
         _M = self.M  # compute binary length
         _base = self.base
-        purities = self.purities
         zero_cn_thres = self.zero_cn_thres
 
         model = pe.ConcreteModel()
@@ -446,22 +442,7 @@ class ILPSubset:
             self.build_symmetry_breaking(model)
             self.fix_given_cn(model)
 
-        # fix user-defined tumor purity
-        if mode_t in ("FULL", "UARCH") and purities is not None:
-            for i, sample in enumerate(self.sample_ids):
-                if sample in purities:
-                    model.constraints.add(self.u[0][i] == 1 - purities[sample])
-
-        # TODO manually fix additional copynumbers in either C/Full-step
-        # copy_numbers_fixed = self.copy_numbers_fixed
-        # if copy_numbers_fixed != None and mode_t in ("FULL", "CARCH"):
-        #     for _m in range(self.m):
-        #         cluster_id = self.f_a.index[_m]
-        #         if cluster_id in copy_numbers_fixed:
-        #             for _n, (_cnA, _cnB) in enumerate(copy_numbers_fixed[cluster_id]):
-        #                 # +1 to skip normal clone.
-        #                 model.constraints.add(self.cA[_m][_n + 1] == _cnA)
-        #                 model.constraints.add(self.cB[_m][_n + 1] == _cnB)
+        # Purities are hot-start seeds in CD (build_random_u), not constraints.
 
         # add objective & regularization terms
         objective = 0
@@ -823,9 +804,7 @@ class ILPSubset:
                     # No purity constraint: fully random partition across all clones
                     _n0 = np.random.randint(1, self.n + 1)
                     _n1 = np.random.randint(1, self.n + 1)
-                    n_parts = min(
-                        max(_n0, _n1), size_bubbles
-                    )
+                    n_parts = min(max(_n0, _n1), size_bubbles)
                     v = _build_partition_vector(
                         self.n, n_parts, size_bubbles, minprop=self.minprop
                     )

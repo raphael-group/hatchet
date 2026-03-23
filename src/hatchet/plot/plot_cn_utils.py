@@ -241,13 +241,20 @@ def plot_cnv_legend(ax: plt.Axes):
     default_color = state_style["default"]
     group_x0 = leg_x
     rect = Rectangle(
-        (group_x0, 0.0), pair_w, pair_h,
-        facecolor=default_color, edgecolor="black",
+        (group_x0, 0.0),
+        pair_w,
+        pair_h,
+        facecolor=default_color,
+        edgecolor="black",
     )
     ax.add_patch(rect)
     ax.text(
-        group_x0 + pair_w / 2.0, pair_h + 0.1, "Total CN>7",
-        ha="center", va="bottom", fontsize=10,
+        group_x0 + pair_w / 2.0,
+        pair_h + 0.1,
+        "Total CN>7",
+        ha="center",
+        va="bottom",
+        fontsize=10,
     )
     leg_x = group_x0 + pair_w + gap_groups
 
@@ -470,9 +477,7 @@ def plot_ascn_profile(
     h = height / num_clones
     h_sub = h / 2
 
-    bulk_props = np.array(
-        [float(v) for v in str(bin_info["PROPS"].iloc[0]).split(";")]
-    )
+    bulk_props = np.array([float(v) for v in str(bin_info["PROPS"].iloc[0]).split(";")])
 
     regions_chs = regions.groupby(by="#CHR", sort=False)
     bins_chs = bin_info.groupby(by="#CHR", sort=False, observed=True)
@@ -515,7 +520,9 @@ def plot_ascn_profile(
                     y0 = k * h
                     # B allele (bottom half)
                     rect_b = Rectangle(
-                        (x0, y0), w, h_sub,
+                        (x0, y0),
+                        w,
+                        h_sub,
                         facecolor=ascn_color(cnb),
                         edgecolor=BLACK,
                         transform=ax.get_xaxis_transform(),
@@ -524,7 +531,9 @@ def plot_ascn_profile(
                     ax.add_patch(rect_b)
                     # A allele (top half)
                     rect_a = Rectangle(
-                        (x0, y0 + h_sub), w, h_sub,
+                        (x0, y0 + h_sub),
+                        w,
+                        h_sub,
                         facecolor=ascn_color(cna),
                         edgecolor=BLACK,
                         transform=ax.get_xaxis_transform(),
@@ -534,14 +543,21 @@ def plot_ascn_profile(
 
             if si < len(regions_ch) - 1:
                 ax.vlines(
-                    ch_offset, ymin=0, ymax=1,
+                    ch_offset,
+                    ymin=0,
+                    ymax=1,
                     transform=ax.get_xaxis_transform(),
-                    linewidth=1, colors=BLACK, linestyles="dashed",
+                    linewidth=1,
+                    colors=BLACK,
+                    linestyles="dashed",
                 )
         ax.vlines(
-            ch_offset, ymin=0, ymax=1,
+            ch_offset,
+            ymin=0,
+            ymax=1,
             transform=ax.get_xaxis_transform(),
-            linewidth=1, colors=BLACK,
+            linewidth=1,
+            colors=BLACK,
         )
     ch_coords.append(ch_offset)
 
@@ -549,8 +565,10 @@ def plot_ascn_profile(
     if num_clones > 1:
         ax.hlines(
             y=[h * (i + 1) for i in range(num_clones - 1)],
-            xmin=0, xmax=ch_offset,
-            colors=BLACK, linewidth=1,
+            xmin=0,
+            xmax=ch_offset,
+            colors=BLACK,
+            linewidth=1,
             transform=ax.get_xaxis_transform(),
         )
 
@@ -558,10 +576,12 @@ def plot_ascn_profile(
     ax.set_xlim(0, ch_offset)
     ax.set_xlabel("")
     if plot_chrname:
-        ax.set_xticks([
-            ch_coords[i] + (ch_coords[i + 1] - ch_coords[i]) // 2
-            for i in range(len(ch_coords) - 1)
-        ])
+        ax.set_xticks(
+            [
+                ch_coords[i] + (ch_coords[i + 1] - ch_coords[i]) // 2
+                for i in range(len(ch_coords) - 1)
+            ]
+        )
         ax.set_xticklabels(chs, rotation=60, fontsize=8)
         ax.tick_params(
             axis="x", labeltop=True, labelbottom=False, top=False, bottom=False
@@ -615,17 +635,26 @@ def plot_ascn_legend(ax: plt.Axes):
 
     for cn in range(11):
         rect = Rectangle(
-            (x0 + cn * box_w, 0.0), box_w, box_h,
-            facecolor=ascn_color(cn), edgecolor="black",
+            (x0 + cn * box_w, 0.0),
+            box_w,
+            box_h,
+            facecolor=ascn_color(cn),
+            edgecolor="black",
         )
         ax.add_patch(rect)
         ax.text(
-            x0 + cn * box_w + box_w / 2.0, -0.15,
-            str(cn), ha="center", va="top", fontsize=9,
+            x0 + cn * box_w + box_w / 2.0,
+            -0.15,
+            str(cn),
+            ha="center",
+            va="top",
+            fontsize=9,
         )
 
     total_w = 11 * box_w
-    ax.text(-0.5, box_h / 2.0, "Allele copy number", fontsize=12, ha="right", va="center")
+    ax.text(
+        -0.5, box_h / 2.0, "Allele copy number", fontsize=12, ha="right", va="center"
+    )
 
     ax.set_xlim(-2.0, total_w + 1.0)
     ax.set_ylim(-0.6, box_h + 0.4)
@@ -633,13 +662,16 @@ def plot_ascn_legend(ax: plt.Axes):
     return ax
 
 
-def make_cnp_palette(clone_states, clone_props, state_style):
+def make_cnp_palette(clone_states, clone_props, state_style, style="ascn"):
     """Map each CNP string to a color blended by clone proportions.
 
     Args:
         clone_states: iterable of unique CNP strings (e.g. ["1|1;2|1", "1|1;1|1"]).
         clone_props:  (n_clones,) proportions array (normal clone first).
         state_style:  dict (a, b) -> hex color, from get_cn_colors().
+        style:        ``"ascn"`` to color tumor clones by total CN via
+                      ascn_color(a+b), re-normalised to exclude the normal
+                      clone; ``"cnv"`` to blend all clones using state_style.
 
     Returns:
         dict mapping cnp_string -> RGB tuple (values in [0, 1]).
@@ -648,14 +680,24 @@ def make_cnp_palette(clone_states, clone_props, state_style):
 
     palette = {}
     for cnp in clone_states:
-        states = [
-            (int(x.split("|")[0]), int(x.split("|")[1]))
-            for x in cnp.split(";")
-        ]
-        rgbs = np.array([
-            to_rgb(state_style.get((a, b), state_style["default"]))
-            for a, b in states
-        ])  # (n_clones, 3)
-        blended = np.clip(rgbs.T @ clone_props, 0.0, 1.0)  # (3,)
+        states = [(int(x.split("|")[0]), int(x.split("|")[1])) for x in cnp.split(";")]
+        if style == "ascn":
+            # Blend only tumor clones (index >= 1), re-normalised proportions
+            tumor_props = clone_props[1:]
+            tumor_sum = tumor_props.sum()
+            if tumor_sum > 0:
+                tumor_props_norm = tumor_props / tumor_sum
+            else:
+                tumor_props_norm = np.ones(len(tumor_props)) / len(tumor_props)
+            rgbs = np.array([to_rgb(ascn_color(a + b)) for a, b in states[1:]])
+            blended = np.clip(rgbs.T @ tumor_props_norm, 0.0, 1.0)
+        else:
+            rgbs = np.array(
+                [
+                    to_rgb(state_style.get((a, b), state_style["default"]))
+                    for a, b in states
+                ]
+            )
+            blended = np.clip(rgbs.T @ clone_props, 0.0, 1.0)
         palette[cnp] = tuple(blended)
     return palette

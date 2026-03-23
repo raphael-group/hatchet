@@ -3,7 +3,6 @@ import logging
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-import numpy as np
 import pandas as pd
 from pyomo import environ as pe
 
@@ -93,13 +92,13 @@ class Worker:
                         solver=self._solver,
                     )
                     if result is None:
+                        logging.debug(
+                            f"worker {self.work_id}: C-step infeasible at lambda={pparam}"
+                        )
                         return None
                     carch_instances[pparam] = [result]
                     prev_pparam = pparam
 
-                # Pass solve_mode="cd" so model_selection_instance uses the
-                # unregularised error formula (errv = tobj - imf_obj).
-                # outdir=None suppresses TSV/PNG output during the inner CD loop.
                 best_result, _imf_obj, _selected_key = model_selection_instance(
                     self.ilp.f_a,
                     self.ilp.f_b,
@@ -117,6 +116,7 @@ class Worker:
                     solver=self._solver,
                 )
                 if result is None:
+                    logging.debug(f"worker {self.work_id}: C-step infeasible (no reg)")
                     return None
                 _obj_c, _cA, _cB, _ = result
 
@@ -130,6 +130,7 @@ class Worker:
                 solver=self._solver,
             )
             if uarch_results is None:
+                logging.debug(f"worker {self.work_id}: U-step infeasible")
                 return None
             _obj_u, _, _, _u = uarch_results
 
@@ -151,9 +152,17 @@ class Worker:
 _cd_global = None
 
 
-def _init_worker(cd):
+def _init_worker(cd, log_level):
     global _cd_global
     _cd_global = cd
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s.%(msecs)03d %(levelname)s [worker] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
+    )
+    for name in ("pyomo", "pyomo.core"):
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 def _work(work_id, u, solver_type, max_iters, max_convergence_iters, timelimit):
@@ -217,7 +226,6 @@ class CoordinateDescent:
         w,
         purities,
         ampdel=True,
-        copy_numbers_fixed=None,
         reg_term=None,
         reg_steps=0,
         reg_stepsize=0.0,
@@ -238,7 +246,6 @@ class CoordinateDescent:
             f_b=f_b,
             w=w,
             purities=purities,
-            copy_numbers_fixed=copy_numbers_fixed,
             penalty_param=[self.reg_name, 0.0],
             base=base,
         )
@@ -249,12 +256,6 @@ class CoordinateDescent:
         self.hcA, self.hcB = self.ilp.first_hot_start()
 
         self.seeds = None
-
-    def _u_is_determined(self):
-        """True when purities fix all clone proportions (n=2 with known purities)."""
-        if self.ilp.n != 2 or self.ilp.purities is None:
-            return False
-        return all(sid in self.ilp.purities for sid in self.ilp.sample_ids)
 
     def run(
         self,
@@ -267,19 +268,8 @@ class CoordinateDescent:
         timelimit=None,
         u0_tsv_path=None,
     ):
-        # When n=2 and purities are provided for all samples, u is fully
-        # determined: u[0,j] = 1-purity, u[1,j] = purity.  No random
-        # restarts over proportions are needed.
-        if self._u_is_determined():
-            logging.info("CD: n=2 with known purities, using single deterministic u")
-            u_fixed = np.empty((self.ilp.n, self.ilp.k))
-            for j_idx, sid in enumerate(self.ilp.sample_ids):
-                u_fixed[0, j_idx] = 1 - self.ilp.purities[sid]
-                u_fixed[1, j_idx] = self.ilp.purities[sid]
-            seeds = [u_fixed]
-        else:
-            with Random(random_seed):
-                seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
+        with Random(random_seed):
+            seeds = [self.ilp.build_random_u() for _ in range(n_seed)]
 
         if u0_tsv_path is not None:
             sample_ids = list(self.ilp.sample_ids)
@@ -294,11 +284,13 @@ class CoordinateDescent:
 
         instances = []  # obj. value => (cA, cB, u) mapping
         to_do = []
+        n_workers = min(j, len(seeds))
+        logging.info(f"CD: launching {len(seeds)} seed(s) across {n_workers} worker(s)")
         with ProcessPoolExecutor(
-            max_workers=min(j, n_seed),
+            max_workers=n_workers,
             mp_context=multiprocessing.get_context("spawn"),
             initializer=_init_worker,
-            initargs=(self,),
+            initargs=(self, logging.root.level),
         ) as executor:
             for i, u in enumerate(seeds):
                 future = executor.submit(
@@ -313,10 +305,17 @@ class CoordinateDescent:
                 to_do.append(future)
 
             for future in as_completed(to_do):
-                instance = future.result()
+                try:
+                    instance = future.result()
+                except Exception as e:
+                    logging.error(f"CD worker failed with exception: {e}")
+                    continue
                 if instance is not None:
                     obj, cA, cB, u = instance
                     instances.append((obj, cA, cB, u))
+                    logging.debug(f"CD: worker returned obj={obj:.4f}")
+                else:
+                    logging.warning("CD: worker returned None (infeasible)")
 
         if len(instances) == 0:
             raise RuntimeError("Not a single feasible solution found!")

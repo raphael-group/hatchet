@@ -349,9 +349,6 @@ def solve(
     out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
     out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
 
-    # TODO: support user-defined fixed clonal states & fixed clone proportions
-    copy_number_fixed = None
-
     cn_max = {"diploid": args["diploidcmax"], "tetraploid": args["tetraploidcmax"]}[
         ploidy
     ]
@@ -386,7 +383,6 @@ def solve(
             ampdel=ampdel,
             cn=clonal,
             purities=purities,
-            copy_numbers_fixed=copy_number_fixed,
             reg_term=reg_term,
             reg_steps=reg_steps,
             reg_stepsize=reg_stepsize,
@@ -432,7 +428,6 @@ def solve(
             f_b=f_b,
             w=weights,
             purities=purities,
-            copy_numbers_fixed=copy_number_fixed,
             penalty_param=[reg_term if reg_term is not None else "RAW", 0.0],
             base=base,
         )
@@ -515,9 +510,20 @@ def solve(
     pool_objs = []
     pool_tags = []
     pool_keys = []
-    # Deduplicate pool solutions by CN states (up to clone reordering)
-    for pparam in pool_instances:
-        pool_instances[pparam] = dedup_solutions(pool_instances[pparam])
+    # Deduplicate pool solutions across all pparam values
+    all_sols_flat = []
+    all_keys_flat = []
+    for pparam, sols in pool_instances.items():
+        for pidx, sol in enumerate(sols):
+            all_sols_flat.append(sol)
+            all_keys_flat.append((pparam, pidx))
+    deduped_flat = dedup_solutions(all_sols_flat)
+    deduped_set = set(id(s) for s in deduped_flat)
+    pool_instances_deduped = {}
+    for sol, (pparam, pidx) in zip(all_sols_flat, all_keys_flat):
+        if id(sol) in deduped_set:
+            pool_instances_deduped.setdefault(pparam, []).append(sol)
+    pool_instances = pool_instances_deduped
     for pparam, sols in pool_instances.items():
         for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
             tag = f"pool_p{pparam}_s{pidx}"
