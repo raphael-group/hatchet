@@ -97,7 +97,7 @@ compute_cn:
   # max distinct CN states per clone (-1 = unconstrained)
   num_cnstates: -1
   # max total copy number per ploidy
-  diploidcmax: 6
+  diploidcmax: 8
   tetraploidcmax: 12
   # minimum clone proportion
   min_prop: 0.01

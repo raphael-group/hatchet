@@ -396,9 +396,9 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         "--diploidcmax",
         type=int,
         required=False,
-        default=6,
+        default=8,
         help=(
-            "Maximum copy-number value overall segments (default: 6, 0 means inferred from scaled fractional copy "
+            "Maximum copy-number value overall segments (default: 8, 0 means inferred from scaled fractional copy "
             "numbers)"
         ),
     )
