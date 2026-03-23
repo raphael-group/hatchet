@@ -151,9 +151,8 @@ def get_scaling_factor(
                 if not z_above_s0 and (a + b) > base_ploidy:
                     continue
 
-                # --- estimate purities from BAF (and RDR when a+b != 2) ---
+                # --- estimate purity from BAF ---
                 purities_baf = np.empty(len(samples))
-                purities_rdr = None if a + b == 2 else np.empty(len(samples))
                 valid = True
                 for si, s in enumerate(samples):
                     dom = (b - 1) - baf_z[s] * (a + b - 2)
@@ -162,43 +161,54 @@ def get_scaling_factor(
                         valid = False
                         break
                     purities_baf[si] = pbaf
+                if not valid:
+                    continue
 
-                    if a + b != 2:
-                        prdr = (gammas_nowgd_arr[si] * rdr.loc[z, s] - 2) / (a + b - 2)
+                # --- compute gamma ---
+                if is_wgd:
+                    gammas_arr = np.empty(len(samples))
+                    gamma_valid = True
+                    if (a + b) == base_ploidy:
+                        # a + b equals WGD base ploidy — derive gamma from BAF purity
+                        for si, s in enumerate(samples):
+                            gammas_arr[si] = (2 + 2 * purities_baf[si]) / rdr.loc[s0, s]
+                    else:
+                        for si, s in enumerate(samples):
+                            dom = (a + b - 2) * rdr.loc[s0, s] - 2 * rdr.loc[z, s]
+                            if dom == 0.0:
+                                gamma_valid = False
+                                break
+                            gammas_arr[si] = (2 * (a + b) - 8) / dom
+                    if not gamma_valid or np.any(gammas_arr <= 0):
+                        continue
+                else:
+                    gammas_arr = gammas_nowgd_arr
+
+                # --- RDR purity concordance check (when a+b != 2) ---
+                purities_rdr = None
+                if (a + b) != 2:
+                    purities_rdr = np.empty(len(samples))
+                    for si, s in enumerate(samples):
+                        prdr = (gammas_arr[si] * rdr.loc[z, s] - 2) / (a + b - 2)
                         if prdr <= 0.0 or prdr > 1.0:
                             valid = False
                             break
                         purities_rdr[si] = prdr
 
+                        dom = (b - 1) - baf_z[s] * (a + b - 2)
                         var_pbaf = ((b - a) / dom**2) ** 2 * baf_se.loc[z, s] ** 2
                         var_prdr = (
-                            gammas_nowgd_arr[si] / (a + b - 2)
+                            gammas_arr[si] / (a + b - 2)
                         ) ** 2 * rd_std.loc[z, s] ** 2
                         se_diff = np.sqrt(var_pbaf + var_prdr)
                         if se_diff > 0:
-                            z_stat = abs(pbaf - prdr) / se_diff
+                            z_stat = abs(purities_baf[si] - prdr) / se_diff
                             if 2 * norm.sf(z_stat) < bal_tost_alpha:
                                 valid = False
                                 break
-                if not valid:
-                    continue
-                purities = purities_baf
-
-                # --- compute WGD gamma if needed ---
-                if is_wgd:
-                    gammas_arr = np.empty(len(samples))
-                    gamma_valid = True
-                    for si, s in enumerate(samples):
-                        cz = a + b
-                        dom = (cz - 2) * rdr.loc[s0, s] - 2 * rdr.loc[z, s]
-                        if dom == 0.0:
-                            gamma_valid = False
-                            break
-                        gammas_arr[si] = (2 * cz - 8) / dom
-                    if not gamma_valid or np.any(gammas_arr <= 0):
+                    if not valid:
                         continue
-                else:
-                    gammas_arr = gammas_nowgd_arr
+                purities = purities_baf
 
                 # --- check all clusters within clonal grid bounds ---
                 grid_ok = True
