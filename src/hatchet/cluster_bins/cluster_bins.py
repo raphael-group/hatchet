@@ -460,6 +460,11 @@ def run(args=None):
         os.path.join(label_dir, f"bulk{best_K}.bb.phased.tsv.gz"),
         os.path.join(out_dir, "bb.phased.tsv.gz"),
     )
+    for suffix in ["1D.pdf", "2D.pdf"]:
+        shutil.copy2(
+            os.path.join(plot_dir, f"K{best_K}_{suffix}"),
+            os.path.join(out_dir, f"bulk.{suffix}"),
+        )
 
     _log_done("cluster-bins")
     return
