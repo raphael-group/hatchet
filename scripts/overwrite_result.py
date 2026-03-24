@@ -4,54 +4,46 @@ import sys
 import pandas as pd
 import numpy as np
 
-from scripts_utils import *
+from scripts_utils import sort_chroms
 
-# overwrite HATCHet solution with regularized alternatives
+# Overwrite HATCHet BBC with a pool solution file, produce bbc.ucn.tsv + seg.ucn.tsv
 if __name__ == "__main__":
     _, fbbc, solfile, outprefix = sys.argv
-    solID = solfile[str.rindex(solfile, "/") + 1 : -len(".tsv")]
-    print(f"overwrite BBC fields with solution {solID}!")
+    solID = os.path.splitext(os.path.basename(solfile))[0]
+    print(f"overwrite BBC with solution {solID}")
 
     bbcs = pd.read_table(fbbc, sep="\t")
     sol = pd.read_table(solfile, sep="\t")
-    print(f"bbc clusters: ", np.unique(bbcs["CLUSTER"]))
-    print(f"sol clusters: ", np.unique(sol["CLUSTER"]))
-    n_clones = (
-        len([c for c in sol.columns.tolist() if str.startswith(c, "cn_clone")]) + 1
-    )
-    clones = [f"normal"] + [f"clone{i}" for i in range(1, n_clones)]
 
-    cnp_cols = []
-    for clone in clones:
-        cnp_cols.extend([f"cn_{clone}", f"u_{clone}"])
-    sol = sol[["CLUSTER", "SAMPLE"] + cnp_cols].reset_index(drop=True)
+    # Detect clone columns from solution file
+    cn_col_names = [c for c in sol.columns if c.startswith("cn_")]
+    u_col_names = [c for c in sol.columns if c.startswith("u_")]
+    cnp_cols = [c for pair in zip(cn_col_names, u_col_names) for c in pair]
 
-    bbcs = pd.merge(
-        left=bbcs, right=sol, on=["SAMPLE", "CLUSTER"], how="left", sort=False
-    )
-    bbcs.dropna(subset=["cn_normal"], inplace=True)
-    bbcs = bbcs.sort_values(by="SAMPLE")
-    bbcs = bbcs.reset_index(drop=True)
+    # Drop any pre-existing CN/u columns from bbcs to avoid merge conflicts
+    bbcs = bbcs.drop(columns=[c for c in cnp_cols if c in bbcs.columns], errors="ignore")
+
+    sol = sol[["CLUSTER", "SAMPLE"] + cnp_cols].drop_duplicates()
+    bbcs = bbcs.merge(sol, on=["CLUSTER", "SAMPLE"], how="left")
+    bbcs = bbcs.dropna(subset=[cn_col_names[0]]).reset_index(drop=True)
 
     chs = sort_chroms(bbcs["#CHR"].unique().tolist())
     bbcs["#CHR"] = pd.Categorical(bbcs["#CHR"], categories=chs, ordered=True)
-    bbcs_sorted = bbcs.sort_values(["SAMPLE", "#CHR", "START"]).copy()
-    bbcs_sorted.to_csv(f"{outprefix}.bbc.ucn.tsv", sep="\t", header=True, index=False)
+    bbcs = bbcs.sort_values(["SAMPLE", "#CHR", "START"]).reset_index(drop=True)
+    bbcs.to_csv(f"{outprefix}.bbc.ucn.tsv", sep="\t", header=True, index=False)
 
-    bbcs_sorted = bbcs_sorted[
-        ["#CHR", "START", "END", "SAMPLE"] + cnp_cols
-    ].reset_index(drop=True)
-    cn_cols = [f"cn_{clone}" for clone in clones]
-    cn_changed = (bbcs_sorted[cn_cols] != bbcs_sorted[cn_cols].shift()).any(axis=1)
-    bbcs_sorted["_gid"] = (
-        (bbcs_sorted["SAMPLE"] != bbcs_sorted["SAMPLE"].shift())
-        | (bbcs_sorted["#CHR"] != bbcs_sorted["#CHR"].shift())
-        | (bbcs_sorted["START"] != bbcs_sorted["END"].shift())
-        | cn_changed
+    # Build seg: merge adjacent bins with same sample/chr/CN into segments
+    sub = bbcs[["#CHR", "START", "END", "SAMPLE"] + cnp_cols].copy()
+    sub["_gid"] = (
+        (sub["SAMPLE"] != sub["SAMPLE"].shift())
+        | (sub["#CHR"] != sub["#CHR"].shift())
+        | (sub["START"] != sub["END"].shift())
+        | (sub[cn_col_names] != sub[cn_col_names].shift()).any(axis=1)
     ).cumsum()
 
     agg = {"SAMPLE": "first", "#CHR": "first", "START": "min", "END": "max"}
     agg.update({c: "first" for c in cnp_cols})
-
-    segs = bbcs_sorted.groupby("_gid", as_index=False).agg(agg).drop(columns="_gid")
+    segs = sub.groupby("_gid", as_index=False).agg(agg).drop(columns="_gid")
     segs.to_csv(f"{outprefix}.seg.ucn.tsv", sep="\t", header=True, index=False)
+
+    print(f"wrote {outprefix}.bbc.ucn.tsv and {outprefix}.seg.ucn.tsv")

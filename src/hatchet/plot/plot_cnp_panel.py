@@ -100,7 +100,7 @@ def plot_pool_cnp(
     width=20,
     height=1,
     dpi=150,
-    style="ascn",
+    style="cnv",
 ):
     """Plot a multi-row CNP panel PDF, one row per Pareto-optimal pool solution.
 
@@ -113,7 +113,7 @@ def plot_pool_cnp(
         width: Figure width in inches.
         height: Height in inches per profile row (legend row is 2x this).
         dpi: Output resolution.
-        style: ``"ascn"`` (default) draws allele-specific A/B bars per clone;
+        style: ``"ascn"`` draws allele-specific A/B bars per clone;
             ``"cnv"`` draws total-CN colored bars.
     """
     plt.rcParams["pdf.fonttype"] = 42
