@@ -83,7 +83,7 @@ def plot_cnv_profile(
                         int(bin_cnvs[num_clones - k - 1].split("|")[0]),
                         int(bin_cnvs[num_clones - k - 1].split("|")[1]),
                     )
-                    color = state_style.get((cna, cnb), ("white", None))
+                    color = state_style.get((cna, cnb), state_style["default"])
                     y0 = k * h
                     rect = Rectangle(
                         (x0, y0),
