@@ -16,51 +16,56 @@ class TestCntDistance1d:
         assert _cnt_distance_1d(np.array([0, 0, 0])) == 0
 
     def test_uniform_amplification(self):
-        # One contiguous amplification covering all 3 segments
-        assert _cnt_distance_1d(np.array([1, 1, 1])) == 1
+        assert _cnt_distance_1d(np.array([2, 2, 2])) == 2
 
     def test_two_separate_amplifications(self):
-        # Two separate amplification events (gap in the middle)
         assert _cnt_distance_1d(np.array([1, 0, 1])) == 2
 
     def test_nested_amplification(self):
-        # Two nested amplification events: outer covers all 3, inner adds 1 more to first
-        assert _cnt_distance_1d(np.array([2, 1, 0])) == 2
+        assert _cnt_distance_1d(np.array([1, 2, 1])) == 2
 
     def test_mixed_amp_and_del(self):
-        # d = [-1, 2, -1]: d+=[0,2,0] → amp=2, d-=[1,0,1] → del=2, total=4
-        assert _cnt_distance_1d(np.array([-1, 2, -1])) == 4
+        d = np.array([-1, 2, -1])
+        assert _cnt_distance_1d(d) == 4
 
     def test_uniform_deletion(self):
-        assert _cnt_distance_1d(np.array([-2, -2, -2])) == 2
+        assert _cnt_distance_1d(np.array([-3, -3])) == 3
 
     def test_single_segment(self):
-        assert _cnt_distance_1d(np.array([3])) == 3
-        assert _cnt_distance_1d(np.array([-2])) == 2
-        assert _cnt_distance_1d(np.array([0])) == 0
+        assert _cnt_distance_1d(np.array([5])) == 5
+        assert _cnt_distance_1d(np.array([-3])) == 3
 
 
 class TestComputeCntDistances:
-    """Test the full pairwise distance computation."""
+    """Test the pairwise distance matrix builder."""
 
     def test_identical_clones(self):
-        cA = np.array([[1, 1], [1, 1]], dtype=int)
+        cA = np.array([[1, 1], [2, 2]], dtype=int)
         cB = np.array([[1, 1], [1, 1]], dtype=int)
         boundaries = np.array([True, False])
         dist = compute_cnt_distances(cA, cB, boundaries)
         assert dist[0, 1] == 0
         assert dist[1, 0] == 0
 
-    def test_symmetry(self):
-        rng = np.random.default_rng(42)
-        m, n = 20, 4
-        cA = rng.integers(0, 4, size=(m, n))
-        cB = rng.integers(0, 4, size=(m, n))
-        boundaries = np.zeros(m, dtype=bool)
-        boundaries[0] = True
-        boundaries[10] = True
+    def test_asymmetry(self):
+        # CND is asymmetric when LOH is present
+        # Clone0: A=[1], B=[1]; Clone1: A=[2], B=[0]
+        # 0→1: A 1→2 (1 amp), B 1→0 (1 del) → 2
+        # 1→0: A 2→1 (1 del), B 0→1 (infeasible) → inf
+        cA = np.array([[1, 2]], dtype=int)
+        cB = np.array([[1, 0]], dtype=int)
+        boundaries = np.array([True])
         dist = compute_cnt_distances(cA, cB, boundaries)
-        np.testing.assert_array_equal(dist, dist.T)
+        assert dist[0, 1] == 2
+        assert dist[1, 0] == np.inf
+
+    def test_symmetric_when_no_loh(self):
+        # Without zeros, CND is symmetric (same events forward and backward)
+        cA = np.array([[1, 2], [2, 1]], dtype=int)
+        cB = np.array([[1, 1], [1, 1]], dtype=int)
+        boundaries = np.array([True, False])
+        dist = compute_cnt_distances(cA, cB, boundaries)
+        assert dist[0, 1] == dist[1, 0]
 
     def test_diagonal_zero(self):
         rng = np.random.default_rng(7)
@@ -72,27 +77,16 @@ class TestComputeCntDistances:
         np.testing.assert_array_equal(np.diag(dist), 0)
 
     def test_multi_chromosome(self):
-        # Two chromosomes, two clones
-        # Chr1 (2 segments): clone0 A=[1,1], clone1 A=[2,2] → d=[1,1] → 1 amp
-        # Chr2 (2 segments): clone0 A=[1,1], clone1 A=[1,1] → d=[0,0] → 0
-        # Same for B allele: all 1s both clones → 0
+        # Two chromosomes, two clones, no LOH
+        # Chr1 (2 segments): clone0 A=[1,1], clone1 A=[2,2] → 1 amp
+        # Chr2 (2 segments): clone0 A=[1,1], clone1 A=[1,1] → 0
+        # B allele: all 1s → 0
         cA = np.array([[1, 2], [1, 2], [1, 1], [1, 1]], dtype=int)
         cB = np.ones((4, 2), dtype=int)
         boundaries = np.array([True, False, True, False])
         dist = compute_cnt_distances(cA, cB, boundaries)
         assert dist[0, 1] == 1
         assert dist[1, 0] == 1
-
-    def test_allele_specific(self):
-        # Single chromosome, two clones
-        # A: clone0=[1], clone1=[2]
-        # B: clone0=[1], clone1=[0]
-        # Reverse direction B: source=0, target=1 → infeasible → inf
-        cA = np.array([[1, 2]], dtype=int)
-        cB = np.array([[1, 0]], dtype=int)
-        boundaries = np.array([True])
-        dist = compute_cnt_distances(cA, cB, boundaries)
-        assert dist[0, 1] == np.inf
 
     def test_allele_specific_feasible(self):
         # Both directions feasible (no zero-to-positive)

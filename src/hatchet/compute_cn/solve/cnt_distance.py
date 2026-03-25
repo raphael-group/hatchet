@@ -47,7 +47,9 @@ def compute_cnt_distances(cA, cB, chr_boundaries):
             of each chromosome.
 
     Returns:
-        Symmetric pairwise CNT distance matrix of shape (n, n).
+        Asymmetric pairwise CNT distance matrix of shape (n, n).
+        ``dist[i, j]`` is the distance from clone i to clone j.
+        Returns ``np.inf`` for infeasible (source allele=0, target>0).
         Off-diagonal entries are inf when the pair is infeasible.
     """
     m, n = cA.shape
@@ -57,24 +59,20 @@ def compute_cnt_distances(cA, cB, chr_boundaries):
     dist = np.zeros((n, n), dtype=float)
 
     for i in range(n):
-        for j in range(i + 1, n):
+        for j in range(n):
+            if i == j:
+                continue
             total = 0.0
             feasible = True
             for cs, ce in zip(chr_starts, chr_ends):
-                aiA, ajA = cA[cs:ce, i], cA[cs:ce, j]
-                aiB, ajB = cB[cs:ce, i], cB[cs:ce, j]
-                # Infeasible if either direction has source=0, target>0
-                if (
-                    np.any((aiA == 0) & (ajA > 0))
-                    or np.any((ajA == 0) & (aiA > 0))
-                    or np.any((aiB == 0) & (ajB > 0))
-                    or np.any((ajB == 0) & (aiB > 0))
-                ):
+                sA, tA = cA[cs:ce, i], cA[cs:ce, j]
+                sB, tB = cB[cs:ce, i], cB[cs:ce, j]
+                # Infeasible: source allele is 0 but target > 0
+                if np.any((sA == 0) & (tA > 0)) or np.any((sB == 0) & (tB > 0)):
                     feasible = False
                     break
-                total += _cnt_distance_1d(ajA - aiA) + _cnt_distance_1d(ajB - aiB)
+                total += _cnt_distance_1d(tA - sA) + _cnt_distance_1d(tB - sB)
             dist[i, j] = total if feasible else np.inf
-            dist[j, i] = dist[i, j]
 
     return dist
 
