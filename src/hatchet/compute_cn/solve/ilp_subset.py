@@ -555,6 +555,23 @@ class ILPSubset:
                             objective_sec += (
                                 pparam * self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
                             )
+
+                    # LOH constraint: if MRCA (clone 1) has allele CN = 0,
+                    # subclonal clones cannot have positive CN on that allele.
+                    # Linearized as: cA[m][n] <= cA[m][1] * cn_max  (big-M)
+                    for _m in range(m):
+                        for _n in range(2, n):
+                            model.constraints.add(
+                                self.cA[_m][_n] <= self.cA[_m][1] * cn_max
+                            )
+                            model.constraints.add(
+                                self.cB[_m][_n] <= self.cB[_m][1] * cn_max
+                            )
+                    logging.debug(
+                        f"DMRCA_SUM: added LOH constraints "
+                        f"({m * (n - 2) * 2} constraints)"
+                    )
+
             elif pname == "DADJ_SUM":
                 # total distance for all pairs of clones per cluster
                 manhat_vars = {}

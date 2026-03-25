@@ -446,6 +446,8 @@ def solve(
         logging.info(f"purities: {purities}")
 
     reg_term = args["reg_term"]
+    if reg_term == "DMRCA_SUM" and n >= 3:
+        logging.info("DMRCA_SUM: allele-LOH constraints active")
     reg_steps = args["reg_steps"]
     reg_stepsize = args["reg_stepsize"]
     solver_type = args["solver"]
