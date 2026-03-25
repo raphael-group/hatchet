@@ -229,8 +229,8 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         required=False,
         choices=["elbow", "bic"],
         type=str,
-        help="Model selection method for clone number and ploidy (default: elbow)",
-        default="elbow",
+        help="Model selection method for clone number and ploidy (default: bic)",
+        default="bic",
     )
     parser.add_argument(
         "--solver",
