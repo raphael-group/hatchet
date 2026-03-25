@@ -16,6 +16,7 @@ from hatchet.compute_cn.solve.utils import (
     store_instance_tofile,
     model_selection_instance,
     compute_individual_objs,
+    compute_pairwise_cnt,
     filter_non_pareto,
     dedup_solutions,
 )
@@ -111,6 +112,8 @@ def run(args=None):
     if not run_diploid and not run_tetraploid:
         run_diploid = run_tetraploid = True
 
+    all_summary_rows = []
+
     diploid_sols = {}
     if run_diploid:
         if pair_noWGD is not None:
@@ -172,13 +175,20 @@ def run(args=None):
                 os.path.join(plot_dir, f"diploid_n{n}"),
                 "diploid",
             )
+            for tag, (seg_df, obj_, pareto, selected, cnt_pairs) in pool.items():
+                row = {
+                    "ploidy": "diploid",
+                    "n_clones": n,
+                    "tag": tag,
+                    "IMF": round(obj_, 4),
+                    "is_pareto": pareto,
+                    "is_instance_selected": selected,
+                }
+                row.update(cnt_pairs)
+                all_summary_rows.append(row)
             if pool:
-                pool_entries = [
-                    (tag, seg_df, obj_, pareto, selected)
-                    for tag, (seg_df, obj_, pareto, selected) in pool.items()
-                ]
                 plot_pool_cnp(
-                    pool_entries,
+                    _pool_entries_for_plot(pool),
                     args["region_bed"],
                     os.path.join(plot_dir, f"diploid_n{n}_pool_pareto.pdf"),
                     title=f"diploid n={n} pool solutions",
@@ -238,13 +248,20 @@ def run(args=None):
                 os.path.join(plot_dir, f"tetraploid_n{n}"),
                 "tetraploid",
             )
+            for tag, (seg_df, obj_, pareto, selected, cnt_pairs) in pool.items():
+                row = {
+                    "ploidy": "tetraploid",
+                    "n_clones": n,
+                    "tag": tag,
+                    "IMF": round(obj_, 4),
+                    "is_pareto": pareto,
+                    "is_instance_selected": selected,
+                }
+                row.update(cnt_pairs)
+                all_summary_rows.append(row)
             if pool:
-                pool_entries = [
-                    (tag, seg_df, obj_, pareto)
-                    for tag, (seg_df, obj_, pareto) in pool.items()
-                ]
                 plot_pool_cnp(
-                    pool_entries,
+                    _pool_entries_for_plot(pool),
                     args["region_bed"],
                     os.path.join(plot_dir, f"tetraploid_n{n}_pool_pareto.pdf"),
                     title=f"tetraploid n={n} pool solutions",
@@ -262,8 +279,23 @@ def run(args=None):
         gammas_noWGD,
         gammas_WGD,
         segs,
-        args["verbosity"],
+        method=args.get("model_select", "elbow"),
+        plot_dir=plot_dir,
     )
+
+    # Mark model-selected solutions in summary
+    best_n = {"diploid": n_dip, "tetraploid": n_tet}.get(best_type, 0)
+    for row in all_summary_rows:
+        row["is_model_selected"] = (
+            row["ploidy"] == best_type
+            and row["n_clones"] == best_n
+            and row.get("is_instance_selected", False)
+        )
+    if all_summary_rows:
+        summary_df = pd.DataFrame(all_summary_rows)
+        summary_path = os.path.join(out_dir, "summary.tsv")
+        summary_df.to_csv(summary_path, sep="\t", index=False)
+        logging.info(f"wrote {summary_path} ({len(summary_df)} solutions)")
 
     if n_dip > 0:
         shutil.copy2(
@@ -306,13 +338,62 @@ def run(args=None):
             os.path.join(out_dir, f"chosen.{best_type}.seg.ucn"),
             os.path.join(out_dir, "best.seg.ucn"),
         )
-        best_n = {"diploid": n_dip, "tetraploid": n_tet}[best_type]
         logging.info(
             f"model-selected result ({best_type}): {os.path.join(out_dir, 'best.bbc.ucn')}"
         )
+        # best_n was computed above for the summary marking block
         logging.info(f"best plots: {os.path.join(plot_dir, f'{best_type}_n{best_n}')}")
 
-    return
+
+def _pool_entries_for_plot(pool):
+    """Extract (tag, seg_df, imf_obj, is_pareto, is_selected) tuples for plotting.
+
+    Drops the ``cnt_pairs`` dict that is stored in each pool value but is not
+    needed by ``plot_pool_cnp``.
+
+    Args:
+        pool: Mapping ``{tag: (seg_df, imf_obj, is_pareto, is_selected, cnt_pairs)}``.
+
+    Returns:
+        List of ``(tag, seg_df, imf_obj, is_pareto, is_selected)`` tuples.
+    """
+    return [
+        (tag, seg_df, obj, pareto, selected)
+        for tag, (seg_df, obj, pareto, selected, _cnt_pairs) in pool.items()
+    ]
+
+
+def _dedup_pool(pool_instances):
+    """Deduplicate pool_instances dict across all pparam values.
+
+    Flattens all solutions from every pparam bucket into a single list,
+    deduplicates by CN profile + clone proportions (via ``dedup_solutions``),
+    then re-groups the survivors back into the original pparam structure.
+
+    Identity is tracked by Python object id, so the input list must not
+    contain newly constructed copies of logically equal objects.
+
+    Args:
+        pool_instances: Mapping ``{pparam: [sol, ...]}``.
+
+    Returns:
+        New mapping with the same structure but duplicate solutions removed.
+    """
+    flat_sols = []
+    flat_keys = []
+    for pparam, sols in pool_instances.items():
+        for pidx, sol in enumerate(sols):
+            flat_sols.append(sol)
+            flat_keys.append((pparam, pidx))
+
+    deduped = dedup_solutions(flat_sols)
+    deduped_ids = {id(s) for s in deduped}
+
+    out = {}
+    for sol, (pparam, _pidx) in zip(flat_sols, flat_keys):
+        if id(sol) in deduped_ids:
+            out.setdefault(pparam, []).append(sol)
+    return out
 
 
 def solve(
@@ -348,6 +429,10 @@ def solve(
 
     out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
     out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
+
+    if os.path.exists(out_bbc) and os.path.exists(out_seg):
+        logging.info(f"skip {ploidy} n={n}: results already exist")
+        return 0.0, 0.0, {}
 
     cn_max = {"diploid": args["diploidcmax"], "tetraploid": args["tetraploidcmax"]}[
         ploidy
@@ -403,6 +488,7 @@ def solve(
             u0_tsv_path=u0_tsv_path,
         )
         pool_instances = {k: [v] for k, v in cd_instances.items()}
+        pool_instances = _dedup_pool(pool_instances)
         store_instance_tofile(
             pool_instances,
             f_a,
@@ -465,6 +551,7 @@ def solve(
                 if pool_sols:
                     pool_instances[pparam].extend(pool_sols)
 
+        pool_instances = _dedup_pool(pool_instances)
         store_instance_tofile(
             pool_instances,
             f_a,
@@ -510,20 +597,6 @@ def solve(
     pool_objs = []
     pool_tags = []
     pool_keys = []
-    # Deduplicate pool solutions across all pparam values
-    all_sols_flat = []
-    all_keys_flat = []
-    for pparam, sols in pool_instances.items():
-        for pidx, sol in enumerate(sols):
-            all_sols_flat.append(sol)
-            all_keys_flat.append((pparam, pidx))
-    deduped_flat = dedup_solutions(all_sols_flat)
-    deduped_set = set(id(s) for s in deduped_flat)
-    pool_instances_deduped = {}
-    for sol, (pparam, pidx) in zip(all_sols_flat, all_keys_flat):
-        if id(sol) in deduped_set:
-            pool_instances_deduped.setdefault(pparam, []).append(sol)
-    pool_instances = pool_instances_deduped
     for pparam, sols in pool_instances.items():
         for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
             tag = f"pool_p{pparam}_s{pidx}"
@@ -539,16 +612,17 @@ def solve(
             p_imf, p_reg = compute_individual_objs(
                 reg_term, weights, f_a, f_b, pcA, pcB, pu
             )
+            cnt_pairs = compute_pairwise_cnt(pcA, pcB, bbcs, cluster_ids)
             pool_objs.append([p_imf, p_reg])
             pool_tags.append(tag)
             pool_keys.append((pparam, pidx))
-            all_pool[tag] = (seg_df, p_imf, False, False)
+            all_pool[tag] = (seg_df, p_imf, False, False, cnt_pairs)
 
     is_pareto = filter_non_pareto(np.array(pool_objs))
     for tag, key, pareto in zip(pool_tags, pool_keys, is_pareto):
-        seg_df_, obj_, _, _ = all_pool[tag]
+        seg_df_, obj_, _, _, cnt_pairs_ = all_pool[tag]
         is_selected = key == selected_key
-        all_pool[tag] = (seg_df_, obj_, bool(pareto), is_selected)
+        all_pool[tag] = (seg_df_, obj_, bool(pareto), is_selected, cnt_pairs_)
 
     return obj, imf_obj, all_pool
 

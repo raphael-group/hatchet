@@ -21,9 +21,7 @@ def build_cluster_data(segs):
     nbins = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="#BINS")
     first_sample = sorted(segs["SAMPLE"].unique())[0]
     lengths = (
-        segs.loc[segs["SAMPLE"] == first_sample]
-        .set_index("#ID")["LENGTH"]
-        .sort_index()
+        segs.loc[segs["SAMPLE"] == first_sample].set_index("#ID")["LENGTH"].sort_index()
     )
     weights = 100 * lengths / lengths.sum()
     return {
@@ -71,9 +69,8 @@ def build_segment_data(bbcs, segs):
     mask = bbcs["SAMPLE"] == first_sample
     first_df = bbcs.loc[mask].reset_index(drop=True)
 
-    seg_boundary = (
-        (first_df["CLUSTER"] != first_df["CLUSTER"].shift())
-        | (first_df["#CHR"] != first_df["#CHR"].shift())
+    seg_boundary = (first_df["CLUSTER"] != first_df["CLUSTER"].shift()) | (
+        first_df["#CHR"] != first_df["#CHR"].shift()
     )
     seg_ids_first = seg_boundary.cumsum() - 1  # 0-based segment IDs
 
@@ -366,5 +363,6 @@ def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy):
             "onetail_area": 0.025,
             "maxlim_fcn": 30,
             "ploidy": ploidy,
+            "style": args.get("style", "cnv"),
         }
     )

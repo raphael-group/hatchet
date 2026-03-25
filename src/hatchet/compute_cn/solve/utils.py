@@ -187,6 +187,101 @@ def store_instance_tofile(
                 )
 
 
+def compute_pairwise_cnt(cA_list, cB_list, bbcs, cluster_ids):
+    """Compute per-pair CNT and weighted-CNT distances at cluster level.
+
+    Orders clusters by genomic position using bin-level BBC data, then
+    computes pairwise distances among **tumor clones** (excluding normal).
+
+    Parameters
+    ----------
+    cA_list, cB_list : list of list
+        Cluster-level allele-specific CN, shape (n_clusters, n_clones).
+    bbcs : pd.DataFrame
+        Bin-level BBC with ``#CHR``, ``START``, ``END``, ``SAMPLE``, ``CLUSTER``.
+    cluster_ids : list
+        Ordered cluster identifiers matching rows of cA_list/cB_list.
+
+    Returns
+    -------
+    dict
+        ``{"CNT_ci_cj": float, "WCNT_ci_cj": float, ...}`` for each
+        tumor clone pair (i < j), using 1-based clone indices.
+        Returns empty dict when fewer than 2 tumor clones.
+    """
+    from hatchet.compute_cn.solve.cnt_distance import (
+        compute_cnt_distances,
+        compute_weighted_cnt_distances,
+    )
+
+    cA_arr = np.array(cA_list)
+    cB_arr = np.array(cB_list)
+    n_clones = cA_arr.shape[1]
+    n_tumor = n_clones - 1  # exclude normal (col 0)
+    if n_tumor < 2:
+        return {}
+
+    # Order clusters by genomic position; use sorted-first sample for determinism
+    first_sample = sorted(bbcs["SAMPLE"].unique())[0]
+    bbc_s = bbcs[bbcs["SAMPLE"] == first_sample]
+    spans = (
+        bbc_s.groupby("CLUSTER")
+        .agg(
+            chr_first=("#CHR", "first"),
+            start=("START", "min"),
+            end=("END", "max"),
+        )
+        .reset_index()
+    )
+    spans = spans[spans["CLUSTER"].isin(cluster_ids)]
+
+    # Map cluster_ids to cA/cB row indices
+    cid_to_row = {cid: i for i, cid in enumerate(cluster_ids)}
+    spans["_row"] = spans["CLUSTER"].map(cid_to_row)
+    spans = spans.sort_values(["chr_first", "start"]).reset_index(drop=True)
+
+    order = spans["_row"].to_numpy()
+    cA_ordered = cA_arr[order]
+    cB_ordered = cB_arr[order]
+    seg_lengths = (spans["end"] - spans["start"]).to_numpy(dtype=float)
+
+    m = len(order)
+    chr_b = np.zeros(m, dtype=bool)
+    chr_b[0] = True
+    chr_b[1:] = (
+        spans["chr_first"].iloc[1:].values != spans["chr_first"].iloc[:-1].values
+    )
+
+    # Exclude normal clone (col 0)
+    cA_t = cA_ordered[:, 1:]
+    cB_t = cB_ordered[:, 1:]
+
+    cnt_dist = compute_cnt_distances(cA_t, cB_t, chr_b)
+    wcnt_dist = compute_weighted_cnt_distances(
+        cA_t, cB_t, chr_b, seg_lengths=seg_lengths
+    )
+
+    result = {}
+    for i in range(n_tumor):
+        for j in range(i + 1, n_tumor):
+            ci, cj = i + 1, j + 1  # 1-based clone indices
+            cnt_val = cnt_dist[i, j]
+            wcnt_val = wcnt_dist[i, j]
+            result[f"CNT_c{ci}_c{cj}"] = cnt_val if np.isfinite(cnt_val) else "inf"
+            result[f"WCNT_c{ci}_c{cj}"] = wcnt_val if np.isfinite(wcnt_val) else "inf"
+
+    # Sum of CNT distances from clone 1 (MRCA) to all other tumor clones
+    cnt_from_c1 = cnt_dist[0, 1:]  # row 0 = clone1, cols 1+ = clone2,3,...
+    wcnt_from_c1 = wcnt_dist[0, 1:]
+    result["CNT_from_c1"] = (
+        float(cnt_from_c1.sum()) if np.all(np.isfinite(cnt_from_c1)) else "inf"
+    )
+    result["WCNT_from_c1"] = (
+        float(wcnt_from_c1.sum()) if np.all(np.isfinite(wcnt_from_c1)) else "inf"
+    )
+    return result
+
+
 def compute_individual_objs(
     pname: str,
     weights: pd.Series,
@@ -196,8 +291,20 @@ def compute_individual_objs(
     cB: list,
     u: list,
 ):
-    """
-    Compute individual objectives from scalarized solution
+    """Compute the IMF and regularisation objective values for one solution.
+
+    Args:
+        pname: Regularisation objective name (e.g. ``"DROOT_SUM"``).
+            If not in the known set, the regularisation objective is 0.
+        weights: Per-cluster weights, shape (n_clusters,).
+        fA: Observed fractional A copy numbers (clusters x samples).
+        fB: Observed fractional B copy numbers (clusters x samples).
+        cA: Integer allele-A copy numbers, shape (n_clusters, n_clones).
+        cB: Integer allele-B copy numbers, shape (n_clusters, n_clones).
+        u: Clone proportions, shape (n_clones, n_samples).
+
+    Returns:
+        List ``[imf_obj, reg_obj]`` of float values.
     """
     w_ = weights.to_numpy().reshape((len(weights), 1))
     fA_ = fA.to_numpy()
@@ -218,9 +325,7 @@ def compute_individual_objs(
 
 
 def compute_obj_IMF(weights, fA, fB, cA, cB, u):
-    """
-    compute weighted IMF objective
-    """
+    """Compute the weighted IMF (integer matrix factorisation) objective."""
     leftA_w = weights * np.abs(fA - cA @ u)
     leftB_w = weights * np.abs(fB - cB @ u)
     obj = np.sum(leftA_w) + np.sum(leftB_w)
@@ -293,11 +398,17 @@ def compute_obj_MAXCN(weights, _fA, _fB, cA, cB, _u):
 
 
 def filter_non_pareto(points: np.ndarray):
-    """
-    filter non-pareto points,
-    a point is pareto if it is not dominated by any other point.
-    point j dominates point i if j is no worse on all objectives and
+    """Return a boolean mask of Pareto-optimal points.
+
+    A point is Pareto-optimal if no other point dominates it.
+    Point j dominates point i if j is no worse on all objectives and
     strictly better on at least one.
+
+    Args:
+        points: Array of shape (n_points, n_objectives) with minimisation objectives.
+
+    Returns:
+        Boolean array of length n_points; True where the point is Pareto-optimal.
     """
     is_pareto = np.ones(len(points), dtype=bool)
     for i in range(len(points)):
@@ -494,14 +605,14 @@ def model_selection_instance(
 
     # Deduplicate by actual CN states (up to clone reordering) + purity tolerance
     keys = list(all_solutions.keys())
-    all_sols_list = [all_solutions[k] for k in keys]
+    all_sols_list = [all_solutions[key] for key in keys]
     deduped = dedup_solutions(all_sols_list)
     if len(deduped) < len(all_sols_list):
-        deduped_set = set(id(s) for s in deduped)
+        deduped_set = {id(s) for s in deduped}
         keep_mask = [id(all_sols_list[i]) in deduped_set for i in range(len(keys))]
         df = df.loc[keep_mask].reset_index(drop=True)
         all_solutions = {
-            keys[i]: all_sols_list[i] for i, k in enumerate(keep_mask) if k
+            keys[i]: all_sols_list[i] for i, should_keep in enumerate(keep_mask) if should_keep
         }
 
     if pareto_img is None and outdir is not None:

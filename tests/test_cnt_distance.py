@@ -3,7 +3,10 @@
 import numpy as np
 import pytest
 
-from hatchet.compute_cn.solve.cnt_distance import _cnt_distance_1d, compute_cnt_distances
+from hatchet.compute_cn.solve.cnt_distance import (
+    _cnt_distance_1d,
+    compute_cnt_distances,
+)
 
 
 class TestCntDistance1d:
@@ -82,11 +85,21 @@ class TestComputeCntDistances:
 
     def test_allele_specific(self):
         # Single chromosome, two clones
-        # A: clone0=[1], clone1=[2] → dA=[1] → 1
-        # B: clone0=[1], clone1=[0] → dB=[-1] → 1
-        # Total = 2
+        # A: clone0=[1], clone1=[2]
+        # B: clone0=[1], clone1=[0]
+        # Reverse direction B: source=0, target=1 → infeasible → inf
         cA = np.array([[1, 2]], dtype=int)
         cB = np.array([[1, 0]], dtype=int)
         boundaries = np.array([True])
         dist = compute_cnt_distances(cA, cB, boundaries)
-        assert dist[0, 1] == 2
+        assert dist[0, 1] == np.inf
+
+    def test_allele_specific_feasible(self):
+        # Both directions feasible (no zero-to-positive)
+        # A: clone0=[1], clone1=[2] → 1 event
+        # B: clone0=[1], clone1=[1] → 0 events
+        cA = np.array([[1, 2]], dtype=int)
+        cB = np.array([[1, 1]], dtype=int)
+        boundaries = np.array([True])
+        dist = compute_cnt_distances(cA, cB, boundaries)
+        assert dist[0, 1] == 1

@@ -45,6 +45,7 @@ def run(args=None):
     dpi = args["dpi"]
     transparent = args["transparent"]
     file_type = args["img_type"]
+    style = args.get("style", "cnv")
 
     # TODO per-cluster transparency
     tail_alpha = args["tail_alpha"]
@@ -55,7 +56,10 @@ def run(args=None):
     maxlim_fcn = args["maxlim_fcn"]
 
     tol = 1e-2
-    get_filename = lambda sid: str(sid) + (f".{solID}" if solID != "" else "")
+
+    def get_filename(sample_id):
+        suffix = f".{solID}" if solID != "" else ""
+        return str(sample_id) + suffix
     ##################################################
     # load files
     segs, clones, clone_props = read_seg_ucn_file(seg_ucn)
@@ -101,7 +105,7 @@ def run(args=None):
         cnp_ids = bin_info["CNP"].to_numpy()
         clone_states = bin_info["CNP"].unique().tolist()
         clone_props = bin_info.iloc[0][[f"u_{clone}" for clone in clones]].to_numpy()
-        palette = make_cnp_palette(clone_states, clone_props, state_style, style="cnv")
+        palette = make_cnp_palette(clone_states, clone_props, state_style, style=style)
 
         # compute per-segment FCN
         bin_info["FCN"] = bin_info.apply(
@@ -188,7 +192,9 @@ def run(args=None):
                 show_legend=False,
             )
 
-        plot_ascn_profile(
+        profile_fn = plot_ascn_profile if style == "ascn" else plot_cnv_profile
+        legend_fn = plot_ascn_legend if style == "ascn" else plot_cnv_legend
+        profile_fn(
             main_axes[2],
             seg_info,
             regions,
@@ -198,7 +204,7 @@ def run(args=None):
             show_clone_name=True,
             show_prop=True,
         )
-        plot_ascn_legend(ax_leg)
+        legend_fn(ax_leg)
 
         fig.suptitle(f"sample={sample}; purity={tumor_purity}; ploidy={tumor_ploidy}")
         axes[1].set_ylabel("mhBAF")

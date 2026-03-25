@@ -225,6 +225,14 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
+        "--model_select",
+        required=False,
+        choices=["elbow", "bic"],
+        type=str,
+        help="Model selection method for clone number and ploidy (default: elbow)",
+        default="elbow",
+    )
+    parser.add_argument(
         "--solver",
         required=False,
         choices=["gurobi", "cbc"],
@@ -579,6 +587,14 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         type=str,
         help="file format (default: png)",
         default="png",
+    )
+    parser.add_argument(
+        "--style",
+        required=False,
+        choices=["cnv", "ascn"],
+        type=str,
+        help="CN profile style: cnv (total CN colors) or ascn (allele-specific bars) (default: cnv)",
+        default="cnv",
     )
     parser.add_argument(
         "--transparent",
