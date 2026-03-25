@@ -643,9 +643,6 @@ def solve(
             nbins=nbins,
         )
 
-    pareto_img = os.path.join(
-        plot_dir, f"{ploidy}_n{n}_pareto_curve.{solve_mode}.{reg_term}.png"
-    )
     best_instance, imf_obj, selected_key = model_selection_instance(
         f_a,
         f_b,
@@ -656,7 +653,6 @@ def solve(
         sol_dir,
         fcn_data,
         nbins,
-        pareto_img=pareto_img,
     )
 
     assert best_instance is not None, f"no solution for {ploidy} and n={n}"

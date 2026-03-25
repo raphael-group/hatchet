@@ -615,9 +615,6 @@ def model_selection_instance(
             keys[i]: all_sols_list[i] for i, should_keep in enumerate(keep_mask) if should_keep
         }
 
-    if pareto_img is None and outdir is not None:
-        pareto_img = os.path.join(outdir, f"pareto_curve.{solve_mode}.{pname}.png")
-
     df, sol_index = model_select_elbow(
         df,
         f"{pname}-objective",
