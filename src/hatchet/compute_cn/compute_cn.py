@@ -175,12 +175,13 @@ def run(args=None):
                 os.path.join(plot_dir, f"diploid_n{n}"),
                 "diploid",
             )
-            for tag, (seg_df, obj_, pareto, selected, cnt_pairs) in pool.items():
+            for tag, (seg_df, imf_, reg_, pareto, selected, cnt_pairs) in pool.items():
                 row = {
                     "ploidy": "diploid",
                     "n_clones": n,
                     "tag": tag,
-                    "IMF": round(obj_, 4),
+                    "IMF": round(imf_, 4),
+                    "REG": round(reg_, 4),
                     "is_pareto": pareto,
                     "is_instance_selected": selected,
                 }
@@ -248,12 +249,13 @@ def run(args=None):
                 os.path.join(plot_dir, f"tetraploid_n{n}"),
                 "tetraploid",
             )
-            for tag, (seg_df, obj_, pareto, selected, cnt_pairs) in pool.items():
+            for tag, (seg_df, imf_, reg_, pareto, selected, cnt_pairs) in pool.items():
                 row = {
                     "ploidy": "tetraploid",
                     "n_clones": n,
                     "tag": tag,
-                    "IMF": round(obj_, 4),
+                    "IMF": round(imf_, 4),
+                    "REG": round(reg_, 4),
                     "is_pareto": pareto,
                     "is_instance_selected": selected,
                 }
@@ -296,6 +298,7 @@ def run(args=None):
         summary_path = os.path.join(out_dir, "summary.tsv")
         summary_df.to_csv(summary_path, sep="\t", index=False)
         logging.info(f"wrote {summary_path} ({len(summary_df)} solutions)")
+        _plot_pareto_pdf(summary_df, plot_dir)
 
     if n_dip > 0:
         shutil.copy2(
@@ -345,6 +348,81 @@ def run(args=None):
         logging.info(f"best plots: {os.path.join(plot_dir, f'{best_type}_n{best_n}')}")
 
 
+def _plot_pareto_pdf(summary_df, plot_dir):
+    """Plot IMF vs REG Pareto curves, one page per (ploidy, n_clones).
+
+    All pool solutions are plotted as blue dots. Points with
+    ``CNT_from_c1 == "inf"`` are marked red. The Pareto front is connected
+    by a line. The instance-selected solution gets a star marker.
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    outfile = os.path.join(plot_dir, "pareto_curves.pdf")
+    groups = sorted(summary_df.groupby(["ploidy", "n_clones"]))
+
+    with PdfPages(outfile) as pdf:
+        for (ploidy, n_clones), grp in groups:
+            fig, ax = plt.subplots(figsize=(7, 5))
+
+            # Determine which points have inf CNT_from_c1
+            if "CNT_from_c1" in grp.columns:
+                has_inf = grp["CNT_from_c1"].apply(
+                    lambda v: v == "inf" or (isinstance(v, float) and not np.isfinite(v))
+                )
+            else:
+                has_inf = pd.Series(False, index=grp.index)
+            finite = grp[~has_inf]
+            inf_pts = grp[has_inf]
+
+            # All points: blue
+            if len(finite) > 0:
+                ax.scatter(
+                    finite["IMF"], finite["REG"],
+                    c="#1f77b4", s=40, zorder=3, label="finite CNT",
+                    edgecolors="white", linewidths=0.5,
+                )
+            # Inf CNT points: red
+            if len(inf_pts) > 0:
+                ax.scatter(
+                    inf_pts["IMF"], inf_pts["REG"],
+                    c="#d62728", s=40, marker="x", zorder=3,
+                    linewidths=1.5, label="CNT_from_c1 = inf",
+                )
+
+            # Pareto front: connected line
+            pareto = grp[grp["is_pareto"] == True].sort_values("IMF")
+            if len(pareto) > 0:
+                ax.plot(
+                    pareto["IMF"], pareto["REG"],
+                    c="black", linewidth=1.5, alpha=0.4, zorder=2,
+                )
+
+            # Instance-selected: star
+            sel = grp[grp["is_instance_selected"] == True]
+            if len(sel) > 0:
+                ax.scatter(
+                    sel["IMF"], sel["REG"],
+                    c="gold", marker="*", s=250, zorder=5,
+                    edgecolors="black", linewidths=1,
+                    label="selected",
+                )
+
+            ax.set_xlabel("IMF objective", fontsize=11)
+            ax.set_ylabel("REG objective", fontsize=11)
+            ax.set_title(
+                f"{ploidy} n={n_clones} ({len(grp)} solutions)",
+                fontsize=13, fontweight="bold",
+            )
+            ax.legend(fontsize=9)
+            ax.grid(True, alpha=0.3)
+            fig.tight_layout()
+            pdf.savefig(fig)
+            plt.close(fig)
+
+    logging.info(f"wrote {outfile} ({len(groups)} pages)")
+
+
 def _pool_entries_for_plot(pool):
     """Extract (tag, seg_df, imf_obj, is_pareto, is_selected) tuples for plotting.
 
@@ -358,8 +436,8 @@ def _pool_entries_for_plot(pool):
         List of ``(tag, seg_df, imf_obj, is_pareto, is_selected)`` tuples.
     """
     return [
-        (tag, seg_df, obj, pareto, selected)
-        for tag, (seg_df, obj, pareto, selected, _cnt_pairs) in pool.items()
+        (tag, seg_df, imf, pareto, selected)
+        for tag, (seg_df, imf, _reg, pareto, selected, _cnt_pairs) in pool.items()
     ]
 
 
@@ -618,13 +696,13 @@ def solve(
             pool_objs.append([p_imf, p_reg])
             pool_tags.append(tag)
             pool_keys.append((pparam, pidx))
-            all_pool[tag] = (seg_df, p_imf, False, False, cnt_pairs)
+            all_pool[tag] = (seg_df, p_imf, p_reg, False, False, cnt_pairs)
 
     is_pareto = filter_non_pareto(np.array(pool_objs))
     for tag, key, pareto in zip(pool_tags, pool_keys, is_pareto):
-        seg_df_, obj_, _, _, cnt_pairs_ = all_pool[tag]
+        seg_df_, imf_, reg_, _, _, cnt_pairs_ = all_pool[tag]
         is_selected = key == selected_key
-        all_pool[tag] = (seg_df_, obj_, bool(pareto), is_selected, cnt_pairs_)
+        all_pool[tag] = (seg_df_, imf_, reg_, bool(pareto), is_selected, cnt_pairs_)
 
     return obj, imf_obj, all_pool
 
