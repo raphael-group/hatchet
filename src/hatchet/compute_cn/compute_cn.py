@@ -378,23 +378,23 @@ def _plot_pareto_pdf(summary_df, plot_dir):
             # All points: blue
             if len(finite) > 0:
                 ax.scatter(
-                    finite["IMF"], finite["REG"],
+                    finite["REG"], finite["IMF"],
                     c="#1f77b4", s=40, zorder=3, label="finite CNT",
                     edgecolors="white", linewidths=0.5,
                 )
             # Inf CNT points: red
             if len(inf_pts) > 0:
                 ax.scatter(
-                    inf_pts["IMF"], inf_pts["REG"],
+                    inf_pts["REG"], inf_pts["IMF"],
                     c="#d62728", s=40, marker="x", zorder=3,
                     linewidths=1.5, label="CNT_from_c1 = inf",
                 )
 
             # Pareto front: connected line
-            pareto = grp[grp["is_pareto"] == True].sort_values("IMF")
+            pareto = grp[grp["is_pareto"] == True].sort_values("REG")
             if len(pareto) > 0:
                 ax.plot(
-                    pareto["IMF"], pareto["REG"],
+                    pareto["REG"], pareto["IMF"],
                     c="black", linewidth=1.5, alpha=0.4, zorder=2,
                 )
 
@@ -402,14 +402,14 @@ def _plot_pareto_pdf(summary_df, plot_dir):
             sel = grp[grp["is_instance_selected"] == True]
             if len(sel) > 0:
                 ax.scatter(
-                    sel["IMF"], sel["REG"],
+                    sel["REG"], sel["IMF"],
                     c="gold", marker="*", s=250, zorder=5,
                     edgecolors="black", linewidths=1,
                     label="selected",
                 )
 
-            ax.set_xlabel("IMF objective", fontsize=11)
-            ax.set_ylabel("REG objective", fontsize=11)
+            ax.set_xlabel("REG objective", fontsize=11)
+            ax.set_ylabel("IMF objective", fontsize=11)
             ax.set_title(
                 f"{ploidy} n={n_clones} ({len(grp)} solutions)",
                 fontsize=13, fontweight="bold",
