@@ -14,11 +14,6 @@ from hatchet.hatchet_parser import parse_arguments_compute_cn
 from hatchet.compute_cn.solve.utils import (
     store_solve_input,
     store_instance_tofile,
-    model_selection_instance,
-    compute_individual_objs,
-    compute_pairwise_cnt,
-    filter_non_pareto,
-    dedup_solutions,
 )
 from hatchet.compute_cn.solve.ilp_subset import ILPSubset
 from hatchet.compute_cn.solve.cd import CoordinateDescent
@@ -189,7 +184,7 @@ def run(args=None):
                 all_summary_rows.append(row)
             if pool:
                 plot_pool_cnp(
-                    _pool_entries_for_plot(pool),
+                    pool_entries_for_plot(pool),
                     args["region_bed"],
                     os.path.join(plot_dir, f"diploid_n{n}_pool_pareto.pdf"),
                     title=f"diploid n={n} pool solutions",
@@ -263,7 +258,7 @@ def run(args=None):
                 all_summary_rows.append(row)
             if pool:
                 plot_pool_cnp(
-                    _pool_entries_for_plot(pool),
+                    pool_entries_for_plot(pool),
                     args["region_bed"],
                     os.path.join(plot_dir, f"tetraploid_n{n}_pool_pareto.pdf"),
                     title=f"tetraploid n={n} pool solutions",
@@ -274,7 +269,7 @@ def run(args=None):
     if len(diploid_sols) == 0 and len(tetraploid_sols) == 0:
         raise ValueError("No solutions found for either noWGD or WGD case, exit..")
 
-    n_dip, n_tet, best_type = model_selection(
+    n_dip, n_tet, best_type, elbow_fig = model_selection(
         diploid_sols,
         tetraploid_sols,
         out_dir,
@@ -282,7 +277,6 @@ def run(args=None):
         gammas_WGD,
         segs,
         method=args.get("model_select", "elbow"),
-        plot_dir=plot_dir,
     )
 
     # Mark model-selected solutions in summary
@@ -298,7 +292,7 @@ def run(args=None):
         summary_path = os.path.join(out_dir, "summary.tsv")
         summary_df.to_csv(summary_path, sep="\t", index=False)
         logging.info(f"wrote {summary_path} ({len(summary_df)} solutions)")
-        _plot_pareto_pdf(summary_df, plot_dir, args["reg_term"])
+        plot_pareto_pdf(summary_df, plot_dir, args["reg_term"], elbow_fig)
 
     if n_dip > 0:
         shutil.copy2(
@@ -348,243 +342,6 @@ def run(args=None):
         logging.info(f"best plots: {os.path.join(plot_dir, f'{best_type}_n{best_n}')}")
 
 
-def _plot_pareto_pdf(summary_df, plot_dir, reg_term):
-    """Plot REG vs IMF Pareto curves, one page per (ploidy, n_clones).
-
-    All pool solutions are plotted as blue dots. Points with
-    ``CNT_from_c1 == "inf"`` are marked red. The Pareto front is connected
-    by a line. The instance-selected solution gets a star marker.
-    """
-    import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_pdf import PdfPages
-
-    outfile = os.path.join(plot_dir, "pareto_curves.pdf")
-    reg_col = reg_term if reg_term in summary_df.columns else "REG"
-    groups = sorted(summary_df.groupby(["ploidy", "n_clones"]))
-
-    with PdfPages(outfile) as pdf:
-        for (ploidy, n_clones), grp in groups:
-            fig, ax = plt.subplots(figsize=(7, 5))
-
-            # Determine which points have inf CNT_from_c1
-            if "CNT_from_c1" in grp.columns:
-                has_inf = grp["CNT_from_c1"].apply(
-                    lambda v: v == "inf" or (isinstance(v, float) and not np.isfinite(v))
-                )
-            else:
-                has_inf = pd.Series(False, index=grp.index)
-            finite = grp[~has_inf]
-            inf_pts = grp[has_inf]
-
-            # All points: blue
-            if len(finite) > 0:
-                ax.scatter(
-                    finite[reg_col], finite["IMF"],
-                    c="#1f77b4", s=40, zorder=3, label="finite CNT",
-                    edgecolors="white", linewidths=0.5,
-                )
-            # Inf CNT points: red
-            if len(inf_pts) > 0:
-                ax.scatter(
-                    inf_pts[reg_col], inf_pts["IMF"],
-                    c="#d62728", s=40, marker="x", zorder=3,
-                    linewidths=1.5, label="CNT_from_c1 = inf",
-                )
-
-            # Pareto front: connected line
-            pareto = grp[grp["is_pareto"] == True].sort_values(reg_col)
-            if len(pareto) > 0:
-                ax.plot(
-                    pareto[reg_col], pareto["IMF"],
-                    c="black", linewidth=1.5, alpha=0.4, zorder=2,
-                )
-
-            # Instance-selected: star
-            sel = grp[grp["is_instance_selected"] == True]
-            if len(sel) > 0:
-                ax.scatter(
-                    sel[reg_col], sel["IMF"],
-                    c="gold", marker="*", s=250, zorder=5,
-                    edgecolors="black", linewidths=1,
-                    label="selected",
-                )
-
-            ax.set_xlabel(reg_col, fontsize=11)
-            ax.set_ylabel("IMF", fontsize=11)
-            ax.set_title(
-                f"{ploidy} n={n_clones} ({len(grp)} solutions)",
-                fontsize=13, fontweight="bold",
-            )
-            ax.legend(fontsize=9)
-            ax.grid(True, alpha=0.3)
-            fig.tight_layout()
-            pdf.savefig(fig)
-            plt.close(fig)
-
-    logging.info(f"wrote {outfile} ({len(groups)} pages)")
-
-
-def _pool_entries_for_plot(pool):
-    """Extract (tag, seg_df, imf_obj, is_pareto, is_selected) tuples for plotting.
-
-    Drops the ``cnt_pairs`` dict that is stored in each pool value but is not
-    needed by ``plot_pool_cnp``.
-
-    Args:
-        pool: Mapping ``{tag: (seg_df, imf_obj, is_pareto, is_selected, cnt_pairs)}``.
-
-    Returns:
-        List of ``(tag, seg_df, imf_obj, is_pareto, is_selected)`` tuples.
-    """
-    return [
-        (tag, seg_df, imf, pareto, selected)
-        for tag, (seg_df, imf, _reg, pareto, selected, _cnt_pairs) in pool.items()
-    ]
-
-
-def _load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
-    """Read pool solution TSVs from sol_dir back into pool_instances format.
-
-    Returns ``{pparam: [(obj, cA, cB, u), ...]}`` or empty dict if no files found.
-    """
-    import glob
-    import re
-
-    pool = {}
-    pattern = os.path.join(sol_dir, "*_sol*_pool*.tsv")
-    for path in sorted(glob.glob(pattern)):
-        basename = os.path.basename(path)
-        m = re.match(r".*_sol([\d.]+)_pool(\d+)\.tsv", basename)
-        if not m:
-            continue
-        pparam_str, pidx_str = m.group(1), m.group(2)
-        pparam = float(pparam_str) if "." in pparam_str else int(pparam_str)
-
-        sol = pd.read_csv(path, sep="\t")
-        cn_cols = sorted(
-            [c for c in sol.columns if c.startswith("cn_")],
-            key=lambda c: (0 if c == "cn_normal" else 1, c),
-        )
-        u_cols = sorted(
-            [c for c in sol.columns if c.startswith("u_")],
-            key=lambda c: (0 if c == "u_normal" else 1, c),
-        )
-        n_clones = len(cn_cols)
-
-        first_sample = sample_ids[0]
-        sol_s = sol[sol["SAMPLE"] == first_sample].sort_values("CLUSTER").reset_index(drop=True)
-
-        cA = []
-        cB = []
-        for _, row in sol_s.iterrows():
-            ca_row, cb_row = [], []
-            for col in cn_cols:
-                a, b = str(row[col]).split("|")
-                ca_row.append(int(a))
-                cb_row.append(int(b))
-            cA.append(ca_row)
-            cB.append(cb_row)
-
-        u = [[] for _ in range(n_clones)]
-        for sid in sample_ids:
-            row = sol[sol["SAMPLE"] == sid].iloc[0]
-            for ci, uc in enumerate(u_cols):
-                u[ci].append(float(row[uc]))
-
-        obj = 0.0  # placeholder, will be recomputed
-        pool.setdefault(pparam, []).append((obj, cA, cB, u))
-
-    if pool:
-        logging.info(f"loaded {sum(len(v) for v in pool.values())} pool solutions from {sol_dir}")
-    return pool
-
-
-def _build_pool_output(
-    pool_instances, f_a, f_b, fcn_data, weights, nbins,
-    args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg,
-    sol_dir, ploidy, n, plot_dir,
-):
-    """Build the pool output dict from pool_instances (shared by solve and skip paths)."""
-    reg_term = args["reg_term"]
-    solve_mode = args["mode"]
-
-    best_instance, imf_obj, selected_key = model_selection_instance(
-        f_a, f_b, weights, pool_instances, reg_term, solve_mode, sol_dir, fcn_data, nbins,
-    )
-    if best_instance is None:
-        return 0.0, 0.0, {}
-
-    obj, cA, cB, u = best_instance
-    if not os.path.exists(out_bbc) or not os.path.exists(out_seg):
-        segmentation(
-            cA, cB, u, cluster_ids, sample_ids,
-            bbcs=bbcs, region_file=args["region_bed"],
-            bbc_out_file=out_bbc, seg_out_file=out_seg,
-        )
-
-    all_pool = {}
-    pool_objs = []
-    pool_tags = []
-    pool_keys = []
-    for pparam, sols in pool_instances.items():
-        for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
-            tag = f"pool_p{pparam}_s{pidx}"
-            seg_df = segmentation(
-                pcA, pcB, pu, cluster_ids, sample_ids,
-                bbcs=bbcs, region_file=args["region_bed"],
-            )
-            p_imf, p_reg = compute_individual_objs(
-                reg_term, weights, f_a, f_b, pcA, pcB, pu
-            )
-            cnt_pairs = compute_pairwise_cnt(pcA, pcB, bbcs, cluster_ids)
-            pool_objs.append([p_imf, p_reg])
-            pool_tags.append(tag)
-            pool_keys.append((pparam, pidx))
-            all_pool[tag] = (seg_df, p_imf, p_reg, False, False, cnt_pairs)
-
-    if pool_objs:
-        is_pareto = filter_non_pareto(np.array(pool_objs))
-        for tag, key, pareto in zip(pool_tags, pool_keys, is_pareto):
-            seg_df_, imf_, reg_, _, _, cnt_pairs_ = all_pool[tag]
-            is_selected = key == selected_key
-            all_pool[tag] = (seg_df_, imf_, reg_, bool(pareto), is_selected, cnt_pairs_)
-
-    return obj, imf_obj, all_pool
-
-
-def _dedup_pool(pool_instances):
-    """Deduplicate pool_instances dict across all pparam values.
-
-    Flattens all solutions from every pparam bucket into a single list,
-    deduplicates by CN profile + clone proportions (via ``dedup_solutions``),
-    then re-groups the survivors back into the original pparam structure.
-
-    Identity is tracked by Python object id, so the input list must not
-    contain newly constructed copies of logically equal objects.
-
-    Args:
-        pool_instances: Mapping ``{pparam: [sol, ...]}``.
-
-    Returns:
-        New mapping with the same structure but duplicate solutions removed.
-    """
-    flat_sols = []
-    flat_keys = []
-    for pparam, sols in pool_instances.items():
-        for pidx, sol in enumerate(sols):
-            flat_sols.append(sol)
-            flat_keys.append((pparam, pidx))
-
-    deduped = dedup_solutions(flat_sols)
-    deduped_ids = {id(s) for s in deduped}
-
-    out = {}
-    for sol, (pparam, _pidx) in zip(flat_sols, flat_keys):
-        if id(sol) in deduped_ids:
-            out.setdefault(pparam, []).append(sol)
-    return out
-
-
 def solve(
     n: int,
     clonal: dict,
@@ -621,12 +378,11 @@ def solve(
 
     if not args.get("force", False) and os.path.exists(out_bbc) and os.path.exists(out_seg):
         logging.info(f"skip {ploidy} n={n}: results already exist (use --force to re-solve)")
-        pool_instances = _load_pool_from_disk(sol_dir, cluster_ids, sample_ids)
+        pool_instances = load_pool_from_disk(sol_dir, cluster_ids, sample_ids)
         if pool_instances:
-            return _build_pool_output(
+            return build_pool_output(
                 pool_instances, f_a, f_b, fcn_data, weights, nbins,
-                args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg,
-                sol_dir, ploidy, n, plot_dir,
+                args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg, sol_dir,
             )
         return 0.0, 0.0, {}
 
@@ -685,7 +441,7 @@ def solve(
             timelimit=timelimit,
             u0_tsv_path=u0_tsv_path,
         )
-        pool_instances = _dedup_pool(cd_instances)
+        pool_instances = dedup_pool(cd_instances)
         store_instance_tofile(
             pool_instances,
             f_a,
@@ -752,7 +508,7 @@ def solve(
                 if pool_sols:
                     pool_instances[pparam].extend(pool_sols)
 
-        pool_instances = _dedup_pool(pool_instances)
+        pool_instances = dedup_pool(pool_instances)
         store_instance_tofile(
             pool_instances,
             f_a,
@@ -764,10 +520,9 @@ def solve(
             nbins=nbins,
         )
 
-    return _build_pool_output(
+    return build_pool_output(
         pool_instances, f_a, f_b, fcn_data, weights, nbins,
-        args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg,
-        sol_dir, ploidy, n, plot_dir,
+        args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg, sol_dir,
     )
 
 

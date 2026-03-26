@@ -1,10 +1,19 @@
 import os
+import re
+import glob
 import logging
 import pandas as pd
 import numpy as np
 
 from hatchet.utils import read_region_bed, build_seg_from_bbc
 from hatchet.plot import plot_cn as _plot_cn
+from hatchet.compute_cn.solve.utils import (
+    model_selection_instance,
+    compute_individual_objs,
+    compute_pairwise_cnt,
+    filter_non_pareto,
+    dedup_solutions,
+)
 
 
 def build_cluster_data(segs):
@@ -366,3 +375,206 @@ def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy):
             "style": args.get("style", "cnv"),
         }
     )
+
+
+def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
+    """Plot REG vs IMF Pareto curves + elbow/BIC page as a multi-page PDF."""
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    outfile = os.path.join(plot_dir, "model_selection.pdf")
+    reg_col = reg_term if reg_term in summary_df.columns else "REG"
+    groups = sorted(summary_df.groupby(["ploidy", "n_clones"]))
+
+    with PdfPages(outfile) as pdf:
+        for (ploidy, n_clones), grp in groups:
+            fig, ax = plt.subplots(figsize=(7, 5))
+
+            pareto_mask = grp["is_pareto"] == True
+            non_pareto = grp[~pareto_mask]
+            pareto = grp[pareto_mask].sort_values(reg_col)
+
+            # Non-pareto: gray
+            if len(non_pareto) > 0:
+                ax.scatter(
+                    non_pareto[reg_col], non_pareto["IMF"],
+                    c="0.75", s=25, zorder=2, alpha=0.5,
+                    edgecolors="white", linewidths=0.3,
+                )
+
+            # Pareto points: colored by CNT feasibility
+            if len(pareto) > 0:
+                if "CNT_from_c1" in pareto.columns:
+                    has_inf = pareto["CNT_from_c1"].apply(
+                        lambda v: v == "inf"
+                        or (isinstance(v, float) and not np.isfinite(v))
+                    )
+                else:
+                    has_inf = pd.Series(False, index=pareto.index)
+
+                finite_p = pareto[~has_inf]
+                inf_p = pareto[has_inf]
+
+                if len(finite_p) > 0:
+                    ax.scatter(
+                        finite_p[reg_col], finite_p["IMF"],
+                        c="#1f77b4", s=50, zorder=4, label="Pareto",
+                        edgecolors="white", linewidths=0.5,
+                    )
+                if len(inf_p) > 0:
+                    ax.scatter(
+                        inf_p[reg_col], inf_p["IMF"],
+                        c="#d62728", s=50, marker="x", zorder=4,
+                        linewidths=1.5, label="Pareto (CNT inf)",
+                    )
+                ax.plot(pareto[reg_col], pareto["IMF"],
+                        c="black", linewidth=1.5, alpha=0.4, zorder=3)
+
+            sel = grp[grp["is_instance_selected"] == True]
+            if len(sel) > 0:
+                ax.scatter(
+                    sel[reg_col], sel["IMF"],
+                    c="gold", marker="*", s=250, zorder=5,
+                    edgecolors="black", linewidths=1, label="selected",
+                )
+
+            ax.set_xlabel(reg_col, fontsize=11)
+            ax.set_ylabel("IMF", fontsize=11)
+            ax.set_title(f"{ploidy} n={n_clones} ({len(grp)} solutions)",
+                         fontsize=13, fontweight="bold")
+            ax.legend(fontsize=9)
+            ax.grid(True, alpha=0.3)
+            fig.tight_layout()
+            pdf.savefig(fig)
+            plt.close(fig)
+
+        # Append elbow/BIC figure as last page
+        if elbow_fig is not None:
+            pdf.savefig(elbow_fig)
+            plt.close(elbow_fig)
+
+    logging.info(f"wrote {outfile} ({len(groups) + (1 if elbow_fig else 0)} pages)")
+
+
+def pool_entries_for_plot(pool):
+    """Extract plot-ready tuples from pool dict, dropping cnt_pairs."""
+    return [
+        (tag, seg_df, imf, pareto, selected)
+        for tag, (seg_df, imf, _reg, pareto, selected, _cnt) in pool.items()
+    ]
+
+
+def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
+    """Read pool solution TSVs from sol_dir into {pparam: [(obj, cA, cB, u), ...]}."""
+    pool = {}
+    for path in sorted(glob.glob(os.path.join(sol_dir, "*_sol*_pool*.tsv"))):
+        m = re.match(r".*_sol([\d.]+)_pool(\d+)\.tsv", os.path.basename(path))
+        if not m:
+            continue
+        pparam = float(m.group(1)) if "." in m.group(1) else int(m.group(1))
+
+        sol = pd.read_csv(path, sep="\t")
+        cn_cols = sorted(
+            [c for c in sol.columns if c.startswith("cn_")],
+            key=lambda c: (0 if c == "cn_normal" else 1, c),
+        )
+        u_cols = sorted(
+            [c for c in sol.columns if c.startswith("u_")],
+            key=lambda c: (0 if c == "u_normal" else 1, c),
+        )
+
+        sol_s = (
+            sol[sol["SAMPLE"] == sample_ids[0]]
+            .sort_values("CLUSTER")
+            .reset_index(drop=True)
+        )
+        cA, cB = [], []
+        for _, row in sol_s.iterrows():
+            ca, cb = zip(*(
+                (int(a), int(b))
+                for a, b in (str(row[c]).split("|") for c in cn_cols)
+            ))
+            cA.append(list(ca))
+            cB.append(list(cb))
+
+        u = [
+            [float(sol[sol["SAMPLE"] == sid].iloc[0][uc]) for sid in sample_ids]
+            for uc in u_cols
+        ]
+        pool.setdefault(pparam, []).append((0.0, cA, cB, u))
+
+    if pool:
+        logging.info(
+            f"loaded {sum(len(v) for v in pool.values())} pool solutions from {sol_dir}"
+        )
+    return pool
+
+
+def build_pool_output(
+    pool_instances, f_a, f_b, fcn_data, weights, nbins,
+    args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg, sol_dir,
+):
+    """Run model selection on pool_instances and build the pool output dict."""
+    reg_term = args["reg_term"]
+
+    best_instance, imf_obj, selected_key = model_selection_instance(
+        f_a, f_b, weights, pool_instances, reg_term,
+        args["mode"], sol_dir, fcn_data, nbins,
+    )
+    if best_instance is None:
+        return 0.0, 0.0, {}
+
+    obj, cA, cB, u = best_instance
+    if not os.path.exists(out_bbc) or not os.path.exists(out_seg):
+        segmentation(
+            cA, cB, u, cluster_ids, sample_ids,
+            bbcs=bbcs, region_file=args["region_bed"],
+            bbc_out_file=out_bbc, seg_out_file=out_seg,
+        )
+
+    all_pool = {}
+    pool_objs = []
+    pool_tags = []
+    pool_keys = []
+    for pparam, sols in pool_instances.items():
+        for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
+            tag = f"pool_p{pparam}_s{pidx}"
+            seg_df = segmentation(
+                pcA, pcB, pu, cluster_ids, sample_ids,
+                bbcs=bbcs, region_file=args["region_bed"],
+            )
+            p_imf, p_reg = compute_individual_objs(
+                reg_term, weights, f_a, f_b, pcA, pcB, pu
+            )
+            cnt_pairs = compute_pairwise_cnt(pcA, pcB, bbcs, cluster_ids)
+            pool_objs.append([p_imf, p_reg])
+            pool_tags.append(tag)
+            pool_keys.append((pparam, pidx))
+            all_pool[tag] = (seg_df, p_imf, p_reg, False, False, cnt_pairs)
+
+    if pool_objs:
+        is_pareto = filter_non_pareto(np.array(pool_objs))
+        for tag, key, pareto in zip(pool_tags, pool_keys, is_pareto):
+            seg_df_, imf_, reg_, _, _, cnt_ = all_pool[tag]
+            is_selected = key == selected_key
+            all_pool[tag] = (seg_df_, imf_, reg_, bool(pareto), is_selected, cnt_)
+
+    return obj, imf_obj, all_pool
+
+
+def dedup_pool(pool_instances):
+    """Deduplicate pool_instances dict across all pparam values."""
+    flat_sols, flat_keys = [], []
+    for pparam, sols in pool_instances.items():
+        for pidx, sol in enumerate(sols):
+            flat_sols.append(sol)
+            flat_keys.append((pparam, pidx))
+
+    deduped = dedup_solutions(flat_sols)
+    deduped_ids = {id(s) for s in deduped}
+
+    out = {}
+    for sol, (pparam, _) in zip(flat_sols, flat_keys):
+        if id(sol) in deduped_ids:
+            out.setdefault(pparam, []).append(sol)
+    return out

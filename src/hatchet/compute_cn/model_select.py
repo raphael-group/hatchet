@@ -321,8 +321,5 @@ def model_selection(
         ax0.set_title(f"Elbow (best: {final_selection}, n={best_n})")
 
     fig.tight_layout()
-    elbow_dir = plot_dir if plot_dir is not None else out_dir
-    fig.savefig(os.path.join(elbow_dir, "elbow_curve.png"), dpi=150)
-    plt.close(fig)
 
-    return n_dip, n_tet, final_selection
+    return n_dip, n_tet, final_selection, fig
