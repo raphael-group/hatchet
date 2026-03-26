@@ -258,9 +258,11 @@ class CoordinateDescent:
                 logging.warning(f"CD: no feasible solution at λ={pparam}, skipping")
                 continue
 
-            best = min(instances, key=lambda x: x[0])
-            logging.info(f"CD: λ={pparam}, best obj={best[0]:.4f} from {len(instances)} feasible")
-            pool_instances[pparam] = [best]
+            best_obj = min(inst[0] for inst in instances)
+            logging.info(
+                f"CD: λ={pparam}, best obj={best_obj:.4f} from {len(instances)} feasible"
+            )
+            pool_instances[pparam] = instances
 
         if len(pool_instances) == 0:
             raise RuntimeError("Not a single feasible solution found!")
