@@ -692,12 +692,19 @@ def make_cnp_palette(clone_states, clone_props, state_style, style="ascn"):
             rgbs = np.array([to_rgb(ascn_color(a + b)) for a, b in states[1:]])
             blended = np.clip(rgbs.T @ tumor_props_norm, 0.0, 1.0)
         else:
+            # Blend only tumor clones (index >= 1) to avoid dilution by normal gray
+            tumor_props = clone_props[1:]
+            tumor_sum = tumor_props.sum()
+            if tumor_sum > 0:
+                tumor_props_norm = tumor_props / tumor_sum
+            else:
+                tumor_props_norm = np.ones(len(tumor_props)) / len(tumor_props)
             rgbs = np.array(
                 [
                     to_rgb(state_style.get((a, b), state_style["default"]))
-                    for a, b in states
+                    for a, b in states[1:]
                 ]
             )
-            blended = np.clip(rgbs.T @ clone_props, 0.0, 1.0)
+            blended = np.clip(rgbs.T @ tumor_props_norm, 0.0, 1.0)
         palette[cnp] = tuple(blended)
     return palette
