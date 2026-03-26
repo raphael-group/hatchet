@@ -737,3 +737,62 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         help="output file, panel.svg",
     )
     return parser
+
+
+def add_arguments_evaluate(parser):
+    parser.add_argument(
+        "--result_dir",
+        type=str,
+        default=None,
+        help="HATCHet results directory (reads best.seg.ucn)",
+    )
+    parser.add_argument(
+        "--seg",
+        type=str,
+        default=None,
+        help="Explicit seg.ucn file (alternative to --result_dir)",
+    )
+    parser.add_argument(
+        "--snv",
+        type=str,
+        default=None,
+        help="Somatic SNV VCF file (.vcf or .vcf.gz)",
+    )
+    parser.add_argument(
+        "--snv_tsv",
+        type=str,
+        default=None,
+        help="Somatic SNV TSV file (#CHR, POS, ref_reads, alt_reads)",
+    )
+    parser.add_argument(
+        "--vcf_sample",
+        type=str,
+        default="tumor",
+        help="Sample name in VCF to use (default: tumor)",
+    )
+    parser.add_argument(
+        "-O",
+        "--out_dir",
+        type=str,
+        default=".",
+        help="Output directory (default: current dir)",
+    )
+    parser.add_argument(
+        "--gamma",
+        type=float,
+        default=0.05,
+        help="CI significance level for explained test (default: 0.05)",
+    )
+    parser.add_argument(
+        "--min_vaf",
+        type=float,
+        default=0.0,
+        help="Minimum observed VAF filter (default: 0.0)",
+    )
+    parser.add_argument(
+        "--verbosity",
+        type=int,
+        default=0,
+        help="Logging verbosity (default: 0)",
+    )
+    return parser

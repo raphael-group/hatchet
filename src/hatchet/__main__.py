@@ -9,6 +9,7 @@ from hatchet.cluster_bins.cluster_bins import run as hatchet_cluster_bins
 from hatchet.compute_cn.compute_cn import run as hatchet_compute_cn
 from hatchet.plot.plot_cn import run as hatchet_plot_cn
 from hatchet.plot.plot_cnp_panel import run as hatchet_plot_panel
+from hatchet.evaluate.evaluate import run as hatchet_evaluate
 from hatchet.hatchet_parser import *
 from hatchet.utils import setup_logging, log_arguments
 
@@ -33,6 +34,10 @@ def main(argv=None):
     p_plot_cnp = subparsers.add_parser("plot-panel", help="run plot-panel")
     add_arguments_plot_panel(p_plot_cnp)
     p_plot_cnp.set_defaults(func=hatchet_plot_panel)
+
+    p_eval = subparsers.add_parser("evaluate", help="evaluate CN solutions against somatic SNVs")
+    add_arguments_evaluate(p_eval)
+    p_eval.set_defaults(func=hatchet_evaluate)
 
     args = parser.parse_args(argv)
     setup_logging(args)
