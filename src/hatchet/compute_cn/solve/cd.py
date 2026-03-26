@@ -305,6 +305,8 @@ class CoordinateDescent:
                 )
                 to_do.append(future)
 
+            n_total = len(to_do)
+            n_done = 0
             for future in as_completed(to_do):
                 try:
                     instance = future.result()
@@ -312,11 +314,15 @@ class CoordinateDescent:
                     logging.error(f"CD worker failed with exception: {e}")
                     executor.shutdown(wait=False, cancel_futures=True)
                     raise RuntimeError(f"CD worker failed: {e}") from e
+                n_done += 1
                 if instance is not None:
                     obj, cA, cB, u = instance
                     instances.append((obj, cA, cB, u))
+                    logging.info(
+                        f"CD: {n_done}/{n_total} done, obj={obj:.4f}"
+                    )
                 else:
-                    logging.debug("CD: worker returned None (infeasible)")
+                    logging.info(f"CD: {n_done}/{n_total} done (infeasible)")
         finally:
             executor.shutdown(wait=True, cancel_futures=True)
 
