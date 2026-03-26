@@ -7,33 +7,20 @@ import pandas as pd
 from pyomo import environ as pe
 
 from hatchet.compute_cn.solve.ilp_subset import ILPSubset
-from hatchet.compute_cn.solve.utils import Random, model_selection_instance
+from hatchet.compute_cn.solve.utils import Random
 
 
 class Worker:
-    """Runs one coordinate-descent restart from a fixed initial u.
+    """Runs one coordinate-descent restart at a fixed regularization λ.
 
-    Each Worker alternates between a C-step (fix u, optimise cA/cB) and a
-    U-step (fix cA/cB, optimise u) until convergence or the iteration budget
-    is exhausted. When a regularization path is active, the C-step sweeps over
-    λ values and uses instance-level model selection to pick the best cA/cB
-    before proceeding to the U-step.
+    Each Worker alternates between a C-step (fix u, optimise cA/cB at the
+    given λ) and a U-step (fix cA/cB, optimise u) until convergence or
+    the iteration budget is exhausted.
     """
 
-    def __init__(
-        self,
-        work_id: int,
-        ilp: ILPSubset,
-        reg_name: str,
-        reg_steps: int,
-        reg_ssize: float,
-        solver_type: str,
-    ):
+    def __init__(self, work_id: int, ilp: ILPSubset, solver_type: str):
         self.work_id = work_id
         self.ilp = ilp
-        self.reg_name = reg_name
-        self.reg_steps = reg_steps
-        self.reg_ssize = reg_ssize
         self.solver_type = solver_type
         self._solver = self._create_solver()
 
@@ -52,6 +39,7 @@ class Worker:
         cA,
         cB,
         u,
+        pparam,
         max_iters,
         max_convergence_iters,
         tol=0.001,
@@ -63,62 +51,24 @@ class Worker:
         _prev_obj_u = None
 
         while (_iters < max_iters) and (_convergence_iters < max_convergence_iters):
-            # C-step: fix u, optimize cA/cB
+            # C-step: fix u, optimize cA/cB at fixed λ
             carch = copy(self.ilp)
             carch.fix_u(_u)
             carch.create_model()
             carch.hot_start(_cA, _cB)
+            carch.model.pparam = pparam
 
-            if self.reg_name != "RAW":
-                # Regularization path: sweep λ values, warm-starting each from the previous.
-                # DMRCA_SUM only penalises clones at index >= 2; with n <= 2 there are no
-                # subclonal clones beyond the MRCA, so a single unregularised solve suffices.
-                dmrca_no_effect = self.reg_name == "DMRCA_SUM" and self.ilp.n <= 2
-                effective_reg_steps = 0 if dmrca_no_effect else self.reg_steps
-
-                carch_instances = {}
-                prev_pparam = None
-                for i0 in range(0, effective_reg_steps + 1):
-                    pparam = self.reg_ssize * i0
-                    carch.model.pparam = pparam
-                    if prev_pparam is not None:
-                        # carch_instances[pparam] is a single-element list [result];
-                        # index [0] unwraps it to the (obj, cA, cB, u) tuple.
-                        _, prev_cA, prev_cB, _ = carch_instances[prev_pparam][0]
-                        carch.hot_start(prev_cA, prev_cB)
-                    result = carch.run(
-                        solver_type=self.solver_type,
-                        timelimit=timelimit,
-                        solver=self._solver,
-                    )
-                    if result is None:
-                        logging.debug(
-                            f"worker {self.work_id}: C-step infeasible at lambda={pparam}"
-                        )
-                        return None
-                    carch_instances[pparam] = [result]
-                    prev_pparam = pparam
-
-                best_result, _imf_obj, _selected_key = model_selection_instance(
-                    self.ilp.f_a,
-                    self.ilp.f_b,
-                    self.ilp.w,
-                    carch_instances,
-                    self.reg_name,
-                    "cd",
-                    None,
+            result = carch.run(
+                solver_type=self.solver_type,
+                timelimit=timelimit,
+                solver=self._solver,
+            )
+            if result is None:
+                logging.debug(
+                    f"worker {self.work_id}: C-step infeasible at lambda={pparam}"
                 )
-                _obj_c, _cA, _cB, _ = best_result
-            else:
-                result = carch.run(
-                    self.solver_type,
-                    timelimit=timelimit,
-                    solver=self._solver,
-                )
-                if result is None:
-                    logging.debug(f"worker {self.work_id}: C-step infeasible (no reg)")
-                    return None
-                _obj_c, _cA, _cB, _ = result
+                return None
+            _obj_c, _cA, _cB, _ = result
 
             # U-step: fix cA/cB, optimize u
             uarch = copy(self.ilp)
@@ -135,7 +85,6 @@ class Worker:
             _obj_u, _, _, _u = uarch_results
 
             # Convergence: compare U-step objective across iterations
-            # (U-step is always unregularized, so _obj_u is comparable across iters)
             if _prev_obj_u is not None:
                 delta = abs(_obj_u - _prev_obj_u)
                 if delta < tol:
@@ -148,7 +97,7 @@ class Worker:
         return _obj_u, _cA, _cB, _u
 
 
-# Global reference set by process pool initializer — avoids pickling CoordinateDescent per task
+# Global reference set by process pool initializer
 _cd_global = None
 
 
@@ -165,38 +114,14 @@ def _init_worker(cd, log_level):
         logging.getLogger(name).setLevel(logging.ERROR)
 
 
-def _work(work_id, u, solver_type, max_iters, max_convergence_iters, timelimit):
-    """Entry point for a single process-pool worker.
-
-    Reads the shared CoordinateDescent state from the module-level
-    ``_cd_global`` reference set by ``_init_worker``, constructs a Worker,
-    and runs one full coordinate-descent restart.
-
-    Args:
-        work_id: Integer index identifying this restart (used for logging).
-        u: Initial mixture-proportion matrix for this restart.
-        solver_type: Pyomo solver name (e.g. "gurobi" or "cbc").
-        max_iters: Maximum number of C/U alternation iterations.
-        max_convergence_iters: Number of consecutive non-improving iterations
-            before early stopping.
-        timelimit: Per-solve wall-clock time limit in seconds, or None.
-
-    Returns:
-        Tuple ``(obj, cA, cB, u)`` for the converged solution, or None if
-        no feasible solution was found.
-    """
-    worker = Worker(
-        work_id,
-        _cd_global.ilp,
-        _cd_global.reg_name,
-        _cd_global.reg_steps,
-        _cd_global.reg_stepsize,
-        solver_type,
-    )
+def _work(work_id, u, pparam, solver_type, max_iters, max_convergence_iters, timelimit):
+    """Entry point for a single process-pool worker at a fixed λ."""
+    worker = Worker(work_id, _cd_global.ilp, solver_type)
     return worker.run(
         _cd_global.hcA,
         _cd_global.hcB,
         u,
+        pparam=pparam,
         max_iters=max_iters,
         max_convergence_iters=max_convergence_iters,
         timelimit=timelimit,
@@ -206,12 +131,10 @@ def _work(work_id, u, solver_type, max_iters, max_convergence_iters, timelimit):
 class CoordinateDescent:
     """Coordinate-descent solver for copy-number deconvolution.
 
-    Generates ``n_seed`` random initial mixture proportions (u), then runs
-    each as an independent Worker restart in a process pool. All restarts
-    share the same ILPSubset template (stored as ``self.ilp``) via the
-    module-level ``_cd_global`` initializer, avoiding per-task pickling of
-    the full Pyomo model. After all workers finish, solutions are collected,
-    sorted by objective value, and returned as an ordered dict keyed by rank.
+    For each regularization λ in [0, δ, 2δ, ...], runs all seed restarts
+    in parallel and keeps the best solution per λ.  Returns results in the
+    same ``{pparam: [best_solution]}`` format as the ILP solver, enabling
+    unified model selection across the regularization path.
     """
 
     def __init__(
@@ -234,7 +157,6 @@ class CoordinateDescent:
         self.reg_name = reg_term if reg_term is not None else "RAW"
         self.reg_steps = reg_steps
         self.reg_stepsize = reg_stepsize
-        # ilp attribute used here as a convenient storage container for properties
         self.ilp = ILPSubset(
             n=n,
             cn_max=cn_max,
@@ -249,13 +171,8 @@ class CoordinateDescent:
             penalty_param=[self.reg_name, 0.0],
             base=base,
         )
-        # Building the model here is not strictly necessary, as, during execution,
-        #   self.carch and c.uarch will copy self.ilp and create+run those models.
-        # However, we do so here simply so we can print out some diagnostic information once for the user.
         self.ilp.create_model(pprint=True)
         self.hcA, self.hcB = self.ilp.first_hot_start()
-
-        self.seeds = None
 
     def run(
         self,
@@ -282,54 +199,70 @@ class CoordinateDescent:
                     rows.append(row)
             pd.DataFrame(rows).to_csv(u0_tsv_path, sep="\t", index=False)
 
-        instances = []  # obj. value => (cA, cB, u) mapping
-        to_do = []
+        # Build regularization path
+        dmrca_no_effect = self.reg_name == "DMRCA_SUM" and self.ilp.n <= 2
+        if self.reg_name == "RAW" or dmrca_no_effect:
+            pparams = [0]
+        else:
+            pparams = [self.reg_stepsize * i for i in range(self.reg_steps + 1)]
+
         n_workers = min(j, len(seeds))
-        logging.info(f"CD: launching {len(seeds)} seed(s) across {n_workers} worker(s)")
-        executor = ProcessPoolExecutor(
-            max_workers=n_workers,
-            mp_context=multiprocessing.get_context("spawn"),
-            initializer=_init_worker,
-            initargs=(self, logging.root.level),
-        )
-        try:
-            for i, u in enumerate(seeds):
-                future = executor.submit(
-                    _work,
-                    i,
-                    u,
-                    solver_type,
-                    max_iters,
-                    max_convergence_iters,
-                    timelimit,
-                )
-                to_do.append(future)
+        pool_instances = {}
 
-            n_total = len(to_do)
-            n_done = 0
-            for future in as_completed(to_do):
-                try:
-                    instance = future.result()
-                except Exception as e:
-                    logging.error(f"CD worker failed with exception: {e}")
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    raise RuntimeError(f"CD worker failed: {e}") from e
-                n_done += 1
-                if instance is not None:
-                    obj, cA, cB, u = instance
-                    instances.append((obj, cA, cB, u))
-                else:
-                    logging.debug("CD: worker returned None (infeasible)")
-                if n_done % 50 == 0 or n_done == n_total:
-                    logging.info(f"CD: {n_done}/{n_total} seeds completed")
-        finally:
-            executor.shutdown(wait=True, cancel_futures=True)
+        for pparam in pparams:
+            logging.info(
+                f"CD: λ={pparam}, launching {len(seeds)} seed(s) across {n_workers} worker(s)"
+            )
+            instances = []
+            executor = ProcessPoolExecutor(
+                max_workers=n_workers,
+                mp_context=multiprocessing.get_context("spawn"),
+                initializer=_init_worker,
+                initargs=(self, logging.root.level),
+            )
+            try:
+                to_do = []
+                for i, u in enumerate(seeds):
+                    future = executor.submit(
+                        _work,
+                        i,
+                        u,
+                        pparam,
+                        solver_type,
+                        max_iters,
+                        max_convergence_iters,
+                        timelimit,
+                    )
+                    to_do.append(future)
 
-        if len(instances) == 0:
+                n_total = len(to_do)
+                n_done = 0
+                for future in as_completed(to_do):
+                    try:
+                        instance = future.result()
+                    except Exception as e:
+                        logging.error(f"CD worker failed with exception: {e}")
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        raise RuntimeError(f"CD worker failed: {e}") from e
+                    n_done += 1
+                    if instance is not None:
+                        instances.append(instance)
+                    else:
+                        logging.debug("CD: worker returned None (infeasible)")
+                    if n_done % 50 == 0 or n_done == n_total:
+                        logging.info(f"CD: λ={pparam}, {n_done}/{n_total} seeds completed")
+            finally:
+                executor.shutdown(wait=True, cancel_futures=True)
+
+            if len(instances) == 0:
+                logging.warning(f"CD: no feasible solution at λ={pparam}, skipping")
+                continue
+
+            best = min(instances, key=lambda x: x[0])
+            logging.info(f"CD: λ={pparam}, best obj={best[0]:.4f} from {len(instances)} feasible")
+            pool_instances[pparam] = [best]
+
+        if len(pool_instances) == 0:
             raise RuntimeError("Not a single feasible solution found!")
 
-        sorted_instances = {}
-        for idx, instance in enumerate(sorted(instances, key=lambda elem: elem[0])):
-            sorted_instances[idx] = instance
-
-        return sorted_instances
+        return pool_instances

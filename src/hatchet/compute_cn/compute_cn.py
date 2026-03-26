@@ -568,8 +568,7 @@ def solve(
             timelimit=timelimit,
             u0_tsv_path=u0_tsv_path,
         )
-        pool_instances = {k: [v] for k, v in cd_instances.items()}
-        pool_instances = _dedup_pool(pool_instances)
+        pool_instances = _dedup_pool(cd_instances)
         store_instance_tofile(
             pool_instances,
             f_a,
@@ -600,9 +599,13 @@ def solve(
         )
         solver.create_model(pprint=verbose)
         if solve_mode == "both":
-            _, [obj_, cA_, cB_, _] = min(cd_instances.items(), key=lambda tp: tp[1][0])
-            logging.info(f"use CD local opt with obj={obj_} to initialize ILP model")
-            solver.hot_start(cA_, cB_)
+            # Pick the best CD solution (lowest obj) across all λ values
+            best_cd = min(
+                (sol for sols in cd_instances.values() for sol in sols),
+                key=lambda s: s[0],
+            )
+            logging.info(f"use CD local opt with obj={best_cd[0]:.4f} to initialize ILP model")
+            solver.hot_start(best_cd[1], best_cd[2])
 
         # DMRCA_SUM only penalises clones at index >= 2; with n <= 2 there are no
         # subclonal clones beyond the MRCA, so the regularisation path has no effect
