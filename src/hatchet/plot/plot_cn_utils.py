@@ -407,19 +407,19 @@ def get_cn_colors():
         tcn_states.setdefault(int(a + b), []).append((a, b))
 
     fixed_colors = {
-        1: ["#4a9bc4"],  # medium blue (loss)
-        2: ["#a8a8a8", "#505050"],  # medium greys (diploid)
-        3: ["#c8c000", "#a07800"],  # golden yellows (3-copy)
-        4: ["#e09050", "#c06800", "#904000"],  # ambers/oranges (4-copy)
-        5: ["#e84030", "#b00000", "#700000"],  # reds (5-copy)
-        6: ["#cc80cc", "#a030a0", "#680068", "#400050"],  # purples
+        1: ["#add9e5"],  # light blue (loss)
+        2: ["#d4d4d4", "#818486"],  # greys (diploid)
+        3: ["#fafad1", "#ffd702"],  # yellow shades (3-copy)
+        4: ["#ffdead", "#ffa602", "#ff8c00"],  # oranges (4-copy)
+        5: ["#fa7f73", "#ff0000", "#8c0000"],  # reds (5-copy)
+        6: ["#dea0de", "#d970d6", "#800080", "#4a0082"],  # purples (6-copy)
         7: [
-            "#9080e0",
-            "#6848c8",
-            "#4c20a0",
-            "#340070",
-            "#1c0040",
-        ],  # violet → indigo gradient
+            "#c0b7f0",
+            "#a485f4",
+            "#6f42c1",
+            "#4b0082",
+            "#2e0854",
+        ],  # violet → indigo gradient (7-copy)
     }
 
     default_color = "#333333"
