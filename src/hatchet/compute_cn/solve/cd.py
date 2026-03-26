@@ -318,11 +318,10 @@ class CoordinateDescent:
                 if instance is not None:
                     obj, cA, cB, u = instance
                     instances.append((obj, cA, cB, u))
-                    logging.info(
-                        f"CD: {n_done}/{n_total} done, obj={obj:.4f}"
-                    )
                 else:
-                    logging.info(f"CD: {n_done}/{n_total} done (infeasible)")
+                    logging.debug("CD: worker returned None (infeasible)")
+                if n_done % 50 == 0 or n_done == n_total:
+                    logging.info(f"CD: {n_done}/{n_total} seeds completed")
         finally:
             executor.shutdown(wait=True, cancel_futures=True)
 
