@@ -52,6 +52,13 @@ def run(args=None):
     genome_size = args["genome_size"]
     out_dir = args["bbc_dir"]
 
+    out_bbc = os.path.join(out_dir, "bulk.bbc")
+    out_seg = os.path.join(out_dir, "bulk.seg")
+    if not args.get("force", False) and os.path.exists(out_bbc) and os.path.exists(out_seg):
+        logging.info(f"skip cluster-bins: {out_bbc} and {out_seg} already exist (use --force to re-run)")
+        _log_done("cluster-bins")
+        return
+
     min_tau = args["min_tau"]
     max_tau = args["max_tau"]
     baf_eps = args["baf_eps"]

@@ -34,6 +34,13 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         help="Output directory for BBC/seg TSV files",
     )
 
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Re-run even if results already exist (default: skip existing)",
+    )
+
     ##################################################
     # Parameters
     parser.add_argument(
