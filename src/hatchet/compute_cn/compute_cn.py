@@ -181,7 +181,7 @@ def run(args=None):
                     "n_clones": n,
                     "tag": tag,
                     "IMF": round(imf_, 4),
-                    "REG": round(reg_, 4),
+                    args["reg_term"]: round(reg_, 4),
                     "is_pareto": pareto,
                     "is_instance_selected": selected,
                 }
@@ -255,7 +255,7 @@ def run(args=None):
                     "n_clones": n,
                     "tag": tag,
                     "IMF": round(imf_, 4),
-                    "REG": round(reg_, 4),
+                    args["reg_term"]: round(reg_, 4),
                     "is_pareto": pareto,
                     "is_instance_selected": selected,
                 }
@@ -298,7 +298,7 @@ def run(args=None):
         summary_path = os.path.join(out_dir, "summary.tsv")
         summary_df.to_csv(summary_path, sep="\t", index=False)
         logging.info(f"wrote {summary_path} ({len(summary_df)} solutions)")
-        _plot_pareto_pdf(summary_df, plot_dir)
+        _plot_pareto_pdf(summary_df, plot_dir, args["reg_term"])
 
     if n_dip > 0:
         shutil.copy2(
@@ -348,8 +348,8 @@ def run(args=None):
         logging.info(f"best plots: {os.path.join(plot_dir, f'{best_type}_n{best_n}')}")
 
 
-def _plot_pareto_pdf(summary_df, plot_dir):
-    """Plot IMF vs REG Pareto curves, one page per (ploidy, n_clones).
+def _plot_pareto_pdf(summary_df, plot_dir, reg_term):
+    """Plot REG vs IMF Pareto curves, one page per (ploidy, n_clones).
 
     All pool solutions are plotted as blue dots. Points with
     ``CNT_from_c1 == "inf"`` are marked red. The Pareto front is connected
@@ -359,6 +359,7 @@ def _plot_pareto_pdf(summary_df, plot_dir):
     from matplotlib.backends.backend_pdf import PdfPages
 
     outfile = os.path.join(plot_dir, "pareto_curves.pdf")
+    reg_col = reg_term if reg_term in summary_df.columns else "REG"
     groups = sorted(summary_df.groupby(["ploidy", "n_clones"]))
 
     with PdfPages(outfile) as pdf:
@@ -378,23 +379,23 @@ def _plot_pareto_pdf(summary_df, plot_dir):
             # All points: blue
             if len(finite) > 0:
                 ax.scatter(
-                    finite["REG"], finite["IMF"],
+                    finite[reg_col], finite["IMF"],
                     c="#1f77b4", s=40, zorder=3, label="finite CNT",
                     edgecolors="white", linewidths=0.5,
                 )
             # Inf CNT points: red
             if len(inf_pts) > 0:
                 ax.scatter(
-                    inf_pts["REG"], inf_pts["IMF"],
+                    inf_pts[reg_col], inf_pts["IMF"],
                     c="#d62728", s=40, marker="x", zorder=3,
                     linewidths=1.5, label="CNT_from_c1 = inf",
                 )
 
             # Pareto front: connected line
-            pareto = grp[grp["is_pareto"] == True].sort_values("REG")
+            pareto = grp[grp["is_pareto"] == True].sort_values(reg_col)
             if len(pareto) > 0:
                 ax.plot(
-                    pareto["REG"], pareto["IMF"],
+                    pareto[reg_col], pareto["IMF"],
                     c="black", linewidth=1.5, alpha=0.4, zorder=2,
                 )
 
@@ -402,14 +403,14 @@ def _plot_pareto_pdf(summary_df, plot_dir):
             sel = grp[grp["is_instance_selected"] == True]
             if len(sel) > 0:
                 ax.scatter(
-                    sel["REG"], sel["IMF"],
+                    sel[reg_col], sel["IMF"],
                     c="gold", marker="*", s=250, zorder=5,
                     edgecolors="black", linewidths=1,
                     label="selected",
                 )
 
-            ax.set_xlabel("REG objective", fontsize=11)
-            ax.set_ylabel("IMF objective", fontsize=11)
+            ax.set_xlabel(reg_col, fontsize=11)
+            ax.set_ylabel("IMF", fontsize=11)
             ax.set_title(
                 f"{ploidy} n={n_clones} ({len(grp)} solutions)",
                 fontsize=13, fontweight="bold",
