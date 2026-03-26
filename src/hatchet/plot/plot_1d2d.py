@@ -425,6 +425,7 @@ def plot_clusters(
     cluster_ids: np.ndarray = None,
     log_rdr: bool = False,
     pdf=None,
+    palette=None,
 ):
     """Plot per-cluster joint BAF-vs-RDR scatter with marginals and QQ plots.
 
@@ -519,8 +520,9 @@ def plot_clusters(
                 ax_right = fig.add_subplot(inner[1, 1], sharey=ax_main)
                 fig.add_subplot(inner[0, 1]).axis("off")
 
+                cluster_color = palette[ki] if palette is not None else "0.3"
                 ax_main.scatter(
-                    baf_obs, rdr_obs, s=1, alpha=0.15, color="0.3", rasterized=True
+                    baf_obs, rdr_obs, s=4, alpha=0.3, color=cluster_color, rasterized=True
                 )
                 if a_param > 0 and b_param > 0:
                     xg = np.linspace(max(0.001, p_k - 0.3), min(0.999, p_k + 0.3), 150)
@@ -799,6 +801,7 @@ def plot_rdr_baf(
             cluster_ids=unique_labels,
             log_rdr=log_rdr,
             pdf=pdf_2d,
+            palette=palette,
         )
     pdf_2d.close()
     return
