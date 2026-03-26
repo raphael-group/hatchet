@@ -442,6 +442,116 @@ def _pool_entries_for_plot(pool):
     ]
 
 
+def _load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
+    """Read pool solution TSVs from sol_dir back into pool_instances format.
+
+    Returns ``{pparam: [(obj, cA, cB, u), ...]}`` or empty dict if no files found.
+    """
+    import glob
+    import re
+
+    pool = {}
+    pattern = os.path.join(sol_dir, "*_sol*_pool*.tsv")
+    for path in sorted(glob.glob(pattern)):
+        basename = os.path.basename(path)
+        m = re.match(r".*_sol([\d.]+)_pool(\d+)\.tsv", basename)
+        if not m:
+            continue
+        pparam_str, pidx_str = m.group(1), m.group(2)
+        pparam = float(pparam_str) if "." in pparam_str else int(pparam_str)
+
+        sol = pd.read_csv(path, sep="\t")
+        cn_cols = sorted(
+            [c for c in sol.columns if c.startswith("cn_")],
+            key=lambda c: (0 if c == "cn_normal" else 1, c),
+        )
+        u_cols = sorted(
+            [c for c in sol.columns if c.startswith("u_")],
+            key=lambda c: (0 if c == "u_normal" else 1, c),
+        )
+        n_clones = len(cn_cols)
+
+        first_sample = sample_ids[0]
+        sol_s = sol[sol["SAMPLE"] == first_sample].sort_values("CLUSTER").reset_index(drop=True)
+
+        cA = []
+        cB = []
+        for _, row in sol_s.iterrows():
+            ca_row, cb_row = [], []
+            for col in cn_cols:
+                a, b = str(row[col]).split("|")
+                ca_row.append(int(a))
+                cb_row.append(int(b))
+            cA.append(ca_row)
+            cB.append(cb_row)
+
+        u = [[] for _ in range(n_clones)]
+        for sid in sample_ids:
+            row = sol[sol["SAMPLE"] == sid].iloc[0]
+            for ci, uc in enumerate(u_cols):
+                u[ci].append(float(row[uc]))
+
+        obj = 0.0  # placeholder, will be recomputed
+        pool.setdefault(pparam, []).append((obj, cA, cB, u))
+
+    if pool:
+        logging.info(f"loaded {sum(len(v) for v in pool.values())} pool solutions from {sol_dir}")
+    return pool
+
+
+def _build_pool_output(
+    pool_instances, f_a, f_b, fcn_data, weights, nbins,
+    args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg,
+    sol_dir, ploidy, n, plot_dir,
+):
+    """Build the pool output dict from pool_instances (shared by solve and skip paths)."""
+    reg_term = args["reg_term"]
+    solve_mode = args["mode"]
+
+    best_instance, imf_obj, selected_key = model_selection_instance(
+        f_a, f_b, weights, pool_instances, reg_term, solve_mode, sol_dir, fcn_data, nbins,
+    )
+    if best_instance is None:
+        return 0.0, 0.0, {}
+
+    obj, cA, cB, u = best_instance
+    if not os.path.exists(out_bbc) or not os.path.exists(out_seg):
+        segmentation(
+            cA, cB, u, cluster_ids, sample_ids,
+            bbcs=bbcs, region_file=args["region_bed"],
+            bbc_out_file=out_bbc, seg_out_file=out_seg,
+        )
+
+    all_pool = {}
+    pool_objs = []
+    pool_tags = []
+    pool_keys = []
+    for pparam, sols in pool_instances.items():
+        for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
+            tag = f"pool_p{pparam}_s{pidx}"
+            seg_df = segmentation(
+                pcA, pcB, pu, cluster_ids, sample_ids,
+                bbcs=bbcs, region_file=args["region_bed"],
+            )
+            p_imf, p_reg = compute_individual_objs(
+                reg_term, weights, f_a, f_b, pcA, pcB, pu
+            )
+            cnt_pairs = compute_pairwise_cnt(pcA, pcB, bbcs, cluster_ids)
+            pool_objs.append([p_imf, p_reg])
+            pool_tags.append(tag)
+            pool_keys.append((pparam, pidx))
+            all_pool[tag] = (seg_df, p_imf, p_reg, False, False, cnt_pairs)
+
+    if pool_objs:
+        is_pareto = filter_non_pareto(np.array(pool_objs))
+        for tag, key, pareto in zip(pool_tags, pool_keys, is_pareto):
+            seg_df_, imf_, reg_, _, _, cnt_pairs_ = all_pool[tag]
+            is_selected = key == selected_key
+            all_pool[tag] = (seg_df_, imf_, reg_, bool(pareto), is_selected, cnt_pairs_)
+
+    return obj, imf_obj, all_pool
+
+
 def _dedup_pool(pool_instances):
     """Deduplicate pool_instances dict across all pparam values.
 
@@ -509,8 +619,15 @@ def solve(
     out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
     out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
 
-    if os.path.exists(out_bbc) and os.path.exists(out_seg):
-        logging.info(f"skip {ploidy} n={n}: results already exist")
+    if not args.get("force", False) and os.path.exists(out_bbc) and os.path.exists(out_seg):
+        logging.info(f"skip {ploidy} n={n}: results already exist (use --force to re-solve)")
+        pool_instances = _load_pool_from_disk(sol_dir, cluster_ids, sample_ids)
+        if pool_instances:
+            return _build_pool_output(
+                pool_instances, f_a, f_b, fcn_data, weights, nbins,
+                args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg,
+                sol_dir, ploidy, n, plot_dir,
+            )
         return 0.0, 0.0, {}
 
     cn_max = {"diploid": args["diploidcmax"], "tetraploid": args["tetraploidcmax"]}[
@@ -647,64 +764,11 @@ def solve(
             nbins=nbins,
         )
 
-    best_instance, imf_obj, selected_key = model_selection_instance(
-        f_a,
-        f_b,
-        weights,
-        pool_instances,
-        reg_term,
-        solve_mode,
-        sol_dir,
-        fcn_data,
-        nbins,
+    return _build_pool_output(
+        pool_instances, f_a, f_b, fcn_data, weights, nbins,
+        args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg,
+        sol_dir, ploidy, n, plot_dir,
     )
-
-    assert best_instance is not None, f"no solution for {ploidy} and n={n}"
-    [obj, cA, cB, u] = best_instance
-    segmentation(
-        cA,
-        cB,
-        u,
-        cluster_ids,
-        sample_ids,
-        bbcs=bbcs,
-        region_file=args["region_bed"],
-        bbc_out_file=out_bbc,
-        seg_out_file=out_seg,
-    )
-
-    all_pool = {}
-    pool_objs = []
-    pool_tags = []
-    pool_keys = []
-    for pparam, sols in pool_instances.items():
-        for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
-            tag = f"pool_p{pparam}_s{pidx}"
-            seg_df = segmentation(
-                pcA,
-                pcB,
-                pu,
-                cluster_ids,
-                sample_ids,
-                bbcs=bbcs,
-                region_file=args["region_bed"],
-            )
-            p_imf, p_reg = compute_individual_objs(
-                reg_term, weights, f_a, f_b, pcA, pcB, pu
-            )
-            cnt_pairs = compute_pairwise_cnt(pcA, pcB, bbcs, cluster_ids)
-            pool_objs.append([p_imf, p_reg])
-            pool_tags.append(tag)
-            pool_keys.append((pparam, pidx))
-            all_pool[tag] = (seg_df, p_imf, p_reg, False, False, cnt_pairs)
-
-    is_pareto = filter_non_pareto(np.array(pool_objs))
-    for tag, key, pareto in zip(pool_tags, pool_keys, is_pareto):
-        seg_df_, imf_, reg_, _, _, cnt_pairs_ = all_pool[tag]
-        is_selected = key == selected_key
-        all_pool[tag] = (seg_df_, imf_, reg_, bool(pareto), is_selected, cnt_pairs_)
-
-    return obj, imf_obj, all_pool
 
 
 if __name__ == "__main__":

@@ -233,6 +233,12 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         default="bic",
     )
     parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Re-solve even if results already exist (default: skip existing)",
+    )
+    parser.add_argument(
         "--solver",
         required=False,
         choices=["gurobi", "cbc"],
