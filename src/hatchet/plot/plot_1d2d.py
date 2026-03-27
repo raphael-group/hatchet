@@ -202,8 +202,8 @@ def plot_1d(
         hue=hue,
         palette=palette,
         legend=(hue is not None) and show_legend,
-        edgecolor="0.2",
-        linewidth=0.3,
+        edgecolor="none",
+        linewidth=0,
     )
     if rasterized:
         for coll in ax.collections:

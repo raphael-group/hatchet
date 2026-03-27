@@ -590,8 +590,8 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         "--dpi",
         required=False,
         type=int,
-        help="image resolution (default: 300)",
-        default=300,
+        help="image resolution (default: 500)",
+        default=500,
     )
     parser.add_argument(
         "--img_type",

@@ -114,7 +114,7 @@ compute_cn:
 
 ##################################################
 plot_cn:
-  dpi: 300
+  dpi: 500
   # output image format: png | pdf | svg
   img_type: png
   transparent: false
