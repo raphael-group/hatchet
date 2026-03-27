@@ -134,7 +134,7 @@ def run(args=None):
             bin_info.loc[bin_info["CNP"] == clone_state, "exp-FCN"] = exp_fcns[i]
 
         lim_baf = (0, 1) if bin_info["BAF"].max() > 0.5 else (0, 0.55)
-        max_fcn = np.round(bin_info["FCN"].max()).astype(int)
+        max_fcn = int(np.ceil(bin_info["FCN"].max()))
         if max_fcn > maxlim_fcn:
             num_exceeded = np.sum(bin_info["FCN"] >= maxlim_fcn)
             logging.warning(
