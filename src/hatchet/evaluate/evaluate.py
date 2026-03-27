@@ -116,6 +116,8 @@ def run(args=None):
         genome_size = args.get("genome_size")
         region_bed = args.get("region_bed")
         if genome_size is not None:
+            from hatchet.plot.plot_utils import get_expected_baf_fcn
+
             chrom_sizes = read_genome_sizes(genome_size)
             regions = read_region_bed(region_bed)
             for sample in samples:
@@ -123,20 +125,15 @@ def run(args=None):
                 if len(sample_df) == 0:
                     continue
                 segs_s = segs[segs["SAMPLE"] == sample].reset_index(drop=True)
-                # Compute segment-level expected VAF
-                from hatchet.plot.plot_utils import get_expected_baf_fcn
-
                 cn_cols = sorted(
-                    [c for c in segs_s.columns if c.startswith("cn_")],
-                    key=lambda c: (0 if c == "cn_normal" else 1, c),
+                    [col for col in segs_s.columns if col.startswith("cn_")],
+                    key=lambda col: (0 if col == "cn_normal" else 1, col),
                 )
                 segs_plot = segs_s.copy()
                 segs_plot["predicted_VAF"] = 0.0
                 for idx, seg in segs_plot.iterrows():
-                    states = [
-                        (int(seg[c].split("|")[0]), int(seg[c].split("|")[1]))
-                        for c in cn_cols
-                    ]
+                    a_b = [seg[col].split("|") for col in cn_cols]
+                    states = [(int(a), int(b)) for a, b in a_b]
                     _, _, _, exp_baf = get_expected_baf_fcn(states, clone_props)
                     segs_plot.at[idx, "predicted_VAF"] = exp_baf
                 out_plot = os.path.join(out_dir, f"{sample}.vaf_1d.pdf")
@@ -147,8 +144,6 @@ def run(args=None):
         out_summary = os.path.join(out_dir, "eval_summary.tsv")
         summary_df.to_csv(out_summary, sep="\t", index=False)
         logging.info(f"wrote {out_summary}")
-
-    return
 
 
 if __name__ == "__main__":

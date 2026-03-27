@@ -159,7 +159,8 @@ def evaluate_snvs(segs, clones, clone_props, snv_df, gamma=0.05):
         alt_reads = int(row["alt_reads"]) if pd.notna(row.get("alt_reads")) else 0
         explained = is_explained_mut(ref_reads, alt_reads, pred_vaf, gamma=gamma)
         rel_err = relative_error(pred_vaf, obs_vaf) if obs_vaf > 0 else np.nan
-        is_subclonal = 0 < sum(np.array(list(best))[1:] > 0) < (len(clones) - 1)
+        n_mutated_clones = int((np.array(best[1:]) > 0).sum())
+        is_subclonal = 0 < n_mutated_clones < (len(clones) - 1)
 
         dp = ref_reads + alt_reads
         results.append(

@@ -1,7 +1,7 @@
 import os
-import sys
 import logging
 import contextlib
+from collections import defaultdict
 
 import pandas as pd
 import numpy as np
@@ -312,7 +312,7 @@ def plot_2d(
         scatter.set_facecolors(colors_)
     g0_colors = scatter.get_facecolors()
 
-    if not exp_labels is None:
+    if exp_labels is not None:
         texts = []
         for ci, cid in enumerate(exp_labels):
             center_text = cid
@@ -345,7 +345,7 @@ def plot_2d(
             linewidth=marker_bd_width,
         )
 
-    if not clone_props is None:
+    if clone_props is not None:
         custom_handles = []
         for i, prop in enumerate(clone_props):
             lab = f"Normal: {prop:.3f}" if i == 0 else f"Clone {i}: {prop:.3f}"
@@ -433,15 +433,13 @@ def _derive_arm_labels(bin_info):
             seen.add(r)
 
     # Group regions by chromosome, assign p/q by order
-    from collections import defaultdict
-
     chr_regions = defaultdict(list)
     for r in unique_regions:
         chrom = r.split(":")[0]
         start = int(r.split(":")[1].split("-")[0])
         chr_regions[chrom].append((start, r))
     region_to_arm = {}
-    arm_suffixes = "pq"
+    arm_suffixes = ("p", "q")
     for chrom, regions in chr_regions.items():
         regions.sort(key=lambda x: x[0])
         for i, (_, r) in enumerate(regions):

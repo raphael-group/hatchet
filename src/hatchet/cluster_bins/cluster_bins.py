@@ -213,7 +213,7 @@ def run(args=None):
             K=maxK,
             random_state=seed,
             restarts=restarts,
-            n_local_trials=args["n_local_trials"],
+            n_local_trials=n_local_trials,
             baf_eps=baf_eps,
         )
     else:
