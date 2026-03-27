@@ -790,6 +790,30 @@ def add_arguments_evaluate(parser):
         help="Minimum observed VAF filter (default: 0.0)",
     )
     parser.add_argument(
+        "--min_depth",
+        type=int,
+        default=5,
+        help="Minimum read depth filter (default: 5)",
+    )
+    parser.add_argument(
+        "--eval_all",
+        action="store_true",
+        default=False,
+        help="Evaluate all pool solutions (requires --result_dir)",
+    )
+    parser.add_argument(
+        "--genome_size",
+        type=str,
+        default=None,
+        help="Genome sizes file for 1D VAF plot (e.g. hg38.sizes)",
+    )
+    parser.add_argument(
+        "--region_bed",
+        type=str,
+        default=None,
+        help="Region BED file for 1D VAF plot",
+    )
+    parser.add_argument(
         "--verbosity",
         type=int,
         default=0,

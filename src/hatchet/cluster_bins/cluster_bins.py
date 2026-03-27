@@ -54,8 +54,14 @@ def run(args=None):
 
     out_bbc = os.path.join(out_dir, "bulk.bbc")
     out_seg = os.path.join(out_dir, "bulk.seg")
-    if not args.get("force", False) and os.path.exists(out_bbc) and os.path.exists(out_seg):
-        logging.info(f"skip cluster-bins: {out_bbc} and {out_seg} already exist (use --force to re-run)")
+    if (
+        not args.get("force", False)
+        and os.path.exists(out_bbc)
+        and os.path.exists(out_seg)
+    ):
+        logging.info(
+            f"skip cluster-bins: {out_bbc} and {out_seg} already exist (use --force to re-run)"
+        )
         _log_done("cluster-bins")
         return
 
@@ -467,11 +473,10 @@ def run(args=None):
         os.path.join(label_dir, f"bulk{best_K}.bb.phased.tsv.gz"),
         os.path.join(out_dir, "bb.phased.tsv.gz"),
     )
-    for suffix in ["1D.pdf", "2D.pdf"]:
-        shutil.copy2(
-            os.path.join(plot_dir, f"K{best_K}_{suffix}"),
-            os.path.join(out_dir, f"bulk.{suffix}"),
-        )
+    shutil.copy2(
+        os.path.join(plot_dir, f"K{best_K}.pdf"),
+        os.path.join(out_dir, f"bulk.K{best_K}.pdf"),
+    )
 
     _log_done("cluster-bins")
     return

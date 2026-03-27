@@ -184,9 +184,7 @@ def plot_1d(
     chrs = bin_info["#CHR"].unique().tolist()
     if ignore_gap:
         bin_info, ch_coords, axis_start, axis_end, seg_coords = (
-            get_abs_positions_ignore_gap(
-                bin_info, regions, chrs, chr_shift=chr_shift
-            )
+            get_abs_positions_ignore_gap(bin_info, regions, chrs, chr_shift=chr_shift)
         )
     else:
         bin_info, ch_coords, axis_start, axis_end, seg_coords = (
@@ -230,13 +228,17 @@ def plot_1d(
             j = i + 1
             while j < len(exp_vals) and exp_vals[j] == exp_vals[i]:
                 j += 1
-            exp_lines.append([
-                (abs_starts[i], exp_vals[i]),
-                (abs_ends[j - 1], exp_vals[i]),
-            ])
+            exp_lines.append(
+                [
+                    (abs_starts[i], exp_vals[i]),
+                    (abs_ends[j - 1], exp_vals[i]),
+                ]
+            )
             i = j
         ax.add_collection(
-            LineCollection(exp_lines, linewidth=exp_linewidth, colors=[linecolor] * len(exp_lines))
+            LineCollection(
+                exp_lines, linewidth=exp_linewidth, colors=[linecolor] * len(exp_lines)
+            )
         )
 
     ax.vlines(
@@ -414,6 +416,41 @@ def _is_multimodal(obs, min_count=30):
     return len(peaks) > 1
 
 
+def _derive_arm_labels(bin_info):
+    """Derive chromosome arm labels (e.g. 'chr1p', 'chr1q') from region_id.
+
+    region_id format: 'chr1:10000-122026459'. Within each chromosome,
+    regions are ordered by start position; first = p-arm, second = q-arm.
+    """
+    if "region_id" not in bin_info.columns:
+        return None
+    region_ids = bin_info["region_id"].to_numpy()
+    unique_regions = []
+    seen = set()
+    for r in region_ids:
+        if r not in seen:
+            unique_regions.append(r)
+            seen.add(r)
+
+    # Group regions by chromosome, assign p/q by order
+    from collections import defaultdict
+
+    chr_regions = defaultdict(list)
+    for r in unique_regions:
+        chrom = r.split(":")[0]
+        start = int(r.split(":")[1].split("-")[0])
+        chr_regions[chrom].append((start, r))
+    region_to_arm = {}
+    arm_suffixes = "pq"
+    for chrom, regions in chr_regions.items():
+        regions.sort(key=lambda x: x[0])
+        for i, (_, r) in enumerate(regions):
+            suffix = arm_suffixes[i] if i < len(arm_suffixes) else str(i)
+            region_to_arm[r] = f"{chrom}{suffix}"
+
+    return np.array([region_to_arm[r] for r in region_ids])
+
+
 def plot_clusters(
     cluster_labels: np.ndarray,
     X_rdrs: np.ndarray,
@@ -428,6 +465,7 @@ def plot_clusters(
     log_rdr: bool = False,
     pdf=None,
     palette=None,
+    bin_info=None,
 ):
     """Plot per-cluster joint BAF-vs-RDR scatter with marginals and QQ plots.
 
@@ -455,6 +493,17 @@ def plot_clusters(
     N_total = len(cluster_labels)
     if cluster_ids is None:
         cluster_ids = np.arange(K)
+
+    # Derive chromosome arm labels for coloring
+    arm_labels = None
+    arm_palette = None
+    if bin_info is not None:
+        arm_labels = _derive_arm_labels(bin_info)
+        if arm_labels is not None:
+            unique_arms = list(dict.fromkeys(arm_labels))  # preserve order
+            arm_palette = dict(
+                zip(unique_arms, set_palette(num_colors=len(unique_arms)))
+            )
 
     _close_pdf = pdf is None
     if _close_pdf:
@@ -522,10 +571,21 @@ def plot_clusters(
                 ax_right = fig.add_subplot(inner[1, 1], sharey=ax_main)
                 fig.add_subplot(inner[0, 1]).axis("off")
 
-                cluster_color = palette[ki] if palette is not None else "0.3"
-                ax_main.scatter(
-                    baf_obs, rdr_obs, s=4, alpha=0.3, color=cluster_color, rasterized=True
-                )
+                if arm_labels is not None:
+                    arm_colors = [arm_palette[a] for a in arm_labels[mask]]
+                    ax_main.scatter(
+                        baf_obs, rdr_obs, s=4, alpha=0.3, c=arm_colors, rasterized=True
+                    )
+                else:
+                    cluster_color = palette[ki] if palette is not None else "0.3"
+                    ax_main.scatter(
+                        baf_obs,
+                        rdr_obs,
+                        s=4,
+                        alpha=0.3,
+                        color=cluster_color,
+                        rasterized=True,
+                    )
                 if a_param > 0 and b_param > 0:
                     xg = np.linspace(max(0.001, p_k - 0.3), min(0.999, p_k + 0.3), 150)
                     yg = np.linspace(mu_k - 4 * sigma_k, mu_k + 4 * sigma_k, 150)
@@ -638,7 +698,23 @@ def plot_clusters(
                 ax_rdr_qq.set_ylabel("Observed", fontsize=9)
                 ax_rdr_qq.set_title(f"{ylab} QQ", fontsize=10)
 
-            fig.subplots_adjust(top=0.95)
+            if arm_labels is not None:
+                from matplotlib.patches import Patch
+
+                cluster_arms = sorted(set(arm_labels[mask]))
+                handles = [
+                    Patch(facecolor=arm_palette[a], label=a) for a in cluster_arms
+                ]
+                fig.legend(
+                    handles=handles,
+                    loc="lower center",
+                    ncol=min(len(cluster_arms), 12),
+                    fontsize=7,
+                    frameon=False,
+                )
+                fig.subplots_adjust(top=0.95, bottom=0.06)
+            else:
+                fig.subplots_adjust(top=0.95)
             pdf.savefig(fig)
             plt.close(fig)
 
@@ -696,8 +772,8 @@ def plot_rdr_baf(
             for i, lbl in enumerate(unique_labels):
                 _lbl_to_idx[lbl] = i
 
-    pdf_1d = PdfPages(os.path.join(out_dir, f"{out_prefix}1D.pdf"))
-    pdf_2d = PdfPages(os.path.join(out_dir, f"{out_prefix}2D.pdf"))
+    out_name = out_prefix.rstrip("_") if out_prefix else "plot"
+    pdf = PdfPages(os.path.join(out_dir, f"{out_name}.pdf"))
 
     for si, sample in enumerate(samples):
         logging.info(f"plot {sample}")
@@ -715,7 +791,7 @@ def plot_rdr_baf(
             )
         lim_rdr = (0, min(max(3, max_rdr), maxlim_rdr))
 
-        # 2D plot
+        # Page 1: 2D plot
         fig_2d, g0_colors = plot_2d(
             sample,
             bin_info,
@@ -737,10 +813,10 @@ def plot_rdr_baf(
             transparent=transparent,
             rasterized=rasterized,
         )
-        pdf_2d.savefig(fig_2d, dpi=dpi, bbox_inches="tight")
+        pdf.savefig(fig_2d, dpi=dpi, bbox_inches="tight")
         plt.close(fig_2d)
 
-        # 1D plot
+        # Page 2: 1D plot
         fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(row_width, row_height))
         for i, [ctype, ylim, vals, exp_vals] in enumerate(
             [[ylab, lim_rdr, rdrs, exp_rdrs], [xlab, lim_baf, bafs, exp_bafs]]
@@ -786,10 +862,10 @@ def plot_rdr_baf(
             )
         fig.subplots_adjust(right=0.82)
         fig.tight_layout(rect=[0, 0, 0.82, 1])
-        pdf_1d.savefig(fig, dpi=dpi, bbox_inches="tight")
+        pdf.savefig(fig, dpi=dpi, bbox_inches="tight")
         plt.close(fig)
 
-    pdf_1d.close()
+    # Cluster-level diagnostic pages
     if rdr_means is not None:
         plot_clusters(
             cluster_labels,
@@ -802,8 +878,9 @@ def plot_rdr_baf(
             samples,
             cluster_ids=unique_labels,
             log_rdr=log_rdr,
-            pdf=pdf_2d,
+            pdf=pdf,
             palette=palette,
+            bin_info=bin_info,
         )
-    pdf_2d.close()
+    pdf.close()
     return
