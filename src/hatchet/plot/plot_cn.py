@@ -93,12 +93,13 @@ def run(args=None):
 
     ##################################################
     # start plotting 1D and 2D
+    from matplotlib.backends.backend_pdf import PdfPages
+
     state_style, _ = get_cn_colors()
     sns.set_style("whitegrid")
     for sample in samples:
         logging.info(f"plot {sample}")
-        outfile_1d = os.path.join(plot_dir, f"{get_filename(sample)}.1D.{file_type}")
-        outfile_2d = os.path.join(plot_dir, f"{get_filename(sample)}.2D.{file_type}")
+        outfile = os.path.join(plot_dir, f"{get_filename(sample)}.{file_type}")
         bin_info: pd.DataFrame = bbcs[bbcs["SAMPLE"] == sample].reset_index(drop=True)
         seg_info: pd.DataFrame = segs[segs["SAMPLE"] == sample].reset_index(drop=True)
         # CNP profile
@@ -117,7 +118,7 @@ def run(args=None):
         )
         logging.info(f"purity={tumor_purity}, ploidy={tumor_ploidy}")
 
-        # compute expected FCNs over clustres
+        # compute expected FCNs over clusters
         bin_info["exp-BAF"] = 0.0
         bin_info["exp-FCN"] = 0.0
         exp_bafs = np.zeros(len(clone_states), dtype=np.float32)
@@ -142,7 +143,10 @@ def run(args=None):
             )
         lim_fcn = (0, min(max(3, max_fcn), maxlim_fcn))
 
-        _, g0_colors = plot_2d(
+        sample_title = f"sample={sample}; purity={tumor_purity}; ploidy={tumor_ploidy}"
+
+        # Page 1: 2D scatter
+        fig_2d, g0_colors = plot_2d(
             sample,
             bin_info,
             bin_info["BAF"].to_numpy(),
@@ -159,12 +163,13 @@ def run(args=None):
             ylab="Fractional copy number (FCN)",
             xlim=lim_baf,
             ylim=lim_fcn,
-            title=f"sample={sample}; purity={tumor_purity}; ploidy={tumor_ploidy}",
+            title=sample_title,
             dpi=dpi,
             transparent=transparent,
-            out_file=outfile_2d,
         )
-        fig, axes = plt.subplots(
+
+        # Page 2: 1D scatter + CNP profile
+        fig_1d, axes = plt.subplots(
             nrows=4,
             ncols=1,
             figsize=(row_width, row_height),
@@ -206,16 +211,28 @@ def run(args=None):
         )
         legend_fn(ax_leg)
 
-        fig.suptitle(f"sample={sample}; purity={tumor_purity}; ploidy={tumor_ploidy}")
+        fig_1d.suptitle(sample_title)
         axes[1].set_ylabel("mhBAF")
-
         axes[0].grid(False)
         axes[1].grid(False)
-        # axes[0].legend(markerscale=6)
-        # sns.move_legend(axes[0], "upper left", bbox_to_anchor=(1, 1), title=None)
         plt.tight_layout()
-        plt.savefig(outfile_1d, dpi=dpi, bbox_inches="tight", transparent=transparent)
-        plt.close(fig)
+
+        # Save: single PDF (page1=2D, page2=1D+CNP) or separate files
+        if file_type == "pdf":
+            with PdfPages(outfile) as pdf:
+                pdf.savefig(fig_2d, dpi=dpi, bbox_inches="tight", transparent=transparent)
+                pdf.savefig(fig_1d, dpi=dpi, bbox_inches="tight", transparent=transparent)
+        else:
+            fig_2d.savefig(
+                outfile.replace(f".{file_type}", f".2D.{file_type}"),
+                dpi=dpi, bbox_inches="tight", transparent=transparent,
+            )
+            fig_1d.savefig(
+                outfile.replace(f".{file_type}", f".1D.{file_type}"),
+                dpi=dpi, bbox_inches="tight", transparent=transparent,
+            )
+        plt.close(fig_2d)
+        plt.close(fig_1d)
         logging.info(f"finish {sample}")
     return
 

@@ -364,7 +364,7 @@ def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy):
             "solfile": None,
             "plot_dir": plot_dir,
             "dpi": 150,
-            "img_type": "png",
+            "img_type": "pdf",
             "transparent": False,
             "keep_gap": False,
             "tail_alpha": 0.8,
