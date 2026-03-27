@@ -209,18 +209,17 @@ class CoordinateDescent:
         n_workers = min(j, len(seeds))
         pool_instances = {}
 
-        for pparam in pparams:
-            logging.info(
-                f"CD: λ={pparam}, launching {len(seeds)} seed(s) across {n_workers} worker(s)"
-            )
-            instances = []
-            executor = ProcessPoolExecutor(
-                max_workers=n_workers,
-                mp_context=multiprocessing.get_context("spawn"),
-                initializer=_init_worker,
-                initargs=(self, logging.root.level),
-            )
-            try:
+        executor = ProcessPoolExecutor(
+            max_workers=n_workers,
+            mp_context=multiprocessing.get_context("spawn"),
+            initializer=_init_worker,
+            initargs=(self, logging.root.level),
+        )
+        try:
+            for pparam in pparams:
+                logging.info(
+                    f"CD: λ={pparam}, launching {len(seeds)} seed(s) across {n_workers} worker(s)"
+                )
                 to_do = []
                 for i, u in enumerate(seeds):
                     future = executor.submit(
@@ -235,6 +234,7 @@ class CoordinateDescent:
                     )
                     to_do.append(future)
 
+                instances = []
                 n_total = len(to_do)
                 n_done = 0
                 for future in as_completed(to_do):
@@ -251,18 +251,18 @@ class CoordinateDescent:
                         logging.debug("CD: worker returned None (infeasible)")
                     if n_done % 50 == 0 or n_done == n_total:
                         logging.info(f"CD: λ={pparam}, {n_done}/{n_total} seeds completed")
-            finally:
-                executor.shutdown(wait=True, cancel_futures=True)
 
-            if len(instances) == 0:
-                logging.warning(f"CD: no feasible solution at λ={pparam}, skipping")
-                continue
+                if len(instances) == 0:
+                    logging.warning(f"CD: no feasible solution at λ={pparam}, skipping")
+                    continue
 
-            best_obj = min(inst[0] for inst in instances)
-            logging.info(
-                f"CD: λ={pparam}, best obj={best_obj:.4f} from {len(instances)} feasible"
-            )
-            pool_instances[pparam] = instances
+                best_obj = min(inst[0] for inst in instances)
+                logging.info(
+                    f"CD: λ={pparam}, best obj={best_obj:.4f} from {len(instances)} feasible"
+                )
+                pool_instances[pparam] = instances
+        finally:
+            executor.shutdown(wait=True)
 
         if len(pool_instances) == 0:
             raise RuntimeError("Not a single feasible solution found!")
