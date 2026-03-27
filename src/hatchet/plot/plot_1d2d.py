@@ -297,10 +297,7 @@ def plot_2d(
     """
     g0 = sns.JointGrid(x=xvals, y=yvals, hue=hue, palette=palette, xlim=xlim, ylim=ylim)
     g0.refline(x=0.50)
-    g0.plot_joint(
-        sns.scatterplot, s=markersize, legend=False,
-        edgecolor="0.2", linewidth=0.3,
-    )
+    g0.plot_joint(sns.scatterplot, s=markersize, legend=False, edgecolors="none")
     g0.plot_marginals(sns.kdeplot, common_norm=False, linewidth=0.8, fill=False)
     scatter = g0.ax_joint.collections[0]
     scatter.set_rasterized(rasterized)
