@@ -365,71 +365,47 @@ def fcn_color(fcn: float, base=1, tol=1e-2):
 
 
 def get_cn_colors():
+    _palette = {
+        (0, 0): "darkblue",
+        (1, 0): "lightblue",
+        (1, 1): "lightgray",
+        (2, 0): "dimgray",
+        (2, 1): "lightgoldenrodyellow",
+        (3, 0): "gold",
+        (2, 2): "navajowhite",
+        (3, 1): "orange",
+        (4, 0): "darkorange",
+        (3, 2): "salmon",
+        (4, 1): "red",
+        (5, 0): "darkred",
+        (3, 3): "plum",
+        (4, 2): "orchid",
+        (5, 1): "purple",
+        (6, 0): "indigo",
+        (4, 3): "#c0b7f0",
+        (5, 2): "#a485f4",
+        (6, 1): "#6f42c1",
+        (7, 0): "#4b0082",
+    }
+
     copy_states = [
-        (1, 0),
-        (0, 1),
-        (0, 2),
-        (1, 1),
-        (2, 0),
-        (0, 3),
-        (1, 2),
-        (2, 1),
-        (3, 0),
-        (0, 4),
-        (1, 3),
-        (2, 2),
-        (3, 1),
-        (4, 0),
-        (0, 5),
-        (1, 4),
-        (2, 3),
-        (3, 2),
-        (4, 1),
-        (5, 0),
-        (0, 6),
-        (1, 5),
-        (2, 4),
-        (3, 3),
-        (4, 2),
-        (5, 1),
-        (6, 0),
-        (0, 7),
-        (1, 6),
-        (2, 5),
-        (3, 4),
-        (4, 3),
-        (5, 2),
-        (6, 1),
-        (7, 0),
+        (1, 0), (0, 1),
+        (0, 2), (1, 1), (2, 0),
+        (0, 3), (1, 2), (2, 1), (3, 0),
+        (0, 4), (1, 3), (2, 2), (3, 1), (4, 0),
+        (0, 5), (1, 4), (2, 3), (3, 2), (4, 1), (5, 0),
+        (0, 6), (1, 5), (2, 4), (3, 3), (4, 2), (5, 1), (6, 0),
+        (0, 7), (1, 6), (2, 5), (3, 4), (4, 3), (5, 2), (6, 1), (7, 0),
     ]
     tcn_states = {}
     for a, b in copy_states:
         tcn_states.setdefault(int(a + b), []).append((a, b))
 
-    fixed_colors = {
-        1: ["#add9e5"],  # light blue (loss)
-        2: ["#d4d4d4", "#818486"],  # greys (diploid)
-        3: ["#fafad1", "#ffd702"],  # yellow shades (3-copy)
-        4: ["#ffdead", "#ffa602", "#ff8c00"],  # oranges (4-copy)
-        5: ["#fa7f73", "#ff0000", "#8c0000"],  # reds (5-copy)
-        6: ["#dea0de", "#d970d6", "#800080", "#4a0082"],  # purples (6-copy)
-        7: [
-            "#c0b7f0",
-            "#a485f4",
-            "#6f42c1",
-            "#4b0082",
-            "#2e0854",
-        ],  # violet → indigo gradient (7-copy)
-    }
-
     default_color = "#333333"
     state_style = {}
-    for total, states in tcn_states.items():
-        uniq_pairs = sorted({tuple(sorted(s, reverse=True)) for s in states})
-        colors = fixed_colors[total]
-        for pair, color in zip(uniq_pairs, colors):
-            state_style[pair] = color
-            state_style[pair[::-1]] = color
+    for (major, minor), color in _palette.items():
+        state_style[(major, minor)] = color
+        state_style[(minor, major)] = color
     state_style["default"] = default_color
     return state_style, tcn_states
 
