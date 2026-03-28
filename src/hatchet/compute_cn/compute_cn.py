@@ -485,7 +485,7 @@ def solve(
         )
         solver.create_model(pprint=verbose)
         if solve_mode == "both":
-            # Pick the best CD solution (lowest obj) across all λ values
+            # Pick the best CD solution (lowest obj) across all lambda values
             best_cd = min(
                 (sol for sols in cd_instances.values() for sol in sols),
                 key=lambda s: s[0],

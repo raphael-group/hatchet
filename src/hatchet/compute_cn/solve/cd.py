@@ -9,12 +9,14 @@ from pyomo import environ as pe
 from hatchet.compute_cn.solve.ilp_subset import ILPSubset
 from hatchet.compute_cn.solve.utils import Random
 
+# Per-row decomposition: faster for large m
+_CSTEP_ROW_THRESHOLD = 30
 
 class Worker:
-    """Runs one coordinate-descent restart at a fixed regularization λ.
+    """Runs one coordinate-descent restart at a fixed regularization lambda.
 
     Each Worker alternates between a C-step (fix u, optimise cA/cB at the
-    given λ) and a U-step (fix cA/cB, optimise u) until convergence or
+    given lambda) and a U-step (fix cA/cB, optimise u) until convergence or
     the iteration budget is exhausted.
     """
 
@@ -51,24 +53,52 @@ class Worker:
         _prev_obj_u = None
 
         while (_iters < max_iters) and (_convergence_iters < max_convergence_iters):
-            # C-step: fix u, optimize cA/cB at fixed λ
+            # C-step: fix u, optimize cA/cB at fixed lambda
             carch = copy(self.ilp)
             carch.fix_u(_u)
-            carch.create_model()
-            carch.hot_start(_cA, _cB)
-            carch.model.pparam = pparam
 
-            result = carch.run(
-                solver_type=self.solver_type,
-                timelimit=timelimit,
-                solver=self._solver,
-            )
-            if result is None:
-                logging.debug(
-                    f"worker {self.work_id}: C-step infeasible at lambda={pparam}"
+            if carch.m >= _CSTEP_ROW_THRESHOLD:
+                _obj_c = 0.0
+                _new_cA = [None] * carch.m
+                _new_cB = [None] * carch.m
+                c_infeasible = False
+                for _m in range(carch.m):
+                    carch.create_row_model(_m)
+                    carch.hot_start_row(_cA[_m], _cB[_m])
+                    carch.model.pparam = pparam
+                    row_result = carch.run_row(
+                        solver_type=self.solver_type,
+                        timelimit=timelimit,
+                        solver=self._solver,
+                    )
+                    if row_result is None:
+                        logging.debug(
+                            f"worker {self.work_id}: C-step row {_m} infeasible at lambda={pparam}"
+                        )
+                        c_infeasible = True
+                        break
+                    obj_m, cA_row, cB_row = row_result
+                    _obj_c += obj_m
+                    _new_cA[_m] = cA_row
+                    _new_cB[_m] = cB_row
+                if c_infeasible:
+                    return None
+                _cA, _cB = _new_cA, _new_cB
+            else:
+                carch.create_model()
+                carch.hot_start(_cA, _cB)
+                carch.model.pparam = pparam
+                result = carch.run(
+                    solver_type=self.solver_type,
+                    timelimit=timelimit,
+                    solver=self._solver,
                 )
-                return None
-            _obj_c, _cA, _cB, _ = result
+                if result is None:
+                    logging.debug(
+                        f"worker {self.work_id}: C-step infeasible at lambda={pparam}"
+                    )
+                    return None
+                _obj_c, _cA, _cB, _ = result
 
             # U-step: fix cA/cB, optimize u
             uarch = copy(self.ilp)
@@ -115,7 +145,7 @@ def _init_worker(cd, log_level):
 
 
 def _work(work_id, u, pparam, solver_type, max_iters, max_convergence_iters, timelimit):
-    """Entry point for a single process-pool worker at a fixed λ."""
+    """Entry point for a single process-pool worker at a fixed lambda."""
     worker = Worker(work_id, _cd_global.ilp, solver_type)
     return worker.run(
         _cd_global.hcA,
@@ -131,8 +161,8 @@ def _work(work_id, u, pparam, solver_type, max_iters, max_convergence_iters, tim
 class CoordinateDescent:
     """Coordinate-descent solver for copy-number deconvolution.
 
-    For each regularization λ in [0, δ, 2δ, ...], runs all seed restarts
-    in parallel and keeps the best solution per λ.  Returns results in the
+    For each regularization lambda in [0, δ, 2δ, ...], runs all seed restarts
+    in parallel and keeps the best solution per lambda.  Returns results in the
     same ``{pparam: [best_solution]}`` format as the ILP solver, enabling
     unified model selection across the regularization path.
     """
@@ -218,7 +248,7 @@ class CoordinateDescent:
         try:
             for pparam in pparams:
                 logging.info(
-                    f"CD: λ={pparam}, launching {len(seeds)} seed(s) across {n_workers} worker(s)"
+                    f"CD: lambda={pparam}, launching {len(seeds)} seed(s) across {n_workers} worker(s)"
                 )
                 to_do = []
                 for i, u in enumerate(seeds):
@@ -250,15 +280,17 @@ class CoordinateDescent:
                     else:
                         logging.debug("CD: worker returned None (infeasible)")
                     if n_done % 50 == 0 or n_done == n_total:
-                        logging.info(f"CD: λ={pparam}, {n_done}/{n_total} seeds completed")
+                        logging.info(
+                            f"CD: lambda={pparam}, {n_done}/{n_total} seeds completed"
+                        )
 
                 if len(instances) == 0:
-                    logging.warning(f"CD: no feasible solution at λ={pparam}, skipping")
+                    logging.warning(f"CD: no feasible solution at lambda={pparam}, skipping")
                     continue
 
                 best_obj = min(inst[0] for inst in instances)
                 logging.info(
-                    f"CD: λ={pparam}, best obj={best_obj:.4f} from {len(instances)} feasible"
+                    f"CD: lambda={pparam}, best obj={best_obj:.4f} from {len(instances)} feasible"
                 )
                 pool_instances[pparam] = instances
         finally:
