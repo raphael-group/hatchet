@@ -1,7 +1,6 @@
 import os
 import logging
 import contextlib
-from collections import defaultdict
 
 import pandas as pd
 import numpy as np
@@ -416,39 +415,6 @@ def _is_multimodal(obs, min_count=30):
     return len(peaks) > 1
 
 
-def _derive_arm_labels(bin_info):
-    """Derive chromosome arm labels (e.g. 'chr1p', 'chr1q') from region_id.
-
-    region_id format: 'chr1:10000-122026459'. Within each chromosome,
-    regions are ordered by start position; first = p-arm, second = q-arm.
-    """
-    if "region_id" not in bin_info.columns:
-        return None
-    region_ids = bin_info["region_id"].to_numpy()
-    unique_regions = []
-    seen = set()
-    for r in region_ids:
-        if r not in seen:
-            unique_regions.append(r)
-            seen.add(r)
-
-    # Group regions by chromosome, assign p/q by order
-    chr_regions = defaultdict(list)
-    for r in unique_regions:
-        chrom = r.split(":")[0]
-        start = int(r.split(":")[1].split("-")[0])
-        chr_regions[chrom].append((start, r))
-    region_to_arm = {}
-    arm_suffixes = ("p", "q")
-    for chrom, regions in chr_regions.items():
-        regions.sort(key=lambda x: x[0])
-        for i, (_, r) in enumerate(regions):
-            suffix = arm_suffixes[i] if i < len(arm_suffixes) else str(i)
-            region_to_arm[r] = f"{chrom}{suffix}"
-
-    return np.array([region_to_arm[r] for r in region_ids])
-
-
 def plot_clusters(
     cluster_labels: np.ndarray,
     X_rdrs: np.ndarray,
@@ -491,17 +457,6 @@ def plot_clusters(
     N_total = len(cluster_labels)
     if cluster_ids is None:
         cluster_ids = np.arange(K)
-
-    # Derive chromosome arm labels for coloring
-    arm_labels = None
-    arm_palette = None
-    if bin_info is not None:
-        arm_labels = _derive_arm_labels(bin_info)
-        if arm_labels is not None:
-            unique_arms = list(dict.fromkeys(arm_labels))  # preserve order
-            arm_palette = dict(
-                zip(unique_arms, set_palette(num_colors=len(unique_arms)))
-            )
 
     _close_pdf = pdf is None
     if _close_pdf:
@@ -569,21 +524,15 @@ def plot_clusters(
                 ax_right = fig.add_subplot(inner[1, 1], sharey=ax_main)
                 fig.add_subplot(inner[0, 1]).axis("off")
 
-                if arm_labels is not None:
-                    arm_colors = [arm_palette[a] for a in arm_labels[mask]]
-                    ax_main.scatter(
-                        baf_obs, rdr_obs, s=4, alpha=0.3, c=arm_colors, rasterized=True
-                    )
-                else:
-                    cluster_color = palette[ki] if palette is not None else "0.3"
-                    ax_main.scatter(
-                        baf_obs,
-                        rdr_obs,
-                        s=4,
-                        alpha=0.3,
-                        color=cluster_color,
-                        rasterized=True,
-                    )
+                cluster_color = palette[ki] if palette is not None else "0.3"
+                ax_main.scatter(
+                    baf_obs,
+                    rdr_obs,
+                    s=4,
+                    alpha=0.3,
+                    color=cluster_color,
+                    rasterized=True,
+                )
                 if a_param > 0 and b_param > 0:
                     xg = np.linspace(max(0.001, p_k - 0.3), min(0.999, p_k + 0.3), 150)
                     yg = np.linspace(mu_k - 4 * sigma_k, mu_k + 4 * sigma_k, 150)
@@ -696,23 +645,7 @@ def plot_clusters(
                 ax_rdr_qq.set_ylabel("Observed", fontsize=9)
                 ax_rdr_qq.set_title(f"{ylab} QQ", fontsize=10)
 
-            if arm_labels is not None:
-                from matplotlib.patches import Patch
-
-                cluster_arms = sorted(set(arm_labels[mask]))
-                handles = [
-                    Patch(facecolor=arm_palette[a], label=a) for a in cluster_arms
-                ]
-                fig.legend(
-                    handles=handles,
-                    loc="lower center",
-                    ncol=min(len(cluster_arms), 12),
-                    fontsize=7,
-                    frameon=False,
-                )
-                fig.subplots_adjust(top=0.95, bottom=0.06)
-            else:
-                fig.subplots_adjust(top=0.95)
+            fig.subplots_adjust(top=0.95)
             pdf.savefig(fig)
             plt.close(fig)
 
