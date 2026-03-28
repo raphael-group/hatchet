@@ -200,20 +200,82 @@ def decode_hmm(
     Returns:
         cluster_labels: (N,) int32
         phase_labels:   (N,) int8
+        path_ll:        float — log-likelihood of the decoded path
     """
     assert decode_method in ["map", "viterbi"]
     if decode_method == "map":
-        return map_decoding(sol["phase_posts"], sol["cluster_posts"])
-    K = sol["cluster_posts"].shape[1]
-    N = sol["cluster_posts"].shape[0]
-    return run_viterbi(
+        cluster_labels, phase_labels = map_decoding(
+            sol["phase_posts"], sol["cluster_posts"]
+        )
+    else:
+        K = sol["cluster_posts"].shape[1]
+        N = sol["cluster_posts"].shape[0]
+        cluster_labels, phase_labels = run_viterbi(
+            sol["lls0"],
+            sol["lls1"],
+            X_lengths,
+            sol["log_startprobs"],
+            log_switchprobs,
+            log_stayprobs,
+            log_transmat,
+            K,
+            N,
+        )
+
+    pl = path_loglik(
         sol["lls0"],
         sol["lls1"],
+        cluster_labels,
+        phase_labels,
         X_lengths,
         sol["log_startprobs"],
         log_switchprobs,
         log_stayprobs,
         log_transmat,
-        K,
-        N,
     )
+    return cluster_labels, phase_labels, pl
+
+
+def path_loglik(
+    lls0,
+    lls1,
+    cluster_labels,
+    phase_labels,
+    X_lengths,
+    log_startprobs,
+    log_switchprobs,
+    log_stayprobs,
+    log_transmat,
+):
+    """Compute log-likelihood of a decoded (cluster, phase) path.
+
+    Returns log P(path, observations) = sum of log-start + log-emission +
+    log-transition along the decoded sequence.
+    """
+    bins = np.arange(len(cluster_labels))
+    k = cluster_labels.astype(np.intp)
+    h = phase_labels.astype(np.intp)
+
+    # Emission log-likelihoods: pick lls0 or lls1 based on phase
+    emit_ll = np.where(h == 0, lls0[bins, k], lls1[bins, k]).sum()
+
+    # Start and transition log-likelihoods per segment
+    start_ll = 0.0
+    trans_ll = 0.0
+    pos = 0
+    for nobs in X_lengths:
+        seg_end = pos + nobs
+        start_ll += log_startprobs[k[pos], h[pos]]
+
+        if nobs > 1:
+            seg = slice(pos + 1, seg_end)
+            prev = slice(pos, seg_end - 1)
+            trans_ll += log_transmat[k[prev], k[seg]].sum()
+            phase_same = h[prev] == h[seg]
+            trans_ll += np.where(
+                phase_same, log_stayprobs[seg], log_switchprobs[seg]
+            ).sum()
+
+        pos = seg_end
+
+    return float(emit_ll + start_ll + trans_ll)

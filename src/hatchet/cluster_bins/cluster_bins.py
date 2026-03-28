@@ -349,13 +349,17 @@ def run(args=None):
         )
         elbo_data.append((K, all_elbo_traces, best_it))
 
-        k_labels, k_phases = decode_hmm(
+        k_labels, k_phases, decode_ll = decode_hmm(
             best_sol,
             decode_method,
             X_lengths,
             log_switchprobs,
             log_stayprobs,
             best_sol.get("log_transmat", log_transmat0),
+        )
+        logging.info(
+            f"K={K} decode path loglik={decode_ll:.6f} "
+            f"(model_ll={best_ll:.6f}, diff={best_ll - decode_ll:.6f})"
         )
         k_betas_phased = (
             X_alphas * (1 - k_phases[:, None]) + X_betas * k_phases[:, None]

@@ -245,18 +245,13 @@ def filtering(
     return good_clusters, bad_clusters
 
 
-def compute_fractional_cn(rdr, baf, rdr_se, baf_se, gammas, alpha=0.05):
-    """Compute fractional copy numbers and confidence intervals.
+def compute_fractional_cn(rdr, baf, bbcs, gammas, alpha=0.5):
+    """Compute fractional copy numbers and prediction intervals.
 
-    fcn = gamma * rdr
-    fb  = fcn * baf        (B-allele fractional CN)
-    fa  = fcn * (1 - baf)  (A-allele fractional CN)
-
-    SE propagation uses the delta method for products of independent MLEs:
-        SE^2(X*Y) = mu_X^2 * SE_Y^2 + mu_Y^2 * SE_X^2 + SE_X^2 * SE_Y^2
+    FCN point estimates from cluster-level rdr/baf.
+    Prediction interval width from std of per-bin FA/FB values.
 
     Returns a dict with keys: fcn, fa, fb, fa_lo, fa_hi, fb_lo, fb_hi.
-    CI bounds use (1-alpha) normal approximation.
     """
     from scipy.stats import norm
 
@@ -264,25 +259,33 @@ def compute_fractional_cn(rdr, baf, rdr_se, baf_se, gammas, alpha=0.05):
     fb = fcn * baf
     fa = fcn - fb
 
-    g2 = gammas**2
-    se_r2 = rdr_se**2
-    se_b2 = baf_se**2
-    r2 = rdr**2
-    b2 = baf**2
-
-    fb_se = np.sqrt(g2 * (r2 * se_b2 + b2 * se_r2 + se_r2 * se_b2))
-    one_minus_b2 = (1 - baf) ** 2
-    fa_se = np.sqrt(g2 * (r2 * se_b2 + one_minus_b2 * se_r2 + se_r2 * se_b2))
-
     z = norm.ppf(1 - alpha / 2)
+    cluster_ids = rdr.index.tolist()
+    sample_ids = rdr.columns.tolist()
+
+    fa_std = pd.DataFrame(0.0, index=rdr.index, columns=rdr.columns)
+    fb_std = pd.DataFrame(0.0, index=rdr.index, columns=rdr.columns)
+
+    for cid in cluster_ids:
+        for sid in sample_ids:
+            bins = bbcs[(bbcs["CLUSTER"] == cid) & (bbcs["SAMPLE"] == sid)]
+            if len(bins) == 0:
+                continue
+            g = gammas[sid] if hasattr(gammas, "__getitem__") else gammas
+            fcn_bins = g * bins["RD"].to_numpy()
+            fa_bins = fcn_bins * (1 - bins["BAF"].to_numpy())
+            fb_bins = fcn_bins * bins["BAF"].to_numpy()
+            fa_std.loc[cid, sid] = np.std(fa_bins, ddof=1) if len(fa_bins) > 1 else 0.0
+            fb_std.loc[cid, sid] = np.std(fb_bins, ddof=1) if len(fb_bins) > 1 else 0.0
+
     return {
         "fcn": fcn,
         "fa": fa,
         "fb": fb,
-        "fa_lo": fa - z * fa_se,
-        "fa_hi": fa + z * fa_se,
-        "fb_lo": fb - z * fb_se,
-        "fb_hi": fb + z * fb_se,
+        "fa_lo": fa - z * fa_std,
+        "fa_hi": fa + z * fa_std,
+        "fb_lo": fb - z * fb_std,
+        "fb_hi": fb + z * fb_std,
     }
 
 
@@ -397,17 +400,23 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
             # Non-pareto: gray
             if len(non_pareto) > 0:
                 ax.scatter(
-                    non_pareto[reg_col], non_pareto["IMF"],
-                    c="0.75", s=25, zorder=2, alpha=0.5,
-                    edgecolors="white", linewidths=0.3,
+                    non_pareto[reg_col],
+                    non_pareto["IMF"],
+                    c="0.75",
+                    s=25,
+                    zorder=2,
+                    alpha=0.5,
+                    edgecolors="white",
+                    linewidths=0.3,
                 )
 
             # Pareto points: colored by CNT feasibility
             if len(pareto) > 0:
                 if "CNT_from_c1" in pareto.columns:
                     has_inf = pareto["CNT_from_c1"].apply(
-                        lambda v: v == "inf"
-                        or (isinstance(v, float) and not np.isfinite(v))
+                        lambda v: (
+                            v == "inf" or (isinstance(v, float) and not np.isfinite(v))
+                        )
                     )
                 else:
                     has_inf = pd.Series(False, index=pareto.index)
@@ -417,31 +426,56 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
 
                 if len(finite_p) > 0:
                     ax.scatter(
-                        finite_p[reg_col], finite_p["IMF"],
-                        c="#1f77b4", s=50, zorder=4, label="Pareto",
-                        edgecolors="white", linewidths=0.5,
+                        finite_p[reg_col],
+                        finite_p["IMF"],
+                        c="#1f77b4",
+                        s=50,
+                        zorder=4,
+                        label="Pareto",
+                        edgecolors="white",
+                        linewidths=0.5,
                     )
                 if len(inf_p) > 0:
                     ax.scatter(
-                        inf_p[reg_col], inf_p["IMF"],
-                        c="#d62728", s=50, marker="x", zorder=4,
-                        linewidths=1.5, label="Pareto (CNT inf)",
+                        inf_p[reg_col],
+                        inf_p["IMF"],
+                        c="#d62728",
+                        s=50,
+                        marker="x",
+                        zorder=4,
+                        linewidths=1.5,
+                        label="Pareto (CNT inf)",
                     )
-                ax.plot(pareto[reg_col], pareto["IMF"],
-                        c="black", linewidth=1.5, alpha=0.4, zorder=3)
+                ax.plot(
+                    pareto[reg_col],
+                    pareto["IMF"],
+                    c="black",
+                    linewidth=1.5,
+                    alpha=0.4,
+                    zorder=3,
+                )
 
             sel = grp[grp["is_instance_selected"] == True]
             if len(sel) > 0:
                 ax.scatter(
-                    sel[reg_col], sel["IMF"],
-                    c="gold", marker="*", s=250, zorder=5,
-                    edgecolors="black", linewidths=1, label="selected",
+                    sel[reg_col],
+                    sel["IMF"],
+                    c="gold",
+                    marker="*",
+                    s=250,
+                    zorder=5,
+                    edgecolors="black",
+                    linewidths=1,
+                    label="selected",
                 )
 
             ax.set_xlabel(reg_col, fontsize=11)
             ax.set_ylabel("IMF", fontsize=11)
-            ax.set_title(f"{ploidy} n={n_clones} ({len(grp)} solutions)",
-                         fontsize=13, fontweight="bold")
+            ax.set_title(
+                f"{ploidy} n={n_clones} ({len(grp)} solutions)",
+                fontsize=13,
+                fontweight="bold",
+            )
             ax.legend(fontsize=9)
             ax.grid(True, alpha=0.3)
             fig.tight_layout()
@@ -490,10 +524,12 @@ def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
         )
         cA, cB = [], []
         for _, row in sol_s.iterrows():
-            ca, cb = zip(*(
-                (int(a), int(b))
-                for a, b in (str(row[c]).split("|") for c in cn_cols)
-            ))
+            ca, cb = zip(
+                *(
+                    (int(a), int(b))
+                    for a, b in (str(row[c]).split("|") for c in cn_cols)
+                )
+            )
             cA.append(list(ca))
             cB.append(list(cb))
 
@@ -511,15 +547,33 @@ def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
 
 
 def build_pool_output(
-    pool_instances, f_a, f_b, fcn_data, weights, nbins,
-    args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg, sol_dir,
+    pool_instances,
+    f_a,
+    f_b,
+    fcn_data,
+    weights,
+    nbins,
+    args,
+    cluster_ids,
+    sample_ids,
+    bbcs,
+    out_bbc,
+    out_seg,
+    sol_dir,
 ):
     """Run model selection on pool_instances and build the pool output dict."""
     reg_term = args["reg_term"]
 
     best_instance, imf_obj, selected_key = model_selection_instance(
-        f_a, f_b, weights, pool_instances, reg_term,
-        args["mode"], sol_dir, fcn_data, nbins,
+        f_a,
+        f_b,
+        weights,
+        pool_instances,
+        reg_term,
+        args["mode"],
+        sol_dir,
+        fcn_data,
+        nbins,
     )
     if best_instance is None:
         return 0.0, 0.0, {}
@@ -527,9 +581,15 @@ def build_pool_output(
     obj, cA, cB, u = best_instance
     if not os.path.exists(out_bbc) or not os.path.exists(out_seg):
         segmentation(
-            cA, cB, u, cluster_ids, sample_ids,
-            bbcs=bbcs, region_file=args["region_bed"],
-            bbc_out_file=out_bbc, seg_out_file=out_seg,
+            cA,
+            cB,
+            u,
+            cluster_ids,
+            sample_ids,
+            bbcs=bbcs,
+            region_file=args["region_bed"],
+            bbc_out_file=out_bbc,
+            seg_out_file=out_seg,
         )
 
     all_pool = {}
@@ -540,8 +600,13 @@ def build_pool_output(
         for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
             tag = f"pool_p{pparam}_s{pidx}"
             seg_df = segmentation(
-                pcA, pcB, pu, cluster_ids, sample_ids,
-                bbcs=bbcs, region_file=args["region_bed"],
+                pcA,
+                pcB,
+                pu,
+                cluster_ids,
+                sample_ids,
+                bbcs=bbcs,
+                region_file=args["region_bed"],
             )
             p_imf, p_reg = compute_individual_objs(
                 reg_term, weights, f_a, f_b, pcA, pcB, pu

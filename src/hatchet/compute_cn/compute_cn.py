@@ -92,8 +92,6 @@ def run(args=None):
         seg_data = build_cluster_data(segs)
     rdr = seg_data["rdr"]
     baf = seg_data["baf"]
-    rdr_se = seg_data["rdr_se"]
-    baf_se = seg_data["baf_se"]
     nbins = seg_data["nbins"]
     weights = seg_data["weights"]
     cluster_ids = rdr.index.tolist()
@@ -128,10 +126,9 @@ def run(args=None):
         fcn_dip = compute_fractional_cn(
             rdr,
             baf,
-            rdr_se,
-            baf_se,
+            bbcs,
             gammas_dip,
-            alpha=args.get("fcn_ci_alpha", 0.05),
+            alpha=args.get("fcn_ci_alpha", 0.5),
         )
         store_solve_input(
             os.path.join(out_dir, "sols", "diploid_input.tsv"),
@@ -202,10 +199,9 @@ def run(args=None):
         fcn_tet = compute_fractional_cn(
             rdr,
             baf,
-            rdr_se,
-            baf_se,
+            bbcs,
             gammas_tet,
-            alpha=args.get("fcn_ci_alpha", 0.05),
+            alpha=args.get("fcn_ci_alpha", 0.5),
         )
         store_solve_input(
             os.path.join(out_dir, "sols", "tetraploid_input.tsv"),
@@ -376,13 +372,30 @@ def solve(
     out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
     out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
 
-    if not args.get("force", False) and os.path.exists(out_bbc) and os.path.exists(out_seg):
-        logging.info(f"skip {ploidy} n={n}: results already exist (use --force to re-solve)")
+    if (
+        not args.get("force", False)
+        and os.path.exists(out_bbc)
+        and os.path.exists(out_seg)
+    ):
+        logging.info(
+            f"skip {ploidy} n={n}: results already exist (use --force to re-solve)"
+        )
         pool_instances = load_pool_from_disk(sol_dir, cluster_ids, sample_ids)
         if pool_instances:
             return build_pool_output(
-                pool_instances, f_a, f_b, fcn_data, weights, nbins,
-                args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg, sol_dir,
+                pool_instances,
+                f_a,
+                f_b,
+                fcn_data,
+                weights,
+                nbins,
+                args,
+                cluster_ids,
+                sample_ids,
+                bbcs,
+                out_bbc,
+                out_seg,
+                sol_dir,
             )
         return 0.0, 0.0, {}
 
@@ -477,7 +490,9 @@ def solve(
                 (sol for sols in cd_instances.values() for sol in sols),
                 key=lambda s: s[0],
             )
-            logging.info(f"use CD local opt with obj={best_cd[0]:.4f} to initialize ILP model")
+            logging.info(
+                f"use CD local opt with obj={best_cd[0]:.4f} to initialize ILP model"
+            )
             solver.hot_start(best_cd[1], best_cd[2])
 
         # DMRCA_SUM only penalises clones at index >= 2; with n <= 2 there are no
@@ -521,8 +536,19 @@ def solve(
         )
 
     return build_pool_output(
-        pool_instances, f_a, f_b, fcn_data, weights, nbins,
-        args, cluster_ids, sample_ids, bbcs, out_bbc, out_seg, sol_dir,
+        pool_instances,
+        f_a,
+        f_b,
+        fcn_data,
+        weights,
+        nbins,
+        args,
+        cluster_ids,
+        sample_ids,
+        bbcs,
+        out_bbc,
+        out_seg,
+        sol_dir,
     )
 
 
