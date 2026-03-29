@@ -26,6 +26,7 @@ def plot_cnv_profile(
     plot_chrname=True,
     show_prop=True,
     show_clone_name=True,
+    clone_ploidies=None,
 ):
     """
     plot chrom-level integer CNV profile.
@@ -74,6 +75,7 @@ def plot_cnv_profile(
                 seg_coords.append(ch_offset)  # centromere offset
 
             # plot rectangles
+            has_pi_viol = "PI_VIOL" in bins_seg.columns
             for bi in range(len(bins_seg)):
                 x0, bin_end = bin_starts[bi], bin_ends[bi]
                 w = bin_end - x0
@@ -90,9 +92,10 @@ def plot_cnv_profile(
                         w,
                         h,
                         facecolor=color,
-                        edgecolor=BLACK,
+                        edgecolor="none",
                         transform=ax.get_xaxis_transform(),
                         linewidth=0,
+                        antialiased=False,
                     )
                     ax.add_patch(rect)
 
@@ -111,6 +114,20 @@ def plot_cnv_profile(
                             transform=ax.get_xaxis_transform(),
                         )
                         ax.add_patch(trig)
+
+                # PI violation indicator: colored line at top of segment
+                if has_pi_viol:
+                    viol = bool(bins_seg["PI_VIOL"].iloc[bi])
+                    edge_color = "#d62728" if viol else "#2ca02c"
+                    y_top = num_clones * h
+                    ax.plot(
+                        [x0, x0 + w],
+                        [y_top, y_top],
+                        color=edge_color,
+                        linewidth=3,
+                        solid_capstyle="butt",
+                        transform=ax.get_xaxis_transform(),
+                    )
             # plot segment bound (centromere) as dashed line
             if si < len(regions_ch) - 1:
                 ax.vlines(
@@ -118,34 +135,28 @@ def plot_cnv_profile(
                     ymin=0,
                     ymax=1,
                     transform=ax.get_xaxis_transform(),
-                    linewidth=1,
+                    linewidth=0.5,
                     colors=BLACK,
                     linestyles="dashed",
                 )
-        # add chromosome boundary
-        ax.vlines(
-            ch_offset,
-            ymin=0,
-            ymax=1,
-            transform=ax.get_xaxis_transform(),
-            linewidth=1,
-            colors=BLACK,
-        )
+        # add chromosome boundary (skip last chr end)
+        if ch != chs[-1]:
+            line = ax.vlines(
+                ch_offset,
+                ymin=0,
+                ymax=1.15,
+                transform=ax.get_xaxis_transform(),
+                linewidth=1,
+                colors=BLACK,
+            )
+            line.set_clip_on(False)
     ch_coords.append(ch_offset)  # genome end
 
-    # plot clone separation
-    if num_clones > 1:
-        ax.hlines(
-            y=[h * (i + 1) for i in range(num_clones - 1)],
-            xmin=0,
-            xmax=ch_offset,
-            colors=BLACK,
-            linewidth=1,
-            transform=ax.get_xaxis_transform(),
-        )
     ax.grid(False)
     ax.set_xlim(0, ch_offset)
     ax.set_xlabel("")
+    for spine in ax.spines.values():
+        spine.set_visible(False)
     if plot_chrname:
         ax.set_xticks(
             [
@@ -166,15 +177,21 @@ def plot_cnv_profile(
     ylabels = []
     for ci in range(num_clones, 0, -1):
         prop = round(bulk_props[ci] * 100, 1)
-        cname = str(ci)
+        lines = []
         if show_clone_name:
-            cname = f"clone {cname}"
+            lines.append(f"Clone {ci}")
+        else:
+            lines.append(str(ci))
+        if clone_ploidies is not None:
+            clone_key = f"clone{ci}"
+            if clone_key in clone_ploidies:
+                lines.append(f"ploidy {round(clone_ploidies[clone_key], 2)}")
         if show_prop:
-            cname = f"{cname} ({prop}%)"
-        ylabels.append(cname)
-    ax.set_yticklabels(ylabels)
+            lines.append(f"prop {prop}%")
+        ylabels.append("\n".join(lines))
+    ax.set_yticklabels(ylabels, fontsize=8, va="center")
     ax.set_ylim(0, num_clones * h)
-    ax.tick_params(axis="y", which="both", left=False, right=False)
+    ax.tick_params(axis="y", which="both", left=True, right=False, length=4)
 
     if ylabel is not None:
         ax.set_ylabel(ylabel, rotation=0, ha="right", va="center")
@@ -389,19 +406,47 @@ def get_cn_colors():
     }
 
     copy_states = [
-        (1, 0), (0, 1),
-        (0, 2), (1, 1), (2, 0),
-        (0, 3), (1, 2), (2, 1), (3, 0),
-        (0, 4), (1, 3), (2, 2), (3, 1), (4, 0),
-        (0, 5), (1, 4), (2, 3), (3, 2), (4, 1), (5, 0),
-        (0, 6), (1, 5), (2, 4), (3, 3), (4, 2), (5, 1), (6, 0),
-        (0, 7), (1, 6), (2, 5), (3, 4), (4, 3), (5, 2), (6, 1), (7, 0),
+        (1, 0),
+        (0, 1),
+        (0, 2),
+        (1, 1),
+        (2, 0),
+        (0, 3),
+        (1, 2),
+        (2, 1),
+        (3, 0),
+        (0, 4),
+        (1, 3),
+        (2, 2),
+        (3, 1),
+        (4, 0),
+        (0, 5),
+        (1, 4),
+        (2, 3),
+        (3, 2),
+        (4, 1),
+        (5, 0),
+        (0, 6),
+        (1, 5),
+        (2, 4),
+        (3, 3),
+        (4, 2),
+        (5, 1),
+        (6, 0),
+        (0, 7),
+        (1, 6),
+        (2, 5),
+        (3, 4),
+        (4, 3),
+        (5, 2),
+        (6, 1),
+        (7, 0),
     ]
     tcn_states = {}
     for a, b in copy_states:
         tcn_states.setdefault(int(a + b), []).append((a, b))
 
-    default_color = "#333333"
+    default_color = "#00cc99"  # teal-green, distinct from all CN<=7 colors
     state_style = {}
     for (major, minor), color in _palette.items():
         state_style[(major, minor)] = color
@@ -500,7 +545,7 @@ def plot_ascn_profile(
                         w,
                         h_sub,
                         facecolor=ascn_color(cnb),
-                        edgecolor=BLACK,
+                        edgecolor="none",
                         transform=ax.get_xaxis_transform(),
                         linewidth=0,
                     )
@@ -511,7 +556,7 @@ def plot_ascn_profile(
                         w,
                         h_sub,
                         facecolor=ascn_color(cna),
-                        edgecolor=BLACK,
+                        edgecolor="none",
                         transform=ax.get_xaxis_transform(),
                         linewidth=0,
                     )
@@ -523,18 +568,20 @@ def plot_ascn_profile(
                     ymin=0,
                     ymax=1,
                     transform=ax.get_xaxis_transform(),
-                    linewidth=1,
+                    linewidth=0.5,
                     colors=BLACK,
                     linestyles="dashed",
                 )
-        ax.vlines(
-            ch_offset,
-            ymin=0,
-            ymax=1,
-            transform=ax.get_xaxis_transform(),
-            linewidth=1,
-            colors=BLACK,
-        )
+        if ch != chs[-1]:
+            line = ax.vlines(
+                ch_offset,
+                ymin=0,
+                ymax=1.15,
+                transform=ax.get_xaxis_transform(),
+                linewidth=1,
+                colors=BLACK,
+            )
+            line.set_clip_on(False)
     ch_coords.append(ch_offset)
 
     # clone separation lines

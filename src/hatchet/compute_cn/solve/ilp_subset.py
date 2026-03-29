@@ -28,8 +28,7 @@ class ILPSubset:
         minprop: float,
         ampdel: bool,
         copy_numbers: dict,
-        f_a: pd.DataFrame,
-        f_b: pd.DataFrame,
+        fcn_data: dict,
         w: pd.Series,
         purities: dict,
         penalty_param: list,
@@ -38,8 +37,9 @@ class ILPSubset:
         zero_cn_thres=0.005,
         tol=0.001,
     ):
-        # Each ILPSubset maintains its own data, so make a deep-copy of passed-in DataFrames
-        f_a, f_b = f_a.copy(deep=True), f_b.copy(deep=True)
+        self.fcn_data = fcn_data
+        f_a = fcn_data["fa"].copy(deep=True)
+        f_b = fcn_data["fb"].copy(deep=True)
 
         assert f_a.shape == f_b.shape
         assert np.all(f_a.index == f_b.index)
@@ -81,8 +81,9 @@ class ILPSubset:
         self.model = None  # initialized on create_model()
 
     def __copy__(self):
-        new = ILPSubset.__new__(ILPSubset)
+        new = self.__class__.__new__(self.__class__)
         # Share data (read-only) — no deep copy
+        new.fcn_data = self.fcn_data
         new.f_a = self.f_a
         new.f_b = self.f_b
         new.m, new.k = self.m, self.k
@@ -655,311 +656,8 @@ class ILPSubset:
                     model.constraints.add(self.cA[_m][_n] == _cnA)
                     model.constraints.add(self.cB[_m][_n] == _cnB)
 
-    # ------------------------------------------------------------------
-    # Per-row C-step (used by coordinate descent)
-    # ------------------------------------------------------------------
-    # When U is fixed, the C-step decomposes into m independent sub-
-    # problems — one per cluster row.  Symmetry breaking is the only
-    # cross-row constraint, but it is redundant when U is fixed (the
-    # fixed U already distinguishes clone permutations).
-    # ------------------------------------------------------------------
-
-    def create_row_model(self, row_idx):
-        """Build a Pyomo model for a single cluster row in CARCH mode.
-
-        Must call ``fix_u()`` before this method.  The resulting model
-        is stored in ``self.model`` and the per-row variable references
-        in ``self._row_cA`` / ``self._row_cB``.
-
-        The C-step decomposes into m independent sub-problems because
-        symmetry-breaking constraints are redundant when U is fixed (the
-        fixed U already distinguishes clone permutations).
-
-        Args:
-            row_idx: 0-based index into the cluster rows (range ``self.m``).
-        """
-        assert self.mode == "CARCH", "create_row_model requires fix_u() first"
-        _m = row_idx
-        n, k = self.n, self.k
-        cn_max = self.cn_max
-        _base = self.base
-        _M = self.M
-        zero_cn_thres = self.zero_cn_thres
-        max_ncns_seg = self.max_ncns_seg
-
-        cluster_id = self.f_a.index[_m]
-        cAB_bound = max(sum(self.copy_numbers.get(cluster_id, (0, 0))), cn_max)
-
-        model = pe.ConcreteModel()
-        model.constraints = pe.ConstraintList()
-
-        # -- decision variables: cA[n], cB[n] for this row only -----------
-        row_cA = [pe.Var(bounds=(0, cAB_bound), domain=pe.Integers) for _ in range(n)]
-        row_cB = [pe.Var(bounds=(0, cAB_bound), domain=pe.Integers) for _ in range(n)]
-        for _n in range(n):
-            model.add_component(f"cA_{_n}", row_cA[_n])
-            model.add_component(f"cB_{_n}", row_cB[_n])
-
-        # -- auxiliary variables: fA[k], fB[k], yA[k], yB[k] -------------
-        fA, fB, yA, yB = {}, {}, {}, {}
-        for _k in range(k):
-            yA[_k] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-            model.add_component(f"yA_{_k}", yA[_k])
-            yB[_k] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-            model.add_component(f"yB_{_k}", yB[_k])
-            fA[_k] = pe.Var(bounds=(0, cAB_bound), domain=pe.Reals)
-            model.add_component(f"fA_{_k}", fA[_k])
-            fB[_k] = pe.Var(bounds=(0, cAB_bound), domain=pe.Reals)
-            model.add_component(f"fB_{_k}", fB[_k])
-
-        # -- ampdel variables (if needed) ---------------------------------
-        adA_var = adB_var = None
-        if self.ampdel and cluster_id not in self.copy_numbers:
-            adA_var = pe.Var(bounds=(0, 1), domain=pe.Binary)
-            model.add_component("adA", adA_var)
-            adB_var = pe.Var(bounds=(0, 1), domain=pe.Binary)
-            model.add_component("adB", adB_var)
-
-        # -- bit-decomposition variables (max_ncns_seg) -------------------
-        bitcA, bitcB, z = {}, {}, {}
-        if max_ncns_seg > 0:
-            for _b, _n in np.ndindex((_M, n)):
-                bitcA[(_b, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
-                model.add_component(f"bitcA_{_b}_{_n}", bitcA[(_b, _n)])
-                bitcB[(_b, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
-                model.add_component(f"bitcB_{_b}_{_n}", bitcB[(_b, _n)])
-            for _n in range(1, n):
-                for _d in range(max_ncns_seg):
-                    z[(_n, _d)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
-                    model.add_component(f"z_{_n}_{_d}", z[(_n, _d)])
-
-        # ---- CONSTRAINTS ------------------------------------------------
-
-        # Absolute-value linearisation: yA >= |f_a_obs - fA|
-        f_a_vals = self.f_a.loc[cluster_id].values
-        f_b_vals = self.f_b.loc[cluster_id].values
-        for _k in range(k):
-            model.constraints.add(float(f_a_vals[_k]) - fA[_k] <= yA[_k])
-            model.constraints.add(fA[_k] - float(f_a_vals[_k]) <= yA[_k])
-            model.constraints.add(float(f_b_vals[_k]) - fB[_k] <= yB[_k])
-            model.constraints.add(fB[_k] - float(f_b_vals[_k]) <= yB[_k])
-
-        # Mixture: fA[k] == Σ_n cA[n] * u_fixed[n][k]
-        for _k in range(k):
-            _sumA = 0
-            _sumB = 0
-            for _n in range(n):
-                if self._fixed_u[_n][_k] >= self.minprop - self.tol:
-                    _sumA += row_cA[_n] * self._fixed_u[_n][_k]
-                    _sumB += row_cB[_n] * self._fixed_u[_n][_k]
-            model.constraints.add(fA[_k] == _sumA)
-            model.constraints.add(fB[_k] == _sumB)
-
-        # cA + cB upper bound
-        for _n in range(n):
-            model.constraints.add(row_cA[_n] + row_cB[_n] <= cAB_bound)
-
-        # Normal clone (clone 0) is always diploid (1,1)
-        model.constraints.add(row_cA[0] == 1)
-        model.constraints.add(row_cB[0] == 1)
-
-        # Avoid zero CN state for significant clusters
-        if self.w[cluster_id] / sum(self.w) >= zero_cn_thres:
-            for _n in range(1, n):
-                model.constraints.add(row_cA[_n] + row_cB[_n] >= 1)
-
-        # Ampdel constraints
-        if self.ampdel and cluster_id not in self.copy_numbers:
-            for _n in range(1, n):
-                model.constraints.add(
-                    row_cA[_n] <= cn_max * adA_var + _base - _base * adA_var
-                )
-                model.constraints.add(row_cA[_n] >= _base * adA_var)
-                model.constraints.add(
-                    row_cB[_n] <= cn_max * adB_var + _base - _base * adB_var
-                )
-                model.constraints.add(row_cB[_n] >= _base * adB_var)
-
-        # Fix given CN for clonal clusters
-        if cluster_id in self.copy_numbers:
-            _cnA, _cnB = self.copy_numbers[cluster_id]
-            for _n in range(1, n):
-                model.constraints.add(row_cA[_n] == _cnA)
-                model.constraints.add(row_cB[_n] == _cnB)
-
-        # Bit decomposition + max_ncns_seg constraints
-        if max_ncns_seg > 0:
-            for _n in range(n):
-                sum_a = 0
-                sum_b = 0
-                for _b in range(_M):
-                    sum_a += bitcA[(_b, _n)] * math.pow(2, _b)
-                    sum_b += bitcB[(_b, _n)] * math.pow(2, _b)
-                model.constraints.add(row_cA[_n] == sum_a)
-                model.constraints.add(row_cB[_n] == sum_b)
-
-            for _n in range(1, n):
-                _sum = 0
-                for _d in range(max_ncns_seg):
-                    _sum += z[(_n, _d)]
-                model.constraints.add(_sum == 1)
-
-            for _b in range(_M):
-                for _d in range(max_ncns_seg):
-                    for _i in range(1, n - 1):
-                        for _j in range(1, n):
-                            model.constraints.add(
-                                bitcA[(_b, _i)] - bitcA[(_b, _j)]
-                                <= 2 - z[(_i, _d)] - z[(_j, _d)]
-                            )
-                            model.constraints.add(
-                                bitcA[(_b, _j)] - bitcA[(_b, _i)]
-                                <= 2 - z[(_i, _d)] - z[(_j, _d)]
-                            )
-                            model.constraints.add(
-                                bitcB[(_b, _i)] - bitcB[(_b, _j)]
-                                <= 2 - z[(_i, _d)] - z[(_j, _d)]
-                            )
-                            model.constraints.add(
-                                bitcB[(_b, _j)] - bitcB[(_b, _i)]
-                                <= 2 - z[(_i, _d)] - z[(_j, _d)]
-                            )
-
-            for _d in range(max_ncns_seg - 1):
-                _sum_l = _sum_l1 = 0
-                for _n in range(1, n):
-                    _sum_l += z[(_n, _d)] * self.symmCoeff(_n)
-                    _sum_l1 += z[(_n, _d + 1)] * self.symmCoeff(_n)
-                    model.constraints.add(_sum_l <= _sum_l1)
-
-        # ---- OBJECTIVE --------------------------------------------------
-        w_m = self.w[cluster_id]
-        objective = sum((yA[_k] + yB[_k]) * w_m for _k in range(k))
-
-        # Regularisation (all terms decompose per-row)
-        pname = self.penalty_param[0]
-        init_val = self.penalty_param[1]
-        if pname != "RAW":
-            pparam = pe.Param(mutable=True, initialize=init_val)
-            model.pparam = pparam
-
-            if pname == "MAXCN":
-                hcA_var = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-                model.add_component("HCA", hcA_var)
-                hcB_var = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-                model.add_component("HCB", hcB_var)
-                for _n in range(1, n):
-                    model.constraints.add(row_cA[_n] <= hcA_var)
-                    model.constraints.add(row_cB[_n] <= hcB_var)
-                objective += pparam * w_m * hcA_var + pparam * w_m * hcB_var
-
-            elif pname == "DROOT_SUM":
-                for _n in range(1, n):
-                    mdA = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-                    model.add_component(f"MDA_{_n}", mdA)
-                    mdB = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-                    model.add_component(f"MDB_{_n}", mdB)
-                    model.constraints.add(row_cA[_n] - row_cA[0] <= mdA)
-                    model.constraints.add(row_cA[0] - row_cA[_n] <= mdA)
-                    model.constraints.add(row_cB[_n] - row_cB[0] <= mdB)
-                    model.constraints.add(row_cB[0] - row_cB[_n] <= mdB)
-                    objective += pparam * w_m * mdA + pparam * w_m * mdB
-
-            elif pname == "DMRCA_SUM" and n >= 3:
-                for _n in range(2, n):
-                    mdA = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-                    model.add_component(f"MMDA_{_n}", mdA)
-                    mdB = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-                    model.add_component(f"MMDB_{_n}", mdB)
-                    model.constraints.add(row_cA[_n] - row_cA[1] <= mdA)
-                    model.constraints.add(row_cA[1] - row_cA[_n] <= mdA)
-                    model.constraints.add(row_cB[_n] - row_cB[1] <= mdB)
-                    model.constraints.add(row_cB[1] - row_cB[_n] <= mdB)
-                    objective += pparam * w_m * mdA + pparam * w_m * mdB
-                # LOH constraint
-                for _n in range(2, n):
-                    model.constraints.add(row_cA[_n] <= row_cA[1] * cn_max)
-                    model.constraints.add(row_cB[_n] <= row_cB[1] * cn_max)
-
-            elif pname == "DADJ_SUM":
-                for _n1 in range(n - 1):
-                    for _n2 in range(_n1 + 1, n):
-                        mdA = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-                        model.add_component(f"MDA_{_n1}_{_n2}", mdA)
-                        mdB = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
-                        model.add_component(f"MDB_{_n1}_{_n2}", mdB)
-                        model.constraints.add(row_cA[_n1] - row_cA[_n2] <= mdA)
-                        model.constraints.add(row_cA[_n2] - row_cA[_n1] <= mdA)
-                        model.constraints.add(row_cB[_n1] - row_cB[_n2] <= mdB)
-                        model.constraints.add(row_cB[_n2] - row_cB[_n1] <= mdB)
-                        objective += pparam * w_m * mdA + pparam * w_m * mdB
-
-        model.obj = pe.Objective(expr=objective, sense=pe.minimize)
-        self.model = model
-        self._row_cA = row_cA
-        self._row_cB = row_cB
-        self._row_idx = _m
-
-    def hot_start_row(self, cA_row, cB_row):
-        """Warm-start the per-row model from a previous iteration's CN values.
-
-        Must be called after ``create_row_model()``.
-
-        Args:
-            cA_row: List of length n with integer cA values for this cluster row.
-            cB_row: List of length n with integer cB values for this cluster row.
-        """
-        for _n in range(self.n):
-            self._row_cA[_n].value = cA_row[_n]
-            self._row_cB[_n].value = cB_row[_n]
-        self.warmstart = True
-
-    def run_row(self, solver_type="gurobi", timelimit=None, solver=None):
-        """Solve the per-row C-step sub-problem.
-
-        Args:
-            solver_type: Pyomo solver name (e.g. ``"gurobi"``, ``"cbc"``).
-            timelimit: Optional wall-time limit in seconds passed to the solver.
-            solver: Pre-built Pyomo solver instance.  If None, one is created
-                from ``solver_type`` with no silencing options.
-
-        Returns:
-            ``(obj_value, cA_row, cB_row)`` on success, or ``None`` if the
-            solver reports infeasible / error.
-        """
-        if solver is None:
-            if solver_type in ("gurobipy", "gurobi"):
-                solver = pe.SolverFactory("gurobi", solver_io="python")
-                solver.options["OutputFlag"] = 0
-                solver.options["LogToConsole"] = 0
-                solver.options["LogFile"] = ""
-            else:
-                solver = pe.SolverFactory(solver_type)
-
-        kwargs = {"report_timing": False}
-        if timelimit is not None:
-            kwargs["timelimit"] = int(timelimit)
-        if solver.warm_start_capable():
-            kwargs["warmstart"] = self.warmstart
-
-        results = solver.solve(self.model, **kwargs)
-
-        solver_ok = (
-            results.solver.status == SolverStatus.ok
-            and results.solver.termination_condition
-            in (TerminationCondition.optimal, TerminationCondition.feasible)
-        )
-        time_limit_hit = (
-            results.solver.status == SolverStatus.aborted
-            and results.solver.termination_condition
-            == TerminationCondition.maxTimeLimit
-        )
-        if not (solver_ok or time_limit_hit):
-            return None
-
-        cA_row = [int(self._row_cA[_n].value) for _n in range(self.n)]
-        cB_row = [int(self._row_cB[_n].value) for _n in range(self.n)]
-        return self.model.obj(), cA_row, cB_row
+    # Per-row C-step methods (create_row_lexi_model, hot_start_row,
+    # run_row_lexi) live in the RowILP subclass (row_ilp.py).
 
     def first_hot_start(self):
         """

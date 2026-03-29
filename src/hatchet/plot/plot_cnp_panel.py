@@ -62,15 +62,17 @@ def run(args=None):
         )
         logging.info(f"sample={sample}, purity={tumor_purity}, ploidy={tumor_ploidy}")
 
+        clone_ploidies = compute_clone_ploidies(seg_info, clones)
         plot_cnv_profile(
             main_axes[i],
             seg_info,
             regions,
-            plot_chrname=i == 0,
+            plot_chrname=True,
             width=row_width,
             height=row_height,
             show_clone_name=show_clone_name,
             show_prop=show_prop,
+            clone_ploidies=clone_ploidies,
         )
         ylabel = f"{sample}\npurity {tumor_purity}\nploidy {tumor_ploidy}"
         main_axes[i].set_ylabel(ylabel, rotation=0, ha="right", va="center")
@@ -122,22 +124,30 @@ def plot_pool_cnp(
 
     regions = read_region_bed(region_bed)
 
-    valid = [
-        (label, df, obj, selected)
-        for label, df, obj, pareto, selected in pool_entries
-        if pareto
-    ]
+    valid = sorted(
+        [
+            (label, df, obj, selected)
+            for label, df, obj, pareto, selected in pool_entries
+            if pareto
+        ],
+        key=lambda x: x[2],  # sort by IMF-obj, low to high
+    )
     if not valid:
         logging.warning(f"plot_pool_cnp: no Pareto solutions, skipping {out_file}")
         return
 
     nrows = len(valid)
+    # Scale row height with number of clones to avoid label overlap
+    first_seg_df = valid[0][1]
+    n_clones = len([c for c in first_seg_df.columns if c.startswith("cn_")])
+    row_h = height * max(1, n_clones - 1)
     fig, axes = plt.subplots(
         nrows=nrows + 1,
         ncols=1,
-        figsize=(width, height * nrows),
-        gridspec_kw={"height_ratios": [height] * nrows + [2 * height]},
+        figsize=(width, row_h * nrows),
+        gridspec_kw={"height_ratios": [row_h] * nrows + [2 * height]},
     )
+    fig.subplots_adjust(hspace=0.6)
     main_axes = axes[:-1]
     ax_leg = axes[-1]
 
@@ -153,16 +163,18 @@ def plot_pool_cnp(
             compute_tumor_ploidy(seg_info, clones, np.sum(clone_props[1:])), 2
         )
 
+        clone_ploidies = compute_clone_ploidies(seg_info, clones)
         profile_fn = plot_ascn_profile if style == "ascn" else plot_cnv_profile
         profile_fn(
             main_axes[i],
             seg_info,
             regions,
-            plot_chrname=i == 0,
+            plot_chrname=True,
             width=width,
             height=height,
-            show_clone_name=True,
+            show_clone_name=False,
             show_prop=True,
+            clone_ploidies=clone_ploidies,
         )
         short_label = _format_pool_label(label)
         if is_selected:

@@ -6,11 +6,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import pandas as pd
 from pyomo import environ as pe
 
-from hatchet.compute_cn.solve.ilp_subset import ILPSubset
+from hatchet.compute_cn.solve.row_ilp import RowILP
 from hatchet.compute_cn.solve.utils import Random
 
-# Per-row decomposition: faster for large m
-_CSTEP_ROW_THRESHOLD = 30
 
 class Worker:
     """Runs one coordinate-descent restart at a fixed regularization lambda.
@@ -20,10 +18,11 @@ class Worker:
     the iteration budget is exhausted.
     """
 
-    def __init__(self, work_id: int, ilp: ILPSubset, solver_type: str):
+    def __init__(self, work_id: int, ilp: RowILP, solver_type: str, lexi: bool = False):
         self.work_id = work_id
         self.ilp = ilp
         self.solver_type = solver_type
+        self.lexi = lexi
         self._solver = self._create_solver()
 
     def _create_solver(self):
@@ -57,19 +56,27 @@ class Worker:
             carch = copy(self.ilp)
             carch.fix_u(_u)
 
-            if carch.m >= _CSTEP_ROW_THRESHOLD:
+            if self.lexi:
+                # Per-row lexicographic: Level-1 min PI violations, Level-2 min L1
                 _obj_c = 0.0
                 _new_cA = [None] * carch.m
                 _new_cB = [None] * carch.m
                 c_infeasible = False
                 for _m in range(carch.m):
-                    carch.create_row_model(_m)
+                    cluster_id = carch.cluster_ids[_m]
+                    if cluster_id in carch.copy_numbers:
+                        # Fixed-CN cluster: solution is fully determined
+                        _cnA, _cnB = carch.copy_numbers[cluster_id]
+                        _new_cA[_m] = [1] + [_cnA] * (carch.n - 1)
+                        _new_cB[_m] = [1] + [_cnB] * (carch.n - 1)
+                        continue
+                    carch.create_row_lexi_model(_m)
                     carch.hot_start_row(_cA[_m], _cB[_m])
-                    carch.model.pparam = pparam
-                    row_result = carch.run_row(
+                    row_result = carch.run_row_lexi(
                         solver_type=self.solver_type,
                         timelimit=timelimit,
                         solver=self._solver,
+                        pparam=pparam,
                     )
                     if row_result is None:
                         logging.debug(
@@ -85,6 +92,7 @@ class Worker:
                     return None
                 _cA, _cB = _new_cA, _new_cB
             else:
+                # Monolithic C-step
                 carch.create_model()
                 carch.hot_start(_cA, _cB)
                 carch.model.pparam = pparam
@@ -146,7 +154,7 @@ def _init_worker(cd, log_level):
 
 def _work(work_id, u, pparam, solver_type, max_iters, max_convergence_iters, timelimit):
     """Entry point for a single process-pool worker at a fixed lambda."""
-    worker = Worker(work_id, _cd_global.ilp, solver_type)
+    worker = Worker(work_id, _cd_global.ilp, solver_type, lexi=_cd_global.lexi)
     return worker.run(
         _cd_global.hcA,
         _cd_global.hcB,
@@ -161,16 +169,15 @@ def _work(work_id, u, pparam, solver_type, max_iters, max_convergence_iters, tim
 class CoordinateDescent:
     """Coordinate-descent solver for copy-number deconvolution.
 
-    For each regularization lambda in [0, δ, 2δ, ...], runs all seed restarts
-    in parallel and keeps the best solution per lambda.  Returns results in the
-    same ``{pparam: [best_solution]}`` format as the ILP solver, enabling
-    unified model selection across the regularization path.
+    For each regularization lambda in [0, delta, 2*delta, ...], runs all seed
+    restarts in parallel and keeps the best solution per lambda.  Returns
+    results in the ``{pparam: [best_solution]}`` format, enabling unified
+    model selection across the regularization path.
     """
 
     def __init__(
         self,
-        f_a,
-        f_b,
+        fcn_data,
         n,
         minprop,
         max_ncns_seg,
@@ -183,19 +190,20 @@ class CoordinateDescent:
         reg_steps=0,
         reg_stepsize=0.0,
         base=1,
+        solve_mode="cd",
     ):
         self.reg_name = reg_term if reg_term is not None else "RAW"
         self.reg_steps = reg_steps
         self.reg_stepsize = reg_stepsize
-        self.ilp = ILPSubset(
+        self.lexi = solve_mode == "cd_lexi"
+        self.ilp = RowILP(
             n=n,
             cn_max=cn_max,
             max_ncns_seg=max_ncns_seg,
             minprop=minprop,
             ampdel=ampdel,
             copy_numbers=cn,
-            f_a=f_a,
-            f_b=f_b,
+            fcn_data=fcn_data,
             w=w,
             purities=purities,
             penalty_param=[self.reg_name, 0.0],
@@ -285,14 +293,17 @@ class CoordinateDescent:
                         )
 
                 if len(instances) == 0:
-                    logging.warning(f"CD: no feasible solution at lambda={pparam}, skipping")
+                    logging.warning(
+                        f"CD: no feasible solution at lambda={pparam}, skipping"
+                    )
                     continue
 
-                best_obj = min(inst[0] for inst in instances)
+                # Keep only the best restart per lambda
+                best = min(instances, key=lambda x: x[0])
                 logging.info(
-                    f"CD: lambda={pparam}, best obj={best_obj:.4f} from {len(instances)} feasible"
+                    f"CD: lambda={pparam}, best obj={best[0]:.4f} from {len(instances)} feasible"
                 )
-                pool_instances[pparam] = instances
+                pool_instances[pparam] = [best]
         finally:
             executor.shutdown(wait=True)
 

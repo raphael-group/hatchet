@@ -3,13 +3,27 @@ import logging
 import shutil
 import argparse
 
-import numpy as np
 import pandas as pd
 
-from hatchet.utils import *
-from hatchet.compute_cn.compute_cn_utils import *
+from hatchet.utils import (
+    add_file_logging,
+    read_bbc_file,
+    setup_logging,
+)
+from hatchet.compute_cn.compute_cn_utils import (
+    build_cluster_data,
+    build_pool_output,
+    build_segment_data,
+    compute_fractional_cn,
+    dedup_pool,
+    filtering,
+    load_pool_from_disk,
+    plot_pareto_pdf,
+    pool_entries_for_plot,
+    run_plot_cn,
+)
 from hatchet.compute_cn.scaling import get_scaling_factor
-from hatchet.compute_cn.model_select import *
+from hatchet.compute_cn.model_select import model_selection
 from hatchet.hatchet_parser import parse_arguments_compute_cn
 from hatchet.compute_cn.solve.utils import (
     store_solve_input,
@@ -423,10 +437,9 @@ def solve(
 
     cd_instances = None
     pool_instances = {}
-    if solve_mode in ("cd", "both"):
+    if solve_mode in ("cd", "cd_lexi", "both"):
         cd = CoordinateDescent(
-            f_a=f_a,
-            f_b=f_b,
+            fcn_data=fcn_data,
             n=n,
             minprop=args["min_prop"],
             max_ncns_seg=args["num_cnstates"],
@@ -439,6 +452,7 @@ def solve(
             reg_steps=reg_steps,
             reg_stepsize=reg_stepsize,
             base=base,
+            solve_mode=solve_mode,
         )
 
         u0_tsv_path = (
@@ -476,8 +490,7 @@ def solve(
             minprop=args["min_prop"],
             ampdel=ampdel,
             copy_numbers=clonal,
-            f_a=f_a,
-            f_b=f_b,
+            fcn_data=fcn_data,
             w=weights,
             purities=purities,
             penalty_param=[reg_term if reg_term is not None else "RAW", 0.0],

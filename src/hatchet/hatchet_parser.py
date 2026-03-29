@@ -225,7 +225,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--mode",
         required=False,
-        choices=["both", "cd", "ilp"],
+        choices=["both", "cd", "cd_lexi", "ilp"],
         type=str,
         help="Solver mode (default: ilp)",
         default="ilp",

@@ -1,6 +1,4 @@
 import os
-import sys
-import time
 import logging
 import argparse
 import numpy as np
@@ -60,6 +58,7 @@ def run(args=None):
     def get_filename(sample_id):
         suffix = f".{solID}" if solID != "" else ""
         return str(sample_id) + suffix
+
     ##################################################
     # load files
     segs, clones, clone_props = read_seg_ucn_file(seg_ucn)
@@ -169,11 +168,12 @@ def run(args=None):
         )
 
         # Page 2: 1D scatter + CNP profile
+        cnp_h = max(3, n_tumors * 2)  # scale with clones, same as pool panel
         fig_1d, axes = plt.subplots(
             nrows=4,
             ncols=1,
-            figsize=(row_width, row_height),
-            gridspec_kw={"height_ratios": [3, 3, 2, 1]},
+            figsize=(row_width, row_height + cnp_h * 0.5),
+            gridspec_kw={"height_ratios": [3, 3, cnp_h, 1]},
         )
         main_axes = axes[:-1]
         ax_leg = axes[-1]
@@ -197,6 +197,7 @@ def run(args=None):
                 show_legend=False,
             )
 
+        clone_ploidies = compute_clone_ploidies(seg_info, clones)
         profile_fn = plot_ascn_profile if style == "ascn" else plot_cnv_profile
         legend_fn = plot_ascn_legend if style == "ascn" else plot_cnv_legend
         profile_fn(
@@ -205,9 +206,10 @@ def run(args=None):
             regions,
             width=row_width,
             height=1,
-            plot_chrname=False,
+            plot_chrname=True,
             show_clone_name=True,
             show_prop=True,
+            clone_ploidies=clone_ploidies,
         )
         legend_fn(ax_leg)
 
@@ -220,16 +222,24 @@ def run(args=None):
         # Save: single PDF (page1=2D, page2=1D+CNP) or separate files
         if file_type == "pdf":
             with PdfPages(outfile) as pdf:
-                pdf.savefig(fig_2d, dpi=dpi, bbox_inches="tight", transparent=transparent)
-                pdf.savefig(fig_1d, dpi=dpi, bbox_inches="tight", transparent=transparent)
+                pdf.savefig(
+                    fig_2d, dpi=dpi, bbox_inches="tight", transparent=transparent
+                )
+                pdf.savefig(
+                    fig_1d, dpi=dpi, bbox_inches="tight", transparent=transparent
+                )
         else:
             fig_2d.savefig(
                 outfile.replace(f".{file_type}", f".2D.{file_type}"),
-                dpi=dpi, bbox_inches="tight", transparent=transparent,
+                dpi=dpi,
+                bbox_inches="tight",
+                transparent=transparent,
             )
             fig_1d.savefig(
                 outfile.replace(f".{file_type}", f".1D.{file_type}"),
-                dpi=dpi, bbox_inches="tight", transparent=transparent,
+                dpi=dpi,
+                bbox_inches="tight",
+                transparent=transparent,
             )
         plt.close(fig_2d)
         plt.close(fig_1d)

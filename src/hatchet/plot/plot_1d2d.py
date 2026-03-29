@@ -8,10 +8,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 from matplotlib.lines import Line2D
-from matplotlib.patches import Rectangle
 from matplotlib.collections import LineCollection
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.patches import Ellipse
 
 
 from scipy.stats import norm, beta as beta_dist, gaussian_kde
@@ -620,7 +618,7 @@ def plot_clusters(
                     )
                 ax_baf_qq.set_xlabel("Theoretical (Beta)", fontsize=9)
                 ax_baf_qq.set_ylabel("Observed", fontsize=9)
-                ax_baf_qq.set_title(f"BAF QQ", fontsize=10)
+                ax_baf_qq.set_title("BAF QQ", fontsize=10)
 
                 ax_rdr_qq = fig.add_subplot(inner_qq[0, 1])
                 rdr_sorted = np.sort(rdr_obs)

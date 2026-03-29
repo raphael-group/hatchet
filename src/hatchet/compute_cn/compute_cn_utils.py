@@ -84,7 +84,6 @@ def build_segment_data(bbcs, segs):
     seg_ids_first = seg_boundary.cumsum() - 1  # 0-based segment IDs
 
     # Map segment IDs back to all rows (same positional order per sample)
-    n_bins_per_sample = len(first_df)
     bbcs["_seg_id"] = np.tile(seg_ids_first.values, len(samples_sorted))
 
     # Aggregate per (segment, sample)
@@ -393,7 +392,7 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
         for (ploidy, n_clones), grp in groups:
             fig, ax = plt.subplots(figsize=(7, 5))
 
-            pareto_mask = grp["is_pareto"] == True
+            pareto_mask = grp["is_pareto"]
             non_pareto = grp[~pareto_mask]
             pareto = grp[pareto_mask].sort_values(reg_col)
 
@@ -455,7 +454,7 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
                     zorder=3,
                 )
 
-            sel = grp[grp["is_instance_selected"] == True]
+            sel = grp[grp["is_instance_selected"]]
             if len(sel) > 0:
                 ax.scatter(
                     sel[reg_col],
@@ -488,6 +487,37 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
             plt.close(elbow_fig)
 
     logging.info(f"wrote {outfile} ({len(groups) + (1 if elbow_fig else 0)} pages)")
+
+
+def annotate_seg_pi_violations(seg_df, cA, cB, u, fcn_data, cluster_ids, sample_ids):
+    """Add PI_VIOL column to seg_df using the prediction interval bounds in fcn_data.
+
+    Each segment belongs to a cluster (CLUSTER column). A segment violates
+    the PI when the expected FCN (cA @ u or cB @ u) falls outside the
+    [fa_lo, fa_hi] / [fb_lo, fb_hi] bounds for that (cluster, sample).
+    """
+    if "CLUSTER" not in seg_df.columns or fcn_data is None or "fa_lo" not in fcn_data:
+        return seg_df
+
+    exp_a = np.array(cA) @ np.array(u)
+    exp_b = np.array(cB) @ np.array(u)
+    fa_lo = fcn_data["fa_lo"].loc[cluster_ids, sample_ids].to_numpy()
+    fa_hi = fcn_data["fa_hi"].loc[cluster_ids, sample_ids].to_numpy()
+    fb_lo = fcn_data["fb_lo"].loc[cluster_ids, sample_ids].to_numpy()
+    fb_hi = fcn_data["fb_hi"].loc[cluster_ids, sample_ids].to_numpy()
+    violations = (exp_a < fa_lo) | (exp_a > fa_hi) | (exp_b < fb_lo) | (exp_b > fb_hi)
+    viol_df = pd.DataFrame(violations, index=cluster_ids, columns=sample_ids)
+
+    seg_df = seg_df.copy()
+    seg_df["PI_VIOL"] = seg_df.apply(
+        lambda r: (
+            bool(viol_df.loc[r["CLUSTER"], r["SAMPLE"]])
+            if r["CLUSTER"] in viol_df.index
+            else False
+        ),
+        axis=1,
+    )
+    return seg_df
 
 
 def pool_entries_for_plot(pool):
@@ -607,6 +637,9 @@ def build_pool_output(
                 sample_ids,
                 bbcs=bbcs,
                 region_file=args["region_bed"],
+            )
+            seg_df = annotate_seg_pi_violations(
+                seg_df, pcA, pcB, pu, fcn_data, cluster_ids, sample_ids
             )
             p_imf, p_reg = compute_individual_objs(
                 reg_term, weights, f_a, f_b, pcA, pcB, pu

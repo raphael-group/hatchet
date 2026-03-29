@@ -188,10 +188,15 @@ def build_seg_from_bbc(df: pd.DataFrame, regions: pd.DataFrame) -> pd.DataFrame:
     ).cumsum()
 
     agg = {"#CHR": "first", "START": "min", "END": "max", "SAMPLE": "first"}
+    if "CLUSTER" in df.columns:
+        agg["CLUSTER"] = "first"
     agg.update({c: "first" for c in extra_columns})
     seg = df.groupby(["segment", "SAMPLE"]).agg(agg).reset_index(drop=True)
 
-    out_cols = ["#CHR", "START", "END", "SAMPLE"] + extra_columns
+    base_cols = ["#CHR", "START", "END", "SAMPLE"]
+    if "CLUSTER" in seg.columns:
+        base_cols.append("CLUSTER")
+    out_cols = base_cols + extra_columns
 
     # Assign each segment to a region index (-1 = outside all regions)
     seg["_region"] = -1
@@ -220,6 +225,24 @@ def build_seg_from_bbc(df: pd.DataFrame, regions: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def compute_clone_ploidies(segs: pd.DataFrame, clones: list):
+    """Length-weighted average total CN per clone.
+
+    Returns a dict mapping clone name to ploidy (float).
+    """
+    segment_lengths = (segs["END"] - segs["START"]).to_numpy()
+    total_length = np.sum(segment_lengths)
+    ploidies = {}
+    for clone in clones:
+        cn = (
+            segs[f"cn_{clone}"]
+            .apply(func=lambda v: int(v.split("|")[0]) + int(v.split("|")[1]))
+            .to_numpy()
+        )
+        ploidies[clone] = float(np.sum(cn * segment_lengths) / total_length)
+    return ploidies
+
+
 def compute_tumor_ploidy(segs: pd.DataFrame, clones: list, tumor_purity: float):
     if tumor_purity <= 1e-8:
         return 0.0
@@ -234,8 +257,8 @@ def compute_tumor_ploidy(segs: pd.DataFrame, clones: list, tumor_purity: float):
         )
         rho += u * np.sum(cn * segment_lengths)
 
-    l = np.sum(segment_lengths)
-    rho = (1 / tumor_purity) * (rho / l)
+    total_length = np.sum(segment_lengths)
+    rho = (1 / tumor_purity) * (rho / total_length)
     return rho
 
 
