@@ -225,7 +225,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--mode",
         required=False,
-        choices=["both", "cd", "cd_lexi", "ilp"],
+        choices=["both", "cd", "ilp"],
         type=str,
         help="Solver mode (default: ilp)",
         default="ilp",
@@ -378,7 +378,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--reg_term",
         required=False,
-        choices=["RAW", "MAXCN", "DROOT_SUM", "DADJ_SUM", "DMRCA_SUM"],
+        choices=["RAW", "MAXCN", "DROOT_SUM", "DADJ_SUM", "DMRCA_SUM", "DRMST"],
         type=str,
         help="regularization term (default: MAXCN)",
         default="MAXCN",
@@ -491,6 +491,31 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         default=42,
         type=int,
         help="CD: random seed for reproducibility (default: 42)",
+    )
+
+    parser.add_argument(
+        "--u_init",
+        required=False,
+        choices=["dirichlet", "bubble"],
+        default="dirichlet",
+        type=str,
+        help="U initialization method: dirichlet or bubble (default: dirichlet)",
+    )
+
+    parser.add_argument(
+        "--u_dir_alpha",
+        required=False,
+        default=0.3,
+        type=float,
+        help="Dirichlet alpha for U initialization; lower = sparser (default: 0.3)",
+    )
+
+    parser.add_argument(
+        "--solver_threads",
+        required=False,
+        default=None,
+        type=int,
+        help="Max threads per solver call (Gurobi). Set to 1 for parallel CD workers (default: solver default)",
     )
 
     parser.add_argument(

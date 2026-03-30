@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import glob
@@ -590,20 +591,23 @@ def build_pool_output(
     out_bbc,
     out_seg,
     sol_dir,
+    tree_info=None,
 ):
     """Run model selection on pool_instances and build the pool output dict."""
     reg_term = args["reg_term"]
+    pname = reg_term
 
     best_instance, imf_obj, selected_key = model_selection_instance(
         f_a,
         f_b,
         weights,
         pool_instances,
-        reg_term,
+        pname,
         args["mode"],
         sol_dir,
         fcn_data,
         nbins,
+        tree_info=tree_info,
     )
     if best_instance is None:
         return 0.0, 0.0, {}
@@ -641,8 +645,12 @@ def build_pool_output(
             seg_df = annotate_seg_pi_violations(
                 seg_df, pcA, pcB, pu, fcn_data, cluster_ids, sample_ids
             )
+            _tree_edges = None
+            if tree_info is not None and pparam in tree_info:
+                _tree_edges = tree_info[pparam].get("tree_edges")
             p_imf, p_reg = compute_individual_objs(
-                reg_term, weights, f_a, f_b, pcA, pcB, pu
+                pname, weights, f_a, f_b, pcA, pcB, pu,
+                tree_edges=_tree_edges,
             )
             cnt_pairs = compute_pairwise_cnt(pcA, pcB, bbcs, cluster_ids)
             pool_objs.append([p_imf, p_reg])
@@ -676,3 +684,21 @@ def dedup_pool(pool_instances):
         if id(sol) in deduped_ids:
             out.setdefault(pparam, []).append(sol)
     return out
+
+
+def write_tree_info(sol_dir, n, tree_info):
+    """Write tree topology info (edges and total edge length) to a TSV file.
+
+    Args:
+        sol_dir: Directory to write the file in.
+        n: Number of clones (used in the filename).
+        tree_info: ``{pparam: {"tree_edges": dict, "total_edge_length": float}}``.
+    """
+    path = os.path.join(sol_dir, f"tree_info_n{n}.tsv")
+    with open(path, "w") as f:
+        f.write("pparam\ttotal_edge_length\ttree_edges\n")
+        for pparam_val, info in sorted(tree_info.items()):
+            edges_str = json.dumps(
+                {str(k): v for k, v in info["tree_edges"].items()}
+            )
+            f.write(f"{pparam_val}\t{info['total_edge_length']}\t{edges_str}\n")

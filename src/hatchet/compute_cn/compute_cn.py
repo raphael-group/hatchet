@@ -416,7 +416,6 @@ def solve(
     cn_max = {"diploid": args["diploidcmax"], "tetraploid": args["tetraploidcmax"]}[
         ploidy
     ]
-    ampdel = not args["no_ampdel"]
     base = {"diploid": 1, "tetraploid": 2}[ploidy]
     if args["purities"] is not None:
         purities = args["purities"]
@@ -432,52 +431,41 @@ def solve(
     solver_type = args["solver"]
     verbose = verbosity >= 1
     timelimit = args["timelimit"]
+    ampdel = not args["no_ampdel"]
     pool_size = args.get("pool_size", 1)
     pool_gap = args.get("pool_gap", None)
 
     cd_instances = None
     pool_instances = {}
-    if solve_mode in ("cd", "cd_lexi", "both"):
-        cd = CoordinateDescent(
-            fcn_data=fcn_data,
-            n=n,
-            minprop=args["min_prop"],
-            max_ncns_seg=args["num_cnstates"],
-            cn_max=cn_max,
-            w=weights,
-            ampdel=ampdel,
-            cn=clonal,
-            purities=purities,
-            reg_term=reg_term,
-            reg_steps=reg_steps,
-            reg_stepsize=reg_stepsize,
-            base=base,
-            solve_mode=solve_mode,
-        )
+    u0_tsv_path = (
+        os.path.join(sol_dir, "u0_seeds.tsv") if sol_dir is not None else None
+    )
+    cd_run_kwargs = dict(
+        solver_type=solver_type,
+        max_iters=args["cd_niters"],
+        max_convergence_iters=args["cd_convergence_iters"],
+        n_seed=args["cd_nseeds"],
+        j=args["cd_njobs"],
+        random_seed=args["cd_seed"],
+        timelimit=timelimit,
+        u0_tsv_path=u0_tsv_path,
+    )
 
-        u0_tsv_path = (
-            os.path.join(sol_dir, "u0_seeds.tsv") if sol_dir is not None else None
+    if solve_mode in ("cd", "both"):
+        cd = CoordinateDescent(
+            fcn_data=fcn_data, n=n, minprop=args["min_prop"],
+            max_ncns_seg=args["num_cnstates"], cn_max=cn_max, w=weights,
+            ampdel=ampdel, cn=clonal, purities=purities, base=base,
+            reg_term=reg_term, reg_steps=reg_steps, reg_stepsize=reg_stepsize,
+            u_init_method=args.get("u_init", "dirichlet"),
+            u_dir_alpha=args.get("u_dir_alpha", 0.3),
+            solver_threads=args.get("solver_threads"),
         )
-        cd_instances = cd.run(
-            solver_type=solver_type,
-            max_iters=args["cd_niters"],
-            max_convergence_iters=args["cd_convergence_iters"],
-            n_seed=args["cd_nseeds"],
-            j=args["cd_njobs"],
-            random_seed=args["cd_seed"],
-            timelimit=timelimit,
-            u0_tsv_path=u0_tsv_path,
-        )
+        cd_instances = cd.run(**cd_run_kwargs)
         pool_instances = dedup_pool(cd_instances)
         store_instance_tofile(
-            pool_instances,
-            f_a,
-            f_b,
-            sol_dir,
-            "cd",
-            n,
-            fcn_data=fcn_data,
-            nbins=nbins,
+            pool_instances, f_a, f_b, sol_dir, "cd", n,
+            fcn_data=fcn_data, nbins=nbins,
         )
 
     sol_instances = None
@@ -498,7 +486,7 @@ def solve(
         )
         solver.create_model(pprint=verbose)
         if solve_mode == "both":
-            # Pick the best CD solution (lowest obj) across all lambda values
+            # Pick the best CD solution (lowest obj) across all pparam values
             best_cd = min(
                 (sol for sols in cd_instances.values() for sol in sols),
                 key=lambda s: s[0],
@@ -510,7 +498,7 @@ def solve(
 
         # DMRCA_SUM only penalises clones at index >= 2; with n <= 2 there are no
         # subclonal clones beyond the MRCA, so the regularisation path has no effect
-        # and a single unregularised solve (i0=0, lambda=0) is sufficient.
+        # and a single unregularised solve (i0=0, pparam=0) is sufficient.
         dmrca_no_effect = reg_term == "DMRCA_SUM" and n <= 2
         effective_reg_steps = 0 if dmrca_no_effect else reg_steps
 

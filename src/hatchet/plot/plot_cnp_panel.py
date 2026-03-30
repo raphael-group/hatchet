@@ -128,7 +128,6 @@ def plot_pool_cnp(
         [
             (label, df, obj, selected)
             for label, df, obj, pareto, selected in pool_entries
-            if pareto
         ],
         key=lambda x: x[2],  # sort by IMF-obj, low to high
     )

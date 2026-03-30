@@ -290,6 +290,7 @@ def compute_individual_objs(
     cA: list,
     cB: list,
     u: list,
+    tree_edges: dict = None,
 ):
     """Compute the IMF and regularisation objective values for one solution.
 
@@ -302,6 +303,9 @@ def compute_individual_objs(
         cA: Integer allele-A copy numbers, shape (n_clusters, n_clones).
         cB: Integer allele-B copy numbers, shape (n_clusters, n_clones).
         u: Clone proportions, shape (n_clones, n_samples).
+        tree_edges: Optional dict ``{child_clone: parent_clone}`` from the
+            tree MILP solution. Used by tree to compute edge
+            length from the actual topology rather than a greedy heuristic.
 
     Returns:
         List ``[imf_obj, reg_obj]`` of float values.
@@ -320,7 +324,14 @@ def compute_individual_objs(
         "DADJ_SUM": compute_obj_DADJ_SUM,
         "DMRCA_SUM": compute_obj_DMRCA_SUM,
     }
-    sub_obj = reg_objs[pname](w_, fA_, fB_, cA_, cB_, u_) if pname in reg_objs else 0.0
+    if pname == "DRMST":
+        sub_obj = compute_obj_tree(
+            w_, fA_, fB_, cA_, cB_, u_, tree_edges=tree_edges
+        )
+    elif pname in reg_objs:
+        sub_obj = reg_objs[pname](w_, fA_, fB_, cA_, cB_, u_)
+    else:
+        sub_obj = 0.0
     return [imf_obj, sub_obj]
 
 
@@ -395,6 +406,35 @@ def compute_obj_MAXCN(weights, _fA, _fB, cA, cB, _u):
     maxA_w = np.dot(np.max(cA[:, 1:], axis=1), weights)[0]
     maxB_w = np.dot(np.max(cB[:, 1:], axis=1), weights)[0]
     return maxA_w + maxB_w
+
+
+def compute_obj_tree(_weights, _fA, _fB, cA, cB, _u, tree_edges=None):
+    """Compute total L1 edge length of the clone tree.
+
+    If ``tree_edges`` (a dict ``{child: parent}``) is provided, computes the
+    exact edge length along the given topology. Otherwise falls back to a
+    greedy nearest-ancestor heuristic.
+    """
+    n_clones = cA.shape[1]
+    if n_clones <= 1:
+        return 0.0
+
+    if tree_edges is not None:
+        total = 0.0
+        for child, parent in tree_edges.items():
+            total += np.sum(np.abs(cA[:, child] - cA[:, parent]))
+            total += np.sum(np.abs(cB[:, child] - cB[:, parent]))
+        return float(total)
+
+    # Fallback: greedy nearest-ancestor
+    total = 0.0
+    for i in range(1, n_clones):
+        min_dist = float("inf")
+        for j in range(i):
+            dist = np.sum(np.abs(cA[:, i] - cA[:, j]) + np.abs(cB[:, i] - cB[:, j]))
+            min_dist = min(min_dist, dist)
+        total += min_dist
+    return float(total)
 
 
 def filter_non_pareto(points: np.ndarray):
@@ -530,6 +570,7 @@ def model_selection_instance(
     fcn_data: dict = None,
     nbins: pd.DataFrame = None,
     pareto_img: str = None,
+    tree_info: dict = None,
 ):
     """Select the best solution from a regularisation path using the elbow criterion.
 
@@ -551,6 +592,10 @@ def model_selection_instance(
         pareto_img: Explicit path for the Pareto-curve PNG.  Takes priority over
             the ``outdir``-based auto-constructed path.  Pass None (default) to
             let the function derive the path from ``outdir``.
+        tree_info: Optional ``{pparam: {"tree_edges": dict, ...}}`` from
+            ``CoordinateDescentTree.run()``.  When ``pname == "DRMST"``,
+            the exact MILP tree topology for each pparam is used rather than the
+            greedy nearest-ancestor fallback.
 
     Returns:
         Tuple ``(best_solution, imf_obj, key)`` where ``best_solution`` is the
@@ -560,8 +605,11 @@ def model_selection_instance(
     assert len(pool_instances) > 0, "no solutions to select from"
 
     def _build_row(pparam, pool_idx, tobj, cA, cB, u):
+        tree_edges = None
+        if tree_info is not None and pparam in tree_info:
+            tree_edges = tree_info[pparam].get("tree_edges")
         [imf_obj, reg_obj] = compute_individual_objs(
-            pname, weights, f_a, f_b, cA, cB, u
+            pname, weights, f_a, f_b, cA, cB, u, tree_edges=tree_edges
         )
         lambda_val = float(pparam)
         if fcn_data is not None and nbins is not None:

@@ -10,7 +10,6 @@ import math
 
 import numpy as np
 from pyomo import environ as pe
-from pyomo.opt import SolverStatus, TerminationCondition
 
 from hatchet.compute_cn.solve.ilp_subset import ILPSubset
 
@@ -67,14 +66,6 @@ class RowILP(ILPSubset):
             fB[_k] = pe.Var(bounds=(0, cAB_bound), domain=pe.Reals)
             model.add_component(f"fB_{_k}", fB[_k])
 
-        # -- ampdel variables (if needed) ---------------------------------
-        adA_var = adB_var = None
-        if self.ampdel and cluster_id not in self.copy_numbers:
-            adA_var = pe.Var(bounds=(0, 1), domain=pe.Binary)
-            model.add_component("adA", adA_var)
-            adB_var = pe.Var(bounds=(0, 1), domain=pe.Binary)
-            model.add_component("adB", adB_var)
-
         # -- bit-decomposition variables (max_ncns_seg) -------------------
         bitcA, bitcB, z = {}, {}, {}
         if max_ncns_seg > 0:
@@ -96,16 +87,22 @@ class RowILP(ILPSubset):
             vB[_k] = pe.Var(bounds=(0, 1), domain=pe.Binary)
             model.add_component(f"vB_{_k}", vB[_k])
 
-        # ---- CONSTRAINTS ------------------------------------------------
+        # ---- CONSTRAINTS (via BaseSolver helpers, single-row) ---------------
 
-        # Absolute-value linearisation: yA >= |f_a_obs - fA|
-        f_a_vals = self.f_a.loc[cluster_id].values
-        f_b_vals = self.f_b.loc[cluster_id].values
-        for _k in range(k):
-            model.constraints.add(float(f_a_vals[_k]) - fA[_k] <= yA[_k])
-            model.constraints.add(fA[_k] - float(f_a_vals[_k]) <= yA[_k])
-            model.constraints.add(float(f_b_vals[_k]) - fB[_k] <= yB[_k])
-            model.constraints.add(fB[_k] - float(f_b_vals[_k]) <= yB[_k])
+        # Variable accessors for this single row
+        get_cA = lambda m, _n: row_cA[_n]  # noqa: E731
+        get_cB = lambda m, _n: row_cB[_n]  # noqa: E731
+        row = [_m]
+
+        # L1 linearisation: yA >= |f_a_obs - fA|
+        self._add_l1_constraints(
+            model,
+            lambda m, _k: fA[_k],
+            lambda m, _k: fB[_k],
+            lambda m, _k: yA[_k],
+            lambda m, _k: yB[_k],
+            rows=row,
+        )
 
         # Mixture: fA[k] == sum_n cA[n] * u_fixed[n][k]
         for _k in range(k):
@@ -118,37 +115,11 @@ class RowILP(ILPSubset):
             model.constraints.add(fA[_k] == _sumA)
             model.constraints.add(fB[_k] == _sumB)
 
-        # cA + cB upper bound
-        for _n in range(n):
-            model.constraints.add(row_cA[_n] + row_cB[_n] <= cAB_bound)
-
-        # Normal clone (clone 0) is always diploid (1,1)
-        model.constraints.add(row_cA[0] == 1)
-        model.constraints.add(row_cB[0] == 1)
-
-        # Avoid zero CN state for significant clusters
-        if self.w[cluster_id] / sum(self.w) >= zero_cn_thres:
-            for _n in range(1, n):
-                model.constraints.add(row_cA[_n] + row_cB[_n] >= 1)
-
-        # Ampdel constraints
-        if self.ampdel and cluster_id not in self.copy_numbers:
-            for _n in range(1, n):
-                model.constraints.add(
-                    row_cA[_n] <= cn_max * adA_var + _base - _base * adA_var
-                )
-                model.constraints.add(row_cA[_n] >= _base * adA_var)
-                model.constraints.add(
-                    row_cB[_n] <= cn_max * adB_var + _base - _base * adB_var
-                )
-                model.constraints.add(row_cB[_n] >= _base * adB_var)
-
-        # Fix given CN for clonal clusters
-        if cluster_id in self.copy_numbers:
-            _cnA, _cnB = self.copy_numbers[cluster_id]
-            for _n in range(1, n):
-                model.constraints.add(row_cA[_n] == _cnA)
-                model.constraints.add(row_cB[_n] == _cnB)
+        self._add_cAB_upper_bound(model, get_cA, get_cB, rows=row)
+        self._add_normal_clone_constraints(model, get_cA, get_cB, rows=row)
+        self._add_zero_cn_constraints(model, get_cA, get_cB, rows=row)
+        self._add_ampdel_constraints(model, get_cA, get_cB, rows=row)
+        self._add_fixed_cn_constraints(model, get_cA, get_cB, rows=row)
 
         # Bit decomposition + max_ncns_seg constraints
         if max_ncns_seg > 0:
@@ -408,7 +379,7 @@ class RowILP(ILPSubset):
         # Phase 1: minimize PI violations
         model.obj_phase1 = pe.Objective(expr=model.obj_z.expr, sense=pe.minimize)
         results = solver.solve(model, **kwargs)
-        if not self._solver_ok(results):
+        if not self._check_solver_status(results):
             model.del_component(model.obj_phase1)
             return None
 
@@ -421,7 +392,7 @@ class RowILP(ILPSubset):
         results = solver.solve(model, **kwargs)
 
         result = None
-        if self._solver_ok(results):
+        if self._check_solver_status(results):
             cA_row = [int(self._row_cA[_n].value) for _n in range(self.n)]
             cB_row = [int(self._row_cB[_n].value) for _n in range(self.n)]
             result = pe.value(model.obj_phase2), cA_row, cB_row
@@ -432,16 +403,3 @@ class RowILP(ILPSubset):
         model.del_component(model.z_fix)
         return result
 
-    @staticmethod
-    def _solver_ok(results):
-        solver_ok = (
-            results.solver.status == SolverStatus.ok
-            and results.solver.termination_condition
-            in (TerminationCondition.optimal, TerminationCondition.feasible)
-        )
-        time_limit_hit = (
-            results.solver.status == SolverStatus.aborted
-            and results.solver.termination_condition
-            == TerminationCondition.maxTimeLimit
-        )
-        return solver_ok or time_limit_hit

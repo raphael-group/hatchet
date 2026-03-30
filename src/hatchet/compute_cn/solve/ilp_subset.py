@@ -4,12 +4,12 @@ import logging
 import numpy as np
 import pandas as pd
 from pyomo import environ as pe
-from pyomo.opt import SolverStatus, TerminationCondition
 
+from hatchet.compute_cn.solve.base_solver import BaseSolver
 from hatchet.compute_cn.solve.utils import Random
 
 
-class ILPSubset:
+class ILPSubset(BaseSolver):
     """ILP solver for the copy-number deconvolution problem.
 
     Models each genomic cluster's copy numbers (cA, cB) across n clones and
@@ -33,41 +33,28 @@ class ILPSubset:
         purities: dict,
         penalty_param: list,
         base: int = 1,
-        # TODO make as parameters
         zero_cn_thres=0.005,
         tol=0.001,
     ):
-        self.fcn_data = fcn_data
-        f_a = fcn_data["fa"].copy(deep=True)
-        f_b = fcn_data["fb"].copy(deep=True)
+        # Deep-copy fa/fb so ILPSubset can mutate freely
+        fcn_data = dict(fcn_data)
+        fcn_data["fa"] = fcn_data["fa"].copy(deep=True)
+        fcn_data["fb"] = fcn_data["fb"].copy(deep=True)
 
-        assert f_a.shape == f_b.shape
-        assert np.all(f_a.index == f_b.index)
-        assert np.all(f_a.columns == f_b.columns)
+        super().__init__(
+            n=n, cn_max=cn_max, fcn_data=fcn_data, w=w,
+            copy_numbers=copy_numbers, ampdel=ampdel, base=base,
+            minprop=minprop, zero_cn_thres=zero_cn_thres, tol=tol,
+        )
 
-        self.m, self.k = f_a.shape
-        self.f_a = f_a
-        self.f_b = f_b
-        self.cluster_ids = f_a.index
-        self.sample_ids = f_a.columns
-
-        self.n = n
-        self.cn_max = cn_max
+        # ILPSubset-specific fields
         self.max_ncns_seg = max_ncns_seg
-        self.minprop = minprop
-        self.ampdel = ampdel
-        self.copy_numbers = copy_numbers
         self.penalty_param = penalty_param
-        self.w = w
         self.purities = purities
-
-        self._base = base
-        self.zero_cn_thres = zero_cn_thres
-        self.tol = tol
 
         self.mode = "FULL"
 
-        # Values we want to optimize for, as dataframes
+        # Values we want to optimize for
         self.cA = [[np.nan for _ in range(self.n)] for _ in range(self.m)]
         self.cB = [[np.nan for _ in range(self.n)] for _ in range(self.m)]
         self.u = [[np.nan for _ in range(self.k)] for _ in range(self.n)]
@@ -77,41 +64,37 @@ class ILPSubset:
         self._fixed_cB = [[np.nan for _ in range(self.n)] for _ in range(self.m)]
         self._fixed_u = [[np.nan for _ in range(self.k)] for _ in range(self.n)]
 
-        self.warmstart = False  # set on hot_start()
-        self.model = None  # initialized on create_model()
-
     def __copy__(self):
         new = self.__class__.__new__(self.__class__)
-        # Share data (read-only) — no deep copy
+        # Share read-only data from BaseSolver
         new.fcn_data = self.fcn_data
         new.f_a = self.f_a
         new.f_b = self.f_b
         new.m, new.k = self.m, self.k
         new.cluster_ids = self.cluster_ids
         new.sample_ids = self.sample_ids
-        # Copy scalars/configs
         new.n = self.n
         new.cn_max = self.cn_max
-        new.max_ncns_seg = self.max_ncns_seg
-        new.minprop = self.minprop
-        new.ampdel = self.ampdel
-        new.copy_numbers = self.copy_numbers
-        new.penalty_param = self.penalty_param
         new._base = self._base
         new.w = self.w
-        new.purities = self.purities
+        new.copy_numbers = self.copy_numbers
+        new.ampdel = self.ampdel
+        new.minprop = self.minprop
         new.zero_cn_thres = self.zero_cn_thres
         new.tol = self.tol
+        new.warmstart = False
+        new.model = None
+        # ILPSubset-specific
+        new.max_ncns_seg = self.max_ncns_seg
+        new.penalty_param = self.penalty_param
+        new.purities = self.purities
         new.mode = "FULL"
-        # Fresh mutable state
         new.cA = [[np.nan for _ in range(new.n)] for _ in range(new.m)]
         new.cB = [[np.nan for _ in range(new.n)] for _ in range(new.m)]
         new.u = [[np.nan for _ in range(new.k)] for _ in range(new.n)]
         new._fixed_cA = [[np.nan for _ in range(new.n)] for _ in range(new.m)]
         new._fixed_cB = [[np.nan for _ in range(new.n)] for _ in range(new.m)]
         new._fixed_u = [[np.nan for _ in range(new.k)] for _ in range(new.n)]
-        new.warmstart = False
-        new.model = None
         return new
 
     def __str__(self):
@@ -134,14 +117,6 @@ class ILPSubset:
     @property
     def M(self):
         return math.floor(math.log2(self.cn_max)) + 1
-
-    @property
-    def base(self):
-        return self._base
-
-    @staticmethod
-    def symmCoeff(i):
-        return i + 1
 
     @property
     def optimized_cA(self):
@@ -281,19 +256,13 @@ class ILPSubset:
         # CONSTRAINTS
         model.constraints = pe.ConstraintList()
 
-        for _m in range(m):
-            cluster_id = f_a.index[_m]
-            f_a_values = f_a.loc[cluster_id].values
-            f_b_values = f_b.loc[cluster_id].values
-
-            for _k in range(k):
-                _yA, _yB = yA[(_m, _k)], yB[(_m, _k)]
-                _fA, _fB = fA[(_m, _k)], fB[(_m, _k)]
-
-                model.constraints.add(float(f_a_values[_k]) - _fA <= _yA)
-                model.constraints.add(_fA - float(f_a_values[_k]) <= _yA)
-                model.constraints.add(float(f_b_values[_k]) - _fB <= _yB)
-                model.constraints.add(_fB - float(f_b_values[_k]) <= _yB)
+        self._add_l1_constraints(
+            model,
+            lambda _m, _k: fA[(_m, _k)],
+            lambda _m, _k: fB[(_m, _k)],
+            lambda _m, _k: yA[(_m, _k)],
+            lambda _m, _k: yB[(_m, _k)],
+        )
 
         if mode_t == "FULL":
             for _m, _k in np.ndindex((m, k)):
@@ -350,19 +319,11 @@ class ILPSubset:
                 model.constraints.add(fB[(_m, _k)] == _sumB)
 
         if mode_t in ("FULL", "CARCH"):
-            for _m, _n in np.ndindex((m, n)):
-                model.constraints.add(
-                    self.cA[_m][_n] + self.cB[_m][_n] <= cAB_bounds[_m]
-                )
-
-            for _m, cluster_id in enumerate(self.cluster_ids):
-                model.constraints.add(self.cA[_m][0] == 1)
-                model.constraints.add(self.cB[_m][0] == 1)
-
-                # avoid zero copy number state <zero_cn_thres>
-                if self.w[cluster_id] / sum(self.w) >= zero_cn_thres:
-                    for _n in range(1, n):
-                        model.constraints.add(self.cA[_m][_n] + self.cB[_m][_n] >= 1)
+            get_cA = lambda _m, _n: self.cA[_m][_n]
+            get_cB = lambda _m, _n: self.cB[_m][_n]
+            self._add_cAB_upper_bound(model, get_cA, get_cB)
+            self._add_normal_clone_constraints(model, get_cA, get_cB)
+            self._add_zero_cn_constraints(model, get_cA, get_cB)
 
             if ampdel:
                 for _m in range(m):
@@ -440,23 +401,26 @@ class ILPSubset:
                         model.constraints.add(_sum_l <= _sum_l1)  # FIXME wired term
 
         if mode_t in ("FULL", "CARCH"):
-            self.build_symmetry_breaking(model)
-            self.fix_given_cn(model)
+            get_cA = lambda _m, _n: self.cA[_m][_n]
+            get_cB = lambda _m, _n: self.cB[_m][_n]
+            self._add_symmetry_breaking(model, get_cA, get_cB)
+            self._add_fixed_cn_constraints(model, get_cA, get_cB)
 
         # Purities are hot-start seeds in CD (build_random_u), not constraints.
 
         # add objective & regularization terms
-        objective = 0
+        # Format: IMF_loss + pparam * reg_term
+        obj_imf = 0
         for _m, _k in np.ndindex((m, k)):
-            objective += (yA[(_m, _k)] + yB[(_m, _k)]) * self.w[self.cluster_ids[_m]]
+            obj_imf += (yA[(_m, _k)] + yB[(_m, _k)]) * self.w[self.cluster_ids[_m]]
 
-        if mode_t in ("FULL", "CARCH") and self.penalty_param[0] != "RAW":
-            [pname, init_val] = self.penalty_param
-            pparam = pe.Param(mutable=True, initialize=init_val)
-            model.pparam = pparam
-            objective_sec = 0
+        obj_reg = 0
+        [pname, init_val] = self.penalty_param
+        pparam = pe.Param(mutable=True, initialize=init_val)
+        model.pparam = pparam
+
+        if mode_t in ("FULL", "CARCH") and pname != "RAW":
             if pname == "MAXCN":
-                # constrain maximum copy-number states per cluster
                 hcn_vars = {}
                 for _m in range(m):
                     hcn_vars[(_m, "a")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
@@ -467,10 +431,10 @@ class ILPSubset:
                         model.constraints.add(self.cA[_m][_n] <= hcn_vars[(_m, "a")])
                         model.constraints.add(self.cB[_m][_n] <= hcn_vars[(_m, "b")])
                 for _m, cluster_id in enumerate(self.cluster_ids):
-                    objective_sec += pparam * self.w[cluster_id] * hcn_vars[(_m, "a")]
-                    objective_sec += pparam * self.w[cluster_id] * hcn_vars[(_m, "b")]
+                    obj_reg += self.w[cluster_id] * hcn_vars[(_m, "a")]
+                    obj_reg += self.w[cluster_id] * hcn_vars[(_m, "b")]
+
             elif pname == "DROOT_SUM":
-                # total distance from tumor clone to normal clone state per cluster
                 manhat_vars = {}
                 for _m in range(m):
                     for _n in range(1, n):
@@ -504,15 +468,10 @@ class ILPSubset:
                         )
                 for _m, cluster_id in enumerate(self.cluster_ids):
                     for _n in range(1, n):
-                        objective_sec += (
-                            pparam * self.w[cluster_id] * manhat_vars[(_m, _n, "a")]
-                        )
-                        objective_sec += (
-                            pparam * self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
-                        )
+                        obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "a")]
+                        obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
+
             elif pname == "DMRCA_SUM":
-                # total distance from subclonal tumor clones (cols 2+) to MRCA clone (col 1)
-                # requires n >= 3: col 0 = normal, col 1 = MRCA, cols 2+ = subclonal clones
                 if n >= 3:
                     manhat_vars = {}
                     for _m in range(m):
@@ -520,9 +479,6 @@ class ILPSubset:
                             manhat_vars[(_m, _n, "a")] = pe.Var(
                                 bounds=(0, np.inf), domain=pe.Reals
                             )
-                            # "MMDA_" prefix (double-M) distinguishes these from the
-                            # "MDA_" variables added by DROOT_SUM, avoiding name collisions
-                            # if both objectives were ever used in the same model
                             model.add_component(
                                 f"MMDA_{_m}_{_n}", manhat_vars[(_m, _n, "a")]
                             )
@@ -550,16 +506,9 @@ class ILPSubset:
                             )
                     for _m, cluster_id in enumerate(self.cluster_ids):
                         for _n in range(2, n):
-                            objective_sec += (
-                                pparam * self.w[cluster_id] * manhat_vars[(_m, _n, "a")]
-                            )
-                            objective_sec += (
-                                pparam * self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
-                            )
+                            obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "a")]
+                            obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
 
-                    # LOH constraint: if MRCA (clone 1) has allele CN = 0,
-                    # subclonal clones cannot have positive CN on that allele.
-                    # Linearized as: cA[m][n] <= cA[m][1] * cn_max  (big-M)
                     for _m in range(m):
                         for _n in range(2, n):
                             model.constraints.add(
@@ -568,13 +517,8 @@ class ILPSubset:
                             model.constraints.add(
                                 self.cB[_m][_n] <= self.cB[_m][1] * cn_max
                             )
-                    logging.debug(
-                        f"DMRCA_SUM: added LOH constraints "
-                        f"({m * (n - 2) * 2} constraints)"
-                    )
 
             elif pname == "DADJ_SUM":
-                # total distance for all pairs of clones per cluster
                 manhat_vars = {}
                 for _m in range(m):
                     for _n1 in range(n - 1):
@@ -593,7 +537,6 @@ class ILPSubset:
                                 f"MDB_{_m}_{_n1}_{_n2}",
                                 manhat_vars[(_m, _n1, _n2, "b")],
                             )
-
                             model.constraints.add(
                                 self.cA[_m][_n1] - self.cA[_m][_n2]
                                 <= manhat_vars[(_m, _n1, _n2, "a")]
@@ -613,48 +556,30 @@ class ILPSubset:
                 for _m, cluster_id in enumerate(self.cluster_ids):
                     for _n1 in range(n - 1):
                         for _n2 in range(_n1 + 1, n):
-                            objective_sec += (
-                                pparam
-                                * self.w[cluster_id]
+                            obj_reg += (
+                                self.w[cluster_id]
                                 * manhat_vars[(_m, _n1, _n2, "a")]
                             )
-                            objective_sec += (
-                                pparam
-                                * self.w[cluster_id]
+                            obj_reg += (
+                                self.w[cluster_id]
                                 * manhat_vars[(_m, _n1, _n2, "b")]
                             )
-            objective += objective_sec
 
         if mode_t == "FULL":
             self.hot_start()
 
-        model.obj = pe.Objective(expr=objective, sense=pe.minimize)
+        # Objective: IMF + pparam * reg
+        if pname == "RAW":
+            model.obj = pe.Objective(expr=obj_imf, sense=pe.minimize)
+        else:
+            model.obj = pe.Objective(
+                expr=obj_imf + pparam * obj_reg,
+                sense=pe.minimize,
+            )
         self.model = model
 
         if pprint:
             logging.info(str(self))
-
-    def build_symmetry_breaking(self, model):
-        for i in range(1, self.n - 1):
-            _sum1 = 0
-            _sum2 = 0
-            for _m in range(self.m):
-                _symCoeff = self.symmCoeff(_m)
-                _sum1 += self.cA[_m][i] * _symCoeff + self.cB[_m][i] * _symCoeff
-                _sum2 += self.cA[_m][i + 1] * _symCoeff + self.cB[_m][i + 1] * _symCoeff
-            model.constraints.add(_sum1 <= _sum2)
-
-    def fix_given_cn(self, model):
-        """
-        Fix copy number state for clonal clusters
-        """
-        for _m in range(self.m):
-            cluster_id = self.f_a.index[_m]
-            if cluster_id in self.copy_numbers:
-                _cnA, _cnB = self.copy_numbers[cluster_id]
-                for _n in range(1, self.n):
-                    model.constraints.add(self.cA[_m][_n] == _cnA)
-                    model.constraints.add(self.cB[_m][_n] == _cnB)
 
     # Per-row C-step methods (create_row_lexi_model, hot_start_row,
     # run_row_lexi) live in the RowILP subclass (row_ilp.py).
@@ -763,7 +688,50 @@ class ILPSubset:
         self.mode = "UARCH"
         # TODO: sanity checks in fixC
 
-    def build_random_u(self, random_seed=None):
+    def build_random_u(self, random_seed=None, method="dirichlet", dir_alpha=0.3):
+        """Generate a random U initialization matrix (n_clones x n_samples).
+
+        Args:
+            random_seed: Optional seed for reproducibility.
+            method: ``"dirichlet"`` or ``"bubble"``.
+            dir_alpha: Dirichlet concentration parameter (lower = sparser).
+        """
+        with Random(random_seed):
+            if method == "dirichlet":
+                return self._build_random_u_dirichlet(dir_alpha)
+            return self._build_random_u_bubble()
+
+    def _build_random_u_dirichlet(self, alpha=0.3):
+        U = np.empty((self.n, self.k))
+        n_tumor = self.n - 1
+        for _k in range(self.k):
+            sid = self.sample_ids[_k]
+            if self.purities is not None and sid in self.purities:
+                purity = self.purities[sid]
+                U[0, _k] = 1 - purity
+                if n_tumor == 1:
+                    U[1, _k] = purity
+                else:
+                    t = np.random.dirichlet(alpha * np.ones(n_tumor))
+                    t[t < self.minprop] = 0
+                    if t.sum() > 0:
+                        t = t / t.sum()
+                    else:
+                        t = np.zeros(n_tumor)
+                        t[np.random.randint(n_tumor)] = 1.0
+                    U[1:, _k] = purity * t
+            else:
+                t = np.random.dirichlet(alpha * np.ones(self.n))
+                t[t < self.minprop] = 0
+                if t.sum() > 0:
+                    t = t / t.sum()
+                else:
+                    t = np.zeros(self.n)
+                    t[0] = 1.0
+                U[:, _k] = t
+        return U
+
+    def _build_random_u_bubble(self):
         def _calculate_size_bubbles(minprop):
             if minprop <= 0.1:
                 return 10
@@ -775,14 +743,8 @@ class ILPSubset:
                 return 3
 
         def _build_partition_vector(n, n_parts, size_bubbles, minprop=0.03):
-            """
-            Return fractional components of n components as an ndarray of size n
-            """
-            # initialize all fractions to 0
             result = np.zeros(n)
-            # generate n_parts random positions from all available positions
             positions = np.random.choice(np.arange(n), n_parts, replace=False)
-
             bubbles = (
                 np.sort(
                     np.random.choice(
@@ -792,44 +754,36 @@ class ILPSubset:
                 / size_bubbles
             )
             _result = np.diff(bubbles, prepend=0, append=1)
-
-            # set fractions at selected positions to successive difference between bubbles
             result[positions] = _result
-            # for fractions that are within tol of minprop, clamp them up to minprop
             result[(minprop - self.tol <= result) & (result < minprop)] = minprop
-
             return result
 
         size_bubbles = _calculate_size_bubbles(self.minprop)
         U = np.empty((self.n, self.k))
-
-        with Random(random_seed):
-            for _k in range(self.k):
-                sid = self.sample_ids[_k]
-                if self.purities is not None and sid in self.purities:
-                    # Fix u[0] to 1-purity; randomly split purity among tumor clones
-                    purity = self.purities[sid]
-                    U[0, _k] = 1 - purity
-                    n_tumor = self.n - 1
-                    if n_tumor == 1:
-                        U[1, _k] = purity
-                    else:
-                        _n0 = np.random.randint(1, n_tumor + 1)
-                        _n1 = np.random.randint(1, n_tumor + 1)
-                        n_parts = min(max(_n0, _n1), size_bubbles)
-                        v = _build_partition_vector(
-                            n_tumor, n_parts, size_bubbles, minprop=self.minprop
-                        )
-                        U[1:, _k] = purity * v
+        for _k in range(self.k):
+            sid = self.sample_ids[_k]
+            if self.purities is not None and sid in self.purities:
+                purity = self.purities[sid]
+                U[0, _k] = 1 - purity
+                n_tumor = self.n - 1
+                if n_tumor == 1:
+                    U[1, _k] = purity
                 else:
-                    # No purity constraint: fully random partition across all clones
-                    _n0 = np.random.randint(1, self.n + 1)
-                    _n1 = np.random.randint(1, self.n + 1)
+                    _n0 = np.random.randint(1, n_tumor + 1)
+                    _n1 = np.random.randint(1, n_tumor + 1)
                     n_parts = min(max(_n0, _n1), size_bubbles)
                     v = _build_partition_vector(
-                        self.n, n_parts, size_bubbles, minprop=self.minprop
+                        n_tumor, n_parts, size_bubbles, minprop=self.minprop
                     )
-                    U[:, _k] = v
+                    U[1:, _k] = purity * v
+            else:
+                _n0 = np.random.randint(1, self.n + 1)
+                _n1 = np.random.randint(1, self.n + 1)
+                n_parts = min(max(_n0, _n1), size_bubbles)
+                v = _build_partition_vector(
+                    self.n, n_parts, size_bubbles, minprop=self.minprop
+                )
+                U[:, _k] = v
         return U
 
     def run(
@@ -842,47 +796,20 @@ class ILPSubset:
         pool_gap=None,
     ):
         if solver is None:
-            if solver_type in ("gurobipy", "gurobi"):
-                solver = pe.SolverFactory("gurobi", solver_io="python")
-                solver.options["OutputFlag"] = 0
-                solver.options["LogToConsole"] = 0
-                solver.options["LogFile"] = ""
-                if pool_size > 1:
-                    solver.options["PoolSolutions"] = pool_size
-                    solver.options["PoolSearchMode"] = 0
-                    if pool_gap is not None:
-                        solver.options["PoolGap"] = pool_gap
-            else:
-                solver = pe.SolverFactory(solver_type)
+            solver = self._create_solver(solver_type)
+            if pool_size > 1 and solver_type in ("gurobipy", "gurobi"):
+                solver.options["PoolSolutions"] = pool_size
+                solver.options["PoolSearchMode"] = 0
+                if pool_gap is not None:
+                    solver.options["PoolGap"] = pool_gap
 
         # Store for pool extraction
         self._pyomo_solver = solver
         self._solver_type = solver_type
 
-        kwargs = {"report_timing": False}
-        if timelimit is not None:
-            kwargs["timelimit"] = int(timelimit)
-        if solver.warm_start_capable():
-            kwargs["warmstart"] = self.warmstart
-
+        kwargs = self._build_solve_kwargs(solver, self.warmstart, timelimit)
         results = solver.solve(self.model, **kwargs)
-        if (
-            (results.solver.status == SolverStatus.ok)
-            and (
-                results.solver.termination_condition
-                in (
-                    TerminationCondition.optimal,
-                    TerminationCondition.feasible,
-                )
-            )
-            or (
-                results.solver.status == SolverStatus.aborted
-                and results.solver.termination_condition
-                == TerminationCondition.maxTimeLimit
-            )
-        ):
-            pass
-        else:
+        if not self._check_solver_status(results):
             return None
 
         if write_path is not None:
