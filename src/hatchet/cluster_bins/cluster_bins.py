@@ -55,7 +55,7 @@ def run(args=None):
     out_bbc = os.path.join(out_dir, "bulk.bbc")
     out_seg = os.path.join(out_dir, "bulk.seg")
     if (
-        not args.get("force", False)
+        not args["force"]
         and os.path.exists(out_bbc)
         and os.path.exists(out_seg)
     ):

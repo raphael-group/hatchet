@@ -16,7 +16,7 @@ class BaseSolver:
     provides reusable methods for building common Pyomo constraints and
     managing solver invocation.
 
-    Subclasses: ``ILPSubset``, ``RowILP`` (via ILPSubset), ``TreeILP``.
+    Subclasses: ``ILPSubset``, ``TreeILP``.
     """
 
     def __init__(
@@ -31,6 +31,8 @@ class BaseSolver:
         minprop=0.01,
         zero_cn_thres=0.005,
         tol=0.001,
+        balanced_clusters=None,
+        mrca=False,
     ):
         f_a = fcn_data["fa"]
         f_b = fcn_data["fb"]
@@ -47,6 +49,8 @@ class BaseSolver:
         self.w = w
         self.copy_numbers = copy_numbers
         self.ampdel = ampdel
+        self.balanced_clusters = balanced_clusters or []
+        self.mrca = mrca
         self._base = base
         self.zero_cn_thres = zero_cn_thres
         self.tol = tol
@@ -81,7 +85,6 @@ class BaseSolver:
     #
     #   ILPSubset:  lambda m, n: self.cA[m][n]
     #   TreeILP:    lambda m, n: var_cA[(m, n)]
-    #   RowILP:     lambda m, n: row_cA[n]   (single-row, m ignored)
 
     def _add_normal_clone_constraints(self, model, get_cA, get_cB, rows=None):
         """Fix clone 0 at (1,1) for every cluster in *rows*."""
@@ -146,6 +149,31 @@ class BaseSolver:
                 for _n in range(1, self.n):
                     model.constraints.add(get_cA(_m, _n) == _cnA)
                     model.constraints.add(get_cB(_m, _n) == _cnB)
+
+    def _add_balanced_constraints(self, model, get_cA, get_cB, rows=None):
+        """Force cA == cB for balanced clusters, tumor clones only."""
+        if not self.balanced_clusters:
+            return
+        bal_set = set(self.balanced_clusters)
+        for _m in (rows if rows is not None else range(self.m)):
+            cluster_id = self.cluster_ids[_m]
+            if cluster_id in bal_set:
+                for _n in range(1, self.n):
+                    model.constraints.add(get_cA(_m, _n) == get_cB(_m, _n))
+
+    def _add_mrca_loh_constraints(self, model, get_cA, get_cB, rows=None):
+        """If clone 1 (MRCA) has lost an allele, subclones (n>=2) cannot regain it.
+
+        Linearised as: cA[c][n] <= cA[c][1] * cn_max (big-M).
+        Only active when ``self.mrca`` is True and n >= 3.
+        """
+        if not self.mrca or self.n < 3:
+            return
+        cn_max = self.cn_max
+        for _m in (rows if rows is not None else range(self.m)):
+            for _n in range(2, self.n):
+                model.constraints.add(get_cA(_m, _n) <= get_cA(_m, 1) * cn_max)
+                model.constraints.add(get_cB(_m, _n) <= get_cB(_m, 1) * cn_max)
 
     def _add_l1_constraints(self, model, get_fA, get_fB, get_yA, get_yB,
                             rows=None):

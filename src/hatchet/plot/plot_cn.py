@@ -43,7 +43,7 @@ def run(args=None):
     dpi = args["dpi"]
     transparent = args["transparent"]
     file_type = args["img_type"]
-    style = args.get("style", "cnv")
+    style = args["style"]
 
     # TODO per-cluster transparency
     tail_alpha = args["tail_alpha"]

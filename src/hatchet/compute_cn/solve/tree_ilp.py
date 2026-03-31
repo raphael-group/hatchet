@@ -26,12 +26,13 @@ class TreeILP(BaseSolver):
 
     def __init__(self, n, cn_max, fcn_data, w, copy_numbers,
                  ampdel=True, base=1, minprop=0.01,
-                 zero_cn_thres=0.005, tol=0.001):
+                 zero_cn_thres=0.005, tol=0.001, reg_name="DRMST"):
         super().__init__(
             n=n, cn_max=cn_max, fcn_data=fcn_data, w=w,
             copy_numbers=copy_numbers, ampdel=ampdel, base=base,
             minprop=minprop, zero_cn_thres=zero_cn_thres, tol=tol,
         )
+        self.reg_name = reg_name
         self._var_cA = None
         self._var_cB = None
         self._var_z = None
@@ -90,38 +91,58 @@ class TreeILP(BaseSolver):
         self._add_zero_cn_constraints(model, get_cA, get_cB)
         self._add_ampdel_constraints(model, get_cA, get_cB)
         self._add_fixed_cn_constraints(model, get_cA, get_cB)
+        self._add_balanced_constraints(model, get_cA, get_cB)
+        self._add_mrca_loh_constraints(model, get_cA, get_cB)
 
         # ---- Global topology variables: z[i][j] (i >= 1, j < i) -------------
+        # MRCA mode: clone 1 is always child of clone 0 (MRCA);
+        # clones 2+ cannot connect to clone 0 (only to tumor clones).
+        is_mrca = self.mrca
         var_z = {}
         for i in range(1, n):
             for j in range(i):
+                if is_mrca and i >= 2 and j == 0:
+                    continue  # no edge from normal to subclones
                 var_z[(i, j)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                 model.add_component(f"z_{i}_{j}", var_z[(i, j)])
 
         for i in range(1, n):
             model.constraints.add(
-                sum(var_z[(i, j)] for j in range(i)) == 1
+                sum(var_z[(i, j)] for j in range(i) if (i, j) in var_z) == 1
             )
 
         # ---- Degree constraint on all nodes (mutable) ------------------------
-        out_deg_0 = sum(var_z[(i, 0)] for i in range(1, n))
-        model.add_component(
-            "con_degree_0", pe.Constraint(expr=out_deg_0 <= param_deg)
-        )
-        for c in range(1, n):
-            out_deg_c = sum(var_z[(i, c)] for i in range(c + 1, n))
+        children_of_0 = [var_z[(i, 0)] for i in range(1, n) if (i, 0) in var_z]
+        if children_of_0:
+            out_deg_0 = sum(children_of_0)
             model.add_component(
-                f"con_degree_{c}",
-                pe.Constraint(expr=1 + out_deg_c <= param_deg),
+                "con_degree_0", pe.Constraint(expr=out_deg_0 <= param_deg)
             )
+        for c in range(1, n):
+            children_of_c = [var_z[(i, c)] for i in range(c + 1, n) if (i, c) in var_z]
+            if children_of_c:
+                out_deg_c = sum(children_of_c)
+                model.add_component(
+                    f"con_degree_{c}",
+                    pe.Constraint(expr=1 + out_deg_c <= param_deg),
+                )
 
         # ---- Nearest-neighbor distance variables -----------------------------
+        # DRMST_MRCA: skip M[c,1] (clone 1→normal edge is free)
         var_M = {}
+        tree_obj_clones = range(2, n) if is_mrca else range(1, n)
         for _m in range(m):
             for i in range(1, n):
-                var_M[(_m, i)] = pe.Var(bounds=(0, None), domain=pe.Reals)
-                model.add_component(f"M_{_m}_{i}", var_M[(_m, i)])
                 for j in range(i):
+                    if (i, j) not in var_z:
+                        continue
+                    if i not in tree_obj_clones:
+                        continue  # skip M for clone 1 in MRCA mode
+
+                    if (_m, i) not in var_M:
+                        var_M[(_m, i)] = pe.Var(bounds=(0, None), domain=pe.Reals)
+                        model.add_component(f"M_{_m}_{i}", var_M[(_m, i)])
+
                     dA = pe.Var(bounds=(0, None), domain=pe.Reals)
                     model.add_component(f"dA_{_m}_{i}_{j}", dA)
                     dB = pe.Var(bounds=(0, None), domain=pe.Reals)
@@ -163,6 +184,8 @@ class TreeILP(BaseSolver):
         for _m in range(m):
             for i in range(1, n):
                 for j in range(i):
+                    if (i, j) not in var_z:
+                        continue
                     lA_j = model.find_component(f"lostA_{_m}_{j}")
                     lB_j = model.find_component(f"lostB_{_m}_{j}")
                     model.constraints.add(
@@ -229,13 +252,14 @@ class TreeILP(BaseSolver):
 
         obj_tree = sum(
             self.w[self.cluster_ids[_m]] * var_M[(_m, i)]
-            for _m in range(m) for i in range(1, n)
+            for _m in range(m) for i in tree_obj_clones
+            if (_m, i) in var_M
         )
         model.obj_tree = pe.Expression(expr=obj_tree)
 
         # Objective: IMF + pparam * tree_edge_length
         model.obj = pe.Objective(
-            expr=obj_imf + param_lam * obj_tree,
+            expr=(1 - param_lam) * obj_imf + param_lam * obj_tree,
             sense=pe.minimize,
         )
 
@@ -306,10 +330,15 @@ class TreeILP(BaseSolver):
         tree_edges = {}
         for i in range(1, self.n):
             for j in range(i):
+                if (i, j) not in self._var_z:
+                    continue
                 z_val = self._var_z[(i, j)].value
                 if z_val is not None and round(z_val) == 1:
                     tree_edges[i] = j
                     break
+            if i not in tree_edges:
+                # MRCA mode: clone 1's parent is always 0
+                tree_edges[i] = 0
 
         imf_obj = pe.value(self.model.obj_imf)
         tree_edge_length = pe.value(self.model.obj_tree)

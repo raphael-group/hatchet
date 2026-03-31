@@ -85,6 +85,7 @@ def run(args=None):
         pair_WGD,
         gammas_WGD,
         purities_WGD,
+        balanced_clusters,
     ) = get_scaling_factor(
         samples,
         segs,
@@ -100,7 +101,7 @@ def run(args=None):
             gamma_WGD = gammas_WGD.get(sample, 0) if gammas_WGD is not None else 0
             fd.write(f"{sample}\t{gamma_noWGD}\t{gamma_WGD}\n")
 
-    if args.get("segment", False):
+    if args["segment"]:
         seg_data = build_segment_data(bbcs, segs)
     else:
         seg_data = build_cluster_data(segs)
@@ -142,7 +143,7 @@ def run(args=None):
             baf,
             bbcs,
             gammas_dip,
-            alpha=args.get("fcn_ci_alpha", 0.5),
+            alpha=args["fcn_ci_alpha"],
         )
         store_solve_input(
             os.path.join(out_dir, "sols", "diploid_input.tsv"),
@@ -168,6 +169,7 @@ def run(args=None):
                 nbins,
                 args["mode"],
                 args["verbosity"],
+                balanced_clusters=balanced_clusters,
             )
             diploid_sols[n] = (obj, imf_obj)
             logging.info(f"diploid n={n} objective={obj} imf-objective={imf_obj}")
@@ -215,7 +217,7 @@ def run(args=None):
             baf,
             bbcs,
             gammas_tet,
-            alpha=args.get("fcn_ci_alpha", 0.5),
+            alpha=args["fcn_ci_alpha"],
         )
         store_solve_input(
             os.path.join(out_dir, "sols", "tetraploid_input.tsv"),
@@ -241,6 +243,7 @@ def run(args=None):
                 nbins,
                 args["mode"],
                 args["verbosity"],
+                balanced_clusters=balanced_clusters,
             )
             tetraploid_sols[n] = (obj, imf_obj)
             logging.info(f"tetraploid n={n} objective={obj} imf-objective={imf_obj}")
@@ -286,7 +289,7 @@ def run(args=None):
         gammas_noWGD,
         gammas_WGD,
         segs,
-        method=args.get("model_select", "elbow"),
+        method=args["model_select"],
     )
 
     # Mark model-selected solutions in summary
@@ -368,6 +371,7 @@ def solve(
     nbins: pd.DataFrame,
     solve_mode="ilp",
     verbosity=0,
+    balanced_clusters=None,
 ):
     """Solve for allele-specific integer copy numbers and clone proportions.
 
@@ -387,7 +391,7 @@ def solve(
     out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
 
     if (
-        not args.get("force", False)
+        not args["force"]
         and os.path.exists(out_bbc)
         and os.path.exists(out_seg)
     ):
@@ -427,13 +431,12 @@ def solve(
     if reg_term == "DMRCA_SUM" and n >= 3:
         logging.info("DMRCA_SUM: allele-LOH constraints active")
     reg_steps = args["reg_steps"]
-    reg_stepsize = args["reg_stepsize"]
     solver_type = args["solver"]
     verbose = verbosity >= 1
     timelimit = args["timelimit"]
     ampdel = not args["no_ampdel"]
-    pool_size = args.get("pool_size", 1)
-    pool_gap = args.get("pool_gap", None)
+    pool_size = args["pool_size"]
+    pool_gap = args["pool_gap"]
 
     cd_instances = None
     pool_instances = {}
@@ -456,12 +459,18 @@ def solve(
             fcn_data=fcn_data, n=n, minprop=args["min_prop"],
             max_ncns_seg=args["num_cnstates"], cn_max=cn_max, w=weights,
             ampdel=ampdel, cn=clonal, purities=purities, base=base,
-            reg_term=reg_term, reg_steps=reg_steps, reg_stepsize=reg_stepsize,
-            u_init_method=args.get("u_init", "dirichlet"),
-            u_dir_alpha=args.get("u_dir_alpha", 0.3),
-            solver_threads=args.get("solver_threads"),
+            reg_term=reg_term, reg_steps=reg_steps,
+            reg_bound=args["reg_bound"],
+            u_init_method=args["u_init"],
+            u_dir_alpha=args["u_dir_alpha"],
+            solver_threads=args["solver_threads"],
+            max_degree=args["max_degree"],
+            balanced_clusters=balanced_clusters,
+            mrca=args["mrca"],
+            zero_cn_thres=args["zero_cn_thres"],
+            cd_tol=args["cd_tol"],
         )
-        cd_instances = cd.run(**cd_run_kwargs)
+        cd_instances, tree_info = cd.run(**cd_run_kwargs)
         pool_instances = dedup_pool(cd_instances)
         store_instance_tofile(
             pool_instances, f_a, f_b, sol_dir, "cd", n,
@@ -505,7 +514,7 @@ def solve(
         pool_instances = {}
         for i0 in range(0, effective_reg_steps + 1):
             logging.debug(f"running instance {i0}/{effective_reg_steps}")
-            pparam = reg_stepsize * i0
+            pparam = args["reg_bound"] * i0 / max(effective_reg_steps, 1)
             solver.model.pparam = pparam
             if i0 > 0:
                 cA_, cB_ = sol_instances[0][1:3]

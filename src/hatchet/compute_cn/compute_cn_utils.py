@@ -375,7 +375,7 @@ def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy):
             "onetail_area": 0.025,
             "maxlim_fcn": 30,
             "ploidy": ploidy,
-            "style": args.get("style", "cnv"),
+            "style": args["style"],
         }
     )
 
@@ -653,6 +653,11 @@ def build_pool_output(
                 tree_edges=_tree_edges,
             )
             cnt_pairs = compute_pairwise_cnt(pcA, pcB, bbcs, cluster_ids)
+            if _tree_edges is not None:
+                cnt_pairs["tree_edges"] = json.dumps(
+                    {str(k): v for k, v in _tree_edges.items()}
+                )
+                cnt_pairs["tree_edge_length"] = round(p_reg, 1)
             pool_objs.append([p_imf, p_reg])
             pool_tags.append(tag)
             pool_keys.append((pparam, pidx))
@@ -686,19 +691,3 @@ def dedup_pool(pool_instances):
     return out
 
 
-def write_tree_info(sol_dir, n, tree_info):
-    """Write tree topology info (edges and total edge length) to a TSV file.
-
-    Args:
-        sol_dir: Directory to write the file in.
-        n: Number of clones (used in the filename).
-        tree_info: ``{pparam: {"tree_edges": dict, "total_edge_length": float}}``.
-    """
-    path = os.path.join(sol_dir, f"tree_info_n{n}.tsv")
-    with open(path, "w") as f:
-        f.write("pparam\ttotal_edge_length\ttree_edges\n")
-        for pparam_val, info in sorted(tree_info.items()):
-            edges_str = json.dumps(
-                {str(k): v for k, v in info["tree_edges"].items()}
-            )
-            f.write(f"{pparam_val}\t{info['total_edge_length']}\t{edges_str}\n")

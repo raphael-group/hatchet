@@ -35,6 +35,8 @@ class ILPSubset(BaseSolver):
         base: int = 1,
         zero_cn_thres=0.005,
         tol=0.001,
+        balanced_clusters=None,
+        mrca=False,
     ):
         # Deep-copy fa/fb so ILPSubset can mutate freely
         fcn_data = dict(fcn_data)
@@ -45,6 +47,7 @@ class ILPSubset(BaseSolver):
             n=n, cn_max=cn_max, fcn_data=fcn_data, w=w,
             copy_numbers=copy_numbers, ampdel=ampdel, base=base,
             minprop=minprop, zero_cn_thres=zero_cn_thres, tol=tol,
+            balanced_clusters=balanced_clusters, mrca=mrca,
         )
 
         # ILPSubset-specific fields
@@ -82,6 +85,8 @@ class ILPSubset(BaseSolver):
         new.minprop = self.minprop
         new.zero_cn_thres = self.zero_cn_thres
         new.tol = self.tol
+        new.balanced_clusters = self.balanced_clusters
+        new.mrca = self.mrca
         new.warmstart = False
         new.model = None
         # ILPSubset-specific
@@ -405,6 +410,8 @@ class ILPSubset(BaseSolver):
             get_cB = lambda _m, _n: self.cB[_m][_n]
             self._add_symmetry_breaking(model, get_cA, get_cB)
             self._add_fixed_cn_constraints(model, get_cA, get_cB)
+            self._add_balanced_constraints(model, get_cA, get_cB)
+            self._add_mrca_loh_constraints(model, get_cA, get_cB)
 
         # Purities are hot-start seeds in CD (build_random_u), not constraints.
 
@@ -471,53 +478,6 @@ class ILPSubset(BaseSolver):
                         obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "a")]
                         obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
 
-            elif pname == "DMRCA_SUM":
-                if n >= 3:
-                    manhat_vars = {}
-                    for _m in range(m):
-                        for _n in range(2, n):
-                            manhat_vars[(_m, _n, "a")] = pe.Var(
-                                bounds=(0, np.inf), domain=pe.Reals
-                            )
-                            model.add_component(
-                                f"MMDA_{_m}_{_n}", manhat_vars[(_m, _n, "a")]
-                            )
-                            manhat_vars[(_m, _n, "b")] = pe.Var(
-                                bounds=(0, np.inf), domain=pe.Reals
-                            )
-                            model.add_component(
-                                f"MMDB_{_m}_{_n}", manhat_vars[(_m, _n, "b")]
-                            )
-                            model.constraints.add(
-                                self.cA[_m][_n] - self.cA[_m][1]
-                                <= manhat_vars[(_m, _n, "a")]
-                            )
-                            model.constraints.add(
-                                self.cA[_m][1] - self.cA[_m][_n]
-                                <= manhat_vars[(_m, _n, "a")]
-                            )
-                            model.constraints.add(
-                                self.cB[_m][_n] - self.cB[_m][1]
-                                <= manhat_vars[(_m, _n, "b")]
-                            )
-                            model.constraints.add(
-                                self.cB[_m][1] - self.cB[_m][_n]
-                                <= manhat_vars[(_m, _n, "b")]
-                            )
-                    for _m, cluster_id in enumerate(self.cluster_ids):
-                        for _n in range(2, n):
-                            obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "a")]
-                            obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
-
-                    for _m in range(m):
-                        for _n in range(2, n):
-                            model.constraints.add(
-                                self.cA[_m][_n] <= self.cA[_m][1] * cn_max
-                            )
-                            model.constraints.add(
-                                self.cB[_m][_n] <= self.cB[_m][1] * cn_max
-                            )
-
             elif pname == "DADJ_SUM":
                 manhat_vars = {}
                 for _m in range(m):
@@ -565,15 +525,41 @@ class ILPSubset(BaseSolver):
                                 * manhat_vars[(_m, _n1, _n2, "b")]
                             )
 
+            elif pname == "DSPAN":
+                span_vars = {}
+                for _m in range(m):
+                    span_vars[(_m, "maxA")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                    model.add_component(f"SPA_MAX_{_m}", span_vars[(_m, "maxA")])
+                    span_vars[(_m, "minA")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                    model.add_component(f"SPA_MIN_{_m}", span_vars[(_m, "minA")])
+                    span_vars[(_m, "maxB")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                    model.add_component(f"SPB_MAX_{_m}", span_vars[(_m, "maxB")])
+                    span_vars[(_m, "minB")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                    model.add_component(f"SPB_MIN_{_m}", span_vars[(_m, "minB")])
+                    for _n in range(1, n):
+                        model.constraints.add(self.cA[_m][_n] <= span_vars[(_m, "maxA")])
+                        model.constraints.add(self.cA[_m][_n] >= span_vars[(_m, "minA")])
+                        model.constraints.add(self.cB[_m][_n] <= span_vars[(_m, "maxB")])
+                        model.constraints.add(self.cB[_m][_n] >= span_vars[(_m, "minB")])
+                for _m, cluster_id in enumerate(self.cluster_ids):
+                    obj_reg += self.w[cluster_id] * (
+                        span_vars[(_m, "maxA")] - span_vars[(_m, "minA")]
+                        + span_vars[(_m, "maxB")] - span_vars[(_m, "minB")]
+                    )
+
         if mode_t == "FULL":
             self.hot_start()
 
-        # Objective: IMF + pparam * reg
+        # Store objective components for post-solve extraction
+        model.obj_imf = pe.Expression(expr=obj_imf)
+        model.obj_reg = pe.Expression(expr=obj_reg)
+
+        # Objective: (1-pparam)*IMF + pparam*reg, pparam ∈ [0,1]
         if pname == "RAW":
             model.obj = pe.Objective(expr=obj_imf, sense=pe.minimize)
         else:
             model.obj = pe.Objective(
-                expr=obj_imf + pparam * obj_reg,
+                expr=(1 - pparam) * obj_imf + pparam * obj_reg,
                 sense=pe.minimize,
             )
         self.model = model
@@ -581,8 +567,6 @@ class ILPSubset(BaseSolver):
         if pprint:
             logging.info(str(self))
 
-    # Per-row C-step methods (create_row_lexi_model, hot_start_row,
-    # run_row_lexi) live in the RowILP subclass (row_ilp.py).
 
     def first_hot_start(self):
         """

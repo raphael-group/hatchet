@@ -8,7 +8,7 @@ import pandas as pd
 from pyomo import environ as pe
 
 from hatchet.compute_cn.solve.base_solver import BaseSolver
-from hatchet.compute_cn.solve.row_ilp import RowILP
+from hatchet.compute_cn.solve.ilp_subset import ILPSubset
 from hatchet.compute_cn.solve.tree_ilp import TreeILP
 from hatchet.compute_cn.solve.utils import Random
 
@@ -16,9 +16,9 @@ from hatchet.compute_cn.solve.utils import Random
 class Worker:
     """Runs one coordinate-descent restart at a fixed pparam.
 
-    C-step: when reg_term=DRMST uses TreeILP (monolithic tree MILP);
-            otherwise uses RowILP in CARCH mode (per-row or monolithic).
-    U-step: always RowILP in UARCH mode.
+    C-step: when reg_term=DRMST uses TreeILP (tree MILP);
+            otherwise uses ILPSubset in CARCH mode (monolithic ILP).
+    U-step: always ILPSubset in UARCH mode.
     """
 
     def __init__(self, work_id, ilp, solver_type, tree_ilp_kwargs=None,
@@ -39,20 +39,26 @@ class Worker:
         _prev_obj_u = None
         _imf_c = 0.0
         _reg_c = 0.0
+        _tree_edges = None
 
         while (_iters < max_iters) and (_convergence_iters < max_convergence_iters):
             # C-step
             if self.use_tree:
                 c_result = self._c_step_tree(_cA, _cB, _u, pparam, timelimit)
+                if c_result is None:
+                    logging.debug(
+                        f"worker {self.work_id}: C-step infeasible at pparam={pparam}"
+                    )
+                    return None
+                _imf_c, _reg_c, _cA, _cB, _tree_edges = c_result
             else:
-                c_result = self._c_step_row(_cA, _cB, _u, pparam, timelimit)
-
-            if c_result is None:
-                logging.debug(
-                    f"worker {self.work_id}: C-step infeasible at pparam={pparam}"
-                )
-                return None
-            _imf_c, _reg_c, _cA, _cB = c_result
+                c_result = self._c_step_ilp(_cA, _cB, _u, pparam, timelimit)
+                if c_result is None:
+                    logging.debug(
+                        f"worker {self.work_id}: C-step infeasible at pparam={pparam}"
+                    )
+                    return None
+                _imf_c, _reg_c, _cA, _cB = c_result
 
             # U-step: fix cA/cB, optimize u
             uarch = copy(self.ilp)
@@ -75,10 +81,10 @@ class Worker:
             _prev_obj_u = _obj_u
             _iters += 1
 
-        return _obj_u, _cA, _cB, _u, _imf_c, _reg_c
+        return _obj_u, _cA, _cB, _u, _imf_c, _reg_c, _tree_edges
 
-    def _c_step_row(self, cA, cB, u, pparam, timelimit):
-        """C-step via RowILP (CARCH mode). Returns (imf, reg, cA, cB)."""
+    def _c_step_ilp(self, cA, cB, u, pparam, timelimit):
+        """C-step via monolithic ILPSubset (CARCH mode). Returns (imf, reg, cA, cB)."""
         carch = copy(self.ilp)
         carch.fix_u(u)
         carch.create_model()
@@ -91,18 +97,24 @@ class Worker:
         if result is None:
             return None
         obj_c, _cA, _cB, _ = result
-        # obj_c is the composite objective; split not available from RowILP
-        return obj_c, 0.0, _cA, _cB
+        imf_c = pe.value(carch.model.obj_imf)
+        reg_c = pe.value(carch.model.obj_reg)
+        return imf_c, reg_c, _cA, _cB
 
     def _c_step_tree(self, cA, cB, u, pparam, timelimit):
         """C-step via TreeILP (monolithic tree MILP). Returns (imf, reg, cA, cB)."""
         if self._tree_ilp is None:
             self._tree_ilp = TreeILP(**self._tree_ilp_kwargs)
-            self._tree_ilp.build_model(fixed_u=u)
+            self._tree_ilp.build_model(
+                fixed_u=u, max_degree=_cd_global.max_degree,
+            )
+            self._tree_ilp.hot_start(cA, cB)  # seed initial cA/cB
         else:
+            # Model reuse: u/pparam updated via Param; cA/cB/z/M carry over
+            # from previous solve as MIPStart automatically.
             self._tree_ilp.update_u(u)
+            self._tree_ilp.warmstart = True
         self._tree_ilp.update_lambda(pparam)
-        self._tree_ilp.hot_start(cA, cB)
         result = self._tree_ilp.run(
             solver_type=self.solver_type, solver=self._solver,
             timelimit=timelimit,
@@ -110,7 +122,7 @@ class Worker:
         if result is None:
             return None
         imf_obj, tree_edge_len, _cA, _cB, tree_edges = result
-        return imf_obj, tree_edge_len, _cA, _cB
+        return imf_obj, tree_edge_len, _cA, _cB, tree_edges
 
 
 # ---------------------------------------------------------------------------
@@ -150,6 +162,7 @@ def _work(work_id, u, pparam, solver_type, max_iters, max_convergence_iters,
         pparam=pparam,
         max_iters=max_iters,
         max_convergence_iters=max_convergence_iters,
+        tol=_cd_global.cd_tol,
         timelimit=timelimit,
     )
 
@@ -161,27 +174,33 @@ class CoordinateDescent:
     pparam, runs all seed restarts in parallel and keeps the best solution.
 
     When reg_term=DRMST, the C-step uses a monolithic TreeILP with
-    global arborescence topology. Otherwise uses per-row RowILP.
+    global arborescence topology. Otherwise uses monolithic ILPSubset.
     """
 
     def __init__(
         self, fcn_data, n, minprop, max_ncns_seg, cn_max, cn, w, purities,
-        ampdel=True, reg_term=None, reg_steps=0, reg_stepsize=0.0,
-        base=1, solve_mode="cd", u_init_method="dirichlet", u_dir_alpha=0.3,
-        solver_threads=None, max_degree=3,
+        ampdel=True, reg_term=None, reg_steps=0, reg_bound=0.3,
+        base=1, solve_mode="cd",
+        u_init_method="dirichlet", u_dir_alpha=0.3,
+        solver_threads=None, max_degree=3, balanced_clusters=None, mrca=False,
+        zero_cn_thres=0.005, tol=0.001, cd_tol=0.001,
     ):
         self.reg_name = reg_term if reg_term is not None else "RAW"
         self.reg_steps = reg_steps
-        self.reg_stepsize = reg_stepsize
+        self.reg_bound = reg_bound
         self.u_init_method = u_init_method
         self.u_dir_alpha = u_dir_alpha
         self.solver_threads = solver_threads
+        self.max_degree = max_degree
+        self.cd_tol = cd_tol
 
-        self.ilp = RowILP(
+        self.ilp = ILPSubset(
             n=n, cn_max=cn_max, max_ncns_seg=max_ncns_seg,
             minprop=minprop, ampdel=ampdel, copy_numbers=cn,
             fcn_data=fcn_data, w=w, purities=purities,
             penalty_param=[self.reg_name, 0.0], base=base,
+            balanced_clusters=balanced_clusters, mrca=mrca,
+            zero_cn_thres=zero_cn_thres, tol=tol,
         )
         self.ilp.create_model(pprint=True)
         self.hcA, self.hcB = self.ilp.first_hot_start()
@@ -191,6 +210,9 @@ class CoordinateDescent:
             self.tree_ilp_kwargs = dict(
                 n=n, cn_max=cn_max, fcn_data=fcn_data, w=w,
                 copy_numbers=cn, ampdel=ampdel, base=base, minprop=minprop,
+                reg_name=self.reg_name,
+                balanced_clusters=balanced_clusters, mrca=mrca,
+                zero_cn_thres=zero_cn_thres, tol=tol,
             )
         else:
             self.tree_ilp_kwargs = None
@@ -219,15 +241,21 @@ class CoordinateDescent:
                     rows.append(row)
             pd.DataFrame(rows).to_csv(u0_tsv_path, sep="\t", index=False)
 
-        # Build regularization path: [0, step, 2*step, ..., steps*step]
-        dmrca_no_effect = self.reg_name == "DMRCA_SUM" and self.ilp.n <= 2
-        if self.reg_name == "RAW" or dmrca_no_effect:
+        # Build regularization path: pparam ∈ [0, reg_bound]
+        # Skip sweep when reg has no effect: RAW, DMRCA_SUM with n<=2,
+        # or any span/tree reg with n<=2 (only 1 tumor clone, no diversity)
+        no_effect = (
+            self.reg_name in ("DSPAN", "DRMST") and self.ilp.n <= 2
+        )
+        if self.reg_name == "RAW" or no_effect:
             pparams = [0]
         else:
-            pparams = [self.reg_stepsize * i for i in range(self.reg_steps + 1)]
+            step = self.reg_bound / max(self.reg_steps, 1)
+            pparams = [round(step * i, 4) for i in range(self.reg_steps + 1)]
 
         n_workers = min(j, len(seeds))
         pool_instances = {}
+        tree_info = {}
 
         executor = ProcessPoolExecutor(
             max_workers=n_workers,
@@ -276,16 +304,21 @@ class CoordinateDescent:
                     continue
 
                 best = min(instances, key=lambda x: x[0])
-                obj_u, cA, cB, u, imf_c, reg_c = best
+                obj_u, cA, cB, u, imf_c, reg_c, t_edges = best
                 logging.info(
                     f"CD: pparam={pparam}, best obj=({imf_c:.4f}, {reg_c:.1f}) "
                     f"from {len(instances)} feasible"
                 )
                 pool_instances[pparam] = [(obj_u, cA, cB, u)]
+                if t_edges is not None:
+                    tree_info[pparam] = {
+                        "tree_edges": t_edges,
+                        "total_edge_length": reg_c,
+                    }
         finally:
             executor.shutdown(wait=True)
 
         if len(pool_instances) == 0:
             raise RuntimeError("Not a single feasible solution found!")
 
-        return pool_instances
+        return pool_instances, tree_info

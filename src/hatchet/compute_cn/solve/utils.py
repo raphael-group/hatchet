@@ -320,9 +320,9 @@ def compute_individual_objs(
     imf_obj = compute_obj_IMF(w_, fA_, fB_, cA_, cB_, u_)
     reg_objs = {
         "MAXCN": compute_obj_MAXCN,
+        "DSPAN": compute_obj_DSPAN,
         "DROOT_SUM": compute_obj_DROOT_SUM,
         "DADJ_SUM": compute_obj_DADJ_SUM,
-        "DMRCA_SUM": compute_obj_DMRCA_SUM,
     }
     if pname == "DRMST":
         sub_obj = compute_obj_tree(
@@ -406,6 +406,13 @@ def compute_obj_MAXCN(weights, _fA, _fB, cA, cB, _u):
     maxA_w = np.dot(np.max(cA[:, 1:], axis=1), weights)[0]
     maxB_w = np.dot(np.max(cB[:, 1:], axis=1), weights)[0]
     return maxA_w + maxB_w
+
+
+def compute_obj_DSPAN(weights, _fA, _fB, cA, cB, _u):
+    """Compute weighted sum of allelic span (max-min) per cluster across tumor clones."""
+    spanA = np.max(cA[:, 1:], axis=1) - np.min(cA[:, 1:], axis=1)
+    spanB = np.max(cB[:, 1:], axis=1) - np.min(cB[:, 1:], axis=1)
+    return float(np.dot(spanA + spanB, weights)[0])
 
 
 def compute_obj_tree(_weights, _fA, _fB, cA, cB, _u, tree_edges=None):

@@ -101,7 +101,7 @@ def get_scaling_factor(
 
     if len(imbalanced_z) == 0:
         logging.warning("no unbalanced clusters found, skip purity estimation")
-        return (s0, None, gammas_noWGD, None, None, None, None)
+        return (s0, None, gammas_noWGD, None, None, None, None, balanced_s)
 
     cn_nowgd_all = _build_cn_candidates(maxcn_z)
     cn_wgd_all = _build_cn_candidates(maxcn_wgd_z)
@@ -318,4 +318,5 @@ def get_scaling_factor(
         pair_wgd,
         gammas_wgd,
         purities_wgd,
+        balanced_s,
     )

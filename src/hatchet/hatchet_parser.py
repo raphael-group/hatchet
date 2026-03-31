@@ -378,7 +378,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--reg_term",
         required=False,
-        choices=["RAW", "MAXCN", "DROOT_SUM", "DADJ_SUM", "DMRCA_SUM", "DRMST"],
+        choices=["RAW", "MAXCN", "DSPAN", "DROOT_SUM", "DADJ_SUM", "DRMST"],
         type=str,
         help="regularization term (default: MAXCN)",
         default="MAXCN",
@@ -386,18 +386,53 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--reg_steps",
         required=False,
-        default=10,
+        default=15,
         type=int,
-        help="Number of steps in the regularization path (default: 10)",
+        help="Number of steps in regularization path (default: 15)",
     )
     parser.add_argument(
-        "--reg_stepsize",
+        "--reg_bound",
         required=False,
-        default=0.01,
+        default=0.15,
         type=float,
-        help="Multiplicative step size between regularization path values (default: 0.01)",
+        help="Maximum pparam value for the regularization path (default: 0.15)",
+    )
+    parser.add_argument(
+        "--max_degree",
+        required=False,
+        default=3,
+        type=int,
+        help="Max node degree in tree topology for DRMST: 2=linear, 3=binary (default: 3)",
+    )
+    parser.add_argument(
+        "--mrca",
+        action="store_true",
+        default=False,
+        help="Enforce clone 1 as MRCA with LOH: if MRCA lost an allele, subclones cannot regain it",
+    )
+    parser.add_argument(
+        "--style",
+        required=False,
+        choices=["cnv", "ascn"],
+        default="cnv",
+        type=str,
+        help="CN profile plot style: cnv (total CN colors) or ascn (allele-specific) (default: cnv)",
     )
 
+    parser.add_argument(
+        "--zero_cn_thres",
+        required=False,
+        default=0.005,
+        type=float,
+        help="Clusters with weight >= this fraction of total cannot have (0,0) CN state (default: 0.005)",
+    )
+    parser.add_argument(
+        "--cd_tol",
+        required=False,
+        default=0.001,
+        type=float,
+        help="CD convergence tolerance: stop when U-step objective changes less than this (default: 0.001)",
+    )
     parser.add_argument(
         "--no_ampdel",
         action="store_true",

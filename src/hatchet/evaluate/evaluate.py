@@ -21,18 +21,18 @@ def run(args=None):
     if isinstance(args, argparse.Namespace):
         args = vars(args)
 
-    gamma = args.get("gamma", 0.05)
-    min_vaf = args.get("min_vaf", 0.0)
-    min_depth = args.get("min_depth", 5)
-    out_dir = args.get("out_dir", ".")
+    gamma = args["gamma"]
+    min_vaf = args["min_vaf"]
+    min_depth = args["min_depth"]
+    out_dir = args["out_dir"]
     os.makedirs(out_dir, exist_ok=True)
-    eval_all = args.get("eval_all", False)
+    eval_all = args["eval_all"]
 
     # Read SNVs
-    snv_file = args.get("snv")
-    snv_tsv = args.get("snv_tsv")
+    snv_file = args["snv"]
+    snv_tsv = args["snv_tsv"]
     if snv_file is not None:
-        snv_df = read_snv_vcf(snv_file, sample=args.get("vcf_sample", "tumor"))
+        snv_df = read_snv_vcf(snv_file, sample=args["vcf_sample"])
     elif snv_tsv is not None:
         snv_df = read_snv_tsv(snv_tsv)
     else:
@@ -46,7 +46,7 @@ def run(args=None):
         f"loaded {len(snv_df)} SNVs (min_vaf={min_vaf}, min_depth={min_depth})"
     )
 
-    result_dir = args.get("result_dir")
+    result_dir = args["result_dir"]
 
     # Mode 1: evaluate all pool solutions
     if eval_all and result_dir is not None:
@@ -58,7 +58,7 @@ def run(args=None):
         return
 
     # Mode 2: evaluate best solution only
-    seg_file = args.get("seg")
+    seg_file = args["seg"]
     if seg_file is None:
         if result_dir is None:
             raise ValueError("Either --seg or --result_dir must be provided")
@@ -113,8 +113,8 @@ def run(args=None):
         logging.info(f"wrote {out_snv} ({len(all_df)} SNVs)")
 
         # Plot VAF along genome
-        genome_size = args.get("genome_size")
-        region_bed = args.get("region_bed")
+        genome_size = args["genome_size"]
+        region_bed = args["region_bed"]
         if genome_size is not None:
             from hatchet.plot.plot_utils import get_expected_baf_fcn
 
