@@ -27,17 +27,14 @@ xargs = ["--verbosity", int(config["verbosity"])]
 cluster_bins_extra = []
 if bool(config["cluster_bins"].get("log_rdr", False)):
     cluster_bins_extra.append("--log_rdr")
+if config["cluster_bins"].get("top_restarts") is not None:
+    cluster_bins_extra.extend(["--top_restarts", int(config["cluster_bins"]["top_restarts"])])
 cluster_bins_args = " ".join(shlex.quote(str(x)) for x in xargs + cluster_bins_extra)
 
 ##################################################
 compute_cn_args_list = []
 if config["compute_cn"]["timelimit"] is not None:
     compute_cn_args_list.extend(["--timelimit", int(config["compute_cn"]["timelimit"])])
-if bool(config["compute_cn"]["filter_cluster"]):
-    compute_cn_args_list.append("--filter_cluster")
-    compute_cn_args_list.extend(
-        ["--filter_std", float(config["compute_cn"]["filter_std"])]
-    )
 if bool(config["compute_cn"]["diploid"]):
     compute_cn_args_list.append("--diploid")
 if bool(config["compute_cn"]["tetraploid"]):
@@ -46,12 +43,20 @@ if bool(config["compute_cn"].get("segment", False)):
     compute_cn_args_list.append("--segment")
 if bool(config["compute_cn"]["no_ampdel"]):
     compute_cn_args_list.append("--no_ampdel")
+if bool(config["compute_cn"].get("mrca", False)):
+    compute_cn_args_list.append("--mrca")
 if config["compute_cn"].get("purities"):
     compute_cn_args_list.extend(["--purities", str(config["compute_cn"]["purities"])])
+if config["compute_cn"].get("fix_cn_dip"):
+    compute_cn_args_list.extend(["--fix_cn_dip", str(config["compute_cn"]["fix_cn_dip"])])
+if config["compute_cn"].get("fix_cn_tet"):
+    compute_cn_args_list.extend(["--fix_cn_tet", str(config["compute_cn"]["fix_cn_tet"])])
 if int(config["compute_cn"].get("pool_size", 1)) > 1:
     compute_cn_args_list.extend(["--pool_size", int(config["compute_cn"]["pool_size"])])
 if config["compute_cn"].get("pool_gap") is not None:
     compute_cn_args_list.extend(["--pool_gap", float(config["compute_cn"]["pool_gap"])])
+if config["compute_cn"].get("solver_threads") is not None:
+    compute_cn_args_list.extend(["--solver_threads", int(config["compute_cn"]["solver_threads"])])
 compute_cn_args = " ".join(shlex.quote(str(x)) for x in compute_cn_args_list + xargs)
 
 ##################################################
@@ -142,7 +147,6 @@ rule run_cluster_bins:
         maxK=int(config["cluster_bins"]["maxK"]),
         t=float(config["cluster_bins"]["t"]),
         restarts=int(config["cluster_bins"]["restarts"]),
-        top_restarts=int(config["cluster_bins"]["top_restarts"]),
         niters=int(config["cluster_bins"]["niters"]),
         decode_method=str(config["cluster_bins"]["decode_method"]),
         score_method=str(config["cluster_bins"]["score_method"]),
@@ -152,6 +156,11 @@ rule run_cluster_bins:
         baf_eps=float(config["cluster_bins"]["baf_eps"]),
         min_covar=float(config["cluster_bins"]["min_covar"]),
         tau_iters=int(config["cluster_bins"]["tau_iters"]),
+        bal_lrt_alpha=float(config["cluster_bins"]["bal_lrt_alpha"]),
+        bal_lrt_margin=float(config["cluster_bins"]["bal_lrt_margin"]),
+        filter_std=float(config["cluster_bins"]["filter_std"]),
+        min_nbins=int(config["cluster_bins"]["min_nbins"]),
+        ub_nbins=int(config["cluster_bins"]["ub_nbins"]),
         optional_args=cluster_bins_args,
     log:
         os.path.join(config["log_dir"], "cluster_bins.log"),
@@ -165,7 +174,6 @@ rule run_cluster_bins:
             --maxK {params.maxK} \
             -t {params.t} \
             --restarts {params.restarts} \
-            --top_restarts {params.top_restarts} \
             --niters {params.niters} \
             --decode_method {params.decode_method} \
             --score_method {params.score_method} \
@@ -175,6 +183,11 @@ rule run_cluster_bins:
             --baf_eps {params.baf_eps} \
             --min_covar {params.min_covar} \
             --tau_iters {params.tau_iters} \
+            --bal_lrt_alpha {params.bal_lrt_alpha} \
+            --bal_lrt_margin {params.bal_lrt_margin} \
+            --filter_std {params.filter_std} \
+            --min_nbins {params.min_nbins} \
+            --ub_nbins {params.ub_nbins} \
             {params.optional_args} > {log} 2>&1
         """
 
@@ -205,25 +218,28 @@ rule run_compute_cn:
                 "bulk.seg" if manual_k is None else f"labels/bulk{manual_k}.seg",
             )
         ),
-        mode=str(config["compute_cn"]["mode"]),  # both|cd|ilp
-        solver=str(config["compute_cn"]["solver"]),  # gurobi|cbc
-        bal_tost_margin=float(config["compute_cn"]["bal_tost_margin"]),
-        bal_tost_alpha=float(config["compute_cn"]["bal_tost_alpha"]),
+        mode=str(config["compute_cn"]["mode"]),
+        solver=str(config["compute_cn"]["solver"]),
         fcn_ci_alpha=float(config["compute_cn"]["fcn_ci_alpha"]),
         minClone=int(config["compute_cn"]["minClone"]),
         maxClone=int(config["compute_cn"]["maxClone"]),
         reg_term=str(config["compute_cn"]["reg_term"]),
         reg_steps=int(config["compute_cn"]["reg_steps"]),
-        reg_stepsize=float(config["compute_cn"]["reg_stepsize"]),
+        reg_bound=float(config["compute_cn"]["reg_bound"]),
         num_cnstates=int(config["compute_cn"]["num_cnstates"]),
         diploidcmax=int(config["compute_cn"]["diploidcmax"]),
         tetraploidcmax=int(config["compute_cn"]["tetraploidcmax"]),
         min_prop=float(config["compute_cn"]["min_prop"]),
+        max_degree=int(config["compute_cn"]["max_degree"]),
+        zero_cn_thres=float(config["compute_cn"]["zero_cn_thres"]),
         cd_niters=int(config["compute_cn"]["cd_niters"]),
         cd_convergence_iters=int(config["compute_cn"]["cd_convergence_iters"]),
         cd_nseeds=int(config["compute_cn"]["cd_nseeds"]),
         cd_njobs=int(config["compute_cn"]["cd_njobs"]),
         cd_seed=int(config["compute_cn"]["cd_seed"]),
+        cd_tol=float(config["compute_cn"]["cd_tol"]),
+        u_init=str(config["compute_cn"]["u_init"]),
+        u_dir_alpha=float(config["compute_cn"]["u_dir_alpha"]),
         optional_args=compute_cn_args,
     log:
         os.path.join(config["log_dir"], "compute_cn.log"),
@@ -237,23 +253,26 @@ rule run_compute_cn:
             --solver {params.solver} \
             --genome_size {input.genome_size} \
             --region_bed {input.region_bed} \
-            --bal_tost_margin {params.bal_tost_margin} \
-            --bal_tost_alpha {params.bal_tost_alpha} \
             --fcn_ci_alpha {params.fcn_ci_alpha} \
             --minClone {params.minClone} \
             --maxClone {params.maxClone} \
             --reg_term {params.reg_term} \
             --reg_steps {params.reg_steps} \
-            --reg_stepsize {params.reg_stepsize} \
+            --reg_bound {params.reg_bound} \
             --num_cnstates {params.num_cnstates} \
             --diploidcmax {params.diploidcmax} \
             --tetraploidcmax {params.tetraploidcmax} \
             --min_prop {params.min_prop} \
+            --max_degree {params.max_degree} \
+            --zero_cn_thres {params.zero_cn_thres} \
             --cd_niters {params.cd_niters} \
             --cd_convergence_iters {params.cd_convergence_iters} \
             --cd_nseeds {params.cd_nseeds} \
             --cd_njobs {params.cd_njobs} \
             --cd_seed {params.cd_seed} \
+            --cd_tol {params.cd_tol} \
+            --u_init {params.u_init} \
+            --u_dir_alpha {params.u_dir_alpha} \
             {params.optional_args} > {log} 2>&1
         """
 

@@ -74,9 +74,9 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--top_restarts",
         required=False,
-        default=30,
+        default=None,
         type=int,
-        help="number of top-scoring inits to run full EM on (default: 30)",
+        help="number of top-scoring inits to run full EM on (default: same as --restarts)",
     )
     parser.add_argument(
         "--n_local_trials",
@@ -197,6 +197,47 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         type=int,
         help="verbose level, 0, 1, 2 (default: 0)",
     )
+
+    ##################################################
+    # balanced cluster identification (interval LRT)
+    parser.add_argument(
+        "--bal_lrt_alpha",
+        type=float,
+        required=False,
+        default=0.05,
+        help="Significance level for balanced cluster interval LRT (default: 0.05)",
+    )
+    parser.add_argument(
+        "--bal_lrt_margin",
+        type=float,
+        required=False,
+        default=0.03,
+        help="Half-width of neutral zone [0.5-δ, 0.5+δ] for balanced cluster test (default: 0.03)",
+    )
+
+    ##################################################
+    # cluster filtering
+    parser.add_argument(
+        "--filter_std",
+        required=False,
+        default=2.0,
+        type=float,
+        help="Filter clusters whose variance deviates from mean by filter_std * std (default: 2.0)",
+    )
+    parser.add_argument(
+        "--min_nbins",
+        required=False,
+        default=10,
+        type=int,
+        help="Remove clusters with fewer than min_nbins bins (default: 10)",
+    )
+    parser.add_argument(
+        "--ub_nbins",
+        required=False,
+        default=50,
+        type=int,
+        help="Variance-outlier filtering only applies to clusters with #bins <= ub_nbins (default: 50)",
+    )
     return parser
 
 
@@ -279,37 +320,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         help="Relative optimality gap for Gurobi solution pool (default: None = keep all). "
         "E.g. 0.0 keeps only optimal, 0.1 keeps within 10%% of optimal.",
     )
-    ##################################################
-    # preprocessing
-    parser.add_argument(
-        "--filter_cluster",
-        action="store_true",
-        default=False,
-        required=False,
-        help="Enable RDR/BAF variance outlier filtering of clusters before optimization (default: false)",
-    )
-    parser.add_argument(
-        "--filter_std",
-        required=False,
-        default=2.0,
-        type=float,
-        help="Filter clusters whose variance deviates from mean by filter_std * std(variances) (default: 2.0)",
-    )
-    parser.add_argument(
-        "--min_nbins",
-        required=False,
-        default=10,
-        type=int,
-        help="Minimum number of bins a cluster must have to be retained (default: 10)",
-    )
-    parser.add_argument(
-        "--ub_nbins",
-        required=False,
-        default=50,
-        type=int,
-        help="Upper bound on bins: variance-outlier filtering only applies to clusters with #bins <= ub_nbins (default: 50)",
-    )
-
     parser.add_argument(
         "--segment",
         action="store_true",
@@ -318,21 +328,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         help="Use genomic-segment-level data instead of cluster-level summaries (default: false)",
     )
 
-    parser.add_argument(
-        "--bal_tost_margin",
-        required=False,
-        default=3e-2,
-        type=float,
-        help="BAF-tolerance, locate balanced clusters (default: 0.03)",
-    )
-
-    parser.add_argument(
-        "--bal_tost_alpha",
-        type=float,
-        required=False,
-        default=0.05,
-        help="TOST equivalence test significance level (default: 0.05)",
-    )
     parser.add_argument(
         "--fcn_ci_alpha",
         type=float,
@@ -411,6 +406,20 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         help="Enforce clone 1 as MRCA with LOH: if MRCA lost an allele, subclones cannot regain it",
     )
     parser.add_argument(
+        "--fix_cn_dip",
+        required=False,
+        default=None,
+        type=str,
+        help="Fix diploid cluster CN states: 'cid1:cA|cB;cid2:cA|cB' e.g. '6:2|0;8:3|1'",
+    )
+    parser.add_argument(
+        "--fix_cn_tet",
+        required=False,
+        default=None,
+        type=str,
+        help="Fix tetraploid cluster CN states: 'cid1:cA|cB;cid2:cA|cB' e.g. '6:4|2'",
+    )
+    parser.add_argument(
         "--style",
         required=False,
         choices=["cnv", "ascn"],
@@ -422,7 +431,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--zero_cn_thres",
         required=False,
-        default=0.005,
+        default=0.001,
         type=float,
         help="Clusters with weight >= this fraction of total cannot have (0,0) CN state (default: 0.005)",
     )
@@ -575,6 +584,28 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     return parser
 
 
+def parse_fix_cn(fix_cn_str):
+    """Parse user-specified fixed CN string into a dict.
+
+    Args:
+        fix_cn_str: String like ``"6:2|0;8:3|1"`` or None.
+
+    Returns:
+        Dict ``{cluster_id: (cA, cB)}``.
+    """
+    if not fix_cn_str:
+        return {}
+    result = {}
+    for entry in fix_cn_str.split(";"):
+        entry = entry.strip()
+        if not entry:
+            continue
+        cid_str, cn_str = entry.split(":")
+        a, b = cn_str.strip().split("|")
+        result[int(cid_str)] = (int(a), int(b))
+    return result
+
+
 ##################################################
 def parse_arguments_compute_cn(argv=None):
     parser = argparse.ArgumentParser(description="HATCHet compute-cn")
@@ -595,6 +626,10 @@ def parse_arguments_compute_cn(argv=None):
                     f"Solver '{args.solver}' is not available. "
                     "Ensure the corresponding Pyomo solver backend is installed and on PATH."
                 )
+    # Parse fix_cn strings into dicts
+    args.fix_cn_dip = parse_fix_cn(args.fix_cn_dip)
+    args.fix_cn_tet = parse_fix_cn(args.fix_cn_tet)
+
     return args
 
 

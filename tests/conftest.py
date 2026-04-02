@@ -55,6 +55,11 @@ def cluster_bins_result(synthetic_data, tmp_path_factory):
         "init_method": "cna_plus_plus",
         "force": True,
         "verbosity": 1,
+        "bal_lrt_alpha": 0.05,
+        "bal_lrt_margin": 0.03,
+        "filter_std": 2.0,
+        "min_nbins": 10,
+        "ub_nbins": 50,
     }
     run_cluster_bins(args)
     return bbc_dir, ground_truth
@@ -96,13 +101,7 @@ def compute_cn_result(cluster_bins_result, synthetic_data, tmp_path_factory):
         "mode": "ilp",
         "solver": "cbc",
         "timelimit": 60,
-        "filter_cluster": False,
-        "filter_std": 2.0,
-        "min_nbins": 10,
-        "ub_nbins": 50,
-        "bal_tost_margin": 0.04,
         "tolerance": 0.03,
-        "bal_tost_alpha": 0.05,
         "minClone": 2,
         "maxClone": 2,
         "diploid": True,
@@ -135,6 +134,8 @@ def compute_cn_result(cluster_bins_result, synthetic_data, tmp_path_factory):
         "zero_cn_thres": 0.005,
         "cd_tol": 0.001,
         "style": "cnv",
+        "fix_cn_dip": {},
+        "fix_cn_tet": {},
         "verbosity": 1,
     }
     run_compute_cn(args)

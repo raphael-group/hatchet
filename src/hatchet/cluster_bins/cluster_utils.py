@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from scipy.special import betaln, polygamma
+from scipy.special import betaln
 from scipy.optimize import minimize_scalar
 from scipy.signal import find_peaks
 from scipy.stats import gaussian_kde
@@ -68,7 +68,9 @@ def estimate_BB_dispersion_normal(
     Returns:
         bb_taus: (M,) float32 array with the same tau for every sample.
     """
-    logging.info("estimate BB dispersion from normal sample (shared across tumor samples)")
+    logging.info(
+        "estimate BB dispersion from normal sample (shared across tumor samples)"
+    )
     logging.info(f"tau bound=[{min_tau},{max_tau}]")
     tau = mle_BB_dispersion(
         X_alphas_normal, X_betas_normal, p=0.5, min_tau=min_tau, max_tau=max_tau
@@ -134,7 +136,6 @@ def estimate_BB_dispersion_segment(
     return bb_taus
 
 
-
 ##################################################
 def estimate_rdr_vars(
     X_rdrs: np.ndarray,
@@ -176,39 +177,28 @@ def estimate_rdr_vars(
     return global_var[None, :]  # (1, M)
 
 
-def compute_baf_se(k_labels, k_betas_phased, X_totals, k_baf_means, k_baf_taus, k_cids):
-    """Observed Fisher information SE for per-cluster BAF means.
+def compute_baf_se(k_labels, k_bafs, k_cids):
+    """Observed SE of per-cluster BAF means from per-bin phased BAFs.
 
     Args:
-        k_labels:        (N,) cluster assignment per bin.
-        k_betas_phased:  (N, M) phased B-allele counts.
-        X_totals:        (N, M) total allele counts.
-        k_baf_means:     (K, M) fitted BAF means per cluster.
-        k_baf_taus:      (M,)   fitted BAF dispersions per sample.
-        k_cids:          (K,)   ordered active cluster IDs.
+        k_labels: (N,) cluster assignment per bin.
+        k_bafs:   (N, M) phased BAFs per bin per sample.
+        k_cids:   (K,) ordered active cluster IDs.
 
     Returns:
         baf_ses: (K, M) standard errors of BAF means.
     """
     n_clusters = len(k_cids)
-    n_samples = k_baf_means.shape[1]
+    n_samples = k_bafs.shape[1]
     baf_ses = np.full((n_clusters, n_samples), np.nan)
     for ci, c in enumerate(k_cids):
         mask = k_labels == c
+        n = mask.sum()
+        if n < 2:
+            baf_ses[ci] = np.inf
+            continue
         for m in range(n_samples):
-            p = k_baf_means[ci, m]
-            tau = k_baf_taus[m]
-            a = tau * p
-            b = tau * (1.0 - p)
-            beta_bins = k_betas_phased[mask, m]
-            alpha_bins = X_totals[mask, m] - beta_bins
-            fisher = tau**2 * np.sum(
-                polygamma(1, a)
-                + polygamma(1, b)
-                - polygamma(1, beta_bins + a)
-                - polygamma(1, alpha_bins + b)
-            )
-            baf_ses[ci, m] = 1.0 / np.sqrt(fisher) if fisher > 0 else np.inf
+            baf_ses[ci, m] = k_bafs[mask, m].std(ddof=1) / np.sqrt(n)
     return baf_ses
 
 
@@ -313,6 +303,180 @@ def mat2segs(
         ],
     )
     return segs
+
+
+def label_balanced_clusters(
+    cluster_ids,
+    cluster_labels,
+    X_betas,
+    X_totals,
+    baf_means,
+    baf_taus,
+    alpha=0.05,
+    margin=0.03,
+    n_bootstrap=200,
+    baf_eps=1e-3,
+    seed=42,
+):
+    """Interval LRT with parametric bootstrap for balanced cluster detection.
+
+    For each cluster and sample, fits the symmetric mixture model
+    ``0.5 * BB(p, tau) + 0.5 * BB(1-p, tau)`` on raw unphased allele counts.
+
+    Neutral zone [0.5 - δ, 0.5 + δ]: by mixture symmetry, optimized as
+    [0.5 - δ, 0.5]. Alt zone: [ε, 0.5 - δ].
+
+    If the unrestricted MLE falls in the neutral zone, Λ ≤ 0 → balanced.
+    Otherwise, calibrate via parametric bootstrap at boundary p = 0.5 - δ.
+
+    Balanced if p-value ≥ alpha for ALL samples.
+    """
+    from scipy.optimize import minimize_scalar
+    from scipy.stats import betabinom
+
+    def _negll(p, b, n, tau):
+        """Negative log-likelihood of mixture 0.5*BB(p,tau)+0.5*BB(1-p,tau)."""
+        a1, b1 = tau * p, tau * (1.0 - p)
+        ll_p = betaln(b + a1, n - b + b1)
+        ll_1mp = betaln(b + b1, n - b + a1)
+        norm = betaln(a1, b1)
+        return -(np.logaddexp(ll_p - norm, ll_1mp - norm) - np.log(2.0)).sum()
+
+    null_lo = max(0.5 - margin, baf_eps)
+    alt_hi = 0.5 - margin
+
+    def _interval_lrt(b, n, tau):
+        """Interval LRT statistic for one (cluster, sample)."""
+        r0 = minimize_scalar(
+            _negll, bounds=(null_lo, 0.5), method="bounded", args=(b, n, tau)
+        )
+        if baf_eps >= alt_hi:
+            return 0.0
+        r1 = minimize_scalar(
+            _negll, bounds=(baf_eps, alt_hi), method="bounded", args=(b, n, tau)
+        )
+        return max(2.0 * (-r1.fun + r0.fun), 0.0)
+
+    rng = np.random.RandomState(seed)
+    balanced = set()
+    for ci, cid in enumerate(cluster_ids):
+        mask = cluster_labels == cid
+        if mask.sum() < 2:
+            continue
+        is_bal = True
+        for si in range(X_betas.shape[1]):
+            b = X_betas[mask, si].astype(np.float64)
+            n = X_totals[mask, si].astype(np.float64)
+            tau = baf_taus[si]
+
+            obs_lrt = _interval_lrt(b, n, tau)
+            if obs_lrt <= 0.0:
+                continue
+
+            # Bootstrap at boundary p = 0.5 - δ
+            a_bnd, b_bnd = tau * (0.5 - margin), tau * (0.5 + margin)
+            n_int = n.astype(int)
+            count_ge = sum(
+                _interval_lrt(
+                    betabinom.rvs(n_int, a_bnd, b_bnd, random_state=rng).astype(
+                        np.float64
+                    ),
+                    n,
+                    tau,
+                )
+                >= obs_lrt
+                for _ in range(n_bootstrap)
+            )
+            p_val = (count_ge + 1) / (n_bootstrap + 1)
+            logging.debug(
+                f"cluster {cid} sample {si}: LRT={obs_lrt:.2f} pval={p_val:.4f}"
+            )
+            if p_val < alpha:
+                is_bal = False
+                break
+        if is_bal:
+            balanced.add(cid)
+    return balanced
+
+
+def filter_clusters(
+    cluster_ids,
+    cluster_labels,
+    X_rdrs,
+    X_bafs,
+    rdr_means,
+    baf_means,
+    fstd=2.0,
+    min_nbins=10,
+    ub_nbins=50,
+):
+    """Filter clusters by variance outlier detection.
+
+    Steps:
+        0. Remove any cluster with fewer than ``min_nbins`` bins.
+        1. Compute per-sample, per-cluster RD and BAF variance.
+        2. Mark a cluster as an outlier if its variance deviates from mean by
+           more than ``fstd`` standard deviations AND the cluster has at most
+           ``ub_nbins`` bins.
+
+    Args:
+        cluster_ids: (K,) unique cluster IDs.
+        cluster_labels: (N,) per-bin cluster assignments.
+        X_rdrs: (N, M) RDR per bin per sample.
+        X_bafs: (N, M) BAF per bin per sample.
+        rdr_means: (K, M) cluster RDR means.
+        baf_means: (K, M) cluster BAF means.
+        fstd: number of std deviations for outlier threshold.
+        min_nbins: clusters with fewer bins are always removed.
+        ub_nbins: variance outlier test only applies to clusters with <= this many bins.
+
+    Returns:
+        Set of filtered (bad) cluster IDs.
+    """
+    n_clusters = len(cluster_ids)
+    n_samples = X_rdrs.shape[1]
+    var_rd = np.zeros((n_clusters, n_samples))
+    var_baf = np.zeros((n_clusters, n_samples))
+    nbins = np.zeros(n_clusters, dtype=int)
+
+    for ci, cid in enumerate(cluster_ids):
+        mask = cluster_labels == cid
+        nbins[ci] = mask.sum()
+        if nbins[ci] == 0:
+            continue
+        for si in range(n_samples):
+            var_rd[ci, si] = (
+                np.linalg.norm(X_rdrs[mask, si] - rdr_means[ci, si], 2) / nbins[ci]
+            )
+            var_baf[ci, si] = (
+                np.linalg.norm(X_bafs[mask, si] - baf_means[ci, si], 2) / nbins[ci]
+            )
+
+    too_few = nbins < min_nbins
+    valid = ~too_few & (nbins > 0)
+    if valid.sum() == 0:
+        return set()
+
+    mv_rd = var_rd[valid].mean(axis=0)
+    stdv_rd = var_rd[valid].std(axis=0, ddof=1)
+    mv_baf = var_baf[valid].mean(axis=0)
+    stdv_baf = var_baf[valid].std(axis=0, ddof=1)
+    stdv_rd = np.maximum(stdv_rd, 1e-12)
+    stdv_baf = np.maximum(stdv_baf, 1e-12)
+
+    filtered = set()
+    for ci, cid in enumerate(cluster_ids):
+        is_outlier = (
+            np.all(np.abs(var_rd[ci] - mv_rd) > fstd * stdv_rd)
+            or np.all(np.abs(var_baf[ci] - mv_baf) > fstd * stdv_baf)
+            or too_few[ci]
+        ) and (nbins[ci] <= ub_nbins)
+        if is_outlier:
+            filtered.add(cid)
+            logging.debug(f"cluster {cid} FILTERED (#bins={nbins[ci]})")
+        else:
+            logging.debug(f"cluster {cid} kept (#bins={nbins[ci]})")
+    return filtered
 
 
 def plot_elbo_traces(traces_per_k: list, out_file: str):

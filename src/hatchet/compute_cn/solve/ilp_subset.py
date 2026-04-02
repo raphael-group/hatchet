@@ -44,10 +44,18 @@ class ILPSubset(BaseSolver):
         fcn_data["fb"] = fcn_data["fb"].copy(deep=True)
 
         super().__init__(
-            n=n, cn_max=cn_max, fcn_data=fcn_data, w=w,
-            copy_numbers=copy_numbers, ampdel=ampdel, base=base,
-            minprop=minprop, zero_cn_thres=zero_cn_thres, tol=tol,
-            balanced_clusters=balanced_clusters, mrca=mrca,
+            n=n,
+            cn_max=cn_max,
+            fcn_data=fcn_data,
+            w=w,
+            copy_numbers=copy_numbers,
+            ampdel=ampdel,
+            base=base,
+            minprop=minprop,
+            zero_cn_thres=zero_cn_thres,
+            tol=tol,
+            balanced_clusters=balanced_clusters,
+            mrca=mrca,
         )
 
         # ILPSubset-specific fields
@@ -158,6 +166,21 @@ class ILPSubset(BaseSolver):
 
         model = pe.ConcreteModel()
 
+        # Identify fixed-CN cluster rows: store constants, skip variable creation
+        fixed_rows = set()
+        if mode_t in ("FULL", "CARCH"):
+            for _m, cid in enumerate(self.cluster_ids):
+                if cid in copy_numbers:
+                    fixed_rows.add(_m)
+                    ca, cb = copy_numbers[cid]
+                    self.cA[_m][0] = self._base
+                    self.cB[_m][0] = self._base
+                    for _n in range(1, n):
+                        self.cA[_m][_n] = ca
+                        self.cB[_m][_n] = cb
+        self._fixed_rows = fixed_rows
+        free_rows = [_m for _m in range(m) if _m not in fixed_rows]
+
         # 0-cn_max var per m*k
         fA = {}
         fB = {}
@@ -188,6 +211,8 @@ class ILPSubset(BaseSolver):
 
         if mode_t in ("FULL", "CARCH"):
             for _m, _n in np.ndindex((m, n)):
+                if _m in fixed_rows:
+                    continue
                 self.cA[_m][_n] = pe.Var(bounds=(0, cAB_bounds[_m]), domain=pe.Integers)
                 model.add_component(f"cA_{_m + 1}_{_n + 1}", self.cA[_m][_n])
                 self.cB[_m][_n] = pe.Var(bounds=(0, cAB_bounds[_m]), domain=pe.Integers)
@@ -206,11 +231,9 @@ class ILPSubset(BaseSolver):
         bitcA = {}
         bitcB = {}
         if (mode_t == "FULL") or (max_ncns_seg > 0 and mode_t == "CARCH"):
-            for (
-                _b,
-                _m,
-                _n,
-            ) in np.ndindex((_M, m, n)):
+            for _b, _m, _n in np.ndindex((_M, m, n)):
+                if _m in fixed_rows:
+                    continue
                 bitcA[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                 model.add_component(
                     f"bitcA_{_b + 1}_{_m + 1}_{_n + 1}",
@@ -231,6 +254,8 @@ class ILPSubset(BaseSolver):
         vB = {}
         if mode_t == "FULL":
             for _b, _m, _n, _k in np.ndindex((_M, m, n, k)):
+                if _m in fixed_rows:
+                    continue
                 vA[(_b, _m, _n, _k)] = pe.Var(bounds=(0, 1), domain=pe.Reals)
                 model.add_component(
                     f"vA_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}",
@@ -252,7 +277,7 @@ class ILPSubset(BaseSolver):
         z = {}
         if (mode_t in ("FULL", "CARCH")) and max_ncns_seg > 0:
             for _m, _n, _d in np.ndindex((m, n, max_ncns_seg)):
-                if _n != 0:
+                if _n != 0 and _m not in fixed_rows:
                     z[(_m, _n, _d)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                     model.add_component(
                         f"z_{_m + 1}_{_n + 1}_{_d + 1}", z[(_m, _n, _d)]
@@ -271,37 +296,56 @@ class ILPSubset(BaseSolver):
 
         if mode_t == "FULL":
             for _m, _k in np.ndindex((m, k)):
-                sum_a = 0
-                for _n, _b in np.ndindex((n, _M)):
-                    sum_a += vA[(_b, _m, _n, _k)] * math.pow(2, _b)
-                    model.constraints.add(vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)])
-                    model.constraints.add(vA[(_b, _m, _n, _k)] <= self.u[_n][_k])
-                    model.constraints.add(
-                        vA[(_b, _m, _n, _k)] >= bitcA[(_b, _m, _n)] + self.u[_n][_k] - 1
-                    )
-
-                model.constraints.add(fA[(_m, _k)] == sum_a)
+                if _m in fixed_rows:
+                    # Fixed cluster: cA/cB are constants, use linear fA = Σ cA*u
+                    sum_a = sum(self.cA[_m][_n] * self.u[_n][_k] for _n in range(n))
+                    model.constraints.add(fA[(_m, _k)] == sum_a)
+                else:
+                    sum_a = 0
+                    for _n, _b in np.ndindex((n, _M)):
+                        sum_a += vA[(_b, _m, _n, _k)] * math.pow(2, _b)
+                        model.constraints.add(
+                            vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)]
+                        )
+                        model.constraints.add(vA[(_b, _m, _n, _k)] <= self.u[_n][_k])
+                        model.constraints.add(
+                            vA[(_b, _m, _n, _k)]
+                            >= bitcA[(_b, _m, _n)] + self.u[_n][_k] - 1
+                        )
+                    model.constraints.add(fA[(_m, _k)] == sum_a)
 
             for _m, _k in np.ndindex((m, k)):
-                sum_b = 0
-                for _n, _b in np.ndindex((n, _M)):
-                    sum_b += vB[(_b, _m, _n, _k)] * math.pow(2, _b)
-                    model.constraints.add(vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)])
-                    model.constraints.add(vB[(_b, _m, _n, _k)] <= self.u[_n][_k])
-                    model.constraints.add(
-                        vB[(_b, _m, _n, _k)] >= bitcB[(_b, _m, _n)] + self.u[_n][_k] - 1
-                    )
-
-                model.constraints.add(fB[(_m, _k)] == sum_b)
+                if _m in fixed_rows:
+                    sum_b = sum(self.cB[_m][_n] * self.u[_n][_k] for _n in range(n))
+                    model.constraints.add(fB[(_m, _k)] == sum_b)
+                else:
+                    sum_b = 0
+                    for _n, _b in np.ndindex((n, _M)):
+                        sum_b += vB[(_b, _m, _n, _k)] * math.pow(2, _b)
+                        model.constraints.add(
+                            vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)]
+                        )
+                        model.constraints.add(vB[(_b, _m, _n, _k)] <= self.u[_n][_k])
+                        model.constraints.add(
+                            vB[(_b, _m, _n, _k)]
+                            >= bitcB[(_b, _m, _n)] + self.u[_n][_k] - 1
+                        )
+                    model.constraints.add(fB[(_m, _k)] == sum_b)
 
             for _n, _k in np.ndindex((n, k)):
                 _sum = 0
-                for _m, _b in np.ndindex((m, _M)):
-                    _sum += bitcA[(_b, _m, _n)] + bitcB[(_b, _m, _n)]
+                for _m in range(m):
+                    if _m in fixed_rows:
+                        _sum += self.cA[_m][_n] + self.cB[_m][_n]
+                    else:
+                        for _b in range(_M):
+                            _sum += bitcA[(_b, _m, _n)] + bitcB[(_b, _m, _n)]
                 model.constraints.add(_sum >= self.u[_n][_k])
 
         if (mode_t == "FULL") or (max_ncns_seg > 0 and mode_t == "CARCH"):
             for _m, _n in np.ndindex((m, n)):
+                if _m in fixed_rows:
+                    continue
                 sum_a = 0
                 sum_b = 0
                 for _b in range(_M):
@@ -326,12 +370,12 @@ class ILPSubset(BaseSolver):
         if mode_t in ("FULL", "CARCH"):
             get_cA = lambda _m, _n: self.cA[_m][_n]
             get_cB = lambda _m, _n: self.cB[_m][_n]
-            self._add_cAB_upper_bound(model, get_cA, get_cB)
-            self._add_normal_clone_constraints(model, get_cA, get_cB)
-            self._add_zero_cn_constraints(model, get_cA, get_cB)
+            self._add_cAB_upper_bound(model, get_cA, get_cB, rows=free_rows)
+            self._add_normal_clone_constraints(model, get_cA, get_cB, rows=free_rows)
+            self._add_zero_cn_constraints(model, get_cA, get_cB, rows=free_rows)
 
             if ampdel:
-                for _m in range(m):
+                for _m in free_rows:
                     cluster_id = f_a.index[_m]
                     if cluster_id not in copy_numbers:
                         for _n in range(1, n):
@@ -370,34 +414,35 @@ class ILPSubset(BaseSolver):
 
         # buildOptionalConstraints
         if (mode_t in ("FULL", "CARCH")) and max_ncns_seg > 0:
-            for _m in range(m):
+            for _m in free_rows:
                 for _n in range(1, n):
                     _sum = 0
                     for _d in range(max_ncns_seg):
                         _sum += z[(_m, _n, _d)]
                     model.constraints.add(_sum == 1)
 
-            for _m, _b, _d in np.ndindex((m, _M, max_ncns_seg)):
-                for _i in range(1, n - 1):
-                    for _j in range(1, n):
-                        model.constraints.add(
-                            bitcA[(_b, _m, _i)] - bitcA[(_b, _m, _j)]
-                            <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
-                        )
-                        model.constraints.add(
-                            bitcA[(_b, _m, _j)] - bitcA[(_b, _m, _i)]
-                            <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
-                        )
-                        model.constraints.add(
-                            bitcB[(_b, _m, _i)] - bitcB[(_b, _m, _j)]
-                            <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
-                        )
-                        model.constraints.add(
-                            bitcB[(_b, _m, _j)] - bitcB[(_b, _m, _i)]
-                            <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
-                        )
+            for _m in free_rows:
+                for _b, _d in np.ndindex((_M, max_ncns_seg)):
+                    for _i in range(1, n - 1):
+                        for _j in range(1, n):
+                            model.constraints.add(
+                                bitcA[(_b, _m, _i)] - bitcA[(_b, _m, _j)]
+                                <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                            )
+                            model.constraints.add(
+                                bitcA[(_b, _m, _j)] - bitcA[(_b, _m, _i)]
+                                <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                            )
+                            model.constraints.add(
+                                bitcB[(_b, _m, _i)] - bitcB[(_b, _m, _j)]
+                                <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                            )
+                            model.constraints.add(
+                                bitcB[(_b, _m, _j)] - bitcB[(_b, _m, _i)]
+                                <= 2 - z[(_m, _i, _d)] - z[(_m, _j, _d)]
+                            )
 
-            for _m in range(self.m):
+            for _m in free_rows:
                 for _d in range(max_ncns_seg - 1):
                     _sum_l = _sum_l1 = 0
                     for _n in range(1, self.n):
@@ -408,10 +453,12 @@ class ILPSubset(BaseSolver):
         if mode_t in ("FULL", "CARCH"):
             get_cA = lambda _m, _n: self.cA[_m][_n]
             get_cB = lambda _m, _n: self.cB[_m][_n]
+            # Symmetry breaking uses all rows (fixed rows contribute constants)
             self._add_symmetry_breaking(model, get_cA, get_cB)
-            self._add_fixed_cn_constraints(model, get_cA, get_cB)
-            self._add_balanced_constraints(model, get_cA, get_cB)
-            self._add_mrca_loh_constraints(model, get_cA, get_cB)
+            # Fixed CN constraints are no-ops for fixed rows (already constants)
+            self._add_fixed_cn_constraints(model, get_cA, get_cB, rows=free_rows)
+            self._add_balanced_constraints(model, get_cA, get_cB, rows=free_rows)
+            self._add_mrca_loh_constraints(model, get_cA, get_cB, rows=free_rows)
 
         # Purities are hot-start seeds in CD (build_random_u), not constraints.
 
@@ -429,7 +476,7 @@ class ILPSubset(BaseSolver):
         if mode_t in ("FULL", "CARCH") and pname != "RAW":
             if pname == "MAXCN":
                 hcn_vars = {}
-                for _m in range(m):
+                for _m in free_rows:
                     hcn_vars[(_m, "a")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
                     model.add_component(f"HCA_{_m}", hcn_vars[(_m, "a")])
                     hcn_vars[(_m, "b")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
@@ -437,13 +484,20 @@ class ILPSubset(BaseSolver):
                     for _n in range(1, n):
                         model.constraints.add(self.cA[_m][_n] <= hcn_vars[(_m, "a")])
                         model.constraints.add(self.cB[_m][_n] <= hcn_vars[(_m, "b")])
-                for _m, cluster_id in enumerate(self.cluster_ids):
+                for _m in free_rows:
+                    cluster_id = self.cluster_ids[_m]
                     obj_reg += self.w[cluster_id] * hcn_vars[(_m, "a")]
                     obj_reg += self.w[cluster_id] * hcn_vars[(_m, "b")]
+                # Fixed rows: constant contribution = max CN across clones
+                for _m in fixed_rows:
+                    cluster_id = self.cluster_ids[_m]
+                    ca, cb = copy_numbers[cluster_id]
+                    obj_reg += self.w[cluster_id] * max(ca, self._base)
+                    obj_reg += self.w[cluster_id] * max(cb, self._base)
 
             elif pname == "DROOT_SUM":
                 manhat_vars = {}
-                for _m in range(m):
+                for _m in free_rows:
                     for _n in range(1, n):
                         manhat_vars[(_m, _n, "a")] = pe.Var(
                             bounds=(0, np.inf), domain=pe.Reals
@@ -473,14 +527,24 @@ class ILPSubset(BaseSolver):
                             self.cB[_m][0] - self.cB[_m][_n]
                             <= manhat_vars[(_m, _n, "b")]
                         )
-                for _m, cluster_id in enumerate(self.cluster_ids):
+                for _m in free_rows:
+                    cluster_id = self.cluster_ids[_m]
                     for _n in range(1, n):
                         obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "a")]
                         obj_reg += self.w[cluster_id] * manhat_vars[(_m, _n, "b")]
+                # Fixed rows: constant |cA - base| + |cB - base| per clone
+                for _m in fixed_rows:
+                    cluster_id = self.cluster_ids[_m]
+                    ca, cb = copy_numbers[cluster_id]
+                    obj_reg += (
+                        self.w[cluster_id]
+                        * (n - 1)
+                        * (abs(ca - self._base) + abs(cb - self._base))
+                    )
 
             elif pname == "DADJ_SUM":
                 manhat_vars = {}
-                for _m in range(m):
+                for _m in free_rows:
                     for _n1 in range(n - 1):
                         for _n2 in range(_n1 + 1, n):
                             manhat_vars[(_m, _n1, _n2, "a")] = pe.Var(
@@ -513,39 +577,69 @@ class ILPSubset(BaseSolver):
                                 self.cB[_m][_n2] - self.cB[_m][_n1]
                                 <= manhat_vars[(_m, _n1, _n2, "b")]
                             )
-                for _m, cluster_id in enumerate(self.cluster_ids):
+                for _m in free_rows:
+                    cluster_id = self.cluster_ids[_m]
                     for _n1 in range(n - 1):
                         for _n2 in range(_n1 + 1, n):
                             obj_reg += (
-                                self.w[cluster_id]
-                                * manhat_vars[(_m, _n1, _n2, "a")]
+                                self.w[cluster_id] * manhat_vars[(_m, _n1, _n2, "a")]
                             )
                             obj_reg += (
-                                self.w[cluster_id]
-                                * manhat_vars[(_m, _n1, _n2, "b")]
+                                self.w[cluster_id] * manhat_vars[(_m, _n1, _n2, "b")]
                             )
+                # Fixed rows: all clones identical, so all adj distances = 0
+                # except clone 0 (normal) vs clone _n: |ca - base| + |cb - base|
+                for _m in fixed_rows:
+                    cluster_id = self.cluster_ids[_m]
+                    ca, cb = copy_numbers[cluster_id]
+                    # (n-1) pairs involve clone 0: (0,1), (0,2), ..., (0,n-1)
+                    obj_reg += (
+                        self.w[cluster_id]
+                        * (n - 1)
+                        * (abs(ca - self._base) + abs(cb - self._base))
+                    )
 
             elif pname == "DSPAN":
                 span_vars = {}
-                for _m in range(m):
-                    span_vars[(_m, "maxA")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                for _m in free_rows:
+                    span_vars[(_m, "maxA")] = pe.Var(
+                        bounds=(0, np.inf), domain=pe.Reals
+                    )
                     model.add_component(f"SPA_MAX_{_m}", span_vars[(_m, "maxA")])
-                    span_vars[(_m, "minA")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                    span_vars[(_m, "minA")] = pe.Var(
+                        bounds=(0, np.inf), domain=pe.Reals
+                    )
                     model.add_component(f"SPA_MIN_{_m}", span_vars[(_m, "minA")])
-                    span_vars[(_m, "maxB")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                    span_vars[(_m, "maxB")] = pe.Var(
+                        bounds=(0, np.inf), domain=pe.Reals
+                    )
                     model.add_component(f"SPB_MAX_{_m}", span_vars[(_m, "maxB")])
-                    span_vars[(_m, "minB")] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
+                    span_vars[(_m, "minB")] = pe.Var(
+                        bounds=(0, np.inf), domain=pe.Reals
+                    )
                     model.add_component(f"SPB_MIN_{_m}", span_vars[(_m, "minB")])
                     for _n in range(1, n):
-                        model.constraints.add(self.cA[_m][_n] <= span_vars[(_m, "maxA")])
-                        model.constraints.add(self.cA[_m][_n] >= span_vars[(_m, "minA")])
-                        model.constraints.add(self.cB[_m][_n] <= span_vars[(_m, "maxB")])
-                        model.constraints.add(self.cB[_m][_n] >= span_vars[(_m, "minB")])
-                for _m, cluster_id in enumerate(self.cluster_ids):
+                        model.constraints.add(
+                            self.cA[_m][_n] <= span_vars[(_m, "maxA")]
+                        )
+                        model.constraints.add(
+                            self.cA[_m][_n] >= span_vars[(_m, "minA")]
+                        )
+                        model.constraints.add(
+                            self.cB[_m][_n] <= span_vars[(_m, "maxB")]
+                        )
+                        model.constraints.add(
+                            self.cB[_m][_n] >= span_vars[(_m, "minB")]
+                        )
+                for _m in free_rows:
+                    cluster_id = self.cluster_ids[_m]
                     obj_reg += self.w[cluster_id] * (
-                        span_vars[(_m, "maxA")] - span_vars[(_m, "minA")]
-                        + span_vars[(_m, "maxB")] - span_vars[(_m, "minB")]
+                        span_vars[(_m, "maxA")]
+                        - span_vars[(_m, "minA")]
+                        + span_vars[(_m, "maxB")]
+                        - span_vars[(_m, "minB")]
                     )
+                # Fixed rows: all clones have same CN → span = 0, no contribution
 
         if mode_t == "FULL":
             self.hot_start()
@@ -566,7 +660,6 @@ class ILPSubset(BaseSolver):
 
         if pprint:
             logging.info(str(self))
-
 
     def first_hot_start(self):
         """
@@ -656,7 +749,10 @@ class ILPSubset(BaseSolver):
         rank = get_rank(_cA, _cB)
         rank_indices = np.argsort(rank)
 
+        fixed_rows = getattr(self, "_fixed_rows", set())
         for _m, _n in np.ndindex((m, n)):
+            if _m in fixed_rows:
+                continue
             self.cA[_m][rank_indices[_n]].value = _cA[_m][_n]
             self.cB[_m][rank_indices[_n]].value = _cB[_m][_n]
         self.warmstart = True

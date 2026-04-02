@@ -24,8 +24,8 @@ cluster_bins:
   t: 1e-6
   # number of random restarts per K
   restarts: 30
-  # number of top-scoring inits to run full EM on
-  top_restarts: 30
+  # number of top-scoring inits to run full EM on (null = same as restarts)
+  top_restarts:
   # EM iterations per restart
   niters: 50
 
@@ -51,6 +51,15 @@ cluster_bins:
   # initialization method: cna_plus_plus | kmeans_plus_plus
   init_method: "cna_plus_plus"
 
+  # balanced cluster interval LRT
+  bal_lrt_alpha: 0.05
+  bal_lrt_margin: 0.03
+
+  # cluster variance-outlier filtering
+  filter_std: 2.0
+  min_nbins: 10
+  ub_nbins: 50
+
 ##################################################
 compute_cn:
   # manually select cluster_bins bbc/seg by cluster <k> (null = auto)
@@ -60,7 +69,7 @@ compute_cn:
   segment: false
 
   # solver mode: ilp | cd | both
-  mode: ilp
+  mode: cd
   # ILP solver backend: gurobi | cbc
   solver: gurobi
   # ILP solver timelimit in seconds (null = unlimited)
@@ -70,13 +79,6 @@ compute_cn:
   # Relative optimality gap for solution pool (null = keep all feasible)
   pool_gap: null
 
-  # filter clusters by variance distribution
-  filter_cluster: false
-  filter_std: 2.0
-
-  # tolerances for locating balanced/clonal clusters
-  bal_tost_margin: 0.03
-  bal_tost_alpha: 0.05
   # significance level for fractional CN confidence intervals
   fcn_ci_alpha: 0.05
 
@@ -86,10 +88,10 @@ compute_cn:
   diploid: false
   tetraploid: false
 
-  # regularization term: RAW | MAXCN | DROOT_SUM | DADJ_SUM | DMRCA_SUM
-  reg_term: "MAXCN"
-  reg_steps: 10
-  reg_stepsize: 0.01
+  # regularization term: RAW | MAXCN | DSPAN | DROOT_SUM | DADJ_SUM | DRMST
+  reg_term: "DSPAN"
+  reg_steps: 15
+  reg_bound: 0.15
 
   # constraints
   # disable amp/del symmetry constraint
@@ -101,9 +103,19 @@ compute_cn:
   tetraploidcmax: 12
   # minimum clone proportion
   min_prop: 0.01
+  # enforce clone 1 as MRCA with irreversible LOH
+  mrca: false
+  # max degree (in+out) for tree nodes (DRMST only)
+  max_degree: 3
+  # clusters with weight >= this fraction cannot have (0,0) CN
+  zero_cn_thres: 0.001
 
-  # per-sample tumor purity override, used as hot-start (format: "sample1:0.8;sample2:0.7", null = inferred)
+  # per-sample tumor purity override (format: "sample1:0.8;sample2:0.7", null = inferred)
   purities:
+
+  # user-specified fixed CN states (format: "cid:cA|cB;...", null = none)
+  fix_cn_dip:
+  fix_cn_tet:
 
   # Coordinate-descent parameters
   cd_niters: 10
@@ -111,6 +123,10 @@ compute_cn:
   cd_nseeds: 400
   cd_njobs: 8
   cd_seed: 42
+  cd_tol: 0.001
+  u_init: "dirichlet"
+  u_dir_alpha: 0.3
+  solver_threads:
 
 ##################################################
 plot_cn:

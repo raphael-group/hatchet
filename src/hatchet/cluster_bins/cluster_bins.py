@@ -54,11 +54,7 @@ def run(args=None):
 
     out_bbc = os.path.join(out_dir, "bulk.bbc")
     out_seg = os.path.join(out_dir, "bulk.seg")
-    if (
-        not args["force"]
-        and os.path.exists(out_bbc)
-        and os.path.exists(out_seg)
-    ):
+    if not args["force"] and os.path.exists(out_bbc) and os.path.exists(out_seg):
         logging.info(
             f"skip cluster-bins: {out_bbc} and {out_seg} already exist (use --force to re-run)"
         )
@@ -76,7 +72,7 @@ def run(args=None):
     minK = args["minK"]
     maxK = args["maxK"]
     restarts = args["restarts"]
-    top_restarts = args["top_restarts"]
+    top_restarts = args["top_restarts"] if args["top_restarts"] is not None else restarts
     n_local_trials = args["n_local_trials"]
     n_iter = args["niters"]
 
@@ -252,7 +248,6 @@ def run(args=None):
     score_records = []
     elbo_data = []  # list of (K, all_elbo_traces, best_it)
 
-    top_restarts = min(top_restarts, len(inits_maxK))
     sorted_inits = sorted(inits_maxK.items(), key=lambda x: x[1][-1], reverse=False)
     inits_run = dict(sorted_inits[:top_restarts])
 
@@ -371,6 +366,39 @@ def run(args=None):
         k_baf_means = best_sol["BAF_means"][k_cids]
         k_baf_taus = best_sol["BAF_taus"]
 
+        balanced_ids = label_balanced_clusters(
+            k_cids,
+            k_labels,
+            X_betas,
+            X_totals,
+            k_baf_means,
+            k_baf_taus,
+            alpha=args["bal_lrt_alpha"],
+            margin=args["bal_lrt_margin"],
+            baf_eps=baf_eps,
+        )
+        for ci, c in enumerate(k_cids):
+            if c in balanced_ids:
+                mask = k_labels == c
+                k_baf_means[ci] = 0.5
+                k_bafs[mask] = X_bafs[mask]
+                k_betas_phased[mask] = X_betas[mask]
+        logging.info(f"K={K} balanced clusters: {sorted(balanced_ids)}")
+
+        filtered_ids = filter_clusters(
+            k_cids,
+            k_labels,
+            X_rdrs,
+            k_bafs,
+            k_rdr_means if not log_rdr else np.exp(k_rdr_means),
+            k_baf_means,
+            fstd=args["filter_std"],
+            min_nbins=args["min_nbins"],
+            ub_nbins=args["ub_nbins"],
+        )
+        if filtered_ids:
+            logging.info(f"K={K} filtered clusters: {sorted(filtered_ids)}")
+
         if log_rdr:
             k_rdr_means_nat = np.exp(k_rdr_means)
             k_rdr_vars_nat = np.exp(2.0 * k_rdr_means) * k_rdr_vars
@@ -423,14 +451,7 @@ def run(args=None):
         bbcs["BAF"] = k_bafs.ravel()
         bbcs["BETA"] = k_betas_phased.ravel().astype(int)
         bbcs["ALPHA"] = (X_totals - k_betas_phased).ravel().astype(int)
-        k_baf_ses = compute_baf_se(
-            k_labels,
-            k_betas_phased,
-            X_totals,
-            k_baf_means,
-            k_baf_taus,
-            k_cids,
-        )
+        k_baf_ses = compute_baf_se(k_labels, k_bafs, k_cids)
         k_rdr_ses = compute_rdr_se(k_labels, k_rdr_vars_nat, k_cids)
         k_segs = mat2segs(
             bbcs,
@@ -443,6 +464,8 @@ def run(args=None):
             k_rdr_ses,
             k_cids,
         )
+        k_segs["is_balanced"] = k_segs["#ID"].isin(balanced_ids)
+        k_segs["is_filtered"] = k_segs["#ID"].isin(filtered_ids)
         bbcs.to_csv(
             os.path.join(label_dir, f"bulk{K}.bbc"),
             sep="\t",

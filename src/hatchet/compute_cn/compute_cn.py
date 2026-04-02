@@ -7,6 +7,7 @@ import pandas as pd
 
 from hatchet.utils import (
     add_file_logging,
+    log_arguments,
     read_bbc_file,
     setup_logging,
 )
@@ -16,7 +17,6 @@ from hatchet.compute_cn.compute_cn_utils import (
     build_segment_data,
     compute_fractional_cn,
     dedup_pool,
-    filtering,
     load_pool_from_disk,
     plot_pareto_pdf,
     pool_entries_for_plot,
@@ -24,7 +24,7 @@ from hatchet.compute_cn.compute_cn_utils import (
 )
 from hatchet.compute_cn.scaling import get_scaling_factor
 from hatchet.compute_cn.model_select import model_selection
-from hatchet.hatchet_parser import parse_arguments_compute_cn
+from hatchet.hatchet_parser import parse_arguments_compute_cn, parse_fix_cn
 from hatchet.compute_cn.solve.utils import (
     store_solve_input,
     store_instance_tofile,
@@ -45,37 +45,43 @@ def run(args=None):
     out_dir = args["result_dir"]
     os.makedirs(out_dir, exist_ok=True)
     add_file_logging(out_dir, "compute-cn")
+    log_arguments(args)
     plot_dir = os.path.join(out_dir, "plots")
     sols_dir = os.path.join(out_dir, "sols")
     os.makedirs(plot_dir, exist_ok=True)
     os.makedirs(sols_dir, exist_ok=True)
 
     logging.info("load arguments")
+
+    fix_cn_dip = args["fix_cn_dip"]
+    fix_cn_tet = args["fix_cn_tet"]
+    # Parse fix_cn strings into dicts if not already parsed
+    if fix_cn_dip is None:
+        fix_cn_dip = {}
+    elif isinstance(fix_cn_dip, str):
+        fix_cn_dip = parse_fix_cn(fix_cn_dip)
+    if fix_cn_tet is None:
+        fix_cn_tet = {}
+    elif isinstance(fix_cn_tet, str):
+        fix_cn_tet = parse_fix_cn(fix_cn_tet)
+    args["fix_cn_dip"] = fix_cn_dip
+    args["fix_cn_tet"] = fix_cn_tet
+    if fix_cn_dip:
+        logging.info(f"User-specified diploid fixed CN: {fix_cn_dip}")
+    if fix_cn_tet:
+        logging.info(f"User-specified tetraploid fixed CN: {fix_cn_tet}")
+
     bbcs = read_bbc_file(bbc_file)
     segs = pd.read_table(seg_file, sep="\t")
 
     samples = sorted(bbcs["SAMPLE"].unique().tolist())
-    clusters = sorted(segs["#ID"].unique().tolist())
-    # TODO: move cluster filtering into cluster-bins step
-    if args["filter_cluster"]:
-        good_clusters, bad_clusters = filtering(
-            bbc=bbcs,
-            seg=segs,
-            samples=samples,
-            clusters=clusters,
-            fstd=args["filter_std"],
-            min_nbins=args["min_nbins"],
-            ub_nbins=args["ub_nbins"],
-        )
-        if len(bad_clusters) > 0:
-            segs = segs[segs["#ID"].isin(good_clusters)].reset_index(drop=True)
-            bbcs = bbcs[bbcs["CLUSTER"].isin(good_clusters)].reset_index(drop=True)
-            fseg_path = os.path.join(out_dir, "bulk.good.seg")
-            segs.to_csv(fseg_path, header=True, index=False, sep="\t")
-            args["seg"] = fseg_path
-            fbbc_path = os.path.join(out_dir, "bulk.good.bbc")
-            bbcs.to_csv(fbbc_path, header=True, index=False, sep="\t")
-            args["bbc"] = fbbc_path
+
+    # Remove clusters marked as filtered by cluster-bins
+    filtered_ids = segs.loc[segs["is_filtered"], "#ID"].unique().tolist()
+    if filtered_ids:
+        logging.info(f"Excluding filtered clusters from seg: {filtered_ids}")
+        segs = segs[~segs["is_filtered"]].reset_index(drop=True)
+        bbcs = bbcs[~bbcs["CLUSTER"].isin(filtered_ids)].reset_index(drop=True)
 
     (
         s0,
@@ -89,8 +95,8 @@ def run(args=None):
     ) = get_scaling_factor(
         samples,
         segs,
-        bal_tost_alpha=args["bal_tost_alpha"],
-        bal_tost_margin=args["bal_tost_margin"],
+        fix_cn_dip=fix_cn_dip,
+        fix_cn_tet=fix_cn_tet,
         maxcn=args["diploidcmax"],
         maxcn_wgd=args["tetraploidcmax"],
     )
@@ -133,6 +139,11 @@ def run(args=None):
             logging.warning("no clonal pair inferred, using s0 only")
             clonal_dip = {s0: (1, 1)}
             purities_noWGD = {s: 0.0 for s in samples}
+
+        # Merge user-specified fixed CN states
+        if fix_cn_dip:
+            clonal_dip.update(fix_cn_dip)
+            logging.info(f"Fixed CN states (including user): {clonal_dip}")
 
         logging.info("Inferred diploid RD scaling factor gamma per sample:")
         for sample, gamma in gammas_noWGD.items():
@@ -390,11 +401,7 @@ def solve(
     out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
     out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
 
-    if (
-        not args["force"]
-        and os.path.exists(out_bbc)
-        and os.path.exists(out_seg)
-    ):
+    if not args["force"] and os.path.exists(out_bbc) and os.path.exists(out_seg):
         logging.info(
             f"skip {ploidy} n={n}: results already exist (use --force to re-solve)"
         )
@@ -440,9 +447,7 @@ def solve(
 
     cd_instances = None
     pool_instances = {}
-    u0_tsv_path = (
-        os.path.join(sol_dir, "u0_seeds.tsv") if sol_dir is not None else None
-    )
+    u0_tsv_path = os.path.join(sol_dir, "u0_seeds.tsv") if sol_dir is not None else None
     cd_run_kwargs = dict(
         solver_type=solver_type,
         max_iters=args["cd_niters"],
@@ -456,10 +461,18 @@ def solve(
 
     if solve_mode in ("cd", "both"):
         cd = CoordinateDescent(
-            fcn_data=fcn_data, n=n, minprop=args["min_prop"],
-            max_ncns_seg=args["num_cnstates"], cn_max=cn_max, w=weights,
-            ampdel=ampdel, cn=clonal, purities=purities, base=base,
-            reg_term=reg_term, reg_steps=reg_steps,
+            fcn_data=fcn_data,
+            n=n,
+            minprop=args["min_prop"],
+            max_ncns_seg=args["num_cnstates"],
+            cn_max=cn_max,
+            w=weights,
+            ampdel=ampdel,
+            cn=clonal,
+            purities=purities,
+            base=base,
+            reg_term=reg_term,
+            reg_steps=reg_steps,
             reg_bound=args["reg_bound"],
             u_init_method=args["u_init"],
             u_dir_alpha=args["u_dir_alpha"],
@@ -473,8 +486,14 @@ def solve(
         cd_instances, tree_info = cd.run(**cd_run_kwargs)
         pool_instances = dedup_pool(cd_instances)
         store_instance_tofile(
-            pool_instances, f_a, f_b, sol_dir, "cd", n,
-            fcn_data=fcn_data, nbins=nbins,
+            pool_instances,
+            f_a,
+            f_b,
+            sol_dir,
+            "cd",
+            n,
+            fcn_data=fcn_data,
+            nbins=nbins,
         )
 
     sol_instances = None
