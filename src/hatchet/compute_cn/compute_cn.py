@@ -84,17 +84,17 @@ def run(args=None):
         bbcs = bbcs[~bbcs["CLUSTER"].isin(filtered_ids)].reset_index(drop=True)
 
     (
-        s0,
-        pair_noWGD,
+        clonal_dip,
         gammas_noWGD,
         purities_noWGD,
-        pair_WGD,
+        clonal_tet,
         gammas_WGD,
         purities_WGD,
         balanced_clusters,
     ) = get_scaling_factor(
         samples,
         segs,
+        bbcs,
         fix_cn_dip=fix_cn_dip,
         fix_cn_tet=fix_cn_tet,
         maxcn=args["diploidcmax"],
@@ -130,22 +130,8 @@ def run(args=None):
 
     diploid_sols = {}
     if run_diploid:
-        if pair_noWGD is not None:
-            logging.info(f"Inferred (1,1) balanced cluster={s0}")
-            (s, z, (sa, sb), (za, zb)) = pair_noWGD
-            logging.info(f"Inferred clonal pair: {s}:({sa},{sb}), {z}:({za},{zb})")
-            clonal_dip = {s: (sa, sb), z: (za, zb)}
-        else:
-            logging.warning("no clonal pair inferred, using s0 only")
-            clonal_dip = {s0: (1, 1)}
-            purities_noWGD = {s: 0.0 for s in samples}
-
-        # Merge user-specified fixed CN states
-        if fix_cn_dip:
-            clonal_dip.update(fix_cn_dip)
-            logging.info(f"Fixed CN states (including user): {clonal_dip}")
-
-        logging.info("Inferred diploid RD scaling factor gamma per sample:")
+        logging.info(f"Diploid clonal CN: {clonal_dip}")
+        logging.info("Diploid RD scaling factor gamma per sample:")
         for sample, gamma in gammas_noWGD.items():
             logging.info(f"{sample}\tgamma={gamma}")
         gammas_dip = pd.Series(gammas_noWGD).sort_index()
@@ -215,13 +201,11 @@ def run(args=None):
                 )
 
     tetraploid_sols = {}
-    if run_tetraploid and pair_WGD is not None:
-        (s, z, (sa, sb), (za, zb)) = pair_WGD
-        logging.info(f"Inferred clonal pair: {s}:({sa},{sb}), {z}:({za},{zb})")
-        logging.info("Inferred tetraploid RD scaling factor gamma per sample:")
+    if run_tetraploid and clonal_tet is not None:
+        logging.info(f"Tetraploid clonal CN: {clonal_tet}")
+        logging.info("Tetraploid RD scaling factor gamma per sample:")
         for sample, gamma in gammas_WGD.items():
             logging.info(f"{sample}\tgamma={gamma}")
-        clonal_tet = {s: (sa, sb), z: (za, zb)}
         gammas_tet = pd.Series(gammas_WGD).sort_index()
         fcn_tet = compute_fractional_cn(
             rdr,

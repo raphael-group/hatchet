@@ -5,7 +5,7 @@ import pandas as pd
 from scipy.special import betaln
 from scipy.optimize import minimize_scalar
 from scipy.signal import find_peaks
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde, betabinom
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -331,8 +331,6 @@ def label_balanced_clusters(
 
     Balanced if p-value ≥ alpha for ALL samples.
     """
-    from scipy.optimize import minimize_scalar
-    from scipy.stats import betabinom
 
     def _negll(p, b, n, tau):
         """Negative log-likelihood of mixture 0.5*BB(p,tau)+0.5*BB(1-p,tau)."""
@@ -342,11 +340,10 @@ def label_balanced_clusters(
         norm = betaln(a1, b1)
         return -(np.logaddexp(ll_p - norm, ll_1mp - norm) - np.log(2.0)).sum()
 
-    null_lo = max(0.5 - margin, baf_eps)
-    alt_hi = 0.5 - margin
-
     def _interval_lrt(b, n, tau):
         """Interval LRT statistic for one (cluster, sample)."""
+        null_lo = max(0.5 - margin, baf_eps)
+        alt_hi = 0.5 - margin
         r0 = minimize_scalar(
             _negll, bounds=(null_lo, 0.5), method="bounded", args=(b, n, tau)
         )

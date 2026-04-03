@@ -101,7 +101,6 @@ def compute_cn_result(cluster_bins_result, synthetic_data, tmp_path_factory):
         "mode": "ilp",
         "solver": "cbc",
         "timelimit": 60,
-        "tolerance": 0.03,
         "minClone": 2,
         "maxClone": 2,
         "diploid": True,
