@@ -83,8 +83,8 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         required=False,
         default=3,
         type=int,
-        help="Number of candidate bins to evaluate per k-means++ seeding step; "
-        "best by log-likelihood is kept (default: 3, 1 = original single-draw)",
+        help="number of local search per init seeding iteration"
+        "best by log-likelihood is kept (default: 3)",
     )
     parser.add_argument(
         "--niters",
@@ -237,6 +237,13 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         default=50,
         type=int,
         help="Variance-outlier filtering only applies to clusters with #bins <= ub_nbins (default: 50)",
+    )
+    parser.add_argument(
+        "--skip_mhbafs",
+        action="store_true",
+        default=False,
+        help="Skip mhBAF folding after decoding. By default, clusters with BAF > 0.5 "
+        "have their BAF means and per-bin phases flipped to enforce the minor-allele convention.",
     )
     return parser
 

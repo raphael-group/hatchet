@@ -72,7 +72,9 @@ def run(args=None):
     minK = args["minK"]
     maxK = args["maxK"]
     restarts = args["restarts"]
-    top_restarts = args["top_restarts"] if args["top_restarts"] is not None else restarts
+    top_restarts = (
+        args["top_restarts"] if args["top_restarts"] is not None else restarts
+    )
     n_local_trials = args["n_local_trials"]
     n_iter = args["niters"]
 
@@ -365,6 +367,16 @@ def run(args=None):
         k_rdr_vars = best_sol["RDR_vars"][k_cids]
         k_baf_means = best_sol["BAF_means"][k_cids]
         k_baf_taus = best_sol["BAF_taus"]
+
+        # mhBAF fold: flip BAF means and phases for clusters with BAF > 0.5
+        if not args["skip_mhbafs"]:
+            for ci, c in enumerate(k_cids):
+                if np.mean(k_baf_means[ci]) > 0.5:
+                    k_baf_means[ci] = 1.0 - k_baf_means[ci]
+                    mask = k_labels == c
+                    k_phases[mask] = 1 - k_phases[mask]
+                    k_betas_phased[mask] = X_totals[mask] - k_betas_phased[mask]
+                    k_bafs[mask] = k_betas_phased[mask] / X_totals[mask]
 
         balanced_ids = label_balanced_clusters(
             k_cids,

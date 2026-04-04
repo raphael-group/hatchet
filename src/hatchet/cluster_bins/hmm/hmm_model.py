@@ -260,6 +260,18 @@ def run_hmm(
         )
         t2_fwdbwd = time.perf_counter()
 
+        # Penalized ELBO (IG log-prior on RDR variance)
+        if ig_alpha > 0:
+            ig_log_prior = np.sum(
+                -(ig_alpha + 1) * np.log(rdr_vars) - ig_beta / rdr_vars
+            )
+            loglik_penalized = loglik + ig_log_prior
+        else:
+            loglik_penalized = loglik
+
+        delta_ll = loglik_penalized - elbo_trace[-1]
+        elbo_trace.append(loglik_penalized)
+
         rdr_means, rdr_vars, baf_means, baf_taus, log_startprobs = do_mstep(
             X_rdrs,
             X_alphas,
@@ -282,17 +294,6 @@ def run_hmm(
         t_loglik_sum += t1_loglik - t0
         t_fwdbwd_sum += t2_fwdbwd - t1_loglik
         t_mstep_sum += t3_mstep - t2_fwdbwd
-
-        if ig_alpha > 0:
-            ig_log_prior = np.sum(
-                -(ig_alpha + 1) * np.log(rdr_vars) - ig_beta / rdr_vars
-            )
-            loglik_penalized = loglik + ig_log_prior
-        else:
-            loglik_penalized = loglik
-
-        delta_ll = loglik_penalized - elbo_trace[-1]
-        elbo_trace.append(loglik_penalized)
 
         # Per-iter multimodal diagnostic (cheap MAP decode from posteriors)
         cluster_posts_it = np.sum(posts, axis=2)  # (N, K)

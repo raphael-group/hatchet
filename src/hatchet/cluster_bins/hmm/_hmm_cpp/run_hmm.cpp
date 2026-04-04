@@ -186,6 +186,26 @@ RunHMMResult run_hmm_cpp(
                     posts[(long)n * K * 2 + (long)k * 2 + 0]
                   + posts[(long)n * K * 2 + (long)k * 2 + 1];
 
+        // Penalized ELBO (IG log-prior on RDR variance)
+        double loglik_penalized = loglik;
+        if (ig_alpha > 0 && ig_beta != nullptr) {
+            double ig_log_prior = 0.0;
+            for (int k = 0; k < K; ++k)
+                for (int m = 0; m < M; ++m) {
+                    double v = rdr_vars[(long)k * M + m];
+                    ig_log_prior += -(ig_alpha + 1.0) * std::log(v) - ig_beta[m] / v;
+                }
+            loglik_penalized += ig_log_prior;
+        }
+
+        // Convergence check
+        double delta_ll = loglik_penalized - elbo_trace.back();
+        elbo_trace.push_back(loglik_penalized);
+        if (std::abs(delta_ll) < tol_ll) {
+            n_done = it + 1;
+            break;
+        }
+
         // M-step: start probabilities
         update_start_probs(
             posts.data(), seg_starts.data(), S, K, tol,
@@ -205,34 +225,11 @@ RunHMMResult run_hmm_cpp(
             posts_kn2.data(), baf_taus.data(),
             baf_means.data(), N, K, M, baf_eps);
 
-        // Fold mhBAF convention (mean ≤ 0.5)
-        apply_mhbafs(baf_means.data(), K, M);
-
         // M-step: BAF tau (first tau_iters iterations only)
         if (it < tau_iters) {
             update_baf_tau_cpp(
                 X_alphas, X_betas, posts_nk.data(),
                 baf_taus.data(), N, K, M, 0.5, min_tau, max_tau);
-        }
-
-        // Penalized ELBO (IG log-prior on RDR variance)
-        double loglik_penalized = loglik;
-        if (ig_alpha > 0 && ig_beta != nullptr) {
-            double ig_log_prior = 0.0;
-            for (int k = 0; k < K; ++k)
-                for (int m = 0; m < M; ++m) {
-                    double v = rdr_vars[(long)k * M + m];
-                    ig_log_prior += -(ig_alpha + 1.0) * std::log(v) - ig_beta[m] / v;
-                }
-            loglik_penalized += ig_log_prior;
-        }
-
-        // Convergence check
-        double delta_ll = loglik_penalized - elbo_trace.back();
-        elbo_trace.push_back(loglik_penalized);
-        if (std::abs(delta_ll) < tol_ll) {
-            n_done = it + 1;
-            break;
         }
     }
 

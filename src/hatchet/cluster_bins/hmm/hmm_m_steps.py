@@ -38,9 +38,8 @@ def do_mstep(
     Updates RDR Gaussian parameters (means and variances) via closed-form
     weighted statistics, BAF Beta-Binomial means via scipy bounded scalar
     optimization, and start probabilities from posterior counts at segment
-    starts.  BAF means are NOT folded here; the mhBAF identifiability
-    constraint is applied once after EM converges (in run_hmm) so that the
-    ELBO is strictly monotone throughout training.
+    starts.  BAF means are NOT folded here; the mhBAF fold is applied
+    after decoding in cluster_bins.py to preserve EM monotonicity.
 
     Returns:
         rdr_means:      (K, M) numpy array.
@@ -83,7 +82,6 @@ def do_mstep(
     baf_means = _update_baf_means(
         baf_means_init, X_alphas.T, X_betas.T, baf_taus, posts_kn2, baf_eps
     )
-    baf_means = convert_mhbafs(baf_means)
 
     # ---- BAF tau (optional) — estimate from k=0 (BAF=0.5) only ----
     if update_tau:
