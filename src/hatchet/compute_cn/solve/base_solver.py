@@ -1,7 +1,7 @@
 """Base class for Pyomo-based copy-number solvers.
 
 Provides shared constructor fields, constraint helper methods, and solver
-invocation utilities used by ILPSubset, RowILP, and TreeILP.
+invocation utilities used by ILPSubset.
 """
 
 import numpy as np
@@ -16,7 +16,7 @@ class BaseSolver:
     provides reusable methods for building common Pyomo constraints and
     managing solver invocation.
 
-    Subclasses: ``ILPSubset``, ``TreeILP``.
+    Subclass: ``ILPSubset``.
     """
 
     def __init__(
@@ -84,18 +84,17 @@ class BaseSolver:
     # clone *n*.  This abstracts over the different variable layouts:
     #
     #   ILPSubset:  lambda m, n: self.cA[m][n]
-    #   TreeILP:    lambda m, n: var_cA[(m, n)]
 
     def _add_normal_clone_constraints(self, model, get_cA, get_cB, rows=None):
         """Fix clone 0 at (1,1) for every cluster in *rows*."""
-        for _m in (rows if rows is not None else range(self.m)):
+        for _m in rows if rows is not None else range(self.m):
             model.constraints.add(get_cA(_m, 0) == 1)
             model.constraints.add(get_cB(_m, 0) == 1)
 
     def _add_zero_cn_constraints(self, model, get_cA, get_cB, rows=None):
         """Forbid zero total CN for significant clusters, tumor clones."""
         w_total = sum(self.w)
-        for _m in (rows if rows is not None else range(self.m)):
+        for _m in rows if rows is not None else range(self.m):
             cluster_id = self.cluster_ids[_m]
             if self.w[cluster_id] / w_total >= self.zero_cn_thres:
                 for _n in range(1, self.n):
@@ -112,7 +111,7 @@ class BaseSolver:
         cn_max = self.cn_max
         _base = self._base
         ad_vars = {}
-        for _m in (rows if rows is not None else range(self.m)):
+        for _m in rows if rows is not None else range(self.m):
             cluster_id = self.cluster_ids[_m]
             if cluster_id in self.copy_numbers:
                 continue
@@ -134,7 +133,7 @@ class BaseSolver:
 
     def _add_cAB_upper_bound(self, model, get_cA, get_cB, rows=None):
         """cA[m][n] + cB[m][n] <= cAB_bound for all clusters and clones."""
-        for _m in (rows if rows is not None else range(self.m)):
+        for _m in rows if rows is not None else range(self.m):
             cluster_id = self.cluster_ids[_m]
             bound = self.cAB_bound(cluster_id)
             for _n in range(self.n):
@@ -142,7 +141,7 @@ class BaseSolver:
 
     def _add_fixed_cn_constraints(self, model, get_cA, get_cB, rows=None):
         """Fix CN state for clonal clusters from ``self.copy_numbers``."""
-        for _m in (rows if rows is not None else range(self.m)):
+        for _m in rows if rows is not None else range(self.m):
             cluster_id = self.cluster_ids[_m]
             if cluster_id in self.copy_numbers:
                 _cnA, _cnB = self.copy_numbers[cluster_id]
@@ -155,7 +154,7 @@ class BaseSolver:
         if not self.balanced_clusters:
             return
         bal_set = set(self.balanced_clusters)
-        for _m in (rows if rows is not None else range(self.m)):
+        for _m in rows if rows is not None else range(self.m):
             cluster_id = self.cluster_ids[_m]
             if cluster_id in bal_set:
                 for _n in range(1, self.n):
@@ -170,20 +169,19 @@ class BaseSolver:
         if not self.mrca or self.n < 3:
             return
         cn_max = self.cn_max
-        for _m in (rows if rows is not None else range(self.m)):
+        for _m in rows if rows is not None else range(self.m):
             for _n in range(2, self.n):
                 model.constraints.add(get_cA(_m, _n) <= get_cA(_m, 1) * cn_max)
                 model.constraints.add(get_cB(_m, _n) <= get_cB(_m, 1) * cn_max)
 
-    def _add_l1_constraints(self, model, get_fA, get_fB, get_yA, get_yB,
-                            rows=None):
+    def _add_l1_constraints(self, model, get_fA, get_fB, get_yA, get_yB, rows=None):
         """L1 linearisation: yA >= |f_a_obs - fA| for all (m, k).
 
         ``get_fA/fB/yA/yB`` are callables ``(m, k) -> Var``.
         """
         f_a_vals = self.f_a.values
         f_b_vals = self.f_b.values
-        for _m in (rows if rows is not None else range(self.m)):
+        for _m in rows if rows is not None else range(self.m):
             for _k in range(self.k):
                 fa_obs = float(f_a_vals[_m, _k])
                 fb_obs = float(f_b_vals[_m, _k])

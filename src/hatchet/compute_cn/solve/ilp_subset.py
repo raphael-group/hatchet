@@ -16,7 +16,7 @@ class ILPSubset(BaseSolver):
     their mixture proportions (u) across k samples. The objective minimizes a
     weighted L1 deviation between observed fractional copy numbers (f_a, f_b)
     and the mixture-model predictions. Supports optional regularization terms
-    (MAXCN, DROOT_SUM, DADJ_SUM, DMRCA_SUM) and a coordinate-descent alternation
+    (MAXCN, DSPAN, DROOT_SUM, DADJ_SUM, DRMST) and a coordinate-descent alternation
     mode (CARCH / UARCH) in which either c or u is held fixed.
     """
 
@@ -37,6 +37,7 @@ class ILPSubset(BaseSolver):
         tol=0.001,
         balanced_clusters=None,
         mrca=False,
+        max_degree=3,
     ):
         # Deep-copy fa/fb so ILPSubset can mutate freely
         fcn_data = dict(fcn_data)
@@ -62,6 +63,8 @@ class ILPSubset(BaseSolver):
         self.max_ncns_seg = max_ncns_seg
         self.penalty_param = penalty_param
         self.purities = purities
+        self.max_degree = max_degree
+        self._var_z = None  # DRMST topology vars (set during create_model)
 
         self.mode = "FULL"
 
@@ -101,6 +104,8 @@ class ILPSubset(BaseSolver):
         new.max_ncns_seg = self.max_ncns_seg
         new.penalty_param = self.penalty_param
         new.purities = self.purities
+        new.max_degree = self.max_degree
+        new._var_z = None
         new.mode = "FULL"
         new.cA = [[np.nan for _ in range(new.n)] for _ in range(new.m)]
         new.cB = [[np.nan for _ in range(new.n)] for _ in range(new.m)]
@@ -641,6 +646,122 @@ class ILPSubset(BaseSolver):
                     )
                 # Fixed rows: all clones have same CN → span = 0, no contribution
 
+            elif pname == "DRMST":
+                big_M_tree = 2 * cn_max
+                is_mrca = self.mrca
+
+                param_deg = pe.Param(initialize=float(self.max_degree))
+                model.add_component("p_max_degree", param_deg)
+
+                # Topology variables z[i,j]: binary edges in r-arborescence
+                var_z = {}
+                for i in range(1, n):
+                    for j in range(i):
+                        if is_mrca and i >= 2 and j == 0:
+                            continue
+                        var_z[(i, j)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model.add_component(f"tz_{i}_{j}", var_z[(i, j)])
+                # One parent per non-root clone
+                for i in range(1, n):
+                    model.constraints.add(
+                        sum(var_z[(i, j)] for j in range(i) if (i, j) in var_z) == 1
+                    )
+
+                # Degree constraints
+                ch0 = [var_z[(i, 0)] for i in range(1, n) if (i, 0) in var_z]
+                if ch0:
+                    model.add_component(
+                        "con_degree_0",
+                        pe.Constraint(expr=sum(ch0) <= param_deg),
+                    )
+                for c in range(1, n):
+                    ch = [var_z[(i, c)] for i in range(c + 1, n) if (i, c) in var_z]
+                    if ch:
+                        model.add_component(
+                            f"con_degree_{c}",
+                            pe.Constraint(expr=1 + sum(ch) <= param_deg),
+                        )
+
+                # Distance variables M[m,i] + big-M linearization
+                var_M = {}
+                tree_clones = range(2, n) if is_mrca else range(1, n)
+                for _m in range(m):
+                    for i in range(1, n):
+                        for j in range(i):
+                            if (i, j) not in var_z or i not in tree_clones:
+                                continue
+                            if (_m, i) not in var_M:
+                                var_M[(_m, i)] = pe.Var(
+                                    bounds=(0, None), domain=pe.Reals
+                                )
+                                model.add_component(f"tM_{_m}_{i}", var_M[(_m, i)])
+                            dA = pe.Var(bounds=(0, None), domain=pe.Reals)
+                            model.add_component(f"tdA_{_m}_{i}_{j}", dA)
+                            dB = pe.Var(bounds=(0, None), domain=pe.Reals)
+                            model.add_component(f"tdB_{_m}_{i}_{j}", dB)
+                            cA_i, cA_j = get_cA(_m, i), get_cA(_m, j)
+                            cB_i, cB_j = get_cB(_m, i), get_cB(_m, j)
+                            zv = var_z[(i, j)]
+                            model.constraints.add(
+                                dA >= cA_i - cA_j - big_M_tree * (1 - zv)
+                            )
+                            model.constraints.add(
+                                dA >= cA_j - cA_i - big_M_tree * (1 - zv)
+                            )
+                            model.constraints.add(
+                                dB >= cB_i - cB_j - big_M_tree * (1 - zv)
+                            )
+                            model.constraints.add(
+                                dB >= cB_j - cB_i - big_M_tree * (1 - zv)
+                            )
+                            model.constraints.add(
+                                var_M[(_m, i)] >= dA + dB - big_M_tree * (1 - zv)
+                            )
+
+                # Dynamic LOH constraints — split into two loops:
+                # 1) create binary LOH indicator vars (lA=1 iff cA=0)
+                for _m in range(m):
+                    if _m in fixed_rows:
+                        continue
+                    for _n in range(n):
+                        lA = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model.add_component(f"tlA_{_m}_{_n}", lA)
+                        lB = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model.add_component(f"tlB_{_m}_{_n}", lB)
+                        model.constraints.add(get_cA(_m, _n) >= 1 - big_M_tree * lA)
+                        model.constraints.add(get_cA(_m, _n) <= big_M_tree * (1 - lA))
+                        model.constraints.add(get_cB(_m, _n) >= 1 - big_M_tree * lB)
+                        model.constraints.add(get_cB(_m, _n) <= big_M_tree * (1 - lB))
+
+                # 2) if parent lost allele, child must also have 0 on that allele
+                for _m in range(m):
+                    if _m in fixed_rows:
+                        continue
+                    for i in range(1, n):
+                        for j in range(i):
+                            if (i, j) not in var_z:
+                                continue
+                            lA_j = model.find_component(f"tlA_{_m}_{j}")
+                            lB_j = model.find_component(f"tlB_{_m}_{j}")
+                            model.constraints.add(
+                                get_cA(_m, i)
+                                <= cn_max * (1 - lA_j)
+                                + big_M_tree * (1 - var_z[(i, j)])
+                            )
+                            model.constraints.add(
+                                get_cB(_m, i)
+                                <= cn_max * (1 - lB_j)
+                                + big_M_tree * (1 - var_z[(i, j)])
+                            )
+
+                # Tree regularization objective
+                for _m in range(m):
+                    for i in tree_clones:
+                        if (_m, i) in var_M:
+                            obj_reg += self.w[self.cluster_ids[_m]] * var_M[(_m, i)]
+
+                self._var_z = var_z
+
         if mode_t == "FULL":
             self.hot_start()
 
@@ -756,6 +877,26 @@ class ILPSubset(BaseSolver):
             self.cA[_m][rank_indices[_n]].value = _cA[_m][_n]
             self.cB[_m][rank_indices[_n]].value = _cB[_m][_n]
         self.warmstart = True
+
+    def get_tree_edges(self):
+        """Extract tree edges from DRMST topology variables. Returns dict {child: parent}."""
+        if self._var_z is None:
+            return None
+        tree_edges = {}
+        for i in range(1, self.n):
+            for j in range(i):
+                if (i, j) not in self._var_z:
+                    continue
+                z_val = self._var_z[(i, j)].value
+                if z_val is not None and round(z_val) == 1:
+                    tree_edges[i] = j
+                    break
+            if i not in tree_edges:
+                logging.warning(
+                    f"DRMST: clone {i} has no parent assigned, defaulting to root"
+                )
+                tree_edges[i] = 0
+        return tree_edges
 
     def fix_u(self, u):
         self._fixed_u[:] = u

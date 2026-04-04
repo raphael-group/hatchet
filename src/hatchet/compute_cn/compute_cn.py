@@ -495,6 +495,9 @@ def solve(
             purities=purities,
             penalty_param=[reg_term if reg_term is not None else "RAW", 0.0],
             base=base,
+            balanced_clusters=balanced_clusters,
+            mrca=args["mrca"],
+            max_degree=args["max_degree"],
         )
         solver.create_model(pprint=verbose)
         if solve_mode == "both":
