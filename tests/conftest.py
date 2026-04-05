@@ -60,6 +60,7 @@ def cluster_bins_result(synthetic_data, tmp_path_factory):
         "filter_std": 2.0,
         "min_nbins": 10,
         "ub_nbins": 50,
+        "skip_mhbafs": False,
     }
     run_cluster_bins(args)
     return bbc_dir, ground_truth

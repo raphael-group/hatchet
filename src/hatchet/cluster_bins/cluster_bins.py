@@ -346,6 +346,18 @@ def run(args=None):
         )
         elbo_data.append((K, all_elbo_traces, best_it))
 
+        # Save EM parameter trace for best restart
+        trace_dir = os.path.join(out_dir, "traces")
+        os.makedirs(trace_dir, exist_ok=True)
+        np.savez_compressed(
+            os.path.join(trace_dir, f"K{K}.em_trace.npz"),
+            elbo_trace=np.array(best_sol["elbo_trace"]),
+            rdr_means=best_sol["trace_rdr_means"],
+            rdr_vars=best_sol["trace_rdr_vars"],
+            baf_means=best_sol["trace_baf_means"],
+            baf_taus=best_sol["trace_baf_taus"],
+        )
+
         k_labels, k_phases, decode_ll = decode_hmm(
             best_sol,
             decode_method,

@@ -82,6 +82,11 @@ static py::dict run_hmm_py(
     d["lls0"]           = make_arr(res.lls0,             {N, K});
     d["lls1"]           = make_arr(res.lls1,             {N, K});
     d["elbo_trace"]     = py::cast(res.elbo_trace);
+    int n_trace = (int)(res.trace_baf_taus.size() / M);  // init + actual M-steps
+    d["trace_rdr_means"]  = make_arr(res.trace_rdr_means,  {n_trace, K, M});
+    d["trace_rdr_vars"]   = make_arr(res.trace_rdr_vars,   {n_trace, K, M});
+    d["trace_baf_means"]  = make_arr(res.trace_baf_means,  {n_trace, K, M});
+    d["trace_baf_taus"]   = make_arr(res.trace_baf_taus,   {n_trace, M});
     d["obj_ll"]         = py::cast(res.loglik);
     d["model_ll"]       = py::cast(res.data_loglik);
     d["n_iters_done"]   = py::cast(res.n_iters_done);

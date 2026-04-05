@@ -41,21 +41,21 @@ void update_rdr_params_cpp(
 );
 
 /**
- * BAF tau M-step: MLE of dispersion from cluster-0 bins via Brent in log-space.
+ * BAF tau M-step: posterior-weighted MLE of BB dispersion via Brent in log-space.
  *
- * alphas_nm (N, M) C-contiguous — A-allele counts
- * betas_nm  (N, M) C-contiguous — B-allele counts
- * posts_nk  (N, K) C-contiguous — marginal posteriors
- * baf_taus  (M,)   — updated in place
- * p_fixed   — fixed BAF mean (= 0.5 for cluster 0)
+ * alphas_nm  (N, M) C-contiguous — A-allele counts
+ * betas_nm   (N, M) C-contiguous — B-allele counts
+ * posts_nk2  (N, K, 2) C-contiguous — full posteriors (h=0 and h=1)
+ * baf_means  (K, M) C-contiguous — current BAF means
+ * baf_taus   (M,)   — updated in place
  * min_tau, max_tau — Brent search bounds (optimisation in log-tau space)
  */
 void update_baf_tau_cpp(
     const double* alphas_nm,
     const double* betas_nm,
-    const double* posts_nk,
+    const double* posts_nk2,
+    const double* baf_means,
     double*       baf_taus,
     int N, int K, int M,
-    double p_fixed,
     double min_tau, double max_tau
 );

@@ -2,13 +2,15 @@
  * Full C++ EM loop for the 2-mixture BAF+RDR HMM.
  *
  * Calls, in each iteration:
- *   1. compute_loglik_cpp  — OpenMP-parallelised loglik kernel
- *   2. forward_backward_cpp — OpenMP-parallelised fwd-bwd over segments
- *   3. update_start_probs  — segment-start posterior aggregation
+ *   1. compute_loglik_cpp    — OpenMP-parallelised loglik kernel
+ *   2. forward_backward_cpp  — OpenMP-parallelised fwd-bwd over segments
+ *   3. update_start_probs    — segment-start posterior aggregation
  *   4. update_rdr_params_cpp — closed-form Gaussian M-step
- *   5. update_baf_means_cpp — Brent BAF M-step per (k, m)
- *   6. apply_mhbafs        — fold BAF means ≤ 0.5 (mhBAF convention)
- *   7. update_baf_tau_cpp  — (first tau_iters iters only) Brent tau MLE
+ *   5. update_baf_tau_cpp    — (first tau_iters iters only) Brent tau MLE
+ *   6. update_baf_means_cpp  — Brent BAF M-step per (k, m), uses updated tau
+ *
+ * Note: mhBAF folding (flipping BAF means > 0.5) is applied post-decoding in
+ * cluster_bins.py, not here, to preserve EM monotonicity.
  */
 
 #include "run_hmm.h"
@@ -28,22 +30,6 @@
 
 
 // ---- Internal helpers -------------------------------------------------------
-
-// For each cluster k: if mean(baf_means[k, :]) > 0.5, flip the row to 1 - p.
-static void apply_mhbafs(double* baf_means, int K, int M)
-{
-    for (int k = 0; k < K; ++k) {
-        double row_mean = 0.0;
-        for (int m = 0; m < M; ++m)
-            row_mean += baf_means[(long)k * M + m];
-        row_mean /= M;
-        if (row_mean > 0.5) {
-            for (int m = 0; m < M; ++m)
-                baf_means[(long)k * M + m] = 1.0 - baf_means[(long)k * M + m];
-        }
-    }
-}
-
 
 // Transpose (N, M) -> (M, N).
 static void transpose_nm_to_mn(const double* src, double* dst, int N, int M)
@@ -155,6 +141,12 @@ RunHMMResult run_hmm_cpp(
     transpose_nm_to_mn(X_alphas, alphas_mn.data(), N, M);
     transpose_nm_to_mn(X_betas,  betas_mn.data(),  N, M);
 
+    // ---- Parameter traces (row 0 = init params) ----
+    std::vector<double> trace_rdr_means(rdr_means);
+    std::vector<double> trace_rdr_vars(rdr_vars);
+    std::vector<double> trace_baf_means(baf_means);
+    std::vector<double> trace_baf_taus(baf_taus);
+
     // ---- EM loop ----
     std::vector<double> elbo_trace;
     elbo_trace.push_back(-std::numeric_limits<double>::infinity());
@@ -217,20 +209,25 @@ RunHMMResult run_hmm_cpp(
             rdr_means.data(), rdr_vars.data(),
             N, K, M, min_covar, ig_alpha, ig_beta);
 
-        // M-step: BAF means (Brent per (k,m))
-        // update_baf_means_cpp expects (K,N,2) layout
+        // M-step: BAF tau (first tau_iters iterations only, before BAF means)
+        if (it < tau_iters) {
+            update_baf_tau_cpp(
+                X_alphas, X_betas, posts.data(), baf_means.data(),
+                baf_taus.data(), N, K, M, min_tau, max_tau);
+        }
+
+        // M-step: BAF means (Brent per (k,m), uses possibly updated tau)
         build_posts_kn2(posts.data(), posts_kn2.data(), N, K);
         update_baf_means_cpp(
             alphas_mn.data(), betas_mn.data(),
             posts_kn2.data(), baf_taus.data(),
             baf_means.data(), N, K, M, baf_eps);
 
-        // M-step: BAF tau (first tau_iters iterations only)
-        if (it < tau_iters) {
-            update_baf_tau_cpp(
-                X_alphas, X_betas, posts_nk.data(),
-                baf_taus.data(), N, K, M, 0.5, min_tau, max_tau);
-        }
+        // Append post-M-step params to trace
+        trace_rdr_means.insert(trace_rdr_means.end(), rdr_means.begin(), rdr_means.end());
+        trace_rdr_vars.insert(trace_rdr_vars.end(), rdr_vars.begin(), rdr_vars.end());
+        trace_baf_means.insert(trace_baf_means.end(), baf_means.begin(), baf_means.end());
+        trace_baf_taus.insert(trace_baf_taus.end(), baf_taus.begin(), baf_taus.end());
     }
 
     // Final loglik with fitted params (needed for Viterbi decoding)
@@ -249,6 +246,10 @@ RunHMMResult run_hmm_cpp(
     result.lls0           = std::move(lls0);
     result.lls1           = std::move(lls1);
     result.elbo_trace     = std::move(elbo_trace);
+    result.trace_rdr_means  = std::move(trace_rdr_means);
+    result.trace_rdr_vars   = std::move(trace_rdr_vars);
+    result.trace_baf_means  = std::move(trace_baf_means);
+    result.trace_baf_taus   = std::move(trace_baf_taus);
     result.loglik         = result.elbo_trace.back();
     result.data_loglik    = loglik;
     result.n_iters_done   = n_done;

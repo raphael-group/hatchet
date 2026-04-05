@@ -179,64 +179,59 @@ void update_rdr_params_cpp(
 void update_baf_tau_cpp(
     const double* alphas_nm,
     const double* betas_nm,
-    const double* posts_nk,
+    const double* posts_nk2,
+    const double* baf_means,
     double*       baf_taus,
     int N, int K, int M,
-    double p_fixed,
     double min_tau, double max_tau)
 {
-    // Find bins where argmax_k posts_nk[n, k] == 0  (cluster 0 = diploid anchor)
-    std::vector<int> mask0;
-    mask0.reserve(N);
-    for (int n = 0; n < N; ++n) {
-        int argmax    = 0;
-        double maxval = posts_nk[(long)n * K + 0];
-        for (int k = 1; k < K; ++k) {
-            double v = posts_nk[(long)n * K + k];
-            if (v > maxval) { maxval = v; argmax = k; }
-        }
-        if (argmax == 0) mask0.push_back(n);
-    }
-
-    int N0 = (int)mask0.size();
-    if (N0 < 2) return;  // not enough bins
-
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)
 #endif
     for (int m = 0; m < M; ++m) {
-        // Gather alpha/beta for cluster-0 bins
-        std::vector<double> a_vals(N0);
-        std::vector<double> b_vals(N0);
-        for (int i = 0; i < N0; ++i) {
-            int n      = mask0[i];
-            a_vals[i]  = alphas_nm[(long)n * M + m];
-            b_vals[i]  = betas_nm[(long)n * M + m];
-        }
+        // Pointers for sample m
+        const double* alpha_m_base = alphas_nm + m;   // stride M
+        const double* beta_m_base  = betas_nm  + m;   // stride M
+        const double* p_m_base     = baf_means + m;   // stride M
 
-        double p = p_fixed;
+        // neg Q_BAF(tau) = -Σ_n Σ_k [w0_{nk} · ll0(n,k,tau) + w1_{nk} · ll1(n,k,tau)]
+        auto neg_Q_logtau = [&](double log_tau) -> double {
+            double tau = std::exp(log_tau);
+            double total = 0.0;
 
-        // Optimise neg log-likelihood in log(tau) space.
-        auto neg_ll_logtau = [&](double log_tau) -> double {
-            double tau    = std::exp(log_tau);
-            double a0     = tau * p;
-            double b0     = tau * (1.0 - p);
-            double lg_a0  = std::lgamma(a0);
-            double lg_b0  = std::lgamma(b0);
-            double lg_ab0 = std::lgamma(a0 + b0);
-            double ll = 0.0;
-            for (int i = 0; i < N0; ++i) {
-                double a1 = a_vals[i] + a0;
-                double b1 = b_vals[i] + b0;
-                ll += (std::lgamma(a1) + std::lgamma(b1)
-                       - std::lgamma(a1 + b1)
-                       - lg_a0 - lg_b0 + lg_ab0);
+            for (int k = 0; k < K; ++k) {
+                double p = p_m_base[(long)k * M];
+                double a = tau * p;
+                double b = tau * (1.0 - p);
+                double norm = std::lgamma(a) + std::lgamma(b)
+                            - std::lgamma(a + b);
+
+                for (int n = 0; n < N; ++n) {
+                    double alpha_n = alpha_m_base[(long)n * M];
+                    double beta_n  = beta_m_base[(long)n * M];
+                    double w0 = posts_nk2[(long)n * K * 2 + (long)k * 2 + 0];
+                    double w1 = posts_nk2[(long)n * K * 2 + (long)k * 2 + 1];
+                    double wn = w0 + w1;
+                    if (wn < 1e-12) continue;
+
+                    double lg_tot = std::lgamma(alpha_n + beta_n + tau);
+                    // h=0: lgamma(alpha+a) + lgamma(beta+b) - lgamma(total+tau) - norm
+                    double ll0 = std::lgamma(alpha_n + a)
+                               + std::lgamma(beta_n  + b)
+                               - lg_tot - norm;
+                    // h=1: lgamma(beta+a) + lgamma(alpha+b) - lgamma(total+tau) - norm
+                    double ll1 = std::lgamma(beta_n  + a)
+                               + std::lgamma(alpha_n + b)
+                               - lg_tot - norm;
+
+                    total += w0 * ll0 + w1 * ll1;
+                }
             }
-            return -ll;
+            return -total;
         };
 
         auto result = boost::math::tools::brent_find_minima(
-            neg_ll_logtau, std::log(min_tau), std::log(max_tau), 32);
+            neg_Q_logtau, std::log(min_tau), std::log(max_tau), 32);
         baf_taus[m] = std::exp(result.first);
     }
 }

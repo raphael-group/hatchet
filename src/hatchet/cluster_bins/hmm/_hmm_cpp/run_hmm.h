@@ -16,6 +16,11 @@ struct RunHMMResult {
     std::vector<double> lls0;            // (N, K)
     std::vector<double> lls1;            // (N, K)
     std::vector<double> elbo_trace;      // (n_iters+1)  — starts at -inf
+    // Per-iteration param traces: row 0 = init, rows 1..n = after each M-step
+    std::vector<double> trace_rdr_means;  // flat (n_iters+1) * K * M
+    std::vector<double> trace_rdr_vars;
+    std::vector<double> trace_baf_means;
+    std::vector<double> trace_baf_taus;   // flat (n_iters+1) * M
     double loglik;
     double data_loglik;
     int    n_iters_done;

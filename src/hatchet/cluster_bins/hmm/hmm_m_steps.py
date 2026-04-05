@@ -1,9 +1,8 @@
 """EM M-step routines for the 2-mixture BAF+RDR HMM.
 - RDR Gaussian means & variances: closed-form weighted statistics.
 - BAF Beta-Binomial means: scipy bounded scalar optimization (Brent).
-- BAF tau (optional): MLE from cluster-0 posterior.
+- BAF tau (optional): posterior-weighted MLE over all clusters.
 - Start probabilities: posterior counts at segment starts.
-- Transition parameter (optional): from xi sufficient statistics.
 """
 
 import logging
@@ -11,9 +10,6 @@ import logging
 import numpy as np
 from scipy.optimize import minimize_scalar
 from scipy.special import betaln
-
-from hatchet.cluster_bins.cluster_utils import mle_BB_dispersion
-from hatchet.cluster_bins.hmm.hmm_utils import convert_mhbafs
 
 
 def do_mstep(
@@ -49,7 +45,6 @@ def do_mstep(
         log_startprobs: (K, 2) numpy array.
     """
     N, K, _ = posts.shape
-    M = X_rdrs.shape[1]
 
     # ---- start probabilities ----
     seg_starts = np.concatenate([[0], np.cumsum(X_lengths[:-1])])
@@ -77,28 +72,71 @@ def do_mstep(
     else:
         rdr_vars = np.maximum(weighted_var, min_covar)
 
-    # ---- BAF means (scipy Brent) ----
+    # ---- BAF tau (optional, before BAF means so p is optimal for new tau) ----
+    if update_tau:
+        baf_taus = _update_baf_tau(
+            X_alphas,
+            X_betas,
+            posts,
+            baf_means_init,
+            baf_taus,
+            min_tau=min_tau,
+            max_tau=max_tau,
+        )
+
+    # ---- BAF means (scipy Brent, uses possibly updated tau) ----
     posts_kn2 = np.ascontiguousarray(posts.transpose(1, 0, 2))  # (K, N, 2)
     baf_means = _update_baf_means(
         baf_means_init, X_alphas.T, X_betas.T, baf_taus, posts_kn2, baf_eps
     )
 
-    # ---- BAF tau (optional) — estimate from k=0 (BAF=0.5) only ----
-    if update_tau:
-        mask_0 = np.argmax(posts_marg, axis=1) == 0
-        if np.sum(mask_0) > 1:
-            taus_new = baf_taus.copy()
-            for m in range(M):
-                taus_new[m] = mle_BB_dispersion(
-                    X_alphas[mask_0, m],
-                    X_betas[mask_0, m],
-                    p=0.5,
-                    min_tau=min_tau,
-                    max_tau=max_tau,
-                )
-            baf_taus = taus_new
-
     return rdr_means, rdr_vars, baf_means, baf_taus, log_startprobs
+
+
+def _update_baf_tau(
+    X_alphas, X_betas, posts, baf_means, baf_taus, min_tau=50, max_tau=500
+):
+    """MLE for BAF tau via Brent in log-tau space, maximising Q_BAF.
+
+    Args:
+        X_alphas:  (N, M) A-allele counts.
+        X_betas:   (N, M) B-allele counts.
+        posts:     (N, K, 2) full posteriors.
+        baf_means: (K, M) current BAF means.
+        baf_taus:  (M,) current tau values.
+        min_tau, max_tau: search bounds.
+
+    Returns:
+        (M,) updated tau values.
+    """
+    N, K, _ = posts.shape
+    M = X_alphas.shape[1]
+    taus_new = baf_taus.copy()
+
+    for m in range(M):
+        alpha_m = X_alphas[:, m]
+        beta_m = X_betas[:, m]
+
+        def neg_Q(
+            log_tau, _alpha=alpha_m, _beta=beta_m, _posts=posts, _baf=baf_means[:, m]
+        ):
+            tau = np.exp(log_tau)
+            total = 0.0
+            for k in range(K):
+                p = _baf[k]
+                a, b = tau * p, tau * (1 - p)
+                norm = betaln(a, b)
+                ll0 = betaln(_alpha + a, _beta + b) - norm
+                ll1 = betaln(_beta + a, _alpha + b) - norm
+                total += _posts[:, k, 0] @ ll0 + _posts[:, k, 1] @ ll1
+            return -total
+
+        res = minimize_scalar(
+            neg_Q, bounds=(np.log(min_tau), np.log(max_tau)), method="bounded"
+        )
+        taus_new[m] = np.exp(res.x)
+
+    return taus_new
 
 
 def _update_baf_means(p0_km, alphas_mn, betas_mn, baf_taus, posts_kn2, baf_eps=1e-6):

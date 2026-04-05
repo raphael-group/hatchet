@@ -112,6 +112,10 @@ def _run_hmm_cpp(
         "BAF_means": res["BAF_means"],
         "BAF_taus": res["BAF_taus"],
         "elbo_trace": res["elbo_trace"],
+        "trace_rdr_means": res["trace_rdr_means"],
+        "trace_rdr_vars": res["trace_rdr_vars"],
+        "trace_baf_means": res["trace_baf_means"],
+        "trace_baf_taus": res["trace_baf_taus"],
         "obj_ll": res["obj_ll"],
         "model_ll": res["model_ll"],
         "log_startprobs": res["log_startprobs"],
@@ -231,6 +235,10 @@ def run_hmm(
     log_startprobs = np.log(np.full((K, 2), 1.0 / (2 * K), dtype=np.float64))
 
     elbo_trace = [-np.inf]
+    trace_rdr_means = [rdr_means.copy()]
+    trace_rdr_vars = [rdr_vars.copy()]
+    trace_baf_means = [baf_means.copy()]
+    trace_baf_taus = [baf_taus.copy()]
     t_loglik_sum = 0.0
     t_fwdbwd_sum = 0.0
     t_mstep_sum = 0.0
@@ -259,6 +267,8 @@ def run_hmm(
             log_transmat,
         )
         t2_fwdbwd = time.perf_counter()
+        t_loglik_sum += t1_loglik - t0
+        t_fwdbwd_sum += t2_fwdbwd - t1_loglik
 
         # Penalized ELBO (IG log-prior on RDR variance)
         if ig_alpha > 0:
@@ -271,29 +281,6 @@ def run_hmm(
 
         delta_ll = loglik_penalized - elbo_trace[-1]
         elbo_trace.append(loglik_penalized)
-
-        rdr_means, rdr_vars, baf_means, baf_taus, log_startprobs = do_mstep(
-            X_rdrs,
-            X_alphas,
-            X_betas,
-            posts,
-            baf_taus,
-            baf_means,
-            X_lengths,
-            update_tau=(it < tau_iters),
-            min_covar=min_covar,
-            tol=tol,
-            min_tau=min_tau,
-            max_tau=max_tau,
-            baf_eps=baf_eps,
-            ig_alpha=ig_alpha,
-            ig_beta=ig_beta,
-        )
-        t3_mstep = time.perf_counter()
-
-        t_loglik_sum += t1_loglik - t0
-        t_fwdbwd_sum += t2_fwdbwd - t1_loglik
-        t_mstep_sum += t3_mstep - t2_fwdbwd
 
         # Per-iter multimodal diagnostic (cheap MAP decode from posteriors)
         cluster_posts_it = np.sum(posts, axis=2)  # (N, K)
@@ -336,9 +323,36 @@ def run_hmm(
                 )
                 logging.debug(f"  {k:3d}  {nk / total_nk:6.3f}  {per_sample}")
 
+        # Convergence check before M-step — mirrors C++ behaviour: if converged,
+        # skip the M-step so trace length equals n_iters_done on both paths.
         if abs(delta_ll) < tol_ll:
             logging.info(f"{_pfx}Converged at iteration {it}")
             break
+
+        rdr_means, rdr_vars, baf_means, baf_taus, log_startprobs = do_mstep(
+            X_rdrs,
+            X_alphas,
+            X_betas,
+            posts,
+            baf_taus,
+            baf_means,
+            X_lengths,
+            update_tau=(it < tau_iters),
+            min_covar=min_covar,
+            tol=tol,
+            min_tau=min_tau,
+            max_tau=max_tau,
+            baf_eps=baf_eps,
+            ig_alpha=ig_alpha,
+            ig_beta=ig_beta,
+        )
+        t3_mstep = time.perf_counter()
+        t_mstep_sum += t3_mstep - t2_fwdbwd
+
+        trace_rdr_means.append(rdr_means.copy())
+        trace_rdr_vars.append(rdr_vars.copy())
+        trace_baf_means.append(baf_means.copy())
+        trace_baf_taus.append(baf_taus.copy())
 
     n_done = it + 1
     logging.info(
@@ -371,6 +385,10 @@ def run_hmm(
         "BAF_means": baf_means,
         "BAF_taus": baf_taus,
         "elbo_trace": elbo_trace,
+        "trace_rdr_means": np.stack(trace_rdr_means),
+        "trace_rdr_vars": np.stack(trace_rdr_vars),
+        "trace_baf_means": np.stack(trace_baf_means),
+        "trace_baf_taus": np.stack(trace_baf_taus),
         "obj_ll": obj_ll,
         "model_ll": model_ll,
         "log_startprobs": log_startprobs,
