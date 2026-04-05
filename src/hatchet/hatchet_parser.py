@@ -120,6 +120,22 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
+        "--free_baf_c0",
+        action="store_true",
+        default=False,
+        help="Allow cluster 0 BAF to update during EM. By default, cluster 0 BAF is fixed at 0.5.",
+    )
+
+    parser.add_argument(
+        "--training_method",
+        required=False,
+        choices=["baum_welch", "viterbi"],
+        type=str,
+        default="baum_welch",
+        help="HMM training algorithm: 'baum_welch' (soft EM) or 'viterbi' (hard EM) (default: baum_welch)",
+    )
+
+    parser.add_argument(
         "--min_tau",
         required=False,
         default=50,

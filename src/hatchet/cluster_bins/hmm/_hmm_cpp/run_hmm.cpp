@@ -111,7 +111,8 @@ RunHMMResult run_hmm_cpp(
     double max_tau,
     double baf_eps,
     double ig_alpha,
-    const double* ig_beta)
+    const double* ig_beta,
+    int baf_k_start)
 {
     // ---- Precompute seg_starts ----
     std::vector<int64_t> seg_starts(S);
@@ -221,9 +222,8 @@ RunHMMResult run_hmm_cpp(
         update_baf_means_cpp(
             alphas_mn.data(), betas_mn.data(),
             posts_kn2.data(), baf_taus.data(),
-            baf_means.data(), N, K, M, baf_eps);
+            baf_means.data(), N, K, M, baf_eps, baf_k_start);
 
-        // Append post-M-step params to trace
         trace_rdr_means.insert(trace_rdr_means.end(), rdr_means.begin(), rdr_means.end());
         trace_rdr_vars.insert(trace_rdr_vars.end(), rdr_vars.begin(), rdr_vars.end());
         trace_baf_means.insert(trace_baf_means.end(), baf_means.begin(), baf_means.end());

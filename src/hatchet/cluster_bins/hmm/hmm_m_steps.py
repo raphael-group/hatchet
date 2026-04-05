@@ -28,6 +28,7 @@ def do_mstep(
     baf_eps=1e-6,
     ig_alpha=10.0,
     ig_beta=0.01,
+    baf_k_start=0,
 ):
     """EM M-step: emission parameters + start probabilities.
 
@@ -87,7 +88,13 @@ def do_mstep(
     # ---- BAF means (scipy Brent, uses possibly updated tau) ----
     posts_kn2 = np.ascontiguousarray(posts.transpose(1, 0, 2))  # (K, N, 2)
     baf_means = _update_baf_means(
-        baf_means_init, X_alphas.T, X_betas.T, baf_taus, posts_kn2, baf_eps
+        baf_means_init,
+        X_alphas.T,
+        X_betas.T,
+        baf_taus,
+        posts_kn2,
+        baf_eps,
+        k_start=baf_k_start,
     )
 
     return rdr_means, rdr_vars, baf_means, baf_taus, log_startprobs
@@ -139,25 +146,29 @@ def _update_baf_tau(
     return taus_new
 
 
-def _update_baf_means(p0_km, alphas_mn, betas_mn, baf_taus, posts_kn2, baf_eps=1e-6):
+def _update_baf_means(
+    p0_km, alphas_mn, betas_mn, baf_taus, posts_kn2, baf_eps=1e-6, k_start=0
+):
     """MLE for BAF means via scipy bounded scalar optimization.
 
-    For each (k, m), minimizes the posterior-weighted negative BB log-likelihood
-    over p in (baf_eps, 1-baf_eps) using Brent's method.
+    For each (k, m) with k >= k_start, minimizes the posterior-weighted
+    negative BB log-likelihood over p in (baf_eps, 1-baf_eps) using Brent.
+    Clusters k < k_start retain their initial BAF means.
 
     Args:
-        p0_km:     (K, M) — warm start (unused by Brent, kept for output shape).
+        p0_km:     (K, M) — initial BAF means (preserved for k < k_start).
         alphas_mn: (M, N) — A-allele counts.
         betas_mn:  (M, N) — B-allele counts.
         baf_taus:  (M,)   — dispersion params.
         posts_kn2: (K, N, 2) — posteriors.
         baf_eps:   float  — Brent search bounds [baf_eps, 1-baf_eps].
+        k_start:   int    — first cluster index to update (default 0 = all).
 
     Returns:
         (K, M) BAF means.
     """
     K, M = p0_km.shape
-    p_km = np.empty_like(p0_km)
+    p_km = p0_km.copy()
     posts0 = posts_kn2[:, :, 0]  # (K, N)
     posts1 = posts_kn2[:, :, 1]  # (K, N)
     EPS = baf_eps
@@ -166,7 +177,7 @@ def _update_baf_means(p0_km, alphas_mn, betas_mn, baf_taus, posts_kn2, baf_eps=1
         tau = baf_taus[m]
         alpha_m = alphas_mn[m]  # (N,)
         beta_m = betas_mn[m]  # (N,)
-        for k in range(K):
+        for k in range(k_start, K):
             w0 = posts0[k]  # (N,)
             w1 = posts1[k]  # (N,)
 

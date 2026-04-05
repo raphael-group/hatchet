@@ -18,7 +18,8 @@ void update_baf_means_cpp(
     const double* posts_kn2,
     const double* baf_taus,
     double*       p_km,
-    int N, int K, int M, double eps
+    int N, int K, int M, double eps,
+    int k_start = 0
 );
 
 /**

@@ -31,12 +31,13 @@ void update_baf_means_cpp(
     const double* posts_kn2,   // (K, N, 2)
     const double* baf_taus,    // (M,)
     double*       p_km,        // (K, M)
-    int N, int K, int M, double eps)
+    int N, int K, int M, double eps,
+    int k_start)
 {
 #ifdef _OPENMP
 #pragma omp parallel for collapse(2) schedule(dynamic)
 #endif
-    for (int k = 0; k < K; ++k) {
+    for (int k = k_start; k < K; ++k) {
         for (int m = 0; m < M; ++m) {
             const double* alpha_m = alphas_mn + (long)m * N;
             const double* beta_m  = betas_mn  + (long)m * N;
@@ -189,12 +190,10 @@ void update_baf_tau_cpp(
 #pragma omp parallel for schedule(dynamic)
 #endif
     for (int m = 0; m < M; ++m) {
-        // Pointers for sample m
         const double* alpha_m_base = alphas_nm + m;   // stride M
         const double* beta_m_base  = betas_nm  + m;   // stride M
         const double* p_m_base     = baf_means + m;   // stride M
 
-        // neg Q_BAF(tau) = -Σ_n Σ_k [w0_{nk} · ll0(n,k,tau) + w1_{nk} · ll1(n,k,tau)]
         auto neg_Q_logtau = [&](double log_tau) -> double {
             double tau = std::exp(log_tau);
             double total = 0.0;

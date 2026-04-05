@@ -69,5 +69,6 @@ RunHMMResult run_hmm_cpp(
     double max_tau,
     double baf_eps,
     double ig_alpha = 10.0,
-    const double* ig_beta = nullptr
+    const double* ig_beta = nullptr,
+    int baf_k_start = 0
 );

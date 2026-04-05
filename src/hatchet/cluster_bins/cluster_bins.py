@@ -40,6 +40,7 @@ def run(args=None):
     _log_done = log_step_start()
     if isinstance(args, argparse.Namespace):
         args = vars(args)
+    log_arguments(args)
 
     bb_dir = args["bb_dir"]
     bb_file = os.path.join(bb_dir, "bb.tsv.gz")
@@ -83,6 +84,8 @@ def run(args=None):
     score_method = args["score_method"]
     log_rdr = args["log_rdr"]
     init_method = args["init_method"]
+    training_method = args["training_method"]
+    baf_k_start = 0 if args["free_baf_c0"] else 1
 
     os.makedirs(out_dir, exist_ok=True)
     add_file_logging(out_dir, "cluster-bins")
@@ -281,8 +284,13 @@ def run(args=None):
 
     for K in range(minK, maxK + 1):
         logging.info("==================================================")
-        logging.info(f"running HMM on K={K}, {len(inits_run)} restarts")
+        logging.info(
+            f"running HMM on K={K}, {len(inits_run)} restarts ({training_method})"
+        )
         log_transmat0 = np.log(make_transmat(1 - diag_t, K))
+        run_fn = (
+            run_baum_welch if training_method == "baum_welch" else run_viterbi_training
+        )
 
         t0 = time.perf_counter()
         best_ll = -np.inf
@@ -290,7 +298,7 @@ def run(args=None):
         best_sol = None
         all_elbo_traces = {}
         for it, (baf_means_it, rdr_means_it, rdr_vars_it, _) in inits_run.items():
-            sol = run_hmm(
+            sol = run_fn(
                 K,
                 X_hmm_rdrs,
                 X_alphas,
@@ -316,6 +324,7 @@ def run(args=None):
                 restart_id=it,
                 ig_alpha=ig_alpha,
                 ig_beta=ig_beta,
+                baf_k_start=baf_k_start,
             )
             model_ll = sol["model_ll"]
             obj_ll = sol["obj_ll"]

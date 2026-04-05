@@ -40,7 +40,8 @@ static py::dict run_hmm_py(
     double max_tau,
     double baf_eps,
     double ig_alpha,
-    f64arr ig_beta_arr)
+    f64arr ig_beta_arr,
+    int    baf_k_start)
 {
     int N = (int)X_rdrs.shape(0);
     int M = (int)X_rdrs.shape(1);
@@ -62,7 +63,7 @@ static py::dict run_hmm_py(
         baf_taus0.data(),
         n_iter, min_covar, tol_ll, tol,
         tau_iters, min_tau, max_tau, baf_eps,
-        ig_alpha, ig_beta_arr.data());
+        ig_alpha, ig_beta_arr.data(), baf_k_start);
 
     // Helper: copy a flat vector into a shaped numpy array.
     auto make_arr = [](const std::vector<double>& v,
@@ -122,6 +123,7 @@ PYBIND11_MODULE(_hmm_cpp, m) {
         py::arg("baf_eps")   = 1e-6,
         py::arg("ig_alpha")  = 10.0,
         py::arg("ig_beta"),
+        py::arg("baf_k_start") = 0,
         R"doc(
 Full C++ EM loop for the 2-mixture BAF+RDR HMM.
 

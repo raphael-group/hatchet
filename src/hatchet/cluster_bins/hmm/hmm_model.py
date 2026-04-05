@@ -1,4 +1,7 @@
-"""Baum-Welch EM training for the phased 2-mixture Beta-Binomial BAF + Gaussian RDR HMM."""
+"""EM training for the phased 2-mixture Beta-Binomial BAF + Gaussian RDR HMM.
+
+Provides both Baum-Welch (soft posteriors) and Viterbi training (hard assignments).
+"""
 
 from __future__ import annotations
 
@@ -63,6 +66,7 @@ def _run_hmm_cpp(
     _pfx,
     ig_alpha=10.0,
     ig_beta=0.01,
+    baf_k_start=0,
 ) -> dict:
     """Thin Python wrapper around the C++ full EM loop."""
     t0 = time.perf_counter()
@@ -92,6 +96,7 @@ def _run_hmm_cpp(
         baf_eps,
         ig_alpha,
         ig_beta_arr,
+        baf_k_start,
     )
 
     elapsed = time.perf_counter() - t0
@@ -129,7 +134,7 @@ def _run_hmm_cpp(
 
 
 ##################################################
-def run_hmm(
+def run_baum_welch(
     K: int,
     X_rdrs: np.ndarray,
     X_alphas: np.ndarray,
@@ -157,6 +162,7 @@ def run_hmm(
     restart_id: int | None = None,
     ig_alpha: float = 10.0,
     ig_beta: float | np.ndarray = 0.01,
+    baf_k_start: int = 0,
 ) -> dict:
     """Run EM training for a K-state 2-mixture BAF+RDR HMM.
 
@@ -230,6 +236,7 @@ def run_hmm(
             _pfx=_pfx,
             ig_alpha=ig_alpha,
             ig_beta=ig_beta,
+            baf_k_start=baf_k_start,
         )
 
     log_startprobs = np.log(np.full((K, 2), 1.0 / (2 * K), dtype=np.float64))
@@ -323,8 +330,6 @@ def run_hmm(
                 )
                 logging.debug(f"  {k:3d}  {nk / total_nk:6.3f}  {per_sample}")
 
-        # Convergence check before M-step — mirrors C++ behaviour: if converged,
-        # skip the M-step so trace length equals n_iters_done on both paths.
         if abs(delta_ll) < tol_ll:
             logging.info(f"{_pfx}Converged at iteration {it}")
             break
@@ -345,6 +350,7 @@ def run_hmm(
             baf_eps=baf_eps,
             ig_alpha=ig_alpha,
             ig_beta=ig_beta,
+            baf_k_start=baf_k_start,
         )
         t3_mstep = time.perf_counter()
         t_mstep_sum += t3_mstep - t2_fwdbwd
@@ -391,6 +397,171 @@ def run_hmm(
         "trace_baf_taus": np.stack(trace_baf_taus),
         "obj_ll": obj_ll,
         "model_ll": model_ll,
+        "log_startprobs": log_startprobs,
+        "log_transmat": log_transmat,
+        "full_posts": posts,
+        "phase_posts": phase_posts,
+        "cluster_posts": cluster_posts,
+        "lls0": lls0_final,
+        "lls1": lls1_final,
+    }
+
+
+##################################################
+def run_viterbi_training(
+    K: int,
+    X_rdrs: np.ndarray,
+    X_alphas: np.ndarray,
+    X_betas: np.ndarray,
+    X_totals: np.ndarray,
+    X_lengths: np.ndarray,
+    log_switchprobs: np.ndarray,
+    log_stayprobs: np.ndarray,
+    log_transmat: np.ndarray,
+    rdr_means: np.ndarray,
+    rdr_vars: np.ndarray,
+    baf_means: np.ndarray,
+    baf_taus: np.ndarray,
+    X_rdrs_orig: np.ndarray,
+    X_totals_orig: np.ndarray,
+    n_iter: int = 10,
+    min_covar: float = 1e-3,
+    tol_ll: float = 1e-4,
+    tol: float = 1e-6,
+    tau_iters: int = 1,
+    min_tau: float = 50,
+    max_tau: float = 100,
+    baf_eps: float = 1e-3,
+    log_rdr: bool = True,
+    restart_id: int | None = None,
+    ig_alpha: float = 10.0,
+    ig_beta: float | np.ndarray = 0.01,
+    baf_k_start: int = 0,
+) -> dict:
+    """Viterbi training (hard EM) — same interface as run_baum_welch.
+
+    Replaces forward-backward with Viterbi decode. Hard assignments are
+    converted to one-hot posteriors for the M-step. Optimises the
+    classification likelihood P(x, z* | theta) rather than the marginal.
+    """
+    assert n_iter > 1
+    _pfx = f"[r{restart_id}] " if restart_id is not None else ""
+    N, M = X_rdrs.shape
+
+    log_startprobs = np.log(np.full((K, 2), 1.0 / (2 * K), dtype=np.float64))
+
+    elbo_trace = [-np.inf]
+    trace_rdr_means = [rdr_means.copy()]
+    trace_rdr_vars = [rdr_vars.copy()]
+    trace_baf_means = [baf_means.copy()]
+    trace_baf_taus = [baf_taus.copy()]
+    viterbi_score_trace = [-np.inf]
+
+    for it in range(n_iter):
+        lls0, lls1 = compute_loglik(
+            X_rdrs,
+            X_alphas,
+            X_betas,
+            X_totals,
+            rdr_means,
+            rdr_vars,
+            baf_means,
+            baf_taus,
+        )
+
+        # Viterbi decode → hard assignments
+        cluster_labels, phase_labels = run_viterbi(
+            lls0,
+            lls1,
+            X_lengths,
+            log_startprobs,
+            log_switchprobs,
+            log_stayprobs,
+            log_transmat,
+            K,
+            N,
+        )
+
+        # Viterbi path score: sum of emission log-likelihoods along path
+        viterbi_score = 0.0
+        for n in range(N):
+            k, h = cluster_labels[n], phase_labels[n]
+            viterbi_score += lls0[n, k] if h == 0 else lls1[n, k]
+
+        posts = np.zeros((N, K, 2), dtype=np.float64)
+        for n in range(N):
+            posts[n, cluster_labels[n], phase_labels[n]] = 1.0
+
+        if ig_alpha > 0:
+            ig_log_prior = np.sum(
+                -(ig_alpha + 1) * np.log(rdr_vars) - ig_beta / rdr_vars
+            )
+            score_penalized = viterbi_score + ig_log_prior
+        else:
+            score_penalized = viterbi_score
+
+        delta = score_penalized - viterbi_score_trace[-1]
+        viterbi_score_trace.append(score_penalized)
+
+        logging.info(
+            f"{_pfx}ViterbiEM Iter {it:03d} | viterbi_score={viterbi_score: .6f} | delta={delta: .6f}"
+        )
+
+        if abs(delta) < tol_ll:
+            logging.info(f"{_pfx}Converged at iteration {it}")
+            break
+
+        rdr_means, rdr_vars, baf_means, baf_taus, log_startprobs = do_mstep(
+            X_rdrs,
+            X_alphas,
+            X_betas,
+            posts,
+            baf_taus,
+            baf_means,
+            X_lengths,
+            update_tau=(it < tau_iters),
+            min_covar=min_covar,
+            tol=tol,
+            min_tau=min_tau,
+            max_tau=max_tau,
+            baf_eps=baf_eps,
+            ig_alpha=ig_alpha,
+            ig_beta=ig_beta,
+            baf_k_start=baf_k_start,
+        )
+
+        trace_rdr_means.append(rdr_means.copy())
+        trace_rdr_vars.append(rdr_vars.copy())
+        trace_baf_means.append(baf_means.copy())
+        trace_baf_taus.append(baf_taus.copy())
+
+    n_done = it + 1
+
+    lls0_final, lls1_final = compute_loglik(
+        X_rdrs,
+        X_alphas,
+        X_betas,
+        X_totals,
+        rdr_means,
+        rdr_vars,
+        baf_means,
+        baf_taus,
+    )
+    phase_posts = np.sum(posts, axis=1)
+    cluster_posts = np.sum(posts, axis=2)
+
+    return {
+        "RDR_means": rdr_means,
+        "RDR_vars": rdr_vars,
+        "BAF_means": baf_means,
+        "BAF_taus": baf_taus,
+        "elbo_trace": viterbi_score_trace,
+        "trace_rdr_means": np.stack(trace_rdr_means),
+        "trace_rdr_vars": np.stack(trace_rdr_vars),
+        "trace_baf_means": np.stack(trace_baf_means),
+        "trace_baf_taus": np.stack(trace_baf_taus),
+        "obj_ll": viterbi_score_trace[-1],
+        "model_ll": viterbi_score,
         "log_startprobs": log_startprobs,
         "log_transmat": log_transmat,
         "full_posts": posts,
