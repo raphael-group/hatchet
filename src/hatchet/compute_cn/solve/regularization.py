@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 from pyomo import environ as pe
 
-from hatchet.compute_cn.solve.variables import SolverParams, SolverInputs
+from hatchet.compute_cn.solve.model import SolverParams, SolverInputs
 
 
 def build_reg_maxcn(model, mode: str, params: SolverParams, inputs: SolverInputs):

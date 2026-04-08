@@ -16,7 +16,6 @@ from hatchet.compute_cn.compute_cn_utils import (
     build_pool_output,
     build_segment_data,
     compute_fractional_cn,
-    dedup_pool,
     load_pool_from_disk,
     plot_pareto_pdf,
     pool_entries_for_plot,
@@ -25,11 +24,8 @@ from hatchet.compute_cn.compute_cn_utils import (
 from hatchet.compute_cn.scaling import get_scaling_factor
 from hatchet.compute_cn.model_select import model_selection
 from hatchet.hatchet_parser import parse_arguments_compute_cn, parse_fix_cn
-from hatchet.compute_cn.solve.utils import (
-    store_solve_input,
-    store_instance_tofile,
-)
-from hatchet.compute_cn.solve.variables import SolverParams, SolverInputs
+from hatchet.compute_cn.solve.utils import store_solve_input
+from hatchet.compute_cn.solve.model import SolverParams, SolverInputs
 from hatchet.compute_cn.solve.inference import run_full_ilp, run_coordinate_descent
 from hatchet.plot.plot_cnp_panel import plot_pool_cnp
 
@@ -487,19 +483,12 @@ def solve(
             u_dir_alpha=args["u_dir_alpha"],
             solver_threads=args["solver_threads"],
             cd_tol=args["cd_tol"],
-            **cd_run_kwargs,
-        )
-        pool_instances = dedup_pool(cd_instances)
-        store_instance_tofile(
-            pool_instances,
-            f_a,
-            f_b,
-            sol_dir,
-            "cd",
-            n,
+            sol_dir=sol_dir,
             fcn_data=fcn_data,
             nbins=nbins,
+            **cd_run_kwargs,
         )
+        pool_instances = cd_instances
 
     if solve_mode in ("ilp", "both"):
         warm_cA = warm_cB = None
@@ -524,15 +513,7 @@ def solve(
             pool_gap=pool_gap,
             warm_start_cA=warm_cA,
             warm_start_cB=warm_cB,
-        )
-        pool_instances = dedup_pool(pool_instances)
-        store_instance_tofile(
-            pool_instances,
-            f_a,
-            f_b,
-            sol_dir,
-            solve_mode,
-            n,
+            sol_dir=sol_dir,
             fcn_data=fcn_data,
             nbins=nbins,
         )

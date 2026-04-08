@@ -12,12 +12,15 @@ from pyomo import environ as pe
 from pyomo.opt import SolverStatus, TerminationCondition
 
 from hatchet.compute_cn.solve.model import (
+    SolverParams,
+    SolverInputs,
     build_model,
     first_hot_start,
     hot_start,
     build_random_u,
 )
-from hatchet.compute_cn.solve.variables import SolverParams, SolverInputs
+from hatchet.compute_cn.solve.utils import store_instance_tofile
+from hatchet.compute_cn.compute_cn_utils import dedup_pool
 
 # Stack-based random seeding for reproducibility
 _random_states = []
@@ -159,10 +162,13 @@ def run_full_ilp(
     pool_gap=None,
     warm_start_cA=None,
     warm_start_cB=None,
+    sol_dir=None,
+    fcn_data=None,
+    nbins=None,
 ):
     """Build model once, solve across regularization path.
 
-    Returns (pool_instances, tree_info) in the same format as run_coordinate_descent.
+    Returns (pool_instances, tree_info). Results are deduped and saved if sol_dir is set.
     """
     model, var_z = build_model("FULL", params, inputs)
 
@@ -176,9 +182,8 @@ def run_full_ilp(
     if warm_start_cA is not None:
         hot_start(model, params, inputs, warm_start_cA, warm_start_cB)
 
-    pname = params.reg_name
-    dmrca_no_effect = pname == "DMRCA_SUM" and params.n <= 2
-    effective_steps = 0 if dmrca_no_effect else reg_steps
+    no_effect = params.reg_name in ("DSPAN", "DRMST") and params.n <= 2
+    effective_steps = 0 if no_effect else reg_steps
 
     sol_instances = {}
     pool_instances = {}
@@ -206,6 +211,18 @@ def run_full_ilp(
         for pparam in pool_instances:
             tree_info[pparam] = {"tree_edges": t_edges}
 
+    pool_instances = dedup_pool(pool_instances)
+    if sol_dir is not None:
+        store_instance_tofile(
+            pool_instances,
+            inputs.f_a,
+            inputs.f_b,
+            sol_dir,
+            "ilp",
+            params.n,
+            fcn_data=fcn_data,
+            nbins=nbins,
+        )
     return pool_instances, tree_info
 
 
@@ -295,6 +312,9 @@ def run_coordinate_descent(
     random_seed=None,
     timelimit=None,
     u0_tsv_path=None,
+    sol_dir=None,
+    fcn_data=None,
+    nbins=None,
 ):
     """Run coordinate descent with parallel restarts over a regularization path.
 
@@ -395,4 +415,17 @@ def run_coordinate_descent(
 
     if not pool_instances:
         raise RuntimeError("Not a single feasible solution found!")
+
+    pool_instances = dedup_pool(pool_instances)
+    if sol_dir is not None:
+        store_instance_tofile(
+            pool_instances,
+            inputs.f_a,
+            inputs.f_b,
+            sol_dir,
+            "cd",
+            params.n,
+            fcn_data=fcn_data,
+            nbins=nbins,
+        )
     return pool_instances, tree_info
