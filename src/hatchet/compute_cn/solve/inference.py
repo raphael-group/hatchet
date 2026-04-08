@@ -12,7 +12,6 @@ from pyomo import environ as pe
 from pyomo.opt import SolverStatus, TerminationCondition
 
 from hatchet.compute_cn.solve.model import (
-    Random,
     build_model,
     first_hot_start,
     hot_start,
@@ -20,9 +19,28 @@ from hatchet.compute_cn.solve.model import (
 )
 from hatchet.compute_cn.solve.variables import SolverParams
 
+# Stack-based random seeding for reproducibility
+_random_states = []
+
+
+class Random:
+    """Context manager that pushes/pops numpy random state for reproducibility."""
+
+    def __init__(self, seed=None):
+        self.seed = seed
+
+    def __enter__(self):
+        if self.seed is not None:
+            _random_states.append(np.random.get_state())
+            np.random.set_state(np.random.RandomState(self.seed).get_state())
+
+    def __exit__(self, *args):
+        if self.seed is not None:
+            np.random.set_state(_random_states.pop())
+
 
 # ---------------------------------------------------------------------------
-# Solver utilities (moved from base_solver.py)
+# Solver utilities
 # ---------------------------------------------------------------------------
 
 
