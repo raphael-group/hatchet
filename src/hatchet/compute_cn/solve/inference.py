@@ -75,17 +75,37 @@ def solve_model(model, solver, warmstart, timelimit):
     return ok or time_limit
 
 
-def extract_solution(model, params: SolverParams, inputs: SolverInputs):
-    """Extract (obj, cA, cB, u) from solved model."""
-    cA = [
-        [int(round(model.cA[_m, _n].value)) for _n in range(params.n)]
-        for _m in range(inputs.m)
-    ]
-    cB = [
-        [int(round(model.cB[_m, _n].value)) for _n in range(params.n)]
-        for _m in range(inputs.m)
-    ]
-    u = [[model.u[_n, _k].value for _k in range(inputs.k)] for _n in range(params.n)]
+def extract_solution(
+    model,
+    params: SolverParams,
+    inputs: SolverInputs,
+    fixed_u=None,
+    fixed_cA=None,
+    fixed_cB=None,
+):
+    """Extract (obj, cA, cB, u) from solved model.
+
+    In CARCH mode, u comes from fixed_u (not on model).
+    In UARCH mode, cA/cB come from fixed_cA/fixed_cB.
+    """
+    if fixed_cA is not None:
+        cA = fixed_cA
+        cB = fixed_cB
+    else:
+        cA = [
+            [int(round(model.cA[_m, _n].value)) for _n in range(params.n)]
+            for _m in range(inputs.m)
+        ]
+        cB = [
+            [int(round(model.cB[_m, _n].value)) for _n in range(params.n)]
+            for _m in range(inputs.m)
+        ]
+    if fixed_u is not None:
+        u = fixed_u
+    else:
+        u = [
+            [model.u[_n, _k].value for _k in range(inputs.k)] for _n in range(params.n)
+        ]
     return model.obj(), cA, cB, u
 
 
@@ -258,7 +278,7 @@ def _cd_work(
         model_c.pparam = pparam
         if not solve_model(model_c, solver, True, timelimit):
             return None
-        _, _cA, _cB, _ = extract_solution(model_c, params, inputs)
+        _, _cA, _cB, _ = extract_solution(model_c, params, inputs, fixed_u=_u)
         _imf_c = pe.value(model_c.obj_imf)
         _reg_c = pe.value(model_c.obj_reg)
         _tree_edges = extract_tree_edges(var_z_c, params.n)
@@ -267,7 +287,9 @@ def _cd_work(
         model_u, _ = build_model("UARCH", params, inputs, fixed_cA=_cA, fixed_cB=_cB)
         if not solve_model(model_u, solver, False, timelimit):
             return None
-        _obj_u, _, _, _u = extract_solution(model_u, params, inputs)
+        _obj_u, _, _, _u = extract_solution(
+            model_u, params, inputs, fixed_cA=_cA, fixed_cB=_cB
+        )
 
         if _prev_obj_u is not None:
             if abs(_obj_u - _prev_obj_u) < cfg["cd_tol"]:
