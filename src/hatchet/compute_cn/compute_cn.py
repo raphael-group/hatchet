@@ -124,26 +124,47 @@ def run(args=None):
 
     all_summary_rows = []
 
-    diploid_sols = {}
-    if run_diploid:
-        logging.info(f"Diploid clonal CN: {clonal_dip}")
-        logging.info("Diploid RD scaling factor gamma per sample:")
-        for sample, gamma in gammas_noWGD.items():
-            logging.info(f"{sample}\tgamma={gamma}")
-        gammas_dip = pd.Series(gammas_noWGD).sort_index()
-        fcn_dip = compute_fractional_cn(
+    # 1. Compute FCN for both ploidies
+    gammas_dip = pd.Series(gammas_noWGD).sort_index()
+    fcn_dip = compute_fractional_cn(
+        rdr,
+        baf,
+        bbcs,
+        gammas_dip,
+        alpha=args["fcn_ci_alpha"],
+    )
+    logging.info(f"Diploid clonal CN: {clonal_dip}")
+    logging.info("Diploid RD scaling factor gamma per sample:")
+    for sample, gamma in gammas_noWGD.items():
+        logging.info(f"{sample}\tgamma={gamma}")
+
+    fcn_tet = None
+    if clonal_tet is not None:
+        gammas_tet = pd.Series(gammas_WGD).sort_index()
+        fcn_tet = compute_fractional_cn(
             rdr,
             baf,
             bbcs,
-            gammas_dip,
+            gammas_tet,
             alpha=args["fcn_ci_alpha"],
         )
-        store_solve_input(
-            os.path.join(out_dir, "sols", "diploid_input.tsv"),
-            fcn_dip,
-            weights,
-            nbins,
-        )
+        logging.info(f"Tetraploid clonal CN: {clonal_tet}")
+        logging.info("Tetraploid RD scaling factor gamma per sample:")
+        for sample, gamma in gammas_WGD.items():
+            logging.info(f"{sample}\tgamma={gamma}")
+
+    # 2. Store solver input (both ploidies in one file)
+    store_solve_input(
+        os.path.join(out_dir, "sols", "solver_input.tsv"),
+        weights,
+        nbins,
+        fcn_diploid=fcn_dip,
+        fcn_tetraploid=fcn_tet,
+    )
+
+    # 3. Run solves
+    diploid_sols = {}
+    if run_diploid:
         for n in range(minClone, maxClone):
             logging.info(f"running diploid with n={n}")
             obj, imf_obj, pool = solve(
@@ -197,25 +218,7 @@ def run(args=None):
                 )
 
     tetraploid_sols = {}
-    if run_tetraploid and clonal_tet is not None:
-        logging.info(f"Tetraploid clonal CN: {clonal_tet}")
-        logging.info("Tetraploid RD scaling factor gamma per sample:")
-        for sample, gamma in gammas_WGD.items():
-            logging.info(f"{sample}\tgamma={gamma}")
-        gammas_tet = pd.Series(gammas_WGD).sort_index()
-        fcn_tet = compute_fractional_cn(
-            rdr,
-            baf,
-            bbcs,
-            gammas_tet,
-            alpha=args["fcn_ci_alpha"],
-        )
-        store_solve_input(
-            os.path.join(out_dir, "sols", "tetraploid_input.tsv"),
-            fcn_tet,
-            weights,
-            nbins,
-        )
+    if run_tetraploid and fcn_tet is not None:
         for n in range(minClone, maxClone):
             logging.info(f"running tetraploid with n={n}")
             obj, imf_obj, pool = solve(

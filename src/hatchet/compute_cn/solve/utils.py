@@ -7,23 +7,33 @@ import matplotlib.pyplot as plt
 
 
 def store_solve_input(
-    out_file: str, fcn_data: dict, weights: pd.Series, nbins: pd.DataFrame
+    out_file: str,
+    weights: pd.Series,
+    nbins: pd.DataFrame,
+    fcn_diploid: dict | None = None,
+    fcn_tetraploid: dict | None = None,
 ):
-    """Write fractional CN data to TSV."""
-    fa = fcn_data["fa"]
-    cluster_ids = fa.index.tolist()
-    sample_ids = fa.columns.tolist()
+    """Write fractional CN data to a single TSV with a ploidy column."""
     cols = ["fcn", "fa", "fb", "fa_lo", "fa_hi", "fb_lo", "fb_hi"]
-    header = "CLUSTER\tSAMPLE\t#BINS\t" + "\t".join(cols) + "\tweight"
+    header = "ploidy\tCLUSTER\tSAMPLE\t#BINS\t" + "\t".join(cols) + "\tweight"
     with open(out_file, "w") as fd:
         fd.write(header + "\n")
-        for sample in sample_ids:
-            for cid in cluster_ids:
-                nb = int(nbins.loc[cid, sample])
-                vals = [str(fcn_data[c].loc[cid, sample]) for c in cols]
-                fd.write(
-                    f"{cid}\t{sample}\t{nb}\t" + "\t".join(vals) + f"\t{weights[cid]}\n"
-                )
+        for ploidy, fcn_data in [
+            ("diploid", fcn_diploid),
+            ("tetraploid", fcn_tetraploid),
+        ]:
+            if fcn_data is None:
+                continue
+            fa = fcn_data["fa"]
+            for sample in fa.columns:
+                for cid in fa.index:
+                    nb = int(nbins.loc[cid, sample])
+                    vals = [str(fcn_data[c].loc[cid, sample]) for c in cols]
+                    fd.write(
+                        f"{ploidy}\t{cid}\t{sample}\t{nb}\t"
+                        + "\t".join(vals)
+                        + f"\t{weights[cid]}\n"
+                    )
 
 
 def _write_solution_tsv(
