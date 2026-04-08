@@ -29,8 +29,9 @@ from hatchet.compute_cn.solve.utils import (
     store_solve_input,
     store_instance_tofile,
 )
-from hatchet.compute_cn.solve.ilp_subset import ILPSubset
-from hatchet.compute_cn.solve.cd import CoordinateDescent
+from hatchet.compute_cn.solve.variables import SolverParams
+from hatchet.compute_cn.solve.model import hot_start
+from hatchet.compute_cn.solve.inference import FullILP, CDSolver
 from hatchet.plot.plot_cnp_panel import plot_pool_cnp
 
 
@@ -443,28 +444,50 @@ def solve(
         u0_tsv_path=u0_tsv_path,
     )
 
+    # Build SolverParams shared by both CD and ILP
+    fixed_rows = set()
+    free_rows_list = list(range(len(cluster_ids)))
+    for _m, cid in enumerate(cluster_ids):
+        if cid in clonal:
+            fixed_rows.add(_m)
+    free_rows_list = [_m for _m in range(len(cluster_ids)) if _m not in fixed_rows]
+
+    params = SolverParams(
+        m=len(cluster_ids),
+        n=n,
+        k=len(sample_ids),
+        cn_max=cn_max,
+        mode="FULL",
+        base=base,
+        free_rows=free_rows_list,
+        fixed_rows=fixed_rows,
+        copy_numbers=clonal,
+        cluster_ids=cluster_ids,
+        sample_ids=sample_ids,
+        w=weights,
+        ampdel=ampdel,
+        minprop=args["min_prop"],
+        max_ncns_seg=args["num_cnstates"],
+        purities=purities,
+        mrca=args["mrca"],
+        max_degree=args["max_degree"],
+        balanced_clusters=balanced_clusters,
+        tol=args.get("tol", 0.001),
+        zero_cn_thres=args["zero_cn_thres"],
+        f_a=f_a,
+        f_b=f_b,
+    )
+    penalty_param = [reg_term if reg_term is not None else "RAW", 0.0]
+
     if solve_mode in ("cd", "both"):
-        cd = CoordinateDescent(
-            fcn_data=fcn_data,
-            n=n,
-            minprop=args["min_prop"],
-            max_ncns_seg=args["num_cnstates"],
-            cn_max=cn_max,
-            w=weights,
-            ampdel=ampdel,
-            cn=clonal,
-            purities=purities,
-            base=base,
+        cd = CDSolver(
+            params=params,
             reg_term=reg_term,
             reg_steps=reg_steps,
             reg_bound=args["reg_bound"],
             u_init_method=args["u_init"],
             u_dir_alpha=args["u_dir_alpha"],
             solver_threads=args["solver_threads"],
-            max_degree=args["max_degree"],
-            balanced_clusters=balanced_clusters,
-            mrca=args["mrca"],
-            zero_cn_thres=args["zero_cn_thres"],
             cd_tol=args["cd_tol"],
         )
         cd_instances, tree_info = cd.run(**cd_run_kwargs)
@@ -483,25 +506,13 @@ def solve(
     sol_instances = None
     if solve_mode in ("ilp", "both"):
         sol_instances = {}
-        solver = ILPSubset(
-            n,
-            cn_max,
-            max_ncns_seg=args["num_cnstates"],
-            minprop=args["min_prop"],
-            ampdel=ampdel,
-            copy_numbers=clonal,
-            fcn_data=fcn_data,
-            w=weights,
-            purities=purities,
-            penalty_param=[reg_term if reg_term is not None else "RAW", 0.0],
-            base=base,
-            balanced_clusters=balanced_clusters,
-            mrca=args["mrca"],
-            max_degree=args["max_degree"],
-        )
-        solver.create_model(pprint=verbose)
+        ilp = FullILP(params, penalty_param)
+        if verbose:
+            logging.info(
+                f"ILP model: {ilp.model.nconstraints()} constraints, "
+                f"{ilp.model.nvariables()} variables"
+            )
         if solve_mode == "both":
-            # Pick the best CD solution (lowest obj) across all pparam values
             best_cd = min(
                 (sol for sols in cd_instances.values() for sol in sols),
                 key=lambda s: s[0],
@@ -509,11 +520,8 @@ def solve(
             logging.info(
                 f"use CD local opt with obj={best_cd[0]:.4f} to initialize ILP model"
             )
-            solver.hot_start(best_cd[1], best_cd[2])
+            hot_start(ilp.model, params, best_cd[1], best_cd[2])
 
-        # DMRCA_SUM only penalises clones at index >= 2; with n <= 2 there are no
-        # subclonal clones beyond the MRCA, so the regularisation path has no effect
-        # and a single unregularised solve (i0=0, pparam=0) is sufficient.
         dmrca_no_effect = reg_term == "DMRCA_SUM" and n <= 2
         effective_reg_steps = 0 if dmrca_no_effect else reg_steps
 
@@ -521,11 +529,11 @@ def solve(
         for i0 in range(0, effective_reg_steps + 1):
             logging.debug(f"running instance {i0}/{effective_reg_steps}")
             pparam = args["reg_bound"] * i0 / max(effective_reg_steps, 1)
-            solver.model.pparam = pparam
+            ilp.model.pparam = pparam
             if i0 > 0:
                 cA_, cB_ = sol_instances[0][1:3]
-                solver.hot_start(cA_, cB_)
-            sol_instances[pparam] = solver.run(
+                hot_start(ilp.model, params, cA_, cB_)
+            sol_instances[pparam] = ilp.solve(
                 solver_type=solver_type,
                 timelimit=timelimit,
                 pool_size=pool_size,
@@ -535,7 +543,7 @@ def solve(
 
             pool_instances[pparam] = [sol_instances[pparam]]
             if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
-                pool_sols = solver.get_pool_solutions(pool_size=pool_size)
+                pool_sols = ilp.get_pool_solutions(pool_size=pool_size)
                 if pool_sols:
                     pool_instances[pparam].extend(pool_sols)
 

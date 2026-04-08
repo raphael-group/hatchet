@@ -325,9 +325,7 @@ def compute_individual_objs(
         "DADJ_SUM": compute_obj_DADJ_SUM,
     }
     if pname == "DRMST":
-        sub_obj = compute_obj_tree(
-            w_, fA_, fB_, cA_, cB_, u_, tree_edges=tree_edges
-        )
+        sub_obj = compute_obj_tree(w_, fA_, fB_, cA_, cB_, u_, tree_edges=tree_edges)
     elif pname in reg_objs:
         sub_obj = reg_objs[pname](w_, fA_, fB_, cA_, cB_, u_)
     else:
@@ -667,7 +665,9 @@ def model_selection_instance(
         keep_mask = [id(all_sols_list[i]) in deduped_set for i in range(len(keys))]
         df = df.loc[keep_mask].reset_index(drop=True)
         all_solutions = {
-            keys[i]: all_sols_list[i] for i, should_keep in enumerate(keep_mask) if should_keep
+            keys[i]: all_sols_list[i]
+            for i, should_keep in enumerate(keep_mask)
+            if should_keep
         }
 
     df, sol_index = model_select_elbow(

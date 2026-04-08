@@ -193,7 +193,8 @@ def model_selection(
 
         bics = np.array(
             [
-                -2 * lls[i] + _count_params(ns[i], n_clusters, n_samples) * np.log(n_obs)
+                -2 * lls[i]
+                + _count_params(ns[i], n_clusters, n_samples) * np.log(n_obs)
                 for i in range(len(ns))
             ]
         )

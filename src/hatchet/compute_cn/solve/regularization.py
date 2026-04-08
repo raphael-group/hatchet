@@ -1,0 +1,261 @@
+"""Regularization term builders for the copy-number ILP model.
+
+Each function adds auxiliary variables/constraints to *model* and returns a
+Pyomo expression for the regularization objective component.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+from pyomo import environ as pe
+
+from hatchet.compute_cn.solve.variables import SolverParams
+
+
+def build_reg_maxcn(model, p: SolverParams):
+    """MAXCN: penalise max CN per cluster."""
+    n = p.n
+    obj = 0
+    hcn_idx = [(m_, ab) for m_ in p.free_rows for ab in ("a", "b")]
+    model.hcn = pe.Var(hcn_idx, bounds=(0, np.inf), domain=pe.Reals)
+    for _m in p.free_rows:
+        for _n in p.tumor_clones:
+            model.constraints.add(model.cA[_m, _n] <= model.hcn[_m, "a"])
+            model.constraints.add(model.cB[_m, _n] <= model.hcn[_m, "b"])
+        cid = p.cluster_ids[_m]
+        obj += p.w[cid] * (model.hcn[_m, "a"] + model.hcn[_m, "b"])
+    for _m in p.fixed_rows:
+        cid = p.cluster_ids[_m]
+        ca, cb = p.copy_numbers[cid]
+        obj += p.w[cid] * (max(ca, p.base) + max(cb, p.base))
+    return obj
+
+
+def build_reg_droot_sum(model, p: SolverParams):
+    """DROOT_SUM: L1 distance from normal clone (n=0)."""
+    n = p.n
+    obj = 0
+    md_idx = [
+        (_m, _n, ab) for _m in p.free_rows for _n in p.tumor_clones for ab in ("a", "b")
+    ]
+    model.md_root = pe.Var(md_idx, bounds=(0, np.inf), domain=pe.Reals)
+    for _m in p.free_rows:
+        cid = p.cluster_ids[_m]
+        for _n in p.tumor_clones:
+            model.constraints.add(
+                model.cA[_m, _n] - model.cA[_m, 0] <= model.md_root[_m, _n, "a"]
+            )
+            model.constraints.add(
+                model.cA[_m, 0] - model.cA[_m, _n] <= model.md_root[_m, _n, "a"]
+            )
+            model.constraints.add(
+                model.cB[_m, _n] - model.cB[_m, 0] <= model.md_root[_m, _n, "b"]
+            )
+            model.constraints.add(
+                model.cB[_m, 0] - model.cB[_m, _n] <= model.md_root[_m, _n, "b"]
+            )
+            obj += p.w[cid] * (model.md_root[_m, _n, "a"] + model.md_root[_m, _n, "b"])
+    for _m in p.fixed_rows:
+        cid = p.cluster_ids[_m]
+        ca, cb = p.copy_numbers[cid]
+        obj += p.w[cid] * (n - 1) * (abs(ca - p.base) + abs(cb - p.base))
+    return obj
+
+
+def build_reg_dadj_sum(model, p: SolverParams):
+    """DADJ_SUM: pairwise L1 distance between all clone pairs."""
+    n = p.n
+    obj = 0
+    md_idx = [
+        (_m, _n1, _n2, ab)
+        for _m in p.free_rows
+        for _n1 in range(n - 1)
+        for _n2 in range(_n1 + 1, n)
+        for ab in ("a", "b")
+    ]
+    model.md_adj = pe.Var(md_idx, bounds=(0, np.inf), domain=pe.Reals)
+    for _m in p.free_rows:
+        cid = p.cluster_ids[_m]
+        for _n1 in range(n - 1):
+            for _n2 in range(_n1 + 1, n):
+                model.constraints.add(
+                    model.cA[_m, _n1] - model.cA[_m, _n2]
+                    <= model.md_adj[_m, _n1, _n2, "a"]
+                )
+                model.constraints.add(
+                    model.cA[_m, _n2] - model.cA[_m, _n1]
+                    <= model.md_adj[_m, _n1, _n2, "a"]
+                )
+                model.constraints.add(
+                    model.cB[_m, _n1] - model.cB[_m, _n2]
+                    <= model.md_adj[_m, _n1, _n2, "b"]
+                )
+                model.constraints.add(
+                    model.cB[_m, _n2] - model.cB[_m, _n1]
+                    <= model.md_adj[_m, _n1, _n2, "b"]
+                )
+                obj += p.w[cid] * (
+                    model.md_adj[_m, _n1, _n2, "a"] + model.md_adj[_m, _n1, _n2, "b"]
+                )
+    for _m in p.fixed_rows:
+        cid = p.cluster_ids[_m]
+        ca, cb = p.copy_numbers[cid]
+        obj += p.w[cid] * (n - 1) * (abs(ca - p.base) + abs(cb - p.base))
+    return obj
+
+
+def build_reg_dspan(model, p: SolverParams):
+    """DSPAN: penalise CN range (max - min) per allele per cluster."""
+    obj = 0
+    sp_idx = [
+        (_m, tag) for _m in p.free_rows for tag in ("maxA", "minA", "maxB", "minB")
+    ]
+    model.span = pe.Var(sp_idx, bounds=(0, np.inf), domain=pe.Reals)
+    for _m in p.free_rows:
+        for _n in p.tumor_clones:
+            model.constraints.add(model.cA[_m, _n] <= model.span[_m, "maxA"])
+            model.constraints.add(model.cA[_m, _n] >= model.span[_m, "minA"])
+            model.constraints.add(model.cB[_m, _n] <= model.span[_m, "maxB"])
+            model.constraints.add(model.cB[_m, _n] >= model.span[_m, "minB"])
+        cid = p.cluster_ids[_m]
+        obj += p.w[cid] * (
+            model.span[_m, "maxA"]
+            - model.span[_m, "minA"]
+            + model.span[_m, "maxB"]
+            - model.span[_m, "minB"]
+        )
+    return obj
+
+
+def build_reg_drmst(model, p: SolverParams):
+    """DRMST: rooted minimum Steiner tree regularization.
+
+    Returns (obj_reg_expression, var_z_dict).
+    """
+    m, n = p.m, p.n
+    big_M = 2 * p.cn_max
+    is_mrca = p.mrca
+
+    param_deg = pe.Param(initialize=float(p.max_degree))
+    model.p_max_degree = param_deg
+
+    # Topology variables z[i,j]: binary edges
+    var_z = {}
+    for i in range(1, n):
+        for j in range(i):
+            if is_mrca and i >= 2 and j == 0:
+                continue
+            var_z[(i, j)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+            model.add_component(f"tz_{i}_{j}", var_z[(i, j)])
+
+    # One parent per non-root clone
+    for i in range(1, n):
+        model.constraints.add(
+            sum(var_z[(i, j)] for j in range(i) if (i, j) in var_z) == 1
+        )
+
+    # Degree constraints
+    ch0 = [var_z[(i, 0)] for i in range(1, n) if (i, 0) in var_z]
+    if ch0:
+        model.add_component("con_degree_0", pe.Constraint(expr=sum(ch0) <= param_deg))
+    for c in range(1, n):
+        ch = [var_z[(i, c)] for i in range(c + 1, n) if (i, c) in var_z]
+        if ch:
+            model.add_component(
+                f"con_degree_{c}", pe.Constraint(expr=1 + sum(ch) <= param_deg)
+            )
+
+    # Edge distance variables + big-M linearization
+    var_M = {}
+    tree_clones = range(2, n) if is_mrca else range(1, n)
+    for _m in range(m):
+        for i in range(1, n):
+            for j in range(i):
+                if (i, j) not in var_z or i not in tree_clones:
+                    continue
+                if (_m, i) not in var_M:
+                    var_M[(_m, i)] = pe.Var(bounds=(0, None), domain=pe.Reals)
+                    model.add_component(f"tM_{_m}_{i}", var_M[(_m, i)])
+                dA = pe.Var(bounds=(0, None), domain=pe.Reals)
+                model.add_component(f"tdA_{_m}_{i}_{j}", dA)
+                dB = pe.Var(bounds=(0, None), domain=pe.Reals)
+                model.add_component(f"tdB_{_m}_{i}_{j}", dB)
+                cA_i, cA_j = model.cA[_m, i], model.cA[_m, j]
+                cB_i, cB_j = model.cB[_m, i], model.cB[_m, j]
+                zv = var_z[(i, j)]
+                model.constraints.add(dA >= cA_i - cA_j - big_M * (1 - zv))
+                model.constraints.add(dA >= cA_j - cA_i - big_M * (1 - zv))
+                model.constraints.add(dB >= cB_i - cB_j - big_M * (1 - zv))
+                model.constraints.add(dB >= cB_j - cB_i - big_M * (1 - zv))
+                model.constraints.add(var_M[(_m, i)] >= dA + dB - big_M * (1 - zv))
+
+    # LOH indicator variables
+    for _m in range(m):
+        if _m in p.fixed_rows:
+            continue
+        for _n in range(n):
+            lA = pe.Var(bounds=(0, 1), domain=pe.Binary)
+            model.add_component(f"tlA_{_m}_{_n}", lA)
+            lB = pe.Var(bounds=(0, 1), domain=pe.Binary)
+            model.add_component(f"tlB_{_m}_{_n}", lB)
+            model.constraints.add(model.cA[_m, _n] >= 1 - big_M * lA)
+            model.constraints.add(model.cA[_m, _n] <= big_M * (1 - lA))
+            model.constraints.add(model.cB[_m, _n] >= 1 - big_M * lB)
+            model.constraints.add(model.cB[_m, _n] <= big_M * (1 - lB))
+
+    # LOH inheritance: if parent lost allele, child must too
+    for _m in range(m):
+        if _m in p.fixed_rows:
+            continue
+        for i in range(1, n):
+            for j in range(i):
+                if (i, j) not in var_z:
+                    continue
+                lA_j = model.find_component(f"tlA_{_m}_{j}")
+                lB_j = model.find_component(f"tlB_{_m}_{j}")
+                model.constraints.add(
+                    model.cA[_m, i]
+                    <= p.cn_max * (1 - lA_j) + big_M * (1 - var_z[(i, j)])
+                )
+                model.constraints.add(
+                    model.cB[_m, i]
+                    <= p.cn_max * (1 - lB_j) + big_M * (1 - var_z[(i, j)])
+                )
+
+    # Objective: sum of tree edge distances
+    obj = 0
+    for _m in range(m):
+        for i in tree_clones:
+            if (_m, i) in var_M:
+                obj += p.w[p.cluster_ids[_m]] * var_M[(_m, i)]
+
+    return obj, var_z
+
+
+def build_regularization(model, p: SolverParams, penalty_param):
+    """Dispatch to the appropriate regularization builder.
+
+    Returns (obj_reg_expression, var_z_dict_or_None).
+    """
+    pname, init_val = penalty_param
+    pparam = pe.Param(mutable=True, initialize=init_val)
+    model.pparam = pparam
+
+    var_z = None
+    obj_reg = 0
+
+    if p.mode not in ("FULL", "CARCH") or pname == "RAW":
+        return obj_reg, var_z
+
+    builders = {
+        "MAXCN": build_reg_maxcn,
+        "DROOT_SUM": build_reg_droot_sum,
+        "DADJ_SUM": build_reg_dadj_sum,
+        "DSPAN": build_reg_dspan,
+    }
+    if pname in builders:
+        obj_reg = builders[pname](model, p)
+    elif pname == "DRMST":
+        obj_reg, var_z = build_reg_drmst(model, p)
+
+    return obj_reg, var_z

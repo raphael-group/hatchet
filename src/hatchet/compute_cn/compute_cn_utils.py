@@ -649,7 +649,13 @@ def build_pool_output(
             if tree_info is not None and pparam in tree_info:
                 _tree_edges = tree_info[pparam].get("tree_edges")
             p_imf, p_reg = compute_individual_objs(
-                pname, weights, f_a, f_b, pcA, pcB, pu,
+                pname,
+                weights,
+                f_a,
+                f_b,
+                pcA,
+                pcB,
+                pu,
                 tree_edges=_tree_edges,
             )
             cnt_pairs = compute_pairwise_cnt(pcA, pcB, bbcs, cluster_ids)
@@ -689,5 +695,3 @@ def dedup_pool(pool_instances):
         if id(sol) in deduped_ids:
             out.setdefault(pparam, []).append(sol)
     return out
-
-
