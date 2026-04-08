@@ -159,15 +159,9 @@ class ILPSubset(BaseSolver):
 
     def create_model(self, pprint=False):
         m, n, k = self.m, self.n, self.k
-        f_a, f_b = self.f_a, self.f_b
-        cn_max = self.cn_max
-        ampdel = self.ampdel
-        copy_numbers = self.copy_numbers
         mode_t = self.mode
-        max_ncns_seg = self.max_ncns_seg
-        _M = self.M  # compute binary length
         _base = self.base
-        zero_cn_thres = self.zero_cn_thres
+        _M = self.M
 
         model = pe.ConcreteModel()
 
@@ -178,9 +172,9 @@ class ILPSubset(BaseSolver):
             for _m, cid in enumerate(self.cluster_ids):
                 self.cA[_m][0] = 1
                 self.cB[_m][0] = 1
-                if cid in copy_numbers:
+                if cid in self.copy_numbers:
                     fixed_rows.add(_m)
-                    ca, cb = copy_numbers[cid]
+                    ca, cb = self.copy_numbers[cid]
                     for _n in range(1, n):
                         self.cA[_m][_n] = ca
                         self.cB[_m][_n] = cb
@@ -202,8 +196,10 @@ class ILPSubset(BaseSolver):
         # upper bound for solver
         cAB_bounds = {}
         for _m in range(m):
-            cluster_id = f_a.index[_m]
-            cAB_bounds[_m] = max(sum(copy_numbers.get(cluster_id, (0, 0))), cn_max)
+            cluster_id = self.f_a.index[_m]
+            cAB_bounds[_m] = max(
+                sum(self.copy_numbers.get(cluster_id, (0, 0))), self.cn_max
+            )
 
         for _m, _k in np.ndindex((m, k)):
             yA[(_m, _k)] = pe.Var(bounds=(0, np.inf), domain=pe.Reals)
@@ -227,10 +223,10 @@ class ILPSubset(BaseSolver):
                     )
                     model.add_component(f"cB_{_m + 1}_{_n + 1}", self.cB[_m][_n])
 
-            if ampdel:
+            if self.ampdel:
                 for _m in range(m):
-                    cluster_id = f_a.index[_m]
-                    if cluster_id not in copy_numbers:
+                    cluster_id = self.f_a.index[_m]
+                    if cluster_id not in self.copy_numbers:
                         adA[_m] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                         model.add_component(f"adA_{_m + 1}", adA[_m])
                         adB[_m] = pe.Var(bounds=(0, 1), domain=pe.Binary)
@@ -239,7 +235,7 @@ class ILPSubset(BaseSolver):
         # 0-1 var per M * m * n; M=floor(log(cn_max)) + 1
         bitcA = {}
         bitcB = {}
-        if (mode_t == "FULL") or (max_ncns_seg > 0 and mode_t == "CARCH"):
+        if (mode_t == "FULL") or (self.max_ncns_seg > 0 and mode_t == "CARCH"):
             for _b in range(_M):
                 for _m in free_rows:
                     for _n in range(1, n):  # skip n=0 (normal clone)
@@ -289,8 +285,8 @@ class ILPSubset(BaseSolver):
 
         # buildOptionalVariables
         z = {}
-        if (mode_t in ("FULL", "CARCH")) and max_ncns_seg > 0:
-            for _m, _n, _d in np.ndindex((m, n, max_ncns_seg)):
+        if (mode_t in ("FULL", "CARCH")) and self.max_ncns_seg > 0:
+            for _m, _n, _d in np.ndindex((m, n, self.max_ncns_seg)):
                 if _n != 0 and _m not in fixed_rows:
                     z[(_m, _n, _d)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
                     model.add_component(
@@ -363,7 +359,7 @@ class ILPSubset(BaseSolver):
                                 _sum += bitcA[(_b, _m, _n)] + bitcB[(_b, _m, _n)]
                     model.constraints.add(_sum >= self.u[_n][_k])
 
-        if (mode_t == "FULL") or (max_ncns_seg > 0 and mode_t == "CARCH"):
+        if (mode_t == "FULL") or (self.max_ncns_seg > 0 and mode_t == "CARCH"):
             for _m in free_rows:
                 for _n in range(1, n):
                     sum_a = 0
@@ -392,19 +388,19 @@ class ILPSubset(BaseSolver):
             self._add_cAB_upper_bound(model, get_cA, get_cB, rows=free_rows)
             self._add_zero_cn_constraints(model, get_cA, get_cB, rows=free_rows)
 
-            if ampdel:
+            if self.ampdel:
                 for _m in free_rows:
-                    cluster_id = f_a.index[_m]
-                    if cluster_id not in copy_numbers:
+                    cluster_id = self.f_a.index[_m]
+                    if cluster_id not in self.copy_numbers:
                         for _n in range(1, n):
                             model.constraints.add(
                                 self.cA[_m][_n]
-                                <= cn_max * adA[_m] + _base - _base * adA[_m]
+                                <= self.cn_max * adA[_m] + _base - _base * adA[_m]
                             )
                             model.constraints.add(self.cA[_m][_n] >= _base * adA[_m])
                             model.constraints.add(
                                 self.cB[_m][_n]
-                                <= cn_max * adB[_m] + _base - _base * adB[_m]
+                                <= self.cn_max * adB[_m] + _base - _base * adB[_m]
                             )
                             model.constraints.add(self.cB[_m][_n] >= _base * adB[_m])
 
@@ -436,16 +432,16 @@ class ILPSubset(BaseSolver):
                     model.constraints.add(self.u[_n][_k] >= self.minprop * x[(_n, _k)])
 
         # buildOptionalConstraints
-        if (mode_t in ("FULL", "CARCH")) and max_ncns_seg > 0:
+        if (mode_t in ("FULL", "CARCH")) and self.max_ncns_seg > 0:
             for _m in free_rows:
                 for _n in range(1, n):
                     _sum = 0
-                    for _d in range(max_ncns_seg):
+                    for _d in range(self.max_ncns_seg):
                         _sum += z[(_m, _n, _d)]
                     model.constraints.add(_sum == 1)
 
             for _m in free_rows:
-                for _b, _d in np.ndindex((_M, max_ncns_seg)):
+                for _b, _d in np.ndindex((_M, self.max_ncns_seg)):
                     for _i in range(1, n - 1):
                         for _j in range(1, n):
                             model.constraints.add(
@@ -466,7 +462,7 @@ class ILPSubset(BaseSolver):
                             )
 
             for _m in free_rows:
-                for _d in range(max_ncns_seg - 1):
+                for _d in range(self.max_ncns_seg - 1):
                     _sum_l = _sum_l1 = 0
                     for _n in range(1, self.n):
                         _sum_l += z[(_m, _n, _d)] * self.symmCoeff(_n)
@@ -511,7 +507,7 @@ class ILPSubset(BaseSolver):
                 # Fixed rows: constant contribution = max CN across clones
                 for _m in fixed_rows:
                     cluster_id = self.cluster_ids[_m]
-                    ca, cb = copy_numbers[cluster_id]
+                    ca, cb = self.copy_numbers[cluster_id]
                     obj_reg += self.w[cluster_id] * max(ca, self._base)
                     obj_reg += self.w[cluster_id] * max(cb, self._base)
 
@@ -555,7 +551,7 @@ class ILPSubset(BaseSolver):
                 # Fixed rows: constant |cA - base| + |cB - base| per clone
                 for _m in fixed_rows:
                     cluster_id = self.cluster_ids[_m]
-                    ca, cb = copy_numbers[cluster_id]
+                    ca, cb = self.copy_numbers[cluster_id]
                     obj_reg += (
                         self.w[cluster_id]
                         * (n - 1)
@@ -611,7 +607,7 @@ class ILPSubset(BaseSolver):
                 # except clone 0 (normal) vs clone _n: |ca - base| + |cb - base|
                 for _m in fixed_rows:
                     cluster_id = self.cluster_ids[_m]
-                    ca, cb = copy_numbers[cluster_id]
+                    ca, cb = self.copy_numbers[cluster_id]
                     # (n-1) pairs involve clone 0: (0,1), (0,2), ..., (0,n-1)
                     obj_reg += (
                         self.w[cluster_id]
@@ -662,7 +658,7 @@ class ILPSubset(BaseSolver):
                 # Fixed rows: all clones have same CN → span = 0, no contribution
 
             elif pname == "DRMST":
-                big_M_tree = 2 * cn_max
+                big_M_tree = 2 * self.cn_max
                 is_mrca = self.mrca
 
                 param_deg = pe.Param(initialize=float(self.max_degree))
@@ -760,12 +756,12 @@ class ILPSubset(BaseSolver):
                             lB_j = model.find_component(f"tlB_{_m}_{j}")
                             model.constraints.add(
                                 get_cA(_m, i)
-                                <= cn_max * (1 - lA_j)
+                                <= self.cn_max * (1 - lA_j)
                                 + big_M_tree * (1 - var_z[(i, j)])
                             )
                             model.constraints.add(
                                 get_cB(_m, i)
-                                <= cn_max * (1 - lB_j)
+                                <= self.cn_max * (1 - lB_j)
                                 + big_M_tree * (1 - var_z[(i, j)])
                             )
 
