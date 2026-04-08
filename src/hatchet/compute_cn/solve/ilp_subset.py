@@ -410,6 +410,11 @@ class ILPSubset(BaseSolver):
             for _k in range(k):
                 _sum = sum(self.u[_n][_k] for _n in range(n))
                 model.constraints.add(_sum == 1)
+                # Fix normal proportion from scaling-step purity
+                if self.purities is not None:
+                    sid = self.sample_ids[_k]
+                    if sid in self.purities:
+                        model.constraints.add(self.u[0][_k] == 1 - self.purities[sid])
 
         if (mode_t in ("FULL", "UARCH")) and self.minprop > 0:
             for _k in range(k):
