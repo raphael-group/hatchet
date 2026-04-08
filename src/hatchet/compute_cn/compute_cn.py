@@ -30,8 +30,7 @@ from hatchet.compute_cn.solve.utils import (
     store_instance_tofile,
 )
 from hatchet.compute_cn.solve.variables import SolverParams
-from hatchet.compute_cn.solve.model import hot_start
-from hatchet.compute_cn.solve.inference import FullILP, CDSolver
+from hatchet.compute_cn.solve.inference import run_full_ilp, run_coordinate_descent
 from hatchet.plot.plot_cnp_panel import plot_pool_cnp
 
 
@@ -480,7 +479,7 @@ def solve(
     penalty_param = [reg_term if reg_term is not None else "RAW", 0.0]
 
     if solve_mode in ("cd", "both"):
-        cd = CDSolver(
+        cd_instances, tree_info = run_coordinate_descent(
             params=params,
             reg_term=reg_term,
             reg_steps=reg_steps,
@@ -489,8 +488,8 @@ def solve(
             u_dir_alpha=args["u_dir_alpha"],
             solver_threads=args["solver_threads"],
             cd_tol=args["cd_tol"],
+            **cd_run_kwargs,
         )
-        cd_instances, tree_info = cd.run(**cd_run_kwargs)
         pool_instances = dedup_pool(cd_instances)
         store_instance_tofile(
             pool_instances,
@@ -503,15 +502,8 @@ def solve(
             nbins=nbins,
         )
 
-    sol_instances = None
     if solve_mode in ("ilp", "both"):
-        sol_instances = {}
-        ilp = FullILP(params, penalty_param)
-        if verbose:
-            logging.info(
-                f"ILP model: {ilp.model.nconstraints()} constraints, "
-                f"{ilp.model.nvariables()} variables"
-            )
+        warm_cA = warm_cB = None
         if solve_mode == "both":
             best_cd = min(
                 (sol for sols in cd_instances.values() for sol in sols),
@@ -520,33 +512,20 @@ def solve(
             logging.info(
                 f"use CD local opt with obj={best_cd[0]:.4f} to initialize ILP model"
             )
-            hot_start(ilp.model, params, best_cd[1], best_cd[2])
+            warm_cA, warm_cB = best_cd[1], best_cd[2]
 
-        dmrca_no_effect = reg_term == "DMRCA_SUM" and n <= 2
-        effective_reg_steps = 0 if dmrca_no_effect else reg_steps
-
-        pool_instances = {}
-        for i0 in range(0, effective_reg_steps + 1):
-            logging.debug(f"running instance {i0}/{effective_reg_steps}")
-            pparam = args["reg_bound"] * i0 / max(effective_reg_steps, 1)
-            ilp.model.pparam = pparam
-            if i0 > 0:
-                cA_, cB_ = sol_instances[0][1:3]
-                hot_start(ilp.model, params, cA_, cB_)
-            sol_instances[pparam] = ilp.solve(
-                solver_type=solver_type,
-                timelimit=timelimit,
-                pool_size=pool_size,
-                pool_gap=pool_gap,
-            )
-            assert sol_instances[pparam] is not None, "optimization failed"
-
-            pool_instances[pparam] = [sol_instances[pparam]]
-            if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
-                pool_sols = ilp.get_pool_solutions(pool_size=pool_size)
-                if pool_sols:
-                    pool_instances[pparam].extend(pool_sols)
-
+        pool_instances, _ = run_full_ilp(
+            params=params,
+            penalty_param=penalty_param,
+            reg_steps=reg_steps,
+            reg_bound=args["reg_bound"],
+            solver_type=solver_type,
+            timelimit=timelimit,
+            pool_size=pool_size,
+            pool_gap=pool_gap,
+            warm_start_cA=warm_cA,
+            warm_start_cB=warm_cB,
+        )
         pool_instances = dedup_pool(pool_instances)
         store_instance_tofile(
             pool_instances,

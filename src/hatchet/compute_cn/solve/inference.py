@@ -1,4 +1,4 @@
-"""Solver execution: FullILP (single-shot) and CDSolver (coordinate descent)."""
+"""Solver execution: run_full_ilp and run_coordinate_descent."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ def create_solver(solver_type, threads=None):
     return solver
 
 
-def _solve_model(model, solver, warmstart, timelimit):
+def solve_model(model, solver, warmstart, timelimit):
     """Solve a Pyomo model. Returns True on success."""
     kwargs = {"report_timing": False}
     if timelimit is not None:
@@ -66,16 +66,16 @@ def _solve_model(model, solver, warmstart, timelimit):
     if solver.warm_start_capable():
         kwargs["warmstart"] = warmstart
     results = solver.solve(model, **kwargs)
-    solver_ok = (
+    ok = (
         results.solver.status == SolverStatus.ok
         and results.solver.termination_condition
         in (TerminationCondition.optimal, TerminationCondition.feasible)
     )
-    time_limit_hit = (
+    time_limit = (
         results.solver.status == SolverStatus.aborted
         and results.solver.termination_condition == TerminationCondition.maxTimeLimit
     )
-    return solver_ok or time_limit_hit
+    return ok or time_limit
 
 
 def extract_solution(model, p: SolverParams):
@@ -99,8 +99,7 @@ def extract_tree_edges(var_z, n):
         for j in range(i):
             if (i, j) not in var_z:
                 continue
-            z_val = var_z[(i, j)].value
-            if z_val is not None and round(z_val) == 1:
+            if var_z[(i, j)].value is not None and round(var_z[(i, j)].value) == 1:
                 tree_edges[i] = j
                 break
         if i not in tree_edges:
@@ -109,68 +108,101 @@ def extract_tree_edges(var_z, n):
     return tree_edges
 
 
-# ---------------------------------------------------------------------------
-# FullILP
-# ---------------------------------------------------------------------------
+def extract_pool_solutions(solver, model, p: SolverParams, pool_size=10):
+    """Extract additional solutions from Gurobi's solution pool."""
+    try:
+        grb_model = solver._solver_model
+        var_map = solver._pyomo_var_to_solver_var_map
+    except AttributeError:
+        return []
+    if grb_model.SolCount <= 1:
+        return []
 
-
-class FullILP:
-    """Single-shot ILP solve."""
-
-    def __init__(self, params: SolverParams, penalty_param):
-        self.p = params
-        self.model, self.var_z = build_model(params, penalty_param)
-
-    def solve(self, solver_type="gurobi", timelimit=None, pool_size=1, pool_gap=None):
-        solver = create_solver(solver_type)
-        if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
-            solver.options["PoolSolutions"] = pool_size
-            solver.options["PoolSearchMode"] = 0
-            if pool_gap is not None:
-                solver.options["PoolGap"] = pool_gap
-        self._solver = solver
-        self._solver_type = solver_type
-
-        if not _solve_model(self.model, solver, True, timelimit):
-            return None
-        return extract_solution(self.model, self.p)
-
-    def get_tree_edges(self):
-        return extract_tree_edges(self.var_z, self.p.n)
-
-    def get_pool_solutions(self, pool_size=10):
-        if not hasattr(self, "_solver") or self._solver_type not in (
-            "gurobi",
-            "gurobipy",
-        ):
-            return []
-        try:
-            grb_model = self._solver._solver_model
-            var_map = self._solver._pyomo_var_to_solver_var_map
-        except AttributeError:
-            return []
-        if grb_model.SolCount <= 1:
-            return []
-
-        solutions = []
-        for sol_idx in range(1, min(grb_model.SolCount, pool_size)):
-            grb_model.setParam("SolutionNumber", sol_idx)
-            cA = [[0] * self.p.n for _ in range(self.p.m)]
-            cB = [[0] * self.p.n for _ in range(self.p.m)]
-            u = [[0.0] * self.p.k for _ in range(self.p.n)]
-            for _m in range(self.p.m):
-                for _n in range(self.p.n):
-                    for arr, cX in [(cA, self.model.cA), (cB, self.model.cB)]:
-                        pv = cX[_m, _n]
-                        gv = var_map.get(id(pv))
-                        arr[_m][_n] = int(round(gv.Xn)) if gv else int(round(pv.value))
-            for _n in range(self.p.n):
-                for _k in range(self.p.k):
-                    pv = self.model.u[_n, _k]
+    solutions = []
+    for sol_idx in range(1, min(grb_model.SolCount, pool_size)):
+        grb_model.setParam("SolutionNumber", sol_idx)
+        cA = [[0] * p.n for _ in range(p.m)]
+        cB = [[0] * p.n for _ in range(p.m)]
+        u = [[0.0] * p.k for _ in range(p.n)]
+        for _m in range(p.m):
+            for _n in range(p.n):
+                for arr, cX in [(cA, model.cA), (cB, model.cB)]:
+                    pv = cX[_m, _n]
                     gv = var_map.get(id(pv))
-                    u[_n][_k] = gv.Xn if gv else pv.value
-            solutions.append((grb_model.PoolObjVal, cA, cB, u))
-        return solutions
+                    arr[_m][_n] = int(round(gv.Xn)) if gv else int(round(pv.value))
+        for _n in range(p.n):
+            for _k in range(p.k):
+                pv = model.u[_n, _k]
+                gv = var_map.get(id(pv))
+                u[_n][_k] = gv.Xn if gv else pv.value
+        solutions.append((grb_model.PoolObjVal, cA, cB, u))
+    return solutions
+
+
+# ---------------------------------------------------------------------------
+# Full ILP run
+# ---------------------------------------------------------------------------
+
+
+def run_full_ilp(
+    params,
+    penalty_param,
+    reg_steps,
+    reg_bound,
+    solver_type,
+    timelimit,
+    pool_size=1,
+    pool_gap=None,
+    warm_start_cA=None,
+    warm_start_cB=None,
+):
+    """Build model once, solve across regularization path.
+
+    Returns (pool_instances, tree_info) in the same format as run_coordinate_descent.
+    """
+    model, var_z = build_model(params, penalty_param)
+
+    solver = create_solver(solver_type)
+    if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
+        solver.options["PoolSolutions"] = pool_size
+        solver.options["PoolSearchMode"] = 0
+        if pool_gap is not None:
+            solver.options["PoolGap"] = pool_gap
+
+    if warm_start_cA is not None:
+        hot_start(model, params, warm_start_cA, warm_start_cB)
+
+    pname = penalty_param[0]
+    dmrca_no_effect = pname == "DMRCA_SUM" and params.n <= 2
+    effective_steps = 0 if dmrca_no_effect else reg_steps
+
+    sol_instances = {}
+    pool_instances = {}
+    tree_info = {}
+
+    for i0 in range(effective_steps + 1):
+        pparam = reg_bound * i0 / max(effective_steps, 1)
+        model.pparam = pparam
+        if i0 > 0 and 0 in sol_instances:
+            hot_start(model, params, sol_instances[0][1], sol_instances[0][2])
+
+        if not solve_model(model, solver, True, timelimit):
+            raise RuntimeError(f"ILP infeasible at pparam={pparam}")
+        sol = extract_solution(model, params)
+        sol_instances[pparam] = sol
+        pool_instances[pparam] = [sol]
+
+        if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
+            pool_sols = extract_pool_solutions(solver, model, params, pool_size)
+            if pool_sols:
+                pool_instances[pparam].extend(pool_sols)
+
+    t_edges = extract_tree_edges(var_z, params.n)
+    if t_edges is not None:
+        for pparam in pool_instances:
+            tree_info[pparam] = {"tree_edges": t_edges}
+
+    return pool_instances, tree_info
 
 
 # ---------------------------------------------------------------------------
@@ -181,9 +213,9 @@ _cd_global = None
 _cd_solver_cache = None
 
 
-def _init_cd_worker(cd, log_level):
+def _init_cd_worker(cd_config, log_level):
     global _cd_global, _cd_solver_cache
-    _cd_global = cd
+    _cd_global = cd_config
     _cd_solver_cache = None
     logging.basicConfig(
         level=logging.ERROR,
@@ -199,43 +231,41 @@ def _cd_work(
     work_id, u, pparam, solver_type, max_iters, max_convergence_iters, timelimit
 ):
     global _cd_solver_cache
-    cd = _cd_global
-    p = cd.params
+    cfg = _cd_global
+    p = cfg["params"]
 
     if _cd_solver_cache is None:
-        _cd_solver_cache = BaseSolver._create_solver(
-            solver_type, threads=cd.solver_threads
-        )
+        _cd_solver_cache = create_solver(solver_type, threads=cfg["solver_threads"])
     solver = _cd_solver_cache
 
-    _u, _cA, _cB = u, cd.hcA, cd.hcB
+    _u, _cA, _cB = u, cfg["hcA"], cfg["hcB"]
     _prev_obj_u = None
     _imf_c = _reg_c = 0.0
     _tree_edges = None
     _iters = _conv_iters = 0
 
     while _iters < max_iters and _conv_iters < max_convergence_iters:
-        # C-step: fix u, optimize cA/cB
+        # C-step
         p_c = SolverParams(**{**p.__dict__, "mode": "CARCH"})
-        model_c, var_z_c = build_model(p_c, cd.penalty_param, fixed_u=_u)
+        model_c, var_z_c = build_model(p_c, cfg["penalty_param"], fixed_u=_u)
         hot_start(model_c, p_c, _cA, _cB)
         model_c.pparam = pparam
-        if not _solve_model(model_c, solver, True, timelimit):
+        if not solve_model(model_c, solver, True, timelimit):
             return None
         _, _cA, _cB, _ = extract_solution(model_c, p_c)
         _imf_c = pe.value(model_c.obj_imf)
         _reg_c = pe.value(model_c.obj_reg)
         _tree_edges = extract_tree_edges(var_z_c, p.n)
 
-        # U-step: fix cA/cB, optimize u
+        # U-step
         p_u = SolverParams(**{**p.__dict__, "mode": "UARCH"})
-        model_u, _ = build_model(p_u, cd.penalty_param, fixed_cA=_cA, fixed_cB=_cB)
-        if not _solve_model(model_u, solver, False, timelimit):
+        model_u, _ = build_model(p_u, cfg["penalty_param"], fixed_cA=_cA, fixed_cB=_cB)
+        if not solve_model(model_u, solver, False, timelimit):
             return None
         _obj_u, _, _, _u = extract_solution(model_u, p_u)
 
         if _prev_obj_u is not None:
-            if abs(_obj_u - _prev_obj_u) < cd.cd_tol:
+            if abs(_obj_u - _prev_obj_u) < cfg["cd_tol"]:
                 _conv_iters += 1
             else:
                 _conv_iters = 0
@@ -245,130 +275,123 @@ def _cd_work(
     return _obj_u, _cA, _cB, _u, _imf_c, _reg_c, _tree_edges
 
 
-class CDSolver:
-    """Coordinate-descent solver with parallel restarts over a regularization path."""
+def run_coordinate_descent(
+    params,
+    reg_term="RAW",
+    reg_steps=0,
+    reg_bound=0.3,
+    u_init_method="dirichlet",
+    u_dir_alpha=0.3,
+    solver_threads=None,
+    cd_tol=0.001,
+    solver_type="gurobi",
+    max_iters=10,
+    max_convergence_iters=2,
+    n_seed=400,
+    j=8,
+    random_seed=None,
+    timelimit=None,
+    u0_tsv_path=None,
+):
+    """Run coordinate descent with parallel restarts over a regularization path.
 
-    def __init__(
-        self,
-        params: SolverParams,
-        reg_term="RAW",
-        reg_steps=0,
-        reg_bound=0.3,
-        u_init_method="dirichlet",
-        u_dir_alpha=0.3,
-        solver_threads=None,
-        cd_tol=0.001,
-    ):
-        self.params = params
-        self.reg_name = reg_term if reg_term else "RAW"
-        self.reg_steps = reg_steps
-        self.reg_bound = reg_bound
-        self.u_init_method = u_init_method
-        self.u_dir_alpha = u_dir_alpha
-        self.solver_threads = solver_threads
-        self.cd_tol = cd_tol
-        self.penalty_param = [self.reg_name, 0.0]
-        self.hcA, self.hcB = first_hot_start(params)
+    Returns (pool_instances, tree_info).
+    """
+    reg_name = reg_term if reg_term else "RAW"
+    penalty_param = [reg_name, 0.0]
+    hcA, hcB = first_hot_start(params)
 
-    def run(
-        self,
-        solver_type="gurobi",
-        max_iters=10,
-        max_convergence_iters=2,
-        n_seed=400,
-        j=8,
-        random_seed=None,
-        timelimit=None,
-        u0_tsv_path=None,
-        **_,
-    ):
-        with Random(random_seed):
-            seeds = [
-                build_random_u(
-                    self.params, method=self.u_init_method, alpha=self.u_dir_alpha
+    with Random(random_seed):
+        seeds = [
+            build_random_u(params, method=u_init_method, alpha=u_dir_alpha)
+            for _ in range(n_seed)
+        ]
+
+    if u0_tsv_path is not None:
+        rows = []
+        for restart, u in enumerate(seeds):
+            for clone in range(u.shape[0]):
+                row = {"restart": restart, "clone": clone}
+                for j_idx, sid in enumerate(params.sample_ids):
+                    row[sid] = u[clone, j_idx]
+                rows.append(row)
+        pd.DataFrame(rows).to_csv(u0_tsv_path, sep="\t", index=False)
+
+    no_effect = reg_name in ("DSPAN", "DRMST") and params.n <= 2
+    if reg_name == "RAW" or no_effect:
+        pparams = [0]
+    else:
+        step = reg_bound / max(reg_steps, 1)
+        pparams = [round(step * i, 4) for i in range(reg_steps + 1)]
+
+    cd_config = {
+        "params": params,
+        "penalty_param": penalty_param,
+        "hcA": hcA,
+        "hcB": hcB,
+        "solver_threads": solver_threads,
+        "cd_tol": cd_tol,
+    }
+
+    n_workers = min(j, len(seeds))
+    pool_instances = {}
+    tree_info = {}
+
+    executor = ProcessPoolExecutor(
+        max_workers=n_workers,
+        mp_context=multiprocessing.get_context("spawn"),
+        initializer=_init_cd_worker,
+        initargs=(cd_config, logging.root.level),
+    )
+    try:
+        for pparam in pparams:
+            logging.info(
+                f"CD: pparam={pparam}, launching {len(seeds)} seed(s) across {n_workers} worker(s)"
+            )
+            futures = [
+                executor.submit(
+                    _cd_work,
+                    i,
+                    u,
+                    pparam,
+                    solver_type,
+                    max_iters,
+                    max_convergence_iters,
+                    timelimit,
                 )
-                for _ in range(n_seed)
+                for i, u in enumerate(seeds)
             ]
-
-        if u0_tsv_path is not None:
-            rows = []
-            for restart, u in enumerate(seeds):
-                for clone in range(u.shape[0]):
-                    row = {"restart": restart, "clone": clone}
-                    for j_idx, sid in enumerate(self.params.sample_ids):
-                        row[sid] = u[clone, j_idx]
-                    rows.append(row)
-            pd.DataFrame(rows).to_csv(u0_tsv_path, sep="\t", index=False)
-
-        no_effect = self.reg_name in ("DSPAN", "DRMST") and self.params.n <= 2
-        if self.reg_name == "RAW" or no_effect:
-            pparams = [0]
-        else:
-            step = self.reg_bound / max(self.reg_steps, 1)
-            pparams = [round(step * i, 4) for i in range(self.reg_steps + 1)]
-
-        n_workers = min(j, len(seeds))
-        pool_instances = {}
-        tree_info = {}
-
-        executor = ProcessPoolExecutor(
-            max_workers=n_workers,
-            mp_context=multiprocessing.get_context("spawn"),
-            initializer=_init_cd_worker,
-            initargs=(self, logging.root.level),
-        )
-        try:
-            for pparam in pparams:
-                logging.info(
-                    f"CD: pparam={pparam}, launching {len(seeds)} seed(s) across {n_workers} worker(s)"
-                )
-                futures = [
-                    executor.submit(
-                        _cd_work,
-                        i,
-                        u,
-                        pparam,
-                        solver_type,
-                        max_iters,
-                        max_convergence_iters,
-                        timelimit,
+            instances = []
+            n_done = 0
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                except Exception as e:
+                    logging.error(f"CD worker failed: {e}")
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    raise RuntimeError(f"CD worker failed: {e}") from e
+                n_done += 1
+                if result is not None:
+                    instances.append(result)
+                if n_done % 50 == 0 or n_done == len(futures):
+                    logging.info(
+                        f"CD: pparam={pparam}, {n_done}/{len(futures)} seeds completed"
                     )
-                    for i, u in enumerate(seeds)
-                ]
-                instances = []
-                n_done = 0
-                for future in as_completed(futures):
-                    try:
-                        result = future.result()
-                    except Exception as e:
-                        logging.error(f"CD worker failed: {e}")
-                        executor.shutdown(wait=False, cancel_futures=True)
-                        raise RuntimeError(f"CD worker failed: {e}") from e
-                    n_done += 1
-                    if result is not None:
-                        instances.append(result)
-                    if n_done % 50 == 0 or n_done == len(futures):
-                        logging.info(
-                            f"CD: pparam={pparam}, {n_done}/{len(futures)} seeds completed"
-                        )
 
-                if not instances:
-                    logging.warning(f"CD: no feasible solution at pparam={pparam}")
-                    continue
-                best = min(instances, key=lambda x: x[0])
-                obj_u, cA, cB, u, imf_c, reg_c, t_edges = best
-                logging.info(
-                    f"CD: pparam={pparam}, best obj=({imf_c:.4f}, {reg_c:.1f}) from {len(instances)} feasible"
-                )
-                pool_instances[pparam] = [(obj_u, cA, cB, u)]
-                if t_edges is not None:
-                    tree_info[pparam] = {
-                        "tree_edges": t_edges,
-                        "total_edge_length": reg_c,
-                    }
-        finally:
-            executor.shutdown(wait=True)
+            if not instances:
+                logging.warning(f"CD: no feasible solution at pparam={pparam}")
+                continue
+            best = min(instances, key=lambda x: x[0])
+            obj_u, cA, cB, u, imf_c, reg_c, t_edges = best
+            logging.info(
+                f"CD: pparam={pparam}, best obj=({imf_c:.4f}, {reg_c:.1f}) from {len(instances)} feasible"
+            )
+            pool_instances[pparam] = [(obj_u, cA, cB, u)]
+            if t_edges is not None:
+                tree_info[pparam] = {"tree_edges": t_edges, "total_edge_length": reg_c}
+    finally:
+        executor.shutdown(wait=True)
 
-        if not pool_instances:
-            raise RuntimeError("Not a single feasible solution found!")
-        return pool_instances, tree_info
+    if not pool_instances:
+        raise RuntimeError("Not a single feasible solution found!")
+    return pool_instances, tree_info
