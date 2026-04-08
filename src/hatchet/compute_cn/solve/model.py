@@ -98,7 +98,7 @@ def hot_start(model, params: SolverParams, inputs: SolverInputs, _cA=None, _cB=N
 def build_random_u(
     params: SolverParams, inputs: SolverInputs, method="dirichlet", alpha=0.3
 ):
-    """Generate random U initialization matrix (n × k)."""
+    """Generate random U initialization matrix (n * k)."""
     U = np.empty((params.n, inputs.k))
     n_tumor = params.n - 1
     for _k in range(inputs.k):

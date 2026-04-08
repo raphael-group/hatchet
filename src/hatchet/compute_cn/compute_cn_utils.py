@@ -245,11 +245,17 @@ def filtering(
     return good_clusters, bad_clusters
 
 
-def compute_fractional_cn(rdr, baf, bbcs, gammas, alpha=0.5):
-    """Compute fractional copy numbers and prediction intervals.
+def compute_fractional_cn(rdr, baf, gammas, rdr_se, nbins, alpha=0.05, min_ci_margin=0.1):
+    """Compute fractional copy numbers and CI from upstream RDR variance.
 
-    FCN point estimates from cluster-level rdr/baf.
-    Prediction interval width from std of per-bin FA/FB values.
+    Args:
+        rdr: (cluster * sample) DataFrame of cluster-level RDR means.
+        baf: (cluster * sample) DataFrame of cluster-level BAF means.
+        gammas: Series of per-sample gamma values.
+        rdr_se: (cluster * sample) DataFrame of cluster-level RDR standard errors.
+        nbins: (cluster * sample) DataFrame of bin counts per cluster per sample.
+        alpha: significance level (default 0.05 → 95% CI).
+        min_ci_margin: hard minimum CI half-width in FCN space.
 
     Returns a dict with keys: fcn, fa, fb, fa_lo, fa_hi, fb_lo, fb_hi.
     """
@@ -260,32 +266,19 @@ def compute_fractional_cn(rdr, baf, bbcs, gammas, alpha=0.5):
     fa = fcn - fb
 
     z = norm.ppf(1 - alpha / 2)
-    cluster_ids = rdr.index.tolist()
-    sample_ids = rdr.columns.tolist()
 
-    fa_std = pd.DataFrame(0.0, index=rdr.index, columns=rdr.columns)
-    fb_std = pd.DataFrame(0.0, index=rdr.index, columns=rdr.columns)
-
-    for cid in cluster_ids:
-        for sid in sample_ids:
-            bins = bbcs[(bbcs["CLUSTER"] == cid) & (bbcs["SAMPLE"] == sid)]
-            if len(bins) == 0:
-                continue
-            g = gammas[sid] if hasattr(gammas, "__getitem__") else gammas
-            fcn_bins = g * bins["RD"].to_numpy()
-            fa_bins = fcn_bins * (1 - bins["BAF"].to_numpy())
-            fb_bins = fcn_bins * bins["BAF"].to_numpy()
-            fa_std.loc[cid, sid] = np.std(fa_bins, ddof=1) if len(fa_bins) > 1 else 0.0
-            fb_std.loc[cid, sid] = np.std(fb_bins, ddof=1) if len(fb_bins) > 1 else 0.0
+    # rdr_se is already SEM (σ/√n); scale by K_A = gamma*(1-BAF), K_B = gamma*BAF
+    margin_fa = np.maximum(z * gammas * (1 - baf) * rdr_se, min_ci_margin)
+    margin_fb = np.maximum(z * gammas * baf * rdr_se, min_ci_margin)
 
     return {
         "fcn": fcn,
         "fa": fa,
         "fb": fb,
-        "fa_lo": fa - z * fa_std,
-        "fa_hi": fa + z * fa_std,
-        "fb_lo": fb - z * fb_std,
-        "fb_hi": fb + z * fb_std,
+        "fa_lo": fa - margin_fa,
+        "fa_hi": fa + margin_fa,
+        "fb_lo": fb - margin_fb,
+        "fb_hi": fb + margin_fb,
     }
 
 

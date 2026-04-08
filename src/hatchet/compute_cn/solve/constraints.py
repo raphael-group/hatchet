@@ -35,9 +35,9 @@ def add_mixture_constraints(
     fixed_cA=None,
     fixed_cB=None,
 ):
-    """Define fA/fB = Σ cA/cB × u, mode-dependent.
+    """Define fA/fB = Σ cA/cB * u, mode-dependent.
 
-    FULL:   bilinear via McCormick (bit-encoded cA × u)
+    FULL:   bilinear via McCormick (bit-encoded cA * u)
     CARCH:  linear in cA/cB (u fixed via fixed_u)
     UARCH:  linear in u (cA/cB fixed via fixed_cA/fixed_cB)
     """
@@ -102,7 +102,7 @@ def add_mixture_constraints(
 
 
 def add_bit_encoding(model, mode: str, params: SolverParams, inputs: SolverInputs):
-    """Bit decomposition: cA[m,n] = Σ_b bitcA[b,m,n] × 2^b."""
+    """Bit decomposition: cA[m,n] = Σ_b bitcA[b,m,n] * 2^b."""
     if not ((mode == "FULL") or (params.max_ncns_seg > 0 and mode == "CARCH")):
         return
     _M = params.M

@@ -109,6 +109,7 @@ def run(args=None):
         seg_data = build_cluster_data(segs)
     rdr = seg_data["rdr"]
     baf = seg_data["baf"]
+    rdr_se = seg_data["rdr_se"]
     nbins = seg_data["nbins"]
     weights = seg_data["weights"]
     cluster_ids = rdr.index.tolist()
@@ -129,9 +130,11 @@ def run(args=None):
     fcn_dip = compute_fractional_cn(
         rdr,
         baf,
-        bbcs,
         gammas_dip,
+        rdr_se,
+        nbins,
         alpha=args["fcn_ci_alpha"],
+        min_ci_margin=args["min_ci_margin"],
     )
     logging.info(f"Diploid clonal CN: {clonal_dip}")
     logging.info("Diploid RD scaling factor gamma per sample:")
@@ -144,9 +147,11 @@ def run(args=None):
         fcn_tet = compute_fractional_cn(
             rdr,
             baf,
-            bbcs,
             gammas_tet,
+            rdr_se,
+            nbins,
             alpha=args["fcn_ci_alpha"],
+            min_ci_margin=args["min_ci_margin"],
         )
         logging.info(f"Tetraploid clonal CN: {clonal_tet}")
         logging.info("Tetraploid RD scaling factor gamma per sample:")

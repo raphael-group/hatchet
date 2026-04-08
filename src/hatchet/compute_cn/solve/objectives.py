@@ -8,7 +8,7 @@ from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 
 
 def build_imf_objective(model, mode: str, params: SolverParams, inputs: SolverInputs):
-    """Weighted L1 deviation: Σ_{m,k} (yA + yB) × w[m]."""
+    """Weighted L1 deviation: Σ_{m,k} (yA + yB) * w[m]."""
     obj = 0
     for _m in range(inputs.m):
         cid = inputs.cluster_ids[_m]

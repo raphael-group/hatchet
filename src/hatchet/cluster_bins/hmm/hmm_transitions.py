@@ -4,7 +4,7 @@ import numpy as np
 
 
 def make_transmat(diag, K):
-    """Build a K×K doubly-stochastic transition matrix.
+    """Build a K*K doubly-stochastic transition matrix.
 
     Diagonal entries are `diag`, and all off-diagonal entries share the
     remaining probability mass uniformly: `(1 - diag) / (K - 1)`.

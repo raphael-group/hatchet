@@ -355,8 +355,15 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         "--fcn_ci_alpha",
         type=float,
         required=False,
-        default=0.5,
-        help="Coverage level for FCN prediction interval (default: 0.5)",
+        default=0.05,
+        help="Significance level for FCN confidence interval (default: 0.05 → 95%% CI)",
+    )
+    parser.add_argument(
+        "--min_ci_margin",
+        type=float,
+        required=False,
+        default=0.1,
+        help="Hard minimum CI half-width in FCN space (default: 0.1)",
     )
 
     ##################################################

@@ -81,6 +81,8 @@ compute_cn:
 
   # significance level for fractional CN confidence intervals
   fcn_ci_alpha: 0.05
+  # hard minimum CI half-width in FCN space
+  min_ci_margin: 0.1
 
   # clone range
   minClone: 2
