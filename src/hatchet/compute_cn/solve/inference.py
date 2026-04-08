@@ -281,7 +281,6 @@ def _cd_work(
 def run_coordinate_descent(
     params,
     inputs,
-    reg_term="RAW",
     reg_steps=0,
     reg_bound=0.3,
     u_init_method="dirichlet",
@@ -301,8 +300,6 @@ def run_coordinate_descent(
 
     Returns (pool_instances, tree_info).
     """
-    reg_name = reg_term if reg_term else "RAW"
-    # reg_name/reg_lambda already on params
     hcA, hcB = first_hot_start(params, inputs)
 
     with Random(random_seed):
@@ -321,8 +318,8 @@ def run_coordinate_descent(
                 rows.append(row)
         pd.DataFrame(rows).to_csv(u0_tsv_path, sep="\t", index=False)
 
-    no_effect = reg_name in ("DSPAN", "DRMST") and params.n <= 2
-    if reg_name == "RAW" or no_effect:
+    no_effect = params.reg_name in ("DSPAN", "DRMST") and params.n <= 2
+    if params.reg_name == "RAW" or no_effect:
         pparams = [0]
     else:
         step = reg_bound / max(reg_steps, 1)

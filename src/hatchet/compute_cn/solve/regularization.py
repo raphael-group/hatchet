@@ -242,9 +242,8 @@ def build_regularization(model, mode: str, params: SolverParams, inputs: SolverI
 
     Returns (obj_reg_expression, var_z_dict_or_None).
     """
-    pname, init_val = params.reg_name, params.reg_lambda
-    pparam = pe.Param(mutable=True, initialize=init_val)
-    model.pparam = pparam
+    pname = params.reg_name
+    model.pparam = pe.Param(mutable=True, initialize=0.0)
 
     var_z = None
     obj_reg = 0

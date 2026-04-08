@@ -49,7 +49,6 @@ class SolverParams:
     tol: float
     zero_cn_thres: float
     reg_name: str = "RAW"
-    reg_lambda: float = 0.0
 
     @property
     def M(self):

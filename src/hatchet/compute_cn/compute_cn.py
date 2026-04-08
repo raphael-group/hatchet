@@ -481,7 +481,6 @@ def solve(
         cd_instances, tree_info = run_coordinate_descent(
             params=params,
             inputs=inputs,
-            reg_term=reg_term,
             reg_steps=reg_steps,
             reg_bound=args["reg_bound"],
             u_init_method=args["u_init"],
