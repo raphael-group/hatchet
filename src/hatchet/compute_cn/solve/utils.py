@@ -296,7 +296,8 @@ def compute_individual_objs(
     imf_obj = compute_obj_IMF(w_, fA_, fB_, cA_, cB_, u_)
     reg_objs = {
         "MAXCN": compute_obj_MAXCN,
-        "DSPAN": compute_obj_DSPAN,
+        "DBOX_L1": compute_obj_DBOX_L1,
+        "DBOX_L0": compute_obj_DBOX_L0,
         "DROOT_SUM": compute_obj_DROOT_SUM,
         "DADJ_SUM": compute_obj_DADJ_SUM,
     }
@@ -382,11 +383,19 @@ def compute_obj_MAXCN(weights, _fA, _fB, cA, cB, _u):
     return maxA_w + maxB_w
 
 
-def compute_obj_DSPAN(weights, _fA, _fB, cA, cB, _u):
+def compute_obj_DBOX_L1(weights, _fA, _fB, cA, cB, _u):
     """Compute weighted sum of allelic span (max-min) per cluster across tumor clones."""
     spanA = np.max(cA[:, 1:], axis=1) - np.min(cA[:, 1:], axis=1)
     spanB = np.max(cB[:, 1:], axis=1) - np.min(cB[:, 1:], axis=1)
     return float(np.dot(spanA + spanB, weights)[0])
+
+
+def compute_obj_DBOX_L0(weights, _fA, _fB, cA, cB, _u):
+    """L0((a_max-a_min)+(b_max-b_min)) per cluster: 1 if any allelic span > 0."""
+    spanA = np.max(cA[:, 1:], axis=1) - np.min(cA[:, 1:], axis=1)
+    spanB = np.max(cB[:, 1:], axis=1) - np.min(cB[:, 1:], axis=1)
+    is_sub = ((spanA + spanB) > 0).astype(float)
+    return float(np.dot(is_sub, weights)[0])
 
 
 def compute_obj_tree(_weights, _fA, _fB, cA, cB, _u, tree_edges=None):

@@ -109,8 +109,8 @@ def build_reg_dadj_sum(model, mode: str, params: SolverParams, inputs: SolverInp
     return obj
 
 
-def build_reg_dspan(model, mode: str, params: SolverParams, inputs: SolverInputs):
-    """DSPAN: penalise CN range (max - min) per allele per cluster."""
+def build_reg_dbox_l1(model, mode: str, params: SolverParams, inputs: SolverInputs):
+    """DBOX_L1: penalise CN range (max - min) per allele per cluster."""
     obj = 0
     sp_idx = [
         (_m, tag) for _m in inputs.free_rows for tag in ("maxA", "minA", "maxB", "minB")
@@ -129,6 +129,45 @@ def build_reg_dspan(model, mode: str, params: SolverParams, inputs: SolverInputs
             + model.span[_m, "maxB"]
             - model.span[_m, "minB"]
         )
+    return obj
+
+
+def build_reg_dbox_l0(model, mode: str, params: SolverParams, inputs: SolverInputs):
+    """DBOX_L0: L0((a_max - a_min) + (b_max - b_min)) per cluster.
+
+    Same span as DBOX_L1 but binary: 1 if any allelic span > 0, 0 otherwise.
+    Uses the same max/min auxiliary vars, then big-M links span to a binary indicator.
+    """
+    obj = 0
+    big_M = 2 * params.cn_max
+    sp_idx = [
+        (_m, tag) for _m in inputs.free_rows for tag in ("maxA", "minA", "maxB", "minB")
+    ]
+    model.span_l0 = pe.Var(sp_idx, bounds=(0, np.inf), domain=pe.Reals)
+    model.is_subclonal = pe.Var(inputs.free_rows, bounds=(0, 1), domain=pe.Binary)
+
+    for _m in inputs.free_rows:
+        for _n in params.tumor_clones:
+            model.constraints.add(model.cA[_m, _n] <= model.span_l0[_m, "maxA"])
+            model.constraints.add(model.cA[_m, _n] >= model.span_l0[_m, "minA"])
+            model.constraints.add(model.cB[_m, _n] <= model.span_l0[_m, "maxB"])
+            model.constraints.add(model.cB[_m, _n] >= model.span_l0[_m, "minB"])
+
+        # span = (maxA - minA) + (maxB - minB)
+        # is_subclonal = 1 iff span > 0
+        # Linearised: span <= big_M * is_subclonal  AND  span >= is_subclonal (if span>0 then >=1)
+        span_expr = (
+            model.span_l0[_m, "maxA"]
+            - model.span_l0[_m, "minA"]
+            + model.span_l0[_m, "maxB"]
+            - model.span_l0[_m, "minB"]
+        )
+        model.constraints.add(span_expr <= big_M * model.is_subclonal[_m])
+        model.constraints.add(span_expr >= model.is_subclonal[_m])
+
+        cid = inputs.cluster_ids[_m]
+        obj += inputs.w[cid] * model.is_subclonal[_m]
+
     return obj
 
 
@@ -255,7 +294,8 @@ def build_regularization(model, mode: str, params: SolverParams, inputs: SolverI
         "MAXCN": build_reg_maxcn,
         "DROOT_SUM": build_reg_droot_sum,
         "DADJ_SUM": build_reg_dadj_sum,
-        "DSPAN": build_reg_dspan,
+        "DBOX_L1": build_reg_dbox_l1,
+        "DBOX_L0": build_reg_dbox_l0,
     }
     if pname in builders:
         obj_reg = builders[pname](model, mode, params, inputs)

@@ -171,7 +171,7 @@ def run_full_ilp(
     if warm_start_cA is not None:
         hot_start(model, params, inputs, warm_start_cA, warm_start_cB)
 
-    no_effect = params.reg_name in ("DSPAN", "DRMST") and params.n <= 2
+    no_effect = params.reg_name in ("DBOX_L1", "DBOX_L0", "DRMST") and params.n <= 2
     effective_steps = 0 if no_effect else reg_steps
 
     sol_instances = {}
@@ -323,7 +323,7 @@ def run_coordinate_descent(
                 rows.append(row)
         pd.DataFrame(rows).to_csv(u0_tsv_path, sep="\t", index=False)
 
-    no_effect = params.reg_name in ("DSPAN", "DRMST") and params.n <= 2
+    no_effect = params.reg_name in ("DBOX_L1", "DBOX_L0", "DRMST") and params.n <= 2
     if params.reg_name == "RAW" or no_effect:
         pparams = [0]
     else:
