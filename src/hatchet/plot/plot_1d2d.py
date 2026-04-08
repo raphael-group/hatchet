@@ -34,12 +34,11 @@ def get_transparency(
         else:
             return nontail_alpha
 
-    get_left_threshold = lambda arr: arr[
-        min(max(0, int(len(arr) * one_tail)), len(arr) - 1)
-    ]
-    get_right_threshold = lambda arr: arr[
-        min(max(0, int(len(arr) * (1 - one_tail))), len(arr) - 1)
-    ]
+    def get_left_threshold(arr):
+        return arr[min(max(0, int(len(arr) * one_tail)), len(arr) - 1)]
+
+    def get_right_threshold(arr):
+        return arr[min(max(0, int(len(arr) * (1 - one_tail))), len(arr) - 1)]
 
     per_grp_thres = {}
     for key in bbc[by].unique():
@@ -81,7 +80,6 @@ def get_abs_positions_ignore_gap(
         bins_ch = bins_chs.get_group(ch)
         for si in range(len(regions_ch)):
             wl_segment = regions_ch.iloc[si]
-            seg_start = ch_offset
             wl_start = wl_segment["START"]
             wl_end = wl_segment["END"]
             seg_end = ch_offset + (wl_end - wl_start)
@@ -188,7 +186,7 @@ def plot_1d(
             get_abs_positions_keep_gap(bin_info, chrom_sizes, chrs, chr_shift)
         )
     ##################################################
-    g = sns.scatterplot(
+    sns.scatterplot(
         x=bin_info["abs_pos"],
         y=vals,
         ax=ax,
@@ -375,7 +373,7 @@ def plot_baf_normal_sample(
     transparent=False,
 ):
     fig, ax = plt.subplots(1, 1)
-    g0 = sns.histplot(x=bafs, ax=ax, bins=50, binrange=[0, 1])
+    sns.histplot(x=bafs, ax=ax, bins=50, binrange=[0, 1])
     ax.vlines(
         0.5,
         ymin=0,

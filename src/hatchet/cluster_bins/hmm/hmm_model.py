@@ -450,7 +450,6 @@ def run_viterbi_training(
 
     log_startprobs = np.log(np.full((K, 2), 1.0 / (2 * K), dtype=np.float64))
 
-    elbo_trace = [-np.inf]
     trace_rdr_means = [rdr_means.copy()]
     trace_rdr_vars = [rdr_vars.copy()]
     trace_baf_means = [baf_means.copy()]
@@ -534,8 +533,6 @@ def run_viterbi_training(
         trace_rdr_vars.append(rdr_vars.copy())
         trace_baf_means.append(baf_means.copy())
         trace_baf_taus.append(baf_taus.copy())
-
-    n_done = it + 1
 
     lls0_final, lls1_final = compute_loglik(
         X_rdrs,

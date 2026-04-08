@@ -60,11 +60,15 @@ def estimate_vaf(obs_vaf, clones, cns, props, mode="range"):
         else:
             avail = [[0]] + [[0, cap_cn[i]] for i in range(1, len(clones))]
 
-        baf_num = lambda y: sum(float(e) * props[i] for i, e in enumerate(y))
+        def baf_num(y):
+            return sum(float(e) * props[i] for i, e in enumerate(y))
+
         ests = {x: baf_num(x) / baf_denom for x in itertools.product(*avail)}
         ests = {k: v for k, v in ests.items() if 0.0 <= v <= 1.0}
         best = min(ests, key=lambda x: abs(ests[x] - obs_vaf))
-        ccf = float(np.sum(props * (np.array(best) > 0))) / purity if purity > 0 else 0.0
+        ccf = (
+            float(np.sum(props * (np.array(best) > 0))) / purity if purity > 0 else 0.0
+        )
         return best, ests[best], ccf
 
     bestA, vafA, ccfA = _estimate_allele(cna)

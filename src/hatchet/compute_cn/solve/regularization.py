@@ -14,7 +14,6 @@ from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 
 def build_reg_maxcn(model, mode: str, params: SolverParams, inputs: SolverInputs):
     """MAXCN: penalise max CN per cluster."""
-    n = params.n
     obj = 0
     hcn_idx = [(m_, ab) for m_ in inputs.free_rows for ab in ("a", "b")]
     model.hcn = pe.Var(hcn_idx, bounds=(0, np.inf), domain=pe.Reals)

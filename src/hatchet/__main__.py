@@ -1,7 +1,4 @@
 # src/hatchet/__main__.py
-import os
-import sys
-import logging
 import argparse
 from importlib.metadata import version
 
@@ -16,7 +13,9 @@ from hatchet.utils import setup_logging, log_arguments
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="hatchet")
-    parser.add_argument("--version", action="version", version=f"%(prog)s {version('hatchet')}")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {version('hatchet')}"
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     p_clu = subparsers.add_parser("cluster-bins", help="run cluster-bins")
@@ -35,7 +34,9 @@ def main(argv=None):
     add_arguments_plot_panel(p_plot_cnp)
     p_plot_cnp.set_defaults(func=hatchet_plot_panel)
 
-    p_eval = subparsers.add_parser("evaluate", help="evaluate CN solutions against somatic SNVs")
+    p_eval = subparsers.add_parser(
+        "evaluate", help="evaluate CN solutions against somatic SNVs"
+    )
     add_arguments_evaluate(p_eval)
     p_eval.set_defaults(func=hatchet_evaluate)
 

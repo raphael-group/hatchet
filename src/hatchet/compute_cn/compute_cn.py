@@ -419,7 +419,6 @@ def solve(
         logging.info("DMRCA_SUM: allele-LOH constraints active")
     reg_steps = args["reg_steps"]
     solver_type = args["solver"]
-    verbose = verbosity >= 1
     timelimit = args["timelimit"]
     ampdel = not args["no_ampdel"]
     pool_size = args["pool_size"]

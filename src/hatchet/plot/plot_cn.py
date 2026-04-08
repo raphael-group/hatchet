@@ -46,14 +46,12 @@ def run(args=None):
     style = args["style"]
 
     # TODO per-cluster transparency
-    tail_alpha = args["tail_alpha"]
-    nontail_alpha = args["center_alpha"]
-    onetail_area = args["onetail_area"]
+    args["tail_alpha"]
+    args["center_alpha"]
+    args["onetail_area"]
 
     # figure axis limits
     maxlim_fcn = args["maxlim_fcn"]
-
-    tol = 1e-2
 
     def get_filename(sample_id):
         suffix = f".{solID}" if solID != "" else ""
