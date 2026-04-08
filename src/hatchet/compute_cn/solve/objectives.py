@@ -4,22 +4,22 @@ from __future__ import annotations
 
 from pyomo import environ as pe
 
-from hatchet.compute_cn.solve.variables import SolverParams
+from hatchet.compute_cn.solve.variables import SolverParams, SolverInputs
 
 
-def build_imf_objective(model, p: SolverParams):
+def build_imf_objective(model, mode: str, params: SolverParams, inputs: SolverInputs):
     """Weighted L1 deviation: Σ_{m,k} (yA + yB) × w[m]."""
     obj = 0
-    for _m in range(p.m):
-        cid = p.cluster_ids[_m]
-        for _k in range(p.k):
-            obj += (model.yA[_m, _k] + model.yB[_m, _k]) * p.w[cid]
+    for _m in range(inputs.m):
+        cid = inputs.cluster_ids[_m]
+        for _k in range(inputs.k):
+            obj += (model.yA[_m, _k] + model.yB[_m, _k]) * inputs.w[cid]
     return obj
 
 
-def build_final_objective(model, obj_imf, obj_reg, penalty_param):
+def build_final_objective(model, obj_imf, obj_reg, params: SolverParams):
     """Set model.obj combining IMF and regularization."""
-    pname = penalty_param[0]
+    pname = params.reg_name
     model.obj_imf = pe.Expression(expr=obj_imf)
     model.obj_reg = pe.Expression(expr=obj_reg)
     if pname == "RAW":

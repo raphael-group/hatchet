@@ -29,7 +29,7 @@ from hatchet.compute_cn.solve.utils import (
     store_solve_input,
     store_instance_tofile,
 )
-from hatchet.compute_cn.solve.variables import SolverParams
+from hatchet.compute_cn.solve.variables import SolverParams, SolverInputs
 from hatchet.compute_cn.solve.inference import run_full_ilp, run_coordinate_descent
 from hatchet.plot.plot_cnp_panel import plot_pool_cnp
 
@@ -451,36 +451,36 @@ def solve(
             fixed_rows.add(_m)
     free_rows_list = [_m for _m in range(len(cluster_ids)) if _m not in fixed_rows]
 
-    params = SolverParams(
-        m=len(cluster_ids),
-        n=n,
-        k=len(sample_ids),
-        cn_max=cn_max,
-        mode="FULL",
-        base=base,
-        free_rows=free_rows_list,
-        fixed_rows=fixed_rows,
-        copy_numbers=clonal,
+    inputs = SolverInputs(
+        f_a=f_a,
+        f_b=f_b,
+        w=weights,
         cluster_ids=cluster_ids,
         sample_ids=sample_ids,
-        w=weights,
+        copy_numbers=clonal,
+        free_rows=free_rows_list,
+        fixed_rows=fixed_rows,
+        purities=purities,
+        balanced_clusters=balanced_clusters,
+    )
+    params = SolverParams(
+        n=n,
+        cn_max=cn_max,
+        base=base,
         ampdel=ampdel,
         minprop=args["min_prop"],
         max_ncns_seg=args["num_cnstates"],
-        purities=purities,
         mrca=args["mrca"],
         max_degree=args["max_degree"],
-        balanced_clusters=balanced_clusters,
         tol=args.get("tol", 0.001),
         zero_cn_thres=args["zero_cn_thres"],
-        f_a=f_a,
-        f_b=f_b,
+        reg_name=reg_term if reg_term is not None else "RAW",
     )
-    penalty_param = [reg_term if reg_term is not None else "RAW", 0.0]
 
     if solve_mode in ("cd", "both"):
         cd_instances, tree_info = run_coordinate_descent(
             params=params,
+            inputs=inputs,
             reg_term=reg_term,
             reg_steps=reg_steps,
             reg_bound=args["reg_bound"],
@@ -516,7 +516,7 @@ def solve(
 
         pool_instances, _ = run_full_ilp(
             params=params,
-            penalty_param=penalty_param,
+            inputs=inputs,
             reg_steps=reg_steps,
             reg_bound=args["reg_bound"],
             solver_type=solver_type,

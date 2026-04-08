@@ -9,39 +9,42 @@ from __future__ import annotations
 import numpy as np
 from pyomo import environ as pe
 
-from hatchet.compute_cn.solve.variables import SolverParams
+from hatchet.compute_cn.solve.variables import SolverParams, SolverInputs
 
 
-def build_reg_maxcn(model, p: SolverParams):
+def build_reg_maxcn(model, mode: str, params: SolverParams, inputs: SolverInputs):
     """MAXCN: penalise max CN per cluster."""
-    n = p.n
+    n = params.n
     obj = 0
-    hcn_idx = [(m_, ab) for m_ in p.free_rows for ab in ("a", "b")]
+    hcn_idx = [(m_, ab) for m_ in inputs.free_rows for ab in ("a", "b")]
     model.hcn = pe.Var(hcn_idx, bounds=(0, np.inf), domain=pe.Reals)
-    for _m in p.free_rows:
-        for _n in p.tumor_clones:
+    for _m in inputs.free_rows:
+        for _n in params.tumor_clones:
             model.constraints.add(model.cA[_m, _n] <= model.hcn[_m, "a"])
             model.constraints.add(model.cB[_m, _n] <= model.hcn[_m, "b"])
-        cid = p.cluster_ids[_m]
-        obj += p.w[cid] * (model.hcn[_m, "a"] + model.hcn[_m, "b"])
-    for _m in p.fixed_rows:
-        cid = p.cluster_ids[_m]
-        ca, cb = p.copy_numbers[cid]
-        obj += p.w[cid] * (max(ca, p.base) + max(cb, p.base))
+        cid = inputs.cluster_ids[_m]
+        obj += inputs.w[cid] * (model.hcn[_m, "a"] + model.hcn[_m, "b"])
+    for _m in inputs.fixed_rows:
+        cid = inputs.cluster_ids[_m]
+        ca, cb = inputs.copy_numbers[cid]
+        obj += inputs.w[cid] * (max(ca, params.base) + max(cb, params.base))
     return obj
 
 
-def build_reg_droot_sum(model, p: SolverParams):
+def build_reg_droot_sum(model, mode: str, params: SolverParams, inputs: SolverInputs):
     """DROOT_SUM: L1 distance from normal clone (n=0)."""
-    n = p.n
+    n = params.n
     obj = 0
     md_idx = [
-        (_m, _n, ab) for _m in p.free_rows for _n in p.tumor_clones for ab in ("a", "b")
+        (_m, _n, ab)
+        for _m in inputs.free_rows
+        for _n in params.tumor_clones
+        for ab in ("a", "b")
     ]
     model.md_root = pe.Var(md_idx, bounds=(0, np.inf), domain=pe.Reals)
-    for _m in p.free_rows:
-        cid = p.cluster_ids[_m]
-        for _n in p.tumor_clones:
+    for _m in inputs.free_rows:
+        cid = inputs.cluster_ids[_m]
+        for _n in params.tumor_clones:
             model.constraints.add(
                 model.cA[_m, _n] - model.cA[_m, 0] <= model.md_root[_m, _n, "a"]
             )
@@ -54,28 +57,30 @@ def build_reg_droot_sum(model, p: SolverParams):
             model.constraints.add(
                 model.cB[_m, 0] - model.cB[_m, _n] <= model.md_root[_m, _n, "b"]
             )
-            obj += p.w[cid] * (model.md_root[_m, _n, "a"] + model.md_root[_m, _n, "b"])
-    for _m in p.fixed_rows:
-        cid = p.cluster_ids[_m]
-        ca, cb = p.copy_numbers[cid]
-        obj += p.w[cid] * (n - 1) * (abs(ca - p.base) + abs(cb - p.base))
+            obj += inputs.w[cid] * (
+                model.md_root[_m, _n, "a"] + model.md_root[_m, _n, "b"]
+            )
+    for _m in inputs.fixed_rows:
+        cid = inputs.cluster_ids[_m]
+        ca, cb = inputs.copy_numbers[cid]
+        obj += inputs.w[cid] * (n - 1) * (abs(ca - params.base) + abs(cb - params.base))
     return obj
 
 
-def build_reg_dadj_sum(model, p: SolverParams):
+def build_reg_dadj_sum(model, mode: str, params: SolverParams, inputs: SolverInputs):
     """DADJ_SUM: pairwise L1 distance between all clone pairs."""
-    n = p.n
+    n = params.n
     obj = 0
     md_idx = [
         (_m, _n1, _n2, ab)
-        for _m in p.free_rows
+        for _m in inputs.free_rows
         for _n1 in range(n - 1)
         for _n2 in range(_n1 + 1, n)
         for ab in ("a", "b")
     ]
     model.md_adj = pe.Var(md_idx, bounds=(0, np.inf), domain=pe.Reals)
-    for _m in p.free_rows:
-        cid = p.cluster_ids[_m]
+    for _m in inputs.free_rows:
+        cid = inputs.cluster_ids[_m]
         for _n1 in range(n - 1):
             for _n2 in range(_n1 + 1, n):
                 model.constraints.add(
@@ -94,31 +99,31 @@ def build_reg_dadj_sum(model, p: SolverParams):
                     model.cB[_m, _n2] - model.cB[_m, _n1]
                     <= model.md_adj[_m, _n1, _n2, "b"]
                 )
-                obj += p.w[cid] * (
+                obj += inputs.w[cid] * (
                     model.md_adj[_m, _n1, _n2, "a"] + model.md_adj[_m, _n1, _n2, "b"]
                 )
-    for _m in p.fixed_rows:
-        cid = p.cluster_ids[_m]
-        ca, cb = p.copy_numbers[cid]
-        obj += p.w[cid] * (n - 1) * (abs(ca - p.base) + abs(cb - p.base))
+    for _m in inputs.fixed_rows:
+        cid = inputs.cluster_ids[_m]
+        ca, cb = inputs.copy_numbers[cid]
+        obj += inputs.w[cid] * (n - 1) * (abs(ca - params.base) + abs(cb - params.base))
     return obj
 
 
-def build_reg_dspan(model, p: SolverParams):
+def build_reg_dspan(model, mode: str, params: SolverParams, inputs: SolverInputs):
     """DSPAN: penalise CN range (max - min) per allele per cluster."""
     obj = 0
     sp_idx = [
-        (_m, tag) for _m in p.free_rows for tag in ("maxA", "minA", "maxB", "minB")
+        (_m, tag) for _m in inputs.free_rows for tag in ("maxA", "minA", "maxB", "minB")
     ]
     model.span = pe.Var(sp_idx, bounds=(0, np.inf), domain=pe.Reals)
-    for _m in p.free_rows:
-        for _n in p.tumor_clones:
+    for _m in inputs.free_rows:
+        for _n in params.tumor_clones:
             model.constraints.add(model.cA[_m, _n] <= model.span[_m, "maxA"])
             model.constraints.add(model.cA[_m, _n] >= model.span[_m, "minA"])
             model.constraints.add(model.cB[_m, _n] <= model.span[_m, "maxB"])
             model.constraints.add(model.cB[_m, _n] >= model.span[_m, "minB"])
-        cid = p.cluster_ids[_m]
-        obj += p.w[cid] * (
+        cid = inputs.cluster_ids[_m]
+        obj += inputs.w[cid] * (
             model.span[_m, "maxA"]
             - model.span[_m, "minA"]
             + model.span[_m, "maxB"]
@@ -127,16 +132,16 @@ def build_reg_dspan(model, p: SolverParams):
     return obj
 
 
-def build_reg_drmst(model, p: SolverParams):
+def build_reg_drmst(model, mode: str, params: SolverParams, inputs: SolverInputs):
     """DRMST: rooted minimum Steiner tree regularization.
 
     Returns (obj_reg_expression, var_z_dict).
     """
-    m, n = p.m, p.n
-    big_M = 2 * p.cn_max
-    is_mrca = p.mrca
+    m, n = inputs.m, params.n
+    big_M = 2 * params.cn_max
+    is_mrca = params.mrca
 
-    param_deg = pe.Param(initialize=float(p.max_degree))
+    param_deg = pe.Param(initialize=float(params.max_degree))
     model.p_max_degree = param_deg
 
     # Topology variables z[i,j]: binary edges
@@ -191,7 +196,7 @@ def build_reg_drmst(model, p: SolverParams):
 
     # LOH indicator variables
     for _m in range(m):
-        if _m in p.fixed_rows:
+        if _m in inputs.fixed_rows:
             continue
         for _n in range(n):
             lA = pe.Var(bounds=(0, 1), domain=pe.Binary)
@@ -205,7 +210,7 @@ def build_reg_drmst(model, p: SolverParams):
 
     # LOH inheritance: if parent lost allele, child must too
     for _m in range(m):
-        if _m in p.fixed_rows:
+        if _m in inputs.fixed_rows:
             continue
         for i in range(1, n):
             for j in range(i):
@@ -215,11 +220,11 @@ def build_reg_drmst(model, p: SolverParams):
                 lB_j = model.find_component(f"tlB_{_m}_{j}")
                 model.constraints.add(
                     model.cA[_m, i]
-                    <= p.cn_max * (1 - lA_j) + big_M * (1 - var_z[(i, j)])
+                    <= params.cn_max * (1 - lA_j) + big_M * (1 - var_z[(i, j)])
                 )
                 model.constraints.add(
                     model.cB[_m, i]
-                    <= p.cn_max * (1 - lB_j) + big_M * (1 - var_z[(i, j)])
+                    <= params.cn_max * (1 - lB_j) + big_M * (1 - var_z[(i, j)])
                 )
 
     # Objective: sum of tree edge distances
@@ -227,24 +232,24 @@ def build_reg_drmst(model, p: SolverParams):
     for _m in range(m):
         for i in tree_clones:
             if (_m, i) in var_M:
-                obj += p.w[p.cluster_ids[_m]] * var_M[(_m, i)]
+                obj += inputs.w[inputs.cluster_ids[_m]] * var_M[(_m, i)]
 
     return obj, var_z
 
 
-def build_regularization(model, p: SolverParams, penalty_param):
+def build_regularization(model, mode: str, params: SolverParams, inputs: SolverInputs):
     """Dispatch to the appropriate regularization builder.
 
     Returns (obj_reg_expression, var_z_dict_or_None).
     """
-    pname, init_val = penalty_param
+    pname, init_val = params.reg_name, params.reg_lambda
     pparam = pe.Param(mutable=True, initialize=init_val)
     model.pparam = pparam
 
     var_z = None
     obj_reg = 0
 
-    if p.mode not in ("FULL", "CARCH") or pname == "RAW":
+    if mode not in ("FULL", "CARCH") or pname == "RAW":
         return obj_reg, var_z
 
     builders = {
@@ -254,8 +259,8 @@ def build_regularization(model, p: SolverParams, penalty_param):
         "DSPAN": build_reg_dspan,
     }
     if pname in builders:
-        obj_reg = builders[pname](model, p)
+        obj_reg = builders[pname](model, mode, params, inputs)
     elif pname == "DRMST":
-        obj_reg, var_z = build_reg_drmst(model, p)
+        obj_reg, var_z = build_reg_drmst(model, mode, params, inputs)
 
     return obj_reg, var_z

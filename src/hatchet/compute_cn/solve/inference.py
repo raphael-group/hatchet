@@ -17,7 +17,7 @@ from hatchet.compute_cn.solve.model import (
     hot_start,
     build_random_u,
 )
-from hatchet.compute_cn.solve.variables import SolverParams
+from hatchet.compute_cn.solve.variables import SolverParams, SolverInputs
 
 # Stack-based random seeding for reproducibility
 _random_states = []
@@ -78,15 +78,17 @@ def solve_model(model, solver, warmstart, timelimit):
     return ok or time_limit
 
 
-def extract_solution(model, p: SolverParams):
+def extract_solution(model, params: SolverParams, inputs: SolverInputs):
     """Extract (obj, cA, cB, u) from solved model."""
     cA = [
-        [int(round(model.cA[_m, _n].value)) for _n in range(p.n)] for _m in range(p.m)
+        [int(round(model.cA[_m, _n].value)) for _n in range(params.n)]
+        for _m in range(inputs.m)
     ]
     cB = [
-        [int(round(model.cB[_m, _n].value)) for _n in range(p.n)] for _m in range(p.m)
+        [int(round(model.cB[_m, _n].value)) for _n in range(params.n)]
+        for _m in range(inputs.m)
     ]
-    u = [[model.u[_n, _k].value for _k in range(p.k)] for _n in range(p.n)]
+    u = [[model.u[_n, _k].value for _k in range(inputs.k)] for _n in range(params.n)]
     return model.obj(), cA, cB, u
 
 
@@ -108,7 +110,9 @@ def extract_tree_edges(var_z, n):
     return tree_edges
 
 
-def extract_pool_solutions(solver, model, p: SolverParams, pool_size=10):
+def extract_pool_solutions(
+    solver, model, params: SolverParams, inputs: SolverInputs, pool_size=10
+):
     """Extract additional solutions from Gurobi's solution pool."""
     try:
         grb_model = solver._solver_model
@@ -121,17 +125,17 @@ def extract_pool_solutions(solver, model, p: SolverParams, pool_size=10):
     solutions = []
     for sol_idx in range(1, min(grb_model.SolCount, pool_size)):
         grb_model.setParam("SolutionNumber", sol_idx)
-        cA = [[0] * p.n for _ in range(p.m)]
-        cB = [[0] * p.n for _ in range(p.m)]
-        u = [[0.0] * p.k for _ in range(p.n)]
-        for _m in range(p.m):
-            for _n in range(p.n):
+        cA = [[0] * params.n for _ in range(inputs.m)]
+        cB = [[0] * params.n for _ in range(inputs.m)]
+        u = [[0.0] * inputs.k for _ in range(params.n)]
+        for _m in range(inputs.m):
+            for _n in range(params.n):
                 for arr, cX in [(cA, model.cA), (cB, model.cB)]:
                     pv = cX[_m, _n]
                     gv = var_map.get(id(pv))
                     arr[_m][_n] = int(round(gv.Xn)) if gv else int(round(pv.value))
-        for _n in range(p.n):
-            for _k in range(p.k):
+        for _n in range(params.n):
+            for _k in range(inputs.k):
                 pv = model.u[_n, _k]
                 gv = var_map.get(id(pv))
                 u[_n][_k] = gv.Xn if gv else pv.value
@@ -146,7 +150,7 @@ def extract_pool_solutions(solver, model, p: SolverParams, pool_size=10):
 
 def run_full_ilp(
     params,
-    penalty_param,
+    inputs,
     reg_steps,
     reg_bound,
     solver_type,
@@ -160,7 +164,7 @@ def run_full_ilp(
 
     Returns (pool_instances, tree_info) in the same format as run_coordinate_descent.
     """
-    model, var_z = build_model(params, penalty_param)
+    model, var_z = build_model("FULL", params, inputs)
 
     solver = create_solver(solver_type)
     if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
@@ -170,9 +174,9 @@ def run_full_ilp(
             solver.options["PoolGap"] = pool_gap
 
     if warm_start_cA is not None:
-        hot_start(model, params, warm_start_cA, warm_start_cB)
+        hot_start(model, params, inputs, warm_start_cA, warm_start_cB)
 
-    pname = penalty_param[0]
+    pname = params.reg_name
     dmrca_no_effect = pname == "DMRCA_SUM" and params.n <= 2
     effective_steps = 0 if dmrca_no_effect else reg_steps
 
@@ -184,16 +188,16 @@ def run_full_ilp(
         pparam = reg_bound * i0 / max(effective_steps, 1)
         model.pparam = pparam
         if i0 > 0 and 0 in sol_instances:
-            hot_start(model, params, sol_instances[0][1], sol_instances[0][2])
+            hot_start(model, params, inputs, sol_instances[0][1], sol_instances[0][2])
 
         if not solve_model(model, solver, True, timelimit):
             raise RuntimeError(f"ILP infeasible at pparam={pparam}")
-        sol = extract_solution(model, params)
+        sol = extract_solution(model, params, inputs)
         sol_instances[pparam] = sol
         pool_instances[pparam] = [sol]
 
         if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
-            pool_sols = extract_pool_solutions(solver, model, params, pool_size)
+            pool_sols = extract_pool_solutions(solver, model, params, inputs, pool_size)
             if pool_sols:
                 pool_instances[pparam].extend(pool_sols)
 
@@ -232,7 +236,8 @@ def _cd_work(
 ):
     global _cd_solver_cache
     cfg = _cd_global
-    p = cfg["params"]
+    params = cfg["params"]
+    inputs = cfg["inputs"]
 
     if _cd_solver_cache is None:
         _cd_solver_cache = create_solver(solver_type, threads=cfg["solver_threads"])
@@ -246,23 +251,21 @@ def _cd_work(
 
     while _iters < max_iters and _conv_iters < max_convergence_iters:
         # C-step
-        p_c = SolverParams(**{**p.__dict__, "mode": "CARCH"})
-        model_c, var_z_c = build_model(p_c, cfg["penalty_param"], fixed_u=_u)
-        hot_start(model_c, p_c, _cA, _cB)
+        model_c, var_z_c = build_model("CARCH", params, inputs, fixed_u=_u)
+        hot_start(model_c, params, inputs, _cA, _cB)
         model_c.pparam = pparam
         if not solve_model(model_c, solver, True, timelimit):
             return None
-        _, _cA, _cB, _ = extract_solution(model_c, p_c)
+        _, _cA, _cB, _ = extract_solution(model_c, params, inputs)
         _imf_c = pe.value(model_c.obj_imf)
         _reg_c = pe.value(model_c.obj_reg)
-        _tree_edges = extract_tree_edges(var_z_c, p.n)
+        _tree_edges = extract_tree_edges(var_z_c, params.n)
 
         # U-step
-        p_u = SolverParams(**{**p.__dict__, "mode": "UARCH"})
-        model_u, _ = build_model(p_u, cfg["penalty_param"], fixed_cA=_cA, fixed_cB=_cB)
+        model_u, _ = build_model("UARCH", params, inputs, fixed_cA=_cA, fixed_cB=_cB)
         if not solve_model(model_u, solver, False, timelimit):
             return None
-        _obj_u, _, _, _u = extract_solution(model_u, p_u)
+        _obj_u, _, _, _u = extract_solution(model_u, params, inputs)
 
         if _prev_obj_u is not None:
             if abs(_obj_u - _prev_obj_u) < cfg["cd_tol"]:
@@ -277,6 +280,7 @@ def _cd_work(
 
 def run_coordinate_descent(
     params,
+    inputs,
     reg_term="RAW",
     reg_steps=0,
     reg_bound=0.3,
@@ -298,12 +302,12 @@ def run_coordinate_descent(
     Returns (pool_instances, tree_info).
     """
     reg_name = reg_term if reg_term else "RAW"
-    penalty_param = [reg_name, 0.0]
-    hcA, hcB = first_hot_start(params)
+    # reg_name/reg_lambda already on params
+    hcA, hcB = first_hot_start(params, inputs)
 
     with Random(random_seed):
         seeds = [
-            build_random_u(params, method=u_init_method, alpha=u_dir_alpha)
+            build_random_u(params, inputs, method=u_init_method, alpha=u_dir_alpha)
             for _ in range(n_seed)
         ]
 
@@ -312,7 +316,7 @@ def run_coordinate_descent(
         for restart, u in enumerate(seeds):
             for clone in range(u.shape[0]):
                 row = {"restart": restart, "clone": clone}
-                for j_idx, sid in enumerate(params.sample_ids):
+                for j_idx, sid in enumerate(inputs.sample_ids):
                     row[sid] = u[clone, j_idx]
                 rows.append(row)
         pd.DataFrame(rows).to_csv(u0_tsv_path, sep="\t", index=False)
@@ -326,7 +330,7 @@ def run_coordinate_descent(
 
     cd_config = {
         "params": params,
-        "penalty_param": penalty_param,
+        "inputs": inputs,
         "hcA": hcA,
         "hcB": hcB,
         "solver_threads": solver_threads,
