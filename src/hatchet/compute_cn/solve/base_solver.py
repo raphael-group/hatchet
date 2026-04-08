@@ -85,12 +85,6 @@ class BaseSolver:
     #
     #   ILPSubset:  lambda m, n: self.cA[m][n]
 
-    def _add_normal_clone_constraints(self, model, get_cA, get_cB, rows=None):
-        """Fix clone 0 at (1,1) for every cluster in *rows*."""
-        for _m in rows if rows is not None else range(self.m):
-            model.constraints.add(get_cA(_m, 0) == 1)
-            model.constraints.add(get_cB(_m, 0) == 1)
-
     def _add_zero_cn_constraints(self, model, get_cA, get_cB, rows=None):
         """Forbid zero total CN for significant clusters, tumor clones."""
         w_total = sum(self.w)
@@ -132,22 +126,12 @@ class BaseSolver:
         return ad_vars
 
     def _add_cAB_upper_bound(self, model, get_cA, get_cB, rows=None):
-        """cA[m][n] + cB[m][n] <= cAB_bound for all clusters and clones."""
+        """cA[m][n] + cB[m][n] <= cAB_bound for tumor clones."""
         for _m in rows if rows is not None else range(self.m):
             cluster_id = self.cluster_ids[_m]
             bound = self.cAB_bound(cluster_id)
-            for _n in range(self.n):
+            for _n in range(1, self.n):  # skip n=0 (normal, always (1,1))
                 model.constraints.add(get_cA(_m, _n) + get_cB(_m, _n) <= bound)
-
-    def _add_fixed_cn_constraints(self, model, get_cA, get_cB, rows=None):
-        """Fix CN state for clonal clusters from ``self.copy_numbers``."""
-        for _m in rows if rows is not None else range(self.m):
-            cluster_id = self.cluster_ids[_m]
-            if cluster_id in self.copy_numbers:
-                _cnA, _cnB = self.copy_numbers[cluster_id]
-                for _n in range(1, self.n):
-                    model.constraints.add(get_cA(_m, _n) == _cnA)
-                    model.constraints.add(get_cB(_m, _n) == _cnB)
 
     def _add_balanced_constraints(self, model, get_cA, get_cB, rows=None):
         """Force cA == cB for balanced clusters, tumor clones only."""

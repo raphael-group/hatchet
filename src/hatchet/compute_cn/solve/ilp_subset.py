@@ -171,15 +171,16 @@ class ILPSubset(BaseSolver):
 
         model = pe.ConcreteModel()
 
-        # Identify fixed-CN cluster rows: store constants, skip variable creation
+        # Normal clone (n=0) is always diploid (1,1) — set as constants for all rows.
+        # Fixed-CN rows also get tumor clones as constants.
         fixed_rows = set()
         if mode_t in ("FULL", "CARCH"):
             for _m, cid in enumerate(self.cluster_ids):
+                self.cA[_m][0] = 1
+                self.cB[_m][0] = 1
                 if cid in copy_numbers:
                     fixed_rows.add(_m)
                     ca, cb = copy_numbers[cid]
-                    self.cA[_m][0] = self._base
-                    self.cB[_m][0] = self._base
                     for _n in range(1, n):
                         self.cA[_m][_n] = ca
                         self.cB[_m][_n] = cb
@@ -215,13 +216,16 @@ class ILPSubset(BaseSolver):
             model.add_component(f"fB_{_m + 1}_{_k + 1}", fB[(_m, _k)])
 
         if mode_t in ("FULL", "CARCH"):
-            for _m, _n in np.ndindex((m, n)):
-                if _m in fixed_rows:
-                    continue
-                self.cA[_m][_n] = pe.Var(bounds=(0, cAB_bounds[_m]), domain=pe.Integers)
-                model.add_component(f"cA_{_m + 1}_{_n + 1}", self.cA[_m][_n])
-                self.cB[_m][_n] = pe.Var(bounds=(0, cAB_bounds[_m]), domain=pe.Integers)
-                model.add_component(f"cB_{_m + 1}_{_n + 1}", self.cB[_m][_n])
+            for _m in free_rows:
+                for _n in range(1, n):  # skip n=0 (normal clone, already constant)
+                    self.cA[_m][_n] = pe.Var(
+                        bounds=(0, cAB_bounds[_m]), domain=pe.Integers
+                    )
+                    model.add_component(f"cA_{_m + 1}_{_n + 1}", self.cA[_m][_n])
+                    self.cB[_m][_n] = pe.Var(
+                        bounds=(0, cAB_bounds[_m]), domain=pe.Integers
+                    )
+                    model.add_component(f"cB_{_m + 1}_{_n + 1}", self.cB[_m][_n])
 
             if ampdel:
                 for _m in range(m):
@@ -236,19 +240,19 @@ class ILPSubset(BaseSolver):
         bitcA = {}
         bitcB = {}
         if (mode_t == "FULL") or (max_ncns_seg > 0 and mode_t == "CARCH"):
-            for _b, _m, _n in np.ndindex((_M, m, n)):
-                if _m in fixed_rows:
-                    continue
-                bitcA[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
-                model.add_component(
-                    f"bitcA_{_b + 1}_{_m + 1}_{_n + 1}",
-                    bitcA[(_b, _m, _n)],
-                )
-                bitcB[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
-                model.add_component(
-                    f"bitcB_{_b + 1}_{_m + 1}_{_n + 1}",
-                    bitcB[(_b, _m, _n)],
-                )
+            for _b in range(_M):
+                for _m in free_rows:
+                    for _n in range(1, n):  # skip n=0 (normal clone)
+                        bitcA[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model.add_component(
+                            f"bitcA_{_b + 1}_{_m + 1}_{_n + 1}",
+                            bitcA[(_b, _m, _n)],
+                        )
+                        bitcB[(_b, _m, _n)] = pe.Var(bounds=(0, 1), domain=pe.Binary)
+                        model.add_component(
+                            f"bitcB_{_b + 1}_{_m + 1}_{_n + 1}",
+                            bitcB[(_b, _m, _n)],
+                        )
 
         if mode_t in ("FULL", "UARCH"):
             for _n, _k in np.ndindex((n, k)):
@@ -258,19 +262,24 @@ class ILPSubset(BaseSolver):
         vA = {}
         vB = {}
         if mode_t == "FULL":
-            for _b, _m, _n, _k in np.ndindex((_M, m, n, k)):
-                if _m in fixed_rows:
-                    continue
-                vA[(_b, _m, _n, _k)] = pe.Var(bounds=(0, 1), domain=pe.Reals)
-                model.add_component(
-                    f"vA_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}",
-                    vA[(_b, _m, _n, _k)],
-                )
-                vB[(_b, _m, _n, _k)] = pe.Var(bounds=(0, 1), domain=pe.Reals)
-                model.add_component(
-                    f"vB_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}",
-                    vB[(_b, _m, _n, _k)],
-                )
+            for _b in range(_M):
+                for _m in free_rows:
+                    for _n in range(1, n):  # skip n=0 (normal, constant)
+                        for _k in range(k):
+                            vA[(_b, _m, _n, _k)] = pe.Var(
+                                bounds=(0, 1), domain=pe.Reals
+                            )
+                            model.add_component(
+                                f"vA_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}",
+                                vA[(_b, _m, _n, _k)],
+                            )
+                            vB[(_b, _m, _n, _k)] = pe.Var(
+                                bounds=(0, 1), domain=pe.Reals
+                            )
+                            model.add_component(
+                                f"vB_{_b + 1}_{_m + 1}_{_n + 1}_{_k + 1}",
+                                vB[(_b, _m, _n, _k)],
+                            )
 
         x = {}
         if (mode_t in ("FULL", "UARCH")) and (self.minprop > 0):
@@ -302,21 +311,24 @@ class ILPSubset(BaseSolver):
         if mode_t == "FULL":
             for _m, _k in np.ndindex((m, k)):
                 if _m in fixed_rows:
-                    # Fixed cluster: cA/cB are constants, use linear fA = Σ cA*u
                     sum_a = sum(self.cA[_m][_n] * self.u[_n][_k] for _n in range(n))
                     model.constraints.add(fA[(_m, _k)] == sum_a)
                 else:
-                    sum_a = 0
-                    for _n, _b in np.ndindex((n, _M)):
-                        sum_a += vA[(_b, _m, _n, _k)] * math.pow(2, _b)
-                        model.constraints.add(
-                            vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)]
-                        )
-                        model.constraints.add(vA[(_b, _m, _n, _k)] <= self.u[_n][_k])
-                        model.constraints.add(
-                            vA[(_b, _m, _n, _k)]
-                            >= bitcA[(_b, _m, _n)] + self.u[_n][_k] - 1
-                        )
+                    # n=0 (normal, constant) + n>=1 (bit-encoded)
+                    sum_a = self.cA[_m][0] * self.u[0][_k]
+                    for _n in range(1, n):
+                        for _b in range(_M):
+                            sum_a += vA[(_b, _m, _n, _k)] * math.pow(2, _b)
+                            model.constraints.add(
+                                vA[(_b, _m, _n, _k)] <= bitcA[(_b, _m, _n)]
+                            )
+                            model.constraints.add(
+                                vA[(_b, _m, _n, _k)] <= self.u[_n][_k]
+                            )
+                            model.constraints.add(
+                                vA[(_b, _m, _n, _k)]
+                                >= bitcA[(_b, _m, _n)] + self.u[_n][_k] - 1
+                            )
                     model.constraints.add(fA[(_m, _k)] == sum_a)
 
             for _m, _k in np.ndindex((m, k)):
@@ -324,41 +336,43 @@ class ILPSubset(BaseSolver):
                     sum_b = sum(self.cB[_m][_n] * self.u[_n][_k] for _n in range(n))
                     model.constraints.add(fB[(_m, _k)] == sum_b)
                 else:
-                    sum_b = 0
-                    for _n, _b in np.ndindex((n, _M)):
-                        sum_b += vB[(_b, _m, _n, _k)] * math.pow(2, _b)
-                        model.constraints.add(
-                            vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)]
-                        )
-                        model.constraints.add(vB[(_b, _m, _n, _k)] <= self.u[_n][_k])
-                        model.constraints.add(
-                            vB[(_b, _m, _n, _k)]
-                            >= bitcB[(_b, _m, _n)] + self.u[_n][_k] - 1
-                        )
+                    sum_b = self.cB[_m][0] * self.u[0][_k]
+                    for _n in range(1, n):
+                        for _b in range(_M):
+                            sum_b += vB[(_b, _m, _n, _k)] * math.pow(2, _b)
+                            model.constraints.add(
+                                vB[(_b, _m, _n, _k)] <= bitcB[(_b, _m, _n)]
+                            )
+                            model.constraints.add(
+                                vB[(_b, _m, _n, _k)] <= self.u[_n][_k]
+                            )
+                            model.constraints.add(
+                                vB[(_b, _m, _n, _k)]
+                                >= bitcB[(_b, _m, _n)] + self.u[_n][_k] - 1
+                            )
                     model.constraints.add(fB[(_m, _k)] == sum_b)
 
-            for _n, _k in np.ndindex((n, k)):
-                _sum = 0
-                for _m in range(m):
-                    if _m in fixed_rows:
-                        _sum += self.cA[_m][_n] + self.cB[_m][_n]
-                    else:
-                        for _b in range(_M):
-                            _sum += bitcA[(_b, _m, _n)] + bitcB[(_b, _m, _n)]
-                model.constraints.add(_sum >= self.u[_n][_k])
+            for _n in range(1, n):  # skip n=0 (normal, always has CN=2)
+                for _k in range(k):
+                    _sum = 0
+                    for _m in range(m):
+                        if _m in fixed_rows:
+                            _sum += self.cA[_m][_n] + self.cB[_m][_n]
+                        else:
+                            for _b in range(_M):
+                                _sum += bitcA[(_b, _m, _n)] + bitcB[(_b, _m, _n)]
+                    model.constraints.add(_sum >= self.u[_n][_k])
 
         if (mode_t == "FULL") or (max_ncns_seg > 0 and mode_t == "CARCH"):
-            for _m, _n in np.ndindex((m, n)):
-                if _m in fixed_rows:
-                    continue
-                sum_a = 0
-                sum_b = 0
-                for _b in range(_M):
-                    sum_a += bitcA[(_b, _m, _n)] * math.pow(2, _b)
-                    sum_b += bitcB[(_b, _m, _n)] * math.pow(2, _b)
-
-                model.constraints.add(self.cA[_m][_n] == sum_a)
-                model.constraints.add(self.cB[_m][_n] == sum_b)
+            for _m in free_rows:
+                for _n in range(1, n):
+                    sum_a = 0
+                    sum_b = 0
+                    for _b in range(_M):
+                        sum_a += bitcA[(_b, _m, _n)] * math.pow(2, _b)
+                        sum_b += bitcB[(_b, _m, _n)] * math.pow(2, _b)
+                    model.constraints.add(self.cA[_m][_n] == sum_a)
+                    model.constraints.add(self.cB[_m][_n] == sum_b)
 
         if mode_t == "CARCH":
             # TODO: These loops can be collapsed once validation against C++ is complete
@@ -376,7 +390,6 @@ class ILPSubset(BaseSolver):
             get_cA = lambda _m, _n: self.cA[_m][_n]
             get_cB = lambda _m, _n: self.cB[_m][_n]
             self._add_cAB_upper_bound(model, get_cA, get_cB, rows=free_rows)
-            self._add_normal_clone_constraints(model, get_cA, get_cB, rows=free_rows)
             self._add_zero_cn_constraints(model, get_cA, get_cB, rows=free_rows)
 
             if ampdel:
@@ -463,10 +476,7 @@ class ILPSubset(BaseSolver):
         if mode_t in ("FULL", "CARCH"):
             get_cA = lambda _m, _n: self.cA[_m][_n]
             get_cB = lambda _m, _n: self.cB[_m][_n]
-            # Symmetry breaking uses all rows (fixed rows contribute constants)
             self._add_symmetry_breaking(model, get_cA, get_cB)
-            # Fixed CN constraints are no-ops for fixed rows (already constants)
-            self._add_fixed_cn_constraints(model, get_cA, get_cB, rows=free_rows)
             self._add_balanced_constraints(model, get_cA, get_cB, rows=free_rows)
             self._add_mrca_loh_constraints(model, get_cA, get_cB, rows=free_rows)
 
@@ -876,11 +886,12 @@ class ILPSubset(BaseSolver):
         rank_indices = np.argsort(rank)
 
         fixed_rows = getattr(self, "_fixed_rows", set())
-        for _m, _n in np.ndindex((m, n)):
+        for _m in range(m):
             if _m in fixed_rows:
                 continue
-            self.cA[_m][rank_indices[_n]].value = _cA[_m][_n]
-            self.cB[_m][rank_indices[_n]].value = _cB[_m][_n]
+            for _n in range(1, n):  # skip n=0 (constant, not a Pyomo variable)
+                self.cA[_m][rank_indices[_n]].value = _cA[_m][_n]
+                self.cB[_m][rank_indices[_n]].value = _cB[_m][_n]
         self.warmstart = True
 
     def get_tree_edges(self):
