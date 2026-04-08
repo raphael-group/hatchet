@@ -94,3 +94,75 @@ class TestComputeCnRecovery:
         )
         gamma_dip = gammas["gamma_diploid"].iloc[0]
         assert 1.5 < gamma_dip < 3.0, f"Expected gamma near 2.0, got {gamma_dip:.3f}"
+
+
+class TestCDMode:
+    """Test coordinate descent solver with different regularization terms."""
+
+    @pytest.fixture(scope="class")
+    def cd_base_args(self, cluster_bins_result, synthetic_data, tmp_path_factory):
+        if not CBC_AVAILABLE:
+            pytest.skip("CBC solver not available")
+        bbc_dir, _ = cluster_bins_result
+        _, genome_sizes, regions_bed, _ = synthetic_data
+        return {
+            "bbc": os.path.join(bbc_dir, "bulk.bbc"),
+            "seg": os.path.join(bbc_dir, "bulk.seg"),
+            "genome_size": genome_sizes,
+            "region_bed": regions_bed,
+            "mode": "cd",
+            "solver": "cbc",
+            "timelimit": 30,
+            "minClone": 2,
+            "maxClone": 2,
+            "diploid": True,
+            "tetraploid": False,
+            "segment": False,
+            "fcn_ci_alpha": 0.5,
+            "model_select": "bic",
+            "force": True,
+            "reg_steps": 2,
+            "reg_bound": 0.1,
+            "no_ampdel": False,
+            "num_cnstates": -1,
+            "diploidcmax": 6,
+            "tetraploidcmax": 12,
+            "min_prop": 0.01,
+            "purities": None,
+            "pool_size": 1,
+            "pool_gap": None,
+            "cd_niters": 5,
+            "cd_convergence_iters": 2,
+            "cd_nseeds": 10,
+            "cd_njobs": 1,
+            "cd_seed": 42,
+            "u_init": "dirichlet",
+            "u_dir_alpha": 0.3,
+            "solver_threads": None,
+            "max_degree": 3,
+            "mrca": False,
+            "zero_cn_thres": 0.005,
+            "cd_tol": 0.001,
+            "style": "cnv",
+            "fix_cn_dip": {},
+            "fix_cn_tet": {},
+            "verbosity": 0,
+        }
+
+    @pytest.mark.parametrize(
+        "reg_term", ["RAW", "MAXCN", "DBOX_L1", "DBOX_L0", "DROOT_SUM", "DADJ_SUM"]
+    )
+    def test_cd_reg_term(self, cd_base_args, reg_term, tmp_path):
+        """CD mode should produce a valid UCN file for each reg term."""
+        from hatchet.compute_cn.compute_cn import run as run_compute_cn
+
+        result_dir = str(tmp_path / f"cd_{reg_term}")
+        args = {**cd_base_args, "result_dir": result_dir, "reg_term": reg_term}
+        run_compute_cn(args)
+
+        ucn = os.path.join(result_dir, "best.bbc.ucn")
+        assert os.path.isfile(ucn), f"CD with {reg_term} did not produce best.bbc.ucn"
+        bbc = pd.read_table(ucn, sep="\t")
+        assert (bbc["cn_normal"] == "1|1").all(), (
+            f"Normal clone not 1|1 with {reg_term}"
+        )
