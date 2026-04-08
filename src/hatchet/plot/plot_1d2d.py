@@ -426,6 +426,8 @@ def plot_clusters(
     pdf=None,
     palette=None,
     bin_info=None,
+    lim_baf: tuple = None,
+    lim_rdr: tuple = None,
 ):
     """Plot per-cluster joint BAF-vs-RDR scatter with marginals and QQ plots.
 
@@ -547,6 +549,10 @@ def plot_clusters(
                     )
                 ax_main.set_xlabel("BAF", fontsize=9)
                 ax_main.set_ylabel(ylab, fontsize=9)
+                if lim_baf is not None:
+                    ax_main.set_xlim(lim_baf)
+                if lim_rdr is not None:
+                    ax_main.set_ylim(lim_rdr)
 
                 ax_top.hist(
                     baf_obs, bins=80, density=True, alpha=0.6, color="steelblue"
@@ -702,6 +708,10 @@ def plot_rdr_baf(
     out_name = out_prefix.rstrip("_") if out_prefix else "plot"
     pdf = PdfPages(os.path.join(out_dir, f"{out_name}.pdf"))
 
+    global_lim_baf = (0, 1) if np.max(baf_mat) > 0.5 else (0, 0.55)
+    global_max_rdr = np.round(np.max(rdr_mat)).astype(int)
+    global_lim_rdr = (0, min(max(3, global_max_rdr), maxlim_rdr))
+
     for si, sample in enumerate(samples):
         logging.info(f"plot {sample}")
         bafs = baf_mat[:, si]
@@ -808,6 +818,8 @@ def plot_rdr_baf(
             pdf=pdf,
             palette=palette,
             bin_info=bin_info,
+            lim_baf=global_lim_baf,
+            lim_rdr=global_lim_rdr,
         )
     pdf.close()
     return

@@ -26,6 +26,7 @@ def init_hmm_cna_plus_plus(
     n_local_trials: int | None = None,
     log_rdr=False,
     baf_eps: float = 1e-3,
+    bal_margin: float = 0.03,
     collect_diag: bool = False,
 ):
     """k-means++ style initialization for the HMM emission parameters.
@@ -94,7 +95,10 @@ def init_hmm_cna_plus_plus(
 
     rng = np.random.default_rng(random_state)
     baf_means0 = np.array([[0.5] * M])
-    rdr_means0 = np.array([[0.0 if log_rdr else 1.0] * M])
+    bal_mask = np.all(np.abs(X_bafs - 0.5) <= bal_margin, axis=1)
+    rdr_pool = X_rdrs[bal_mask] if np.any(bal_mask) else X_rdrs
+    median_rdr = np.median(rdr_pool, axis=0)
+    rdr_means0 = np.log(median_rdr)[None, :] if log_rdr else median_rdr[None, :]
     rdr_vars0 = rdr_vars
 
     # Compute loglik for the first centroid once — shared across all restarts

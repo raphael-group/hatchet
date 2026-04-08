@@ -31,7 +31,7 @@ cluster_bins:
 
   # Beta-Binomial dispersion
   min_tau: 50
-  max_tau: 500
+  max_tau: 200
   # BAF mean Brent search bounds [baf_eps, 1-baf_eps]
   baf_eps: 1.0e-3
   # minimum RDR variance floor
@@ -53,7 +53,7 @@ cluster_bins:
 
   # balanced cluster interval LRT
   bal_lrt_alpha: 0.05
-  bal_lrt_margin: 0.03
+  bal_margin: 0.03
 
   # cluster variance-outlier filtering
   filter_std: 2.0

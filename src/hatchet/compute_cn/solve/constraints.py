@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 
+from pyomo import environ as pe
 
 from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 
@@ -26,7 +27,9 @@ def add_l1_constraints(model, mode: str, params: SolverParams, inputs: SolverInp
             model.constraints.add(model.fB[_m, _k] - fb_obs <= model.yB[_m, _k])
 
 
-def add_ci_hinge_constraints(model, mode: str, params: SolverParams, inputs: SolverInputs):
+def add_ci_hinge_constraints(
+    model, mode: str, params: SolverParams, inputs: SolverInputs
+):
     """CI-violation hinge: hA >= max(fA - fa_hi, fa_lo - fA, 0) for all (m, k)."""
     fa_lo_vals = inputs.fa_lo.values
     fa_hi_vals = inputs.fa_hi.values
@@ -34,10 +37,18 @@ def add_ci_hinge_constraints(model, mode: str, params: SolverParams, inputs: Sol
     fb_hi_vals = inputs.fb_hi.values
     for _m in range(inputs.m):
         for _k in range(inputs.k):
-            model.constraints.add(model.fA[_m, _k] - float(fa_hi_vals[_m, _k]) <= model.hA[_m, _k])
-            model.constraints.add(float(fa_lo_vals[_m, _k]) - model.fA[_m, _k] <= model.hA[_m, _k])
-            model.constraints.add(model.fB[_m, _k] - float(fb_hi_vals[_m, _k]) <= model.hB[_m, _k])
-            model.constraints.add(float(fb_lo_vals[_m, _k]) - model.fB[_m, _k] <= model.hB[_m, _k])
+            model.constraints.add(
+                model.fA[_m, _k] - float(fa_hi_vals[_m, _k]) <= model.hA[_m, _k]
+            )
+            model.constraints.add(
+                float(fa_lo_vals[_m, _k]) - model.fA[_m, _k] <= model.hA[_m, _k]
+            )
+            model.constraints.add(
+                model.fB[_m, _k] - float(fb_hi_vals[_m, _k]) <= model.hB[_m, _k]
+            )
+            model.constraints.add(
+                float(fb_lo_vals[_m, _k]) - model.fB[_m, _k] <= model.hB[_m, _k]
+            )
 
 
 def add_mixture_constraints(
@@ -91,26 +102,32 @@ def add_mixture_constraints(
                 model.constraints.add(_sum >= model.u[_n, _k])
 
     elif mode == "CARCH":
+        u_init = {}
+        for _n in range(n):
+            for _k in range(k):
+                v = fixed_u[_n][_k]
+                u_init[_n, _k] = v if v >= params.minprop - params.tol else 0.0
+        model.u_fixed = pe.Param(range(n), range(k), mutable=True, initialize=u_init)
         for _m in range(m):
             for _k in range(k):
-                sA = sum(
-                    model.cA[_m, _n] * fixed_u[_n][_k]
-                    for _n in range(n)
-                    if fixed_u[_n][_k] >= params.minprop - params.tol
-                )
-                sB = sum(
-                    model.cB[_m, _n] * fixed_u[_n][_k]
-                    for _n in range(n)
-                    if fixed_u[_n][_k] >= params.minprop - params.tol
-                )
+                sA = sum(model.cA[_m, _n] * model.u_fixed[_n, _k] for _n in range(n))
+                sB = sum(model.cB[_m, _n] * model.u_fixed[_n, _k] for _n in range(n))
                 model.constraints.add(model.fA[_m, _k] == sA)
                 model.constraints.add(model.fB[_m, _k] == sB)
 
     elif mode == "UARCH":
+        cA_init = {
+            (_m, _n): int(fixed_cA[_m][_n]) for _m in range(m) for _n in range(n)
+        }
+        cB_init = {
+            (_m, _n): int(fixed_cB[_m][_n]) for _m in range(m) for _n in range(n)
+        }
+        model.cA_fixed = pe.Param(range(m), range(n), mutable=True, initialize=cA_init)
+        model.cB_fixed = pe.Param(range(m), range(n), mutable=True, initialize=cB_init)
         for _m in range(m):
             for _k in range(k):
-                sA = sum(int(fixed_cA[_m][_n]) * model.u[_n, _k] for _n in range(n))
-                sB = sum(int(fixed_cB[_m][_n]) * model.u[_n, _k] for _n in range(n))
+                sA = sum(model.cA_fixed[_m, _n] * model.u[_n, _k] for _n in range(n))
+                sB = sum(model.cB_fixed[_m, _n] * model.u[_n, _k] for _n in range(n))
                 model.constraints.add(model.fA[_m, _k] == sA)
                 model.constraints.add(model.fB[_m, _k] == sB)
 
@@ -251,3 +268,19 @@ def add_ncns_seg_constraints(
                 _sum_l += model.z[_m, _n, _d] * params.symmCoeff(_n)
                 _sum_l1 += model.z[_m, _n, _d + 1] * params.symmCoeff(_n)
                 model.constraints.add(_sum_l <= _sum_l1)
+
+
+def update_fixed_u(model, u, params, inputs):
+    """Update mutable u_fixed params on a cached CARCH model."""
+    for _n in range(params.n):
+        for _k in range(inputs.k):
+            v = u[_n][_k]
+            model.u_fixed[_n, _k] = v if v >= params.minprop - params.tol else 0.0
+
+
+def update_fixed_cn(model, cA, cB, params, inputs):
+    """Update mutable cA_fixed/cB_fixed params on a cached UARCH model."""
+    for _m in range(inputs.m):
+        for _n in range(params.n):
+            model.cA_fixed[_m, _n] = int(cA[_m][_n])
+            model.cB_fixed[_m, _n] = int(cB[_m][_n])

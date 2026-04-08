@@ -157,7 +157,7 @@ rule run_cluster_bins:
         min_covar=float(config["cluster_bins"]["min_covar"]),
         tau_iters=int(config["cluster_bins"]["tau_iters"]),
         bal_lrt_alpha=float(config["cluster_bins"]["bal_lrt_alpha"]),
-        bal_lrt_margin=float(config["cluster_bins"]["bal_lrt_margin"]),
+        bal_margin=float(config["cluster_bins"]["bal_margin"]),
         filter_std=float(config["cluster_bins"]["filter_std"]),
         min_nbins=int(config["cluster_bins"]["min_nbins"]),
         ub_nbins=int(config["cluster_bins"]["ub_nbins"]),
@@ -184,7 +184,7 @@ rule run_cluster_bins:
             --min_covar {params.min_covar} \
             --tau_iters {params.tau_iters} \
             --bal_lrt_alpha {params.bal_lrt_alpha} \
-            --bal_lrt_margin {params.bal_lrt_margin} \
+            --bal_margin {params.bal_margin} \
             --filter_std {params.filter_std} \
             --min_nbins {params.min_nbins} \
             --ub_nbins {params.ub_nbins} \

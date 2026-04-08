@@ -17,7 +17,9 @@ def build_imf_objective(model, mode: str, params: SolverParams, inputs: SolverIn
     return obj
 
 
-def build_ci_violation_objective(model, mode: str, params: SolverParams, inputs: SolverInputs):
+def build_ci_violation_objective(
+    model, mode: str, params: SolverParams, inputs: SolverInputs
+):
     """Weighted CI-violation hinge loss: Σ_{m,k} (hA + hB) * w[m]."""
     obj = 0
     for _m in range(inputs.m):

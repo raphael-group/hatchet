@@ -232,6 +232,7 @@ def run(args=None):
             n_local_trials=n_local_trials,
             log_rdr=log_rdr,
             baf_eps=baf_eps,
+            bal_margin=args["bal_margin"],
             collect_diag=DEBUG,
         )
     plot_2d_inits(
@@ -407,7 +408,7 @@ def run(args=None):
             k_baf_means,
             k_baf_taus,
             alpha=args["bal_lrt_alpha"],
-            margin=args["bal_lrt_margin"],
+            margin=args["bal_margin"],
             baf_eps=baf_eps,
         )
         for ci, c in enumerate(k_cids):

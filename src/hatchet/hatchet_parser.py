@@ -146,9 +146,9 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--max_tau",
         required=False,
-        default=500,
+        default=200,
         type=float,
-        help="Maximum Beta-Binomial dispersion tau (default: 500)",
+        help="Maximum Beta-Binomial dispersion tau (default: 200)",
     )
 
     parser.add_argument(
@@ -224,7 +224,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         help="Significance level for balanced cluster interval LRT (default: 0.05)",
     )
     parser.add_argument(
-        "--bal_lrt_margin",
+        "--bal_margin",
         type=float,
         required=False,
         default=0.03,

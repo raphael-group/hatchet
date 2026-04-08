@@ -39,7 +39,7 @@ output/my_sample/
 | `--score_method` | `icl` | Model selection criterion: `bic` or `icl` |
 | `--init_method` | `cna_plus_plus` | Initialization method: `cna_plus_plus` (HMM-aware seeding) or `kmeans_plus_plus` (sklearn KMeans++) |
 | `--min_tau` | 50 | Minimum Beta-Binomial dispersion tau |
-| `--max_tau` | 500 | Maximum Beta-Binomial dispersion tau |
+| `--max_tau` | 200 | Maximum Beta-Binomial dispersion tau |
 | `--baf_eps` | 1e-3 | BAF mean Brent search bounds [baf_eps, 1-baf_eps]; related to sequencing error floor |
 | `--min_covar` | 1e-3 | Minimum RDR variance floor applied after each M-step |
 | `--ig_alpha` | 10.0 | Inverse-gamma prior shape parameter for RDR variance updates |

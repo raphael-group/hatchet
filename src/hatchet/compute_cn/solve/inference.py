@@ -18,6 +18,8 @@ from hatchet.compute_cn.solve.model import (
     first_hot_start,
     hot_start,
     build_random_u,
+    update_fixed_u,
+    update_fixed_cn,
 )
 from hatchet.compute_cn.solve.utils import store_instance_tofile
 from hatchet.compute_cn.compute_cn_utils import dedup_pool
@@ -266,6 +268,10 @@ def _cd_work(
     solver = _cd_solver_cache
 
     _u, _cA, _cB = u, cfg["hcA"], cfg["hcB"]
+
+    model_c, var_z_c = build_model("CARCH", params, inputs, fixed_u=_u)
+    model_u, _ = build_model("UARCH", params, inputs, fixed_cA=_cA, fixed_cB=_cB)
+
     _prev_obj_u = None
     _imf_c = _reg_c = 0.0
     _tree_edges = None
@@ -273,7 +279,8 @@ def _cd_work(
 
     while _iters < max_iters and _conv_iters < max_convergence_iters:
         # C-step
-        model_c, var_z_c = build_model("CARCH", params, inputs, fixed_u=_u)
+        if _iters > 0:
+            update_fixed_u(model_c, _u, params, inputs)
         hot_start(model_c, params, inputs, _cA, _cB)
         model_c.pparam = pparam
         if not solve_model(model_c, solver, True, timelimit):
@@ -284,7 +291,7 @@ def _cd_work(
         _tree_edges = extract_tree_edges(var_z_c, params.n)
 
         # U-step
-        model_u, _ = build_model("UARCH", params, inputs, fixed_cA=_cA, fixed_cB=_cB)
+        update_fixed_cn(model_u, _cA, _cB, params, inputs)
         if not solve_model(model_u, solver, False, timelimit):
             return None
         _obj_u, _, _, _u = extract_solution(

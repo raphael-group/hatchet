@@ -245,7 +245,9 @@ def filtering(
     return good_clusters, bad_clusters
 
 
-def compute_fractional_cn(rdr, baf, gammas, rdr_se, nbins, alpha=0.05, min_ci_margin=0.1):
+def compute_fractional_cn(
+    rdr, baf, gammas, rdr_se, nbins, alpha=0.05, min_ci_margin=0.1
+):
     """Compute fractional copy numbers and CI from upstream RDR variance.
 
     Args:

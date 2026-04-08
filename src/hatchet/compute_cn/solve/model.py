@@ -14,6 +14,8 @@ from hatchet.compute_cn.solve.constraints import (
     add_proportion_constraints,
     add_domain_constraints,
     add_ncns_seg_constraints,
+    update_fixed_u,
+    update_fixed_cn,
 )
 from hatchet.compute_cn.solve.regularization import build_regularization
 from hatchet.compute_cn.solve.objectives import (
@@ -136,10 +138,14 @@ def _build_variables(model, mode: str, params: SolverParams, inputs: SolverInput
     m, n, k = inputs.m, params.n, inputs.k
     _M = params.M
 
-    model.yA = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
-    model.yB = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
     model.fA = pe.Var(range(m), range(k), bounds=(0, params.cn_max), domain=pe.Reals)
     model.fB = pe.Var(range(m), range(k), bounds=(0, params.cn_max), domain=pe.Reals)
+    if params.obj_type != "ci":
+        model.yA = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
+        model.yB = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
+    if params.obj_type != "imf":
+        model.hA = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
+        model.hB = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
 
     if mode in ("FULL", "CARCH"):
         model.cA = pe.Var(
@@ -199,10 +205,6 @@ def _build_variables(model, mode: str, params: SolverParams, inputs: SolverInput
         ]
         model.z = pe.Var(z_idx, bounds=(0, 1), domain=pe.Binary)
 
-    # CI-violation hinge slacks
-    model.hA = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
-    model.hB = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
-
 
 def build_model(
     mode: str,
@@ -221,8 +223,10 @@ def build_model(
     _build_variables(model, mode, params, inputs)
     model.constraints = pe.ConstraintList()
 
-    add_l1_constraints(model, mode, params, inputs)
-    add_ci_hinge_constraints(model, mode, params, inputs)
+    if params.obj_type != "ci":
+        add_l1_constraints(model, mode, params, inputs)
+    if params.obj_type != "imf":
+        add_ci_hinge_constraints(model, mode, params, inputs)
     add_mixture_constraints(model, mode, params, inputs, fixed_u, fixed_cA, fixed_cB)
     add_bit_encoding(model, mode, params, inputs)
     add_proportion_constraints(model, mode, params, inputs)
