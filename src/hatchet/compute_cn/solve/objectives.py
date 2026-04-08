@@ -17,6 +17,16 @@ def build_imf_objective(model, mode: str, params: SolverParams, inputs: SolverIn
     return obj
 
 
+def build_ci_violation_objective(model, mode: str, params: SolverParams, inputs: SolverInputs):
+    """Weighted CI-violation hinge loss: Σ_{m,k} (hA + hB) * w[m]."""
+    obj = 0
+    for _m in range(inputs.m):
+        cid = inputs.cluster_ids[_m]
+        for _k in range(inputs.k):
+            obj += (model.hA[_m, _k] + model.hB[_m, _k]) * inputs.w[cid]
+    return obj
+
+
 def build_final_objective(model, obj_imf, obj_reg, params: SolverParams):
     """Set model.obj combining IMF and regularization."""
     pname = params.reg_name

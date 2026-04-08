@@ -222,6 +222,7 @@ rule run_compute_cn:
         solver=str(config["compute_cn"]["solver"]),
         fcn_ci_alpha=float(config["compute_cn"]["fcn_ci_alpha"]),
         min_ci_margin=float(config["compute_cn"]["min_ci_margin"]),
+        obj_type=str(config["compute_cn"]["obj_type"]),
         minClone=int(config["compute_cn"]["minClone"]),
         maxClone=int(config["compute_cn"]["maxClone"]),
         reg_term=str(config["compute_cn"]["reg_term"]),
@@ -256,6 +257,7 @@ rule run_compute_cn:
             --region_bed {input.region_bed} \
             --fcn_ci_alpha {params.fcn_ci_alpha} \
             --min_ci_margin {params.min_ci_margin} \
+            --obj_type {params.obj_type} \
             --minClone {params.minClone} \
             --maxClone {params.maxClone} \
             --reg_term {params.reg_term} \

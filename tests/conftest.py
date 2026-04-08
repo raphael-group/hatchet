@@ -111,6 +111,7 @@ def compute_cn_result(cluster_bins_result, synthetic_data, tmp_path_factory):
         "segment": False,
         "fcn_ci_alpha": 0.05,
         "min_ci_margin": 0.1,
+        "obj_type": "imf",
         "model_select": "bic",
         "force": True,
         "reg_term": "MAXCN",

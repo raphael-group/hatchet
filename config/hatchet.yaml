@@ -83,6 +83,8 @@ compute_cn:
   fcn_ci_alpha: 0.05
   # hard minimum CI half-width in FCN space
   min_ci_margin: 0.1
+  # fitting objective: imf (weighted L1) or ci (CI-violation hinge)
+  obj_type: imf
 
   # clone range
   minClone: 2

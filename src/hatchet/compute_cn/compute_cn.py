@@ -465,6 +465,10 @@ def solve(
         fixed_rows=fixed_rows,
         purities=purities,
         balanced_clusters=balanced_clusters,
+        fa_lo=fcn_data["fa_lo"],
+        fa_hi=fcn_data["fa_hi"],
+        fb_lo=fcn_data["fb_lo"],
+        fb_hi=fcn_data["fb_hi"],
     )
     params = SolverParams(
         n=n,
@@ -478,6 +482,7 @@ def solve(
         tol=args.get("tol", 0.001),
         zero_cn_thres=args["zero_cn_thres"],
         reg_name=reg_term if reg_term is not None else "RAW",
+        obj_type=args["obj_type"],
     )
 
     if solve_mode in ("cd", "both"):

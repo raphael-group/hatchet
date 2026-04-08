@@ -8,6 +8,7 @@ from pyomo import environ as pe
 from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 from hatchet.compute_cn.solve.constraints import (
     add_l1_constraints,
+    add_ci_hinge_constraints,
     add_mixture_constraints,
     add_bit_encoding,
     add_proportion_constraints,
@@ -17,6 +18,7 @@ from hatchet.compute_cn.solve.constraints import (
 from hatchet.compute_cn.solve.regularization import build_regularization
 from hatchet.compute_cn.solve.objectives import (
     build_imf_objective,
+    build_ci_violation_objective,
     build_final_objective,
 )
 
@@ -197,6 +199,10 @@ def _build_variables(model, mode: str, params: SolverParams, inputs: SolverInput
         ]
         model.z = pe.Var(z_idx, bounds=(0, 1), domain=pe.Binary)
 
+    # CI-violation hinge slacks
+    model.hA = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
+    model.hB = pe.Var(range(m), range(k), bounds=(0, np.inf), domain=pe.Reals)
+
 
 def build_model(
     mode: str,
@@ -216,13 +222,17 @@ def build_model(
     model.constraints = pe.ConstraintList()
 
     add_l1_constraints(model, mode, params, inputs)
+    add_ci_hinge_constraints(model, mode, params, inputs)
     add_mixture_constraints(model, mode, params, inputs, fixed_u, fixed_cA, fixed_cB)
     add_bit_encoding(model, mode, params, inputs)
     add_proportion_constraints(model, mode, params, inputs)
     add_domain_constraints(model, mode, params, inputs)
     add_ncns_seg_constraints(model, mode, params, inputs)
 
-    obj_imf = build_imf_objective(model, mode, params, inputs)
+    if params.obj_type == "ci":
+        obj_imf = build_ci_violation_objective(model, mode, params, inputs)
+    else:
+        obj_imf = build_imf_objective(model, mode, params, inputs)
     obj_reg, var_z = build_regularization(model, mode, params, inputs)
     build_final_objective(model, obj_imf, obj_reg, params)
 

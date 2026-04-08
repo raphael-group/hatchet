@@ -366,6 +366,15 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         help="Hard minimum CI half-width in FCN space (default: 0.1)",
     )
 
+    parser.add_argument(
+        "--obj_type",
+        type=str,
+        required=False,
+        default="imf",
+        choices=["imf", "ci"],
+        help="Fitting objective: imf (weighted L1) or ci (CI-violation hinge) (default: imf)",
+    )
+
     ##################################################
     # model parameters
     parser.add_argument(

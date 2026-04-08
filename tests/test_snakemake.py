@@ -103,6 +103,7 @@ def snakemake_result(tmp_path_factory):
             "pool_gap": None,
             "fcn_ci_alpha": 0.05,
             "min_ci_margin": 0.1,
+            "obj_type": "imf",
         },
         "plot_cn": {
             "dpi": 100,

@@ -26,6 +26,20 @@ def add_l1_constraints(model, mode: str, params: SolverParams, inputs: SolverInp
             model.constraints.add(model.fB[_m, _k] - fb_obs <= model.yB[_m, _k])
 
 
+def add_ci_hinge_constraints(model, mode: str, params: SolverParams, inputs: SolverInputs):
+    """CI-violation hinge: hA >= max(fA - fa_hi, fa_lo - fA, 0) for all (m, k)."""
+    fa_lo_vals = inputs.fa_lo.values
+    fa_hi_vals = inputs.fa_hi.values
+    fb_lo_vals = inputs.fb_lo.values
+    fb_hi_vals = inputs.fb_hi.values
+    for _m in range(inputs.m):
+        for _k in range(inputs.k):
+            model.constraints.add(model.fA[_m, _k] - float(fa_hi_vals[_m, _k]) <= model.hA[_m, _k])
+            model.constraints.add(float(fa_lo_vals[_m, _k]) - model.fA[_m, _k] <= model.hA[_m, _k])
+            model.constraints.add(model.fB[_m, _k] - float(fb_hi_vals[_m, _k]) <= model.hB[_m, _k])
+            model.constraints.add(float(fb_lo_vals[_m, _k]) - model.fB[_m, _k] <= model.hB[_m, _k])
+
+
 def add_mixture_constraints(
     model,
     mode: str,

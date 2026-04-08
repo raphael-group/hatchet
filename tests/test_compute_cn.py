@@ -120,6 +120,7 @@ class TestCDMode:
             "segment": False,
             "fcn_ci_alpha": 0.05,
             "min_ci_margin": 0.1,
+            "obj_type": "imf",
             "model_select": "bic",
             "force": True,
             "reg_steps": 2,

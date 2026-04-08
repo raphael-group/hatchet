@@ -22,6 +22,10 @@ class SolverInputs:
     fixed_rows: set
     purities: dict | None
     balanced_clusters: list | None
+    fa_lo: pd.DataFrame = field(repr=False)
+    fa_hi: pd.DataFrame = field(repr=False)
+    fb_lo: pd.DataFrame = field(repr=False)
+    fb_hi: pd.DataFrame = field(repr=False)
 
     @property
     def m(self):
@@ -47,6 +51,7 @@ class SolverParams:
     tol: float
     zero_cn_thres: float
     reg_name: str = "RAW"
+    obj_type: str = "imf"
 
     @property
     def M(self):
