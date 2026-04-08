@@ -22,7 +22,6 @@ from hatchet.compute_cn.solve.model import (
 from hatchet.compute_cn.solve.utils import store_instance_tofile
 from hatchet.compute_cn.compute_cn_utils import dedup_pool
 
-# Stack-based random seeding for reproducibility
 _random_states = []
 
 
@@ -40,11 +39,6 @@ class Random:
     def __exit__(self, *args):
         if self.seed is not None:
             np.random.set_state(_random_states.pop())
-
-
-# ---------------------------------------------------------------------------
-# Solver utilities
-# ---------------------------------------------------------------------------
 
 
 def create_solver(solver_type, threads=None):
@@ -146,11 +140,6 @@ def extract_pool_solutions(
     return solutions
 
 
-# ---------------------------------------------------------------------------
-# Full ILP run
-# ---------------------------------------------------------------------------
-
-
 def run_full_ilp(
     params,
     inputs,
@@ -225,10 +214,6 @@ def run_full_ilp(
         )
     return pool_instances, tree_info
 
-
-# ---------------------------------------------------------------------------
-# Coordinate Descent
-# ---------------------------------------------------------------------------
 
 _cd_global = None
 _cd_solver_cache = None

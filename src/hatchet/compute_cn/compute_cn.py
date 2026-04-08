@@ -25,7 +25,7 @@ from hatchet.compute_cn.scaling import get_scaling_factor
 from hatchet.compute_cn.model_select import model_selection
 from hatchet.hatchet_parser import parse_arguments_compute_cn, parse_fix_cn
 from hatchet.compute_cn.solve.utils import store_solve_input
-from hatchet.compute_cn.solve.model import SolverParams, SolverInputs
+from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 from hatchet.compute_cn.solve.inference import run_full_ilp, run_coordinate_descent
 from hatchet.plot.plot_cnp_panel import plot_pool_cnp
 

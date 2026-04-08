@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import math
 
-from pyomo import environ as pe
 
-from hatchet.compute_cn.solve.model import SolverParams, SolverInputs
+from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 
 
 def add_l1_constraints(model, mode: str, params: SolverParams, inputs: SolverInputs):
