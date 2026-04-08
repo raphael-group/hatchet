@@ -9,28 +9,55 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import numpy as np
 import pandas as pd
 from pyomo import environ as pe
+from pyomo.opt import SolverStatus, TerminationCondition
 
-from hatchet.compute_cn.solve.base_solver import BaseSolver
 from hatchet.compute_cn.solve.model import (
+    Random,
     build_model,
     first_hot_start,
     hot_start,
     build_random_u,
 )
 from hatchet.compute_cn.solve.variables import SolverParams
-from hatchet.compute_cn.solve.utils import Random
 
 
 # ---------------------------------------------------------------------------
-# Shared helpers
+# Solver utilities (moved from base_solver.py)
 # ---------------------------------------------------------------------------
+
+
+def create_solver(solver_type, threads=None):
+    """Create a Pyomo solver with suppressed output."""
+    if solver_type in ("gurobipy", "gurobi"):
+        solver = pe.SolverFactory("gurobi", solver_io="python")
+        solver.options["OutputFlag"] = 0
+        solver.options["LogToConsole"] = 0
+        solver.options["LogFile"] = ""
+        if threads is not None:
+            solver.options["Threads"] = threads
+    else:
+        solver = pe.SolverFactory(solver_type)
+    return solver
 
 
 def _solve_model(model, solver, warmstart, timelimit):
     """Solve a Pyomo model. Returns True on success."""
-    kwargs = BaseSolver._build_solve_kwargs(solver, warmstart, timelimit)
+    kwargs = {"report_timing": False}
+    if timelimit is not None:
+        kwargs["timelimit"] = int(timelimit)
+    if solver.warm_start_capable():
+        kwargs["warmstart"] = warmstart
     results = solver.solve(model, **kwargs)
-    return BaseSolver._check_solver_status(results)
+    solver_ok = (
+        results.solver.status == SolverStatus.ok
+        and results.solver.termination_condition
+        in (TerminationCondition.optimal, TerminationCondition.feasible)
+    )
+    time_limit_hit = (
+        results.solver.status == SolverStatus.aborted
+        and results.solver.termination_condition == TerminationCondition.maxTimeLimit
+    )
+    return solver_ok or time_limit_hit
 
 
 def extract_solution(model, p: SolverParams):
@@ -77,7 +104,7 @@ class FullILP:
         self.model, self.var_z = build_model(params, penalty_param)
 
     def solve(self, solver_type="gurobi", timelimit=None, pool_size=1, pool_gap=None):
-        solver = BaseSolver._create_solver(solver_type)
+        solver = create_solver(solver_type)
         if pool_size > 1 and solver_type in ("gurobi", "gurobipy"):
             solver.options["PoolSolutions"] = pool_size
             solver.options["PoolSearchMode"] = 0

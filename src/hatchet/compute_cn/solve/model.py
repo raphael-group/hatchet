@@ -5,6 +5,26 @@ from __future__ import annotations
 import numpy as np
 from pyomo import environ as pe
 
+# Stack-based random seeding for reproducibility
+_random_states = []
+
+
+class Random:
+    """Context manager that pushes/pops numpy random state for reproducibility."""
+
+    def __init__(self, seed=None):
+        self.seed = seed
+
+    def __enter__(self):
+        if self.seed is not None:
+            _random_states.append(np.random.get_state())
+            np.random.set_state(np.random.RandomState(self.seed).get_state())
+
+    def __exit__(self, *args):
+        if self.seed is not None:
+            np.random.set_state(_random_states.pop())
+
+
 from hatchet.compute_cn.solve.variables import SolverParams, build_variables
 from hatchet.compute_cn.solve.constraints import (
     add_l1_constraints,
