@@ -216,12 +216,17 @@ def plot_1d(
         exp_vals = bin_info[exp_colname].to_numpy()
         abs_starts = bin_info["abs_start"].to_numpy()
         abs_ends = bin_info["abs_end"].to_numpy()
+        bin_chrs = bin_info["#CHR"].to_numpy()
 
         exp_lines = []
         i = 0
         while i < len(exp_vals):
             j = i + 1
-            while j < len(exp_vals) and exp_vals[j] == exp_vals[i]:
+            while (
+                j < len(exp_vals)
+                and exp_vals[j] == exp_vals[i]
+                and bin_chrs[j] == bin_chrs[i]
+            ):
                 j += 1
             exp_lines.append(
                 [
