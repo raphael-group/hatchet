@@ -470,6 +470,7 @@ def run(args=None):
             rdr_vars=k_rdr_vars,
             baf_taus=k_baf_taus,
             log_rdr=log_rdr,
+            filtered_ids=filtered_ids,
         )
 
         bbs["PHASE"] = k_phases

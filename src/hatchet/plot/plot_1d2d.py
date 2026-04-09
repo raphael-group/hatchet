@@ -682,6 +682,7 @@ def plot_rdr_baf(
     rdr_vars=None,
     baf_taus=None,
     log_rdr=False,
+    filtered_ids=None,
 ):
     """
     Plot BAF-RDR scatter 1D and 2D.
@@ -704,6 +705,11 @@ def plot_rdr_baf(
             _lbl_to_idx = np.empty(int(cluster_labels.max()) + 1, dtype=int)
             for i, lbl in enumerate(unique_labels):
                 _lbl_to_idx[lbl] = i
+        if filtered_ids and unique_labels is not None:
+            gray = (0.75, 0.75, 0.75)
+            for i, lbl in enumerate(unique_labels):
+                if lbl in filtered_ids:
+                    palette[i] = gray
 
     out_name = out_prefix.rstrip("_") if out_prefix else "plot"
     pdf = PdfPages(os.path.join(out_dir, f"{out_name}.pdf"))

@@ -405,42 +405,18 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
                     linewidths=0.3,
                 )
 
-            # Pareto points: colored by CNT feasibility
+            # Pareto points
             if len(pareto) > 0:
-                if "CNT_from_c1" in pareto.columns:
-                    has_inf = pareto["CNT_from_c1"].apply(
-                        lambda v: (
-                            v == "inf" or (isinstance(v, float) and not np.isfinite(v))
-                        )
-                    )
-                else:
-                    has_inf = pd.Series(False, index=pareto.index)
-
-                finite_p = pareto[~has_inf]
-                inf_p = pareto[has_inf]
-
-                if len(finite_p) > 0:
-                    ax.scatter(
-                        finite_p[reg_col],
-                        finite_p["IMF"],
-                        c="#1f77b4",
-                        s=50,
-                        zorder=4,
-                        label="Pareto",
-                        edgecolors="white",
-                        linewidths=0.5,
-                    )
-                if len(inf_p) > 0:
-                    ax.scatter(
-                        inf_p[reg_col],
-                        inf_p["IMF"],
-                        c="#d62728",
-                        s=50,
-                        marker="x",
-                        zorder=4,
-                        linewidths=1.5,
-                        label="Pareto (CNT inf)",
-                    )
+                ax.scatter(
+                    pareto[reg_col],
+                    pareto["IMF"],
+                    c="#1f77b4",
+                    s=50,
+                    zorder=4,
+                    label="Pareto",
+                    edgecolors="white",
+                    linewidths=0.5,
+                )
                 ax.plot(
                     pareto[reg_col],
                     pareto["IMF"],
