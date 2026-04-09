@@ -152,6 +152,7 @@ def plot_1d(
     regions: pd.DataFrame,
     chrom_sizes: dict,
     exp_colname=None,
+    exp_groups=None,
     val_type="BAF",
     colors=None,
     hue=None,
@@ -212,29 +213,26 @@ def plot_1d(
         )
 
     if exp_colname is not None:
-        # plot expected values as hlines, merging consecutive same-value bins
         exp_vals = bin_info[exp_colname].to_numpy()
         abs_starts = bin_info["abs_start"].to_numpy()
         abs_ends = bin_info["abs_end"].to_numpy()
-        bin_chrs = bin_info["#CHR"].to_numpy()
+        grp = exp_groups if exp_groups is not None else exp_vals
 
         exp_lines = []
-        i = 0
-        while i < len(exp_vals):
-            j = i + 1
-            while (
-                j < len(exp_vals)
-                and exp_vals[j] == exp_vals[i]
-                and bin_chrs[j] == bin_chrs[i]
-            ):
-                j += 1
-            exp_lines.append(
-                [
-                    (abs_starts[i], exp_vals[i]),
-                    (abs_ends[j - 1], exp_vals[i]),
-                ]
-            )
-            i = j
+        for ch in bin_info["#CHR"].unique():
+            idx = np.where(bin_info["#CHR"] == ch)[0]
+            i = 0
+            while i < len(idx):
+                j = i + 1
+                while j < len(idx) and grp[idx[j]] == grp[idx[i]]:
+                    j += 1
+                exp_lines.append(
+                    [
+                        (abs_starts[idx[i]], exp_vals[idx[i]]),
+                        (abs_ends[idx[j - 1]], exp_vals[idx[i]]),
+                    ]
+                )
+                i = j
         ax.add_collection(
             LineCollection(
                 exp_lines, linewidth=exp_linewidth, colors=[linecolor] * len(exp_lines)
@@ -781,6 +779,7 @@ def plot_rdr_baf(
                 None,
                 chrom_sizes,
                 exp_colname=exp_colname,
+                exp_groups=cluster_labels,
                 val_type=ctype,
                 colors=g0_colors,
                 hue=cluster_labels if i == 0 else None,

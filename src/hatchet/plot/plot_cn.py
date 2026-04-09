@@ -184,6 +184,7 @@ def run(args=None):
                 regions,
                 chrom_sizes,
                 exp_colname=f"exp-{ctype}",
+                exp_groups=cnp_ids,
                 val_type=ctype,
                 colors=g0_colors,
                 hue=cnp_ids if i == 0 else None,
