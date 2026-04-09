@@ -417,7 +417,7 @@ def run(args=None):
                 k_baf_means[ci] = 0.5
                 k_bafs[mask] = X_bafs[mask]
                 k_betas_phased[mask] = X_betas[mask]
-        logging.info(f"K={K} balanced clusters: {sorted(balanced_ids)}")
+        logging.info(f"K={K} balanced clusters: {sorted(int(x) for x in balanced_ids)}")
 
         filtered_ids = filter_clusters(
             k_cids,
@@ -431,7 +431,7 @@ def run(args=None):
             ub_nbins=args["ub_nbins"],
         )
         if filtered_ids:
-            logging.info(f"K={K} filtered clusters: {sorted(filtered_ids)}")
+            logging.info(f"K={K} filtered clusters: {sorted(int(x) for x in filtered_ids)}")
 
         if log_rdr:
             k_rdr_means_nat = np.exp(k_rdr_means)
