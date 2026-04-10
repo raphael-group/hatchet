@@ -136,31 +136,38 @@ def plot_pool_cnp(
         return
 
     nrows = len(valid)
-    # Scale row height with number of clones to avoid label overlap
+    # Scale row height with number of clones and samples to avoid label overlap
     first_seg_df = valid[0][1]
     n_clones = len([c for c in first_seg_df.columns if c.startswith("cn_")])
-    row_h = height * max(1, n_clones - 1)
+    n_samples = first_seg_df["SAMPLE"].nunique()
+    # Base height scales with clones; add extra per sample for ylabel text
+    row_h = height * max(1, n_clones - 1) + 0.2 * max(0, n_samples - 1)
     fig, axes = plt.subplots(
         nrows=nrows + 1,
         ncols=1,
         figsize=(width, row_h * nrows),
         gridspec_kw={"height_ratios": [row_h] * nrows + [2 * height]},
     )
-    fig.subplots_adjust(hspace=0.6)
+    fig.subplots_adjust(hspace=0.6 + 0.1 * max(0, n_samples - 1))
     main_axes = axes[:-1]
     ax_leg = axes[-1]
 
     for i, (label, seg_df, obj, is_selected) in enumerate(valid):
-        seg_info, clones, clone_props = prepare_seg_ucn(seg_df)
-        dummy_sample = seg_info["SAMPLE"].iloc[0]
-        seg_info = seg_info.loc[seg_info["SAMPLE"] == dummy_sample, :].reset_index(
-            drop=True
-        )
+        seg_info_all, clones, _ = prepare_seg_ucn(seg_df)
+        samples = seg_info_all["SAMPLE"].unique().tolist()
+        sample_first = samples[0]
+        seg_info = seg_info_all.loc[
+            seg_info_all["SAMPLE"] == sample_first, :
+        ].reset_index(drop=True)
 
-        tumor_purity = round(np.sum(clone_props[1:]), 2)
-        tumor_ploidy = round(
-            compute_tumor_ploidy(seg_info, clones, np.sum(clone_props[1:])), 2
-        )
+        # Per-sample purity/ploidy
+        sample_stats = []
+        for sid in samples:
+            sp = seg_info_all.loc[seg_info_all["SAMPLE"] == sid, :].reset_index(drop=True)
+            cps = sp[[f"u_{c}" for c in clones]].iloc[0].tolist()
+            purity = round(np.sum(cps[1:]), 2)
+            ploidy = round(compute_tumor_ploidy(sp, clones, np.sum(cps[1:])), 2)
+            sample_stats.append((sid, purity, ploidy))
 
         clone_ploidies = compute_clone_ploidies(seg_info, clones)
         profile_fn = plot_ascn_profile if style == "ascn" else plot_cnv_profile
@@ -178,10 +185,10 @@ def plot_pool_cnp(
         short_label = _format_pool_label(label)
         if is_selected:
             short_label += " *"
-        ylabel = (
-            f"{short_label}\nimf {round(obj, 2)}"
-            f"\npurity {tumor_purity}\nploidy {tumor_ploidy}"
+        stats_lines = "\n".join(
+            f"{sid}: p={p} pl={pl}" for sid, p, pl in sample_stats
         )
+        ylabel = f"{short_label}\nimf {round(obj, 2)}\n{stats_lines}"
         color = "red" if is_selected else "black"
         main_axes[i].set_ylabel(
             ylabel, rotation=0, ha="right", va="center", color=color
