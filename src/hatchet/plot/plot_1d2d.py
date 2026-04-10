@@ -85,7 +85,7 @@ def get_abs_positions_ignore_gap(
             seg_end = ch_offset + (wl_end - wl_start)
 
             bins_seg = bins_ch.loc[
-                (bins_ch["START"] >= wl_start) & (bins_ch["END"] < wl_end), :
+                (bins_ch["START"] >= wl_start) & (bins_ch["END"] <= wl_end), :
             ]
             if bins_seg.empty:
                 ch_offset = seg_end
