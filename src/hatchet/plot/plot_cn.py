@@ -173,11 +173,9 @@ def run(args=None):
             figsize=(row_width, row_height + cnp_h * 0.5),
             gridspec_kw={"height_ratios": [3, 3, cnp_h, 1]},
         )
-        main_axes = axes[:-1]
-        ax_leg = axes[-1]
         for i, [ctype, ylim] in enumerate([["FCN", lim_fcn], ["BAF", lim_baf]]):
             plot_1d(
-                main_axes[i],
+                axes[i],
                 sample,
                 bin_info,
                 bin_info[ctype],
@@ -200,7 +198,7 @@ def run(args=None):
         profile_fn = plot_ascn_profile if style == "ascn" else plot_cnv_profile
         legend_fn = plot_ascn_legend if style == "ascn" else plot_cnv_legend
         profile_fn(
-            main_axes[2],
+            axes[2],
             seg_info,
             regions,
             width=row_width,
@@ -210,7 +208,7 @@ def run(args=None):
             show_prop=True,
             clone_ploidies=clone_ploidies,
         )
-        legend_fn(ax_leg)
+        legend_fn(axes[-1])
 
         fig_1d.suptitle(sample_title)
         axes[1].set_ylabel("mhBAF")
