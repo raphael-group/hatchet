@@ -186,6 +186,22 @@ def plot_1d(
         bin_info, ch_coords, axis_start, axis_end, seg_coords = (
             get_abs_positions_keep_gap(bin_info, chrom_sizes, chrs, chr_shift)
         )
+    # Drop bins not matched to any region (abs_pos still 0 from init)
+    if ignore_gap:
+        matched = bin_info["abs_pos"] > 0
+        if not matched.all():
+            n_drop = (~matched).sum()
+            logging.warning(
+                f"plot_1d: dropping {n_drop} bins not matching any region"
+            )
+            bin_info = bin_info[matched].reset_index(drop=True)
+            vals = np.asarray(vals)[matched.to_numpy()]
+            if colors is not None:
+                colors = np.asarray(colors)[matched.to_numpy()]
+            if hue is not None:
+                hue = np.asarray(hue)[matched.to_numpy()]
+            if exp_groups is not None:
+                exp_groups = np.asarray(exp_groups)[matched.to_numpy()]
     ##################################################
     sns.scatterplot(
         x=bin_info["abs_pos"],
