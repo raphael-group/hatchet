@@ -62,10 +62,6 @@ def run(args=None):
         fix_cn_tet = parse_fix_cn(fix_cn_tet)
     args["fix_cn_dip"] = fix_cn_dip
     args["fix_cn_tet"] = fix_cn_tet
-    if fix_cn_dip:
-        logging.info(f"User-specified diploid fixed CN: {fix_cn_dip}")
-    if fix_cn_tet:
-        logging.info(f"User-specified tetraploid fixed CN: {fix_cn_tet}")
 
     bbcs = read_bbc_file(bbc_file)
     segs = pd.read_table(seg_file, sep="\t")

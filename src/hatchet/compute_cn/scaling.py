@@ -63,8 +63,8 @@ def get_scaling_factor(
     s0 = balanced_s[0]
     rdr_s0 = rdr.loc[s0].values
     gammas_noWGD = dict(zip(samples, 2.0 / rdr_s0))
-    logging.info(f"balanced={balanced_s}, s0={s0}")
-    logging.info(f"gamma noWGD: {gammas_noWGD}")
+    logging.info(f"balanced clusters={balanced_s}, base={s0}")
+    logging.info(f"imbalanced clusters={imbalanced_z}")
 
     def _purity_from_baf(z, a, b):
         bz = baf.loc[z].values
