@@ -8,9 +8,23 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from hatchet.utils import *
+import matplotlib.pyplot as plt
+
+from hatchet.utils import (
+    compute_clone_ploidies,
+    compute_tumor_ploidy,
+    prepare_seg_ucn,
+    read_region_bed,
+    read_seg_ucn_file,
+    setup_logging,
+)
 from hatchet.hatchet_parser import add_arguments_plot_panel
-from hatchet.plot.plot_cn_utils import *
+from hatchet.plot.plot_cn_utils import (
+    plot_ascn_legend,
+    plot_ascn_profile,
+    plot_cnv_legend,
+    plot_cnv_profile,
+)
 from hatchet.plot.plot_utils import override_solution
 
 
