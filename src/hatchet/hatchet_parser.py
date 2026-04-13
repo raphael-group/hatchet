@@ -878,6 +878,13 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         type=str,
         help="output file, panel.svg",
     )
+    parser.add_argument(
+        "--plot_1d2d",
+        required=False,
+        action="store_true",
+        default=False,
+        help="also run plot-cn per panel row (requires PATH_TO_BBC column)",
+    )
     return parser
 
 
