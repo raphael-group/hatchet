@@ -875,7 +875,7 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         action="store_true",
         default=False,
         help="emit per-sample tumor purity + ploidy barplots; one page per "
-        "metric × cancer_type (or single page per metric if column absent)",
+        "metric per cancer_type (or single page per metric if column absent)",
     )
     return parser
 
