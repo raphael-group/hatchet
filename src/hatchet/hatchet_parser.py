@@ -466,14 +466,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         type=str,
         help="Fix tetraploid cluster CN states: 'cid1:cA|cB;cid2:cA|cB' e.g. '6:4|2'",
     )
-    parser.add_argument(
-        "--style",
-        required=False,
-        choices=["cnv", "ascn"],
-        default="cnv",
-        type=str,
-        help="CN profile plot style: cnv (total CN colors) or ascn (allele-specific) (default: cnv)",
-    )
 
     parser.add_argument(
         "--zero_cn_thres",
@@ -742,14 +734,6 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         type=str,
         help="file format (default: png)",
         default="png",
-    )
-    parser.add_argument(
-        "--style",
-        required=False,
-        choices=["cnv", "ascn"],
-        type=str,
-        help="CN profile style: cnv (total CN colors) or ascn (allele-specific bars) (default: cnv)",
-        default="cnv",
     )
     parser.add_argument(
         "--transparent",

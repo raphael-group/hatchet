@@ -20,8 +20,6 @@ from hatchet.utils import (
 )
 from hatchet.hatchet_parser import add_arguments_plot_panel
 from hatchet.plot.plot_cn_utils import (
-    plot_ascn_legend,
-    plot_ascn_profile,
     plot_cnv_legend,
     plot_cnv_profile,
 )
@@ -152,7 +150,6 @@ def run(args=None):
                     "ploidy": ploidy,
                     "dpi": dpi,
                     "img_type": "png",
-                    "style": "cnv",
                     "transparent": transparent,
                     "keep_gap": False,
                     "tail_alpha": 0.8,
@@ -182,7 +179,6 @@ def plot_pool_cnp(
     width=20,
     height=1,
     dpi=150,
-    style="cnv",
 ):
     """Plot a multi-row CNP panel PDF, one row per Pareto-optimal pool solution.
 
@@ -195,8 +191,6 @@ def plot_pool_cnp(
         width: Figure width in inches.
         height: Height in inches per profile row (legend row is 2x this).
         dpi: Output resolution.
-        style: ``"ascn"`` draws allele-specific A/B bars per clone;
-            ``"cnv"`` draws total-CN colored bars.
     """
     plt.rcParams["pdf.fonttype"] = 42
     plt.rcParams["ps.fonttype"] = 42
@@ -252,8 +246,7 @@ def plot_pool_cnp(
             sample_stats.append((sid, purity, ploidy))
 
         clone_ploidies = compute_clone_ploidies(seg_info, clones)
-        profile_fn = plot_ascn_profile if style == "ascn" else plot_cnv_profile
-        profile_fn(
+        plot_cnv_profile(
             main_axes[i],
             seg_info,
             regions,
@@ -274,8 +267,7 @@ def plot_pool_cnp(
             ylabel, rotation=0, ha="right", va="center", color=color
         )
 
-    legend_fn = plot_ascn_legend if style == "ascn" else plot_cnv_legend
-    legend_fn(ax_leg)
+    plot_cnv_legend(ax_leg)
 
     if title:
         main_axes[0].set_title(title)

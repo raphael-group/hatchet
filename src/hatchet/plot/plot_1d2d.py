@@ -157,6 +157,7 @@ def plot_1d(
     colors=None,
     hue=None,
     palette=None,
+    alphas=None,
     ylim=(0, 1),
     ylab="value",
     title=None,
@@ -202,6 +203,8 @@ def plot_1d(
                 hue = np.asarray(hue)[matched.to_numpy()]
             if exp_groups is not None:
                 exp_groups = np.asarray(exp_groups)[matched.to_numpy()]
+            if alphas is not None:
+                alphas = np.asarray(alphas)[matched.to_numpy()]
     ##################################################
     sns.scatterplot(
         x=bin_info["abs_pos"],
@@ -215,6 +218,15 @@ def plot_1d(
         edgecolor="none",
         linewidth=0,
     )
+    if alphas is not None and ax.collections:
+        scatter = ax.collections[-1]
+        face = scatter.get_facecolors()
+        if len(face) == 1:
+            face = np.tile(face, (len(alphas), 1))
+        if len(face) == len(alphas):
+            face[:, 3] = np.asarray(alphas)
+            scatter.set_facecolors(face)
+            scatter.set_alpha(None)
     if rasterized:
         for coll in ax.collections:
             coll.set_rasterized(True)

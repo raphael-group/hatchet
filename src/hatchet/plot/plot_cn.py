@@ -3,12 +3,31 @@ import logging
 import argparse
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-from hatchet.utils import *
+from hatchet.utils import (
+    add_file_logging,
+    compute_clone_ploidies,
+    compute_tumor_ploidy,
+    read_genome_sizes,
+    read_region_bed,
+    read_seg_ucn_file,
+    setup_logging,
+)
 from hatchet.hatchet_parser import add_arguments_plot_cn
-from hatchet.plot.plot_utils import *
-from hatchet.plot.plot_1d2d import *
-from hatchet.plot.plot_cn_utils import *
+from hatchet.plot.plot_utils import (
+    get_expected_baf_fcn,
+    load_gammas,
+    override_solution,
+    set_palette,
+)
+from hatchet.plot.plot_1d2d import get_transparency, plot_1d, plot_2d
+from hatchet.plot.plot_cn_utils import (
+    get_cn_colors,
+    plot_cnv_legend,
+    plot_cnv_profile,
+)
 
 
 def run(args=None):
@@ -43,12 +62,10 @@ def run(args=None):
     dpi = args["dpi"]
     transparent = args["transparent"]
     file_type = args["img_type"]
-    style = args["style"]
 
-    # TODO per-cluster transparency
-    args["tail_alpha"]
-    args["center_alpha"]
-    args["onetail_area"]
+    tail_alpha = args["tail_alpha"]
+    center_alpha = args["center_alpha"]
+    onetail_area = args["onetail_area"]
 
     # figure axis limits
     maxlim_fcn = args["maxlim_fcn"]
@@ -142,6 +159,14 @@ def run(args=None):
 
         sample_title = f"sample={sample}; purity={tumor_purity}; ploidy={tumor_ploidy}"
 
+        alphas = get_transparency(
+            bin_info,
+            by="CNP",
+            one_tail=onetail_area,
+            tail_alpha=tail_alpha,
+            nontail_alpha=center_alpha,
+        ).to_numpy()
+
         # Page 1: 2D scatter
         fig_2d, g0_colors = plot_2d(
             sample,
@@ -152,7 +177,7 @@ def run(args=None):
             exp_fcns,
             exp_labels,
             clone_props,
-            alphas=None,
+            alphas=alphas,
             hue=cnp_ids,
             palette=palette,
             label_clone=True,
@@ -187,6 +212,7 @@ def run(args=None):
                 colors=g0_colors,
                 hue=cnp_ids if i == 0 else None,
                 palette=palette if i == 0 else None,
+                alphas=alphas,
                 ylim=ylim,
                 ylab=ctype,
                 plot_chrname=True,
@@ -195,9 +221,7 @@ def run(args=None):
             )
 
         clone_ploidies = compute_clone_ploidies(seg_info, clones)
-        profile_fn = plot_ascn_profile if style == "ascn" else plot_cnv_profile
-        legend_fn = plot_ascn_legend if style == "ascn" else plot_cnv_legend
-        profile_fn(
+        plot_cnv_profile(
             axes[2],
             seg_info,
             regions,
@@ -208,7 +232,7 @@ def run(args=None):
             show_prop=True,
             clone_ploidies=clone_ploidies,
         )
-        legend_fn(axes[-1])
+        plot_cnv_legend(axes[-1])
 
         fig_1d.suptitle(sample_title)
         axes[1].set_ylabel("mhBAF")

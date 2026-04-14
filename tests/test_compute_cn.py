@@ -145,7 +145,6 @@ class TestCDMode:
             "mrca": False,
             "zero_cn_thres": 0.005,
             "cd_tol": 0.001,
-            "style": "cnv",
             "fix_cn_dip": {},
             "fix_cn_tet": {},
             "verbosity": 0,

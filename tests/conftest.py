@@ -137,7 +137,6 @@ def compute_cn_result(cluster_bins_result, synthetic_data, tmp_path_factory):
         "mrca": False,
         "zero_cn_thres": 0.005,
         "cd_tol": 0.001,
-        "style": "cnv",
         "fix_cn_dip": {},
         "fix_cn_tet": {},
         "verbosity": 1,
