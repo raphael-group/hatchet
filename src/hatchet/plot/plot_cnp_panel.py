@@ -23,6 +23,7 @@ from hatchet.plot.plot_cn_utils import (
     plot_cnv_legend,
     plot_cnv_profile,
 )
+from hatchet.plot.plot_common import plot_summary_pdf
 from hatchet.plot.plot_utils import override_solution
 
 
@@ -37,6 +38,7 @@ def run(args=None):
     region_bed = args["region_bed"]
     out_file = args["out_file"]
     plot_1d2d = args["plot_1d2d"]
+    plot_summary = args["plot_summary"]
 
     row_width = args["width"]
     row_height = args["height"]
@@ -66,6 +68,7 @@ def run(args=None):
     main_axes = axes[:-1]
     ax_leg = axes[-1]
 
+    summary_rows = []
     for i, row in panel.iterrows():
         label = row["SAMPLE"]
         seg_ucn = row["PATH_TO_SEG"]
@@ -87,6 +90,7 @@ def run(args=None):
             seg_info_all["SAMPLE"] == samples_in_file[0], :
         ].reset_index(drop=True)
 
+        cancer_type = str(row.get("cancer_type", "")).strip()
         stats = []
         for sid in samples_in_file:
             sp = seg_info_all.loc[seg_info_all["SAMPLE"] == sid, :].reset_index(
@@ -96,6 +100,7 @@ def run(args=None):
             purity = round(np.sum(cps[1:]), 2)
             ploidy = round(compute_tumor_ploidy(sp, clones, np.sum(cps[1:])), 2)
             stats.append((sid, purity, ploidy))
+            summary_rows.append((cancer_type, label, sid, purity, ploidy))
             logging.info(f"{label} / {sid}: purity={purity}, ploidy={ploidy}")
 
         clone_ploidies = compute_clone_ploidies(seg_info, clones)
@@ -118,6 +123,9 @@ def run(args=None):
     main_axes[0].set_title(title, pad=30)
     plt.savefig(out_file, dpi=dpi, bbox_inches="tight", transparent=transparent)
     plt.close()
+
+    if plot_summary:
+        plot_summary_pdf(summary_rows, out_file, dpi=dpi, transparent=transparent)
 
     if plot_1d2d:
         from hatchet.plot.plot_cn import run as run_plot_cn

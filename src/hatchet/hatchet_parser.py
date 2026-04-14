@@ -869,6 +869,14 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         default=False,
         help="also run plot-cn per panel row (requires PATH_TO_BBC column)",
     )
+    parser.add_argument(
+        "--plot_summary",
+        required=False,
+        action="store_true",
+        default=False,
+        help="emit per-sample tumor purity + ploidy barplots; one page per "
+        "metric × cancer_type (or single page per metric if column absent)",
+    )
     return parser
 
 
