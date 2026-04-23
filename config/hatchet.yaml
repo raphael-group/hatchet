@@ -65,8 +65,6 @@ compute_cn:
   # manually select cluster_bins bbc/seg by cluster <k> (null = auto)
   k: null
 
-  # use genomic-segment-level data instead of cluster-level summaries
-  segment: false
 
   # solver mode: ilp | cd | both
   mode: cd
@@ -74,10 +72,6 @@ compute_cn:
   solver: gurobi
   # ILP solver timelimit in seconds (null = unlimited)
   timelimit: null
-  # Number of Gurobi solution-pool solutions to collect (1 = disabled)
-  pool_size: 1
-  # Relative optimality gap for solution pool (null = keep all feasible)
-  pool_gap: null
 
   # significance level for fractional CN confidence intervals
   fcn_ci_alpha: 0.05
@@ -85,6 +79,8 @@ compute_cn:
   min_ci_margin: 0.1
   # fitting objective: imf (weighted L1) or ci (CI-violation hinge)
   obj_type: imf
+  # model selection method: elbow | bic
+  model_select: elbow
 
   # clone range
   minClone: 2
@@ -92,7 +88,7 @@ compute_cn:
   diploid: false
   tetraploid: false
 
-  # regularization term: RAW | MAXCN | DBOX_L1 | DBOX_L0 | DROOT_SUM | DADJ_SUM | DRMST
+  # regularization term: RAW | MAXCN | DBOX_L1 | DBOX_L0 | DROOT_SUM | DADJ_SUM
   reg_term: "MAXCN"
   reg_steps: 15
   reg_bound: 0.15
@@ -107,10 +103,6 @@ compute_cn:
   tetraploidcmax: 12
   # minimum clone proportion
   min_prop: 0.01
-  # enforce clone 1 as MRCA with irreversible LOH
-  mrca: false
-  # max degree (in+out) for tree nodes (DRMST only)
-  max_degree: 3
   # clusters with weight >= this fraction cannot have (0,0) CN
   zero_cn_thres: 0.001
 
@@ -131,6 +123,10 @@ compute_cn:
   u_init: "dirichlet"
   u_dir_alpha: 0.3
   solver_threads:
+
+  # CNT-CD parameters
+  tree_file:
+  eps_fit: 0.01
 
 ##################################################
 plot_cn:

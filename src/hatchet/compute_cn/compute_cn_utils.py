@@ -1,4 +1,3 @@
-import json
 import os
 import re
 import glob
@@ -8,88 +7,80 @@ import numpy as np
 
 from hatchet.utils import read_region_bed, build_seg_from_bbc
 from hatchet.plot import plot_cn as _plot_cn
-from hatchet.compute_cn.solve.utils import (
-    model_selection_instance,
-    compute_individual_objs,
-    compute_pairwise_cnt,
-    filter_non_pareto,
-    dedup_solutions,
-)
 
 
-def build_cluster_data(segs):
-    """Pivot cluster-level SEG into (cluster x sample) DataFrames.
+def store_gammas(out_file, scaling, samples):
+    """Write per-sample gamma values for all ploidies.
 
-    Returns a dict with keys ``rdr``, ``baf``, ``rdr_se``, ``baf_se``,
-    ``nbins``, ``weights`` — the same interface as ``build_segment_data``.
+    Args:
+        out_file: output TSV path.
+        scaling: dict from get_scaling_factor with 'diploid', 'tetraploid' keys.
+        samples: ordered sample list.
     """
-    segs_sorted = segs.sort_values(["#ID", "SAMPLE"])
-    rdr = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD")
-    baf = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF")
-    rdr_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD-se")
-    baf_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF-se")
-    nbins = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="#BINS")
-    first_sample = sorted(segs["SAMPLE"].unique())[0]
-    lengths = (
-        segs.loc[segs["SAMPLE"] == first_sample].set_index("#ID")["LENGTH"].sort_index()
-    )
-    weights = 100 * lengths / lengths.sum()
-    return {
-        "rdr": rdr,
-        "baf": baf,
-        "rdr_se": rdr_se,
-        "baf_se": baf_se,
-        "nbins": nbins,
-        "weights": weights,
-    }
+    with open(out_file, "w") as fd:
+        for sample in samples:
+            g_dip = scaling["diploid"]["gammas"].get(sample, 0)
+            g_tet = (
+                scaling["tetraploid"]["gammas"].get(sample, 0)
+                if scaling["tetraploid"]
+                else 0
+            )
+            fd.write(f"{sample}\t{g_dip}\t{g_tet}\n")
 
 
-def build_segment_data(bbcs, segs):
-    """Build genomic-segment-level DataFrames from bin-level BBC and cluster-level SEG.
+def build_data(bbcs, segs, segment=False):
+    """Build (cluster or segment) x sample DataFrames for the solver.
 
-    A genomic segment is a maximal contiguous run of bins with the same CLUSTER
-    on the same chromosome.  Each segment inherits its RD, BAF, and associated
-    standard-error columns from the cluster-level ``segs`` DataFrame (no
-    recomputation from bin values).
+    Args:
+        bbcs: bin-level BBC DataFrame (needed only when segment=True).
+        segs: cluster-level SEG DataFrame.
+        segment: if True, expand clusters into genomic segments (maximal
+            contiguous runs of same cluster on same chromosome).
 
-    Parameters
-    ----------
-    bbcs : pd.DataFrame
-        Bin-level BBC DataFrame with columns ``#CHR``, ``START``, ``END``,
-        ``SAMPLE``, ``CLUSTER``.
-    segs : pd.DataFrame
-        Cluster-level SEG DataFrame with columns ``#ID``, ``SAMPLE``, ``RD``,
-        ``BAF``, ``RD-se``, ``BAF-se``, ``#BINS``, ``LENGTH``.
-
-    Returns
-    -------
-    dict
-        Keys: ``rdr``, ``baf``, ``rdr_se``, ``baf_se``, ``nbins`` (DataFrames
-        of shape ``(num_segments, num_samples)``), ``weights`` (Series of
-        length ``num_segments``), ``seg_to_cluster`` (Series mapping segment
-        index to cluster ID), ``chr_boundaries`` (boolean array of length
-        ``num_segments`` where True marks the first segment of each
-        chromosome).
+    Returns dict with keys: rdr, baf, rdr_se, baf_se, nbins, weights,
+    cluster_ids, sample_ids.  When segment=True, also includes
+    seg_to_cluster and chr_boundaries.
     """
+    if not segment:
+        segs_sorted = segs.sort_values(["#ID", "SAMPLE"])
+        rdr = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD")
+        baf = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF")
+        rdr_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="RD-se")
+        baf_se = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="BAF-se")
+        nbins = segs_sorted.pivot(index="#ID", columns="SAMPLE", values="#BINS")
+        first_sample = sorted(segs["SAMPLE"].unique())[0]
+        lengths = (
+            segs.loc[segs["SAMPLE"] == first_sample]
+            .set_index("#ID")["LENGTH"]
+            .sort_index()
+        )
+        weights = 100 * lengths / lengths.sum()
+        return {
+            "rdr": rdr,
+            "baf": baf,
+            "rdr_se": rdr_se,
+            "baf_se": baf_se,
+            "nbins": nbins,
+            "weights": weights,
+            "cluster_ids": rdr.index.tolist(),
+            "sample_ids": rdr.columns.tolist(),
+        }
+
+    # Segment mode
     bbcs = bbcs.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
     samples_sorted = sorted(bbcs["SAMPLE"].unique())
     first_sample = samples_sorted[0]
 
-    # Identify segment boundaries using only the first sample's rows
     mask = bbcs["SAMPLE"] == first_sample
     first_df = bbcs.loc[mask].reset_index(drop=True)
-
     seg_boundary = (first_df["CLUSTER"] != first_df["CLUSTER"].shift()) | (
         first_df["#CHR"] != first_df["#CHR"].shift()
     )
-    seg_ids_first = seg_boundary.cumsum() - 1  # 0-based segment IDs
+    seg_ids_first = seg_boundary.cumsum() - 1
 
-    # Map segment IDs back to all rows (same positional order per sample)
-    bbcs["_seg_id"] = np.tile(seg_ids_first.values, len(samples_sorted))
-
-    # Aggregate per (segment, sample)
+    bbcs["_seg_int"] = np.tile(seg_ids_first.values, len(samples_sorted))
     agg = (
-        bbcs.groupby(["_seg_id", "SAMPLE"])
+        bbcs.groupby(["_seg_int", "SAMPLE"])
         .agg(
             CHR=("#CHR", "first"),
             START=("START", "min"),
@@ -101,7 +92,17 @@ def build_segment_data(bbcs, segs):
     )
     agg["LENGTH"] = agg["END"] - agg["START"]
 
-    # Join cluster-level statistics from segs
+    # String seg IDs: "<cluster>:chr<chrom>:<global_idx_within_cluster>"
+    first_rows = agg.loc[agg["SAMPLE"] == first_sample].sort_values("_seg_int")
+    cluster_counters = {}
+    sid_map = {}
+    for _, row in first_rows.iterrows():
+        cid, chrom = row["CLUSTER"], row["CHR"]
+        idx = cluster_counters.get(cid, 0)
+        cluster_counters[cid] = idx + 1
+        sid_map[row["_seg_int"]] = f"{cid}:chr{chrom}:{idx}"
+    agg["_seg_id"] = agg["_seg_int"].map(sid_map)
+
     seg_cols = ["#ID", "SAMPLE", "RD", "BAF", "RD-se", "BAF-se"]
     agg = agg.merge(
         segs[seg_cols],
@@ -110,28 +111,31 @@ def build_segment_data(bbcs, segs):
         how="left",
     )
 
-    # Pivot into (seg_id x sample) DataFrames
     rdr = agg.pivot(index="_seg_id", columns="SAMPLE", values="RD")
     baf = agg.pivot(index="_seg_id", columns="SAMPLE", values="BAF")
     rdr_se = agg.pivot(index="_seg_id", columns="SAMPLE", values="RD-se")
     baf_se = agg.pivot(index="_seg_id", columns="SAMPLE", values="BAF-se")
     nbins = agg.pivot(index="_seg_id", columns="SAMPLE", values="NBINS")
 
-    # Weights: segment length as percentage of genome (from first sample)
-    first_agg = agg.loc[agg["SAMPLE"] == first_sample].set_index("_seg_id")
+    # Sort by original segment order (not lexicographic string order)
+    seg_order = [sid_map[i] for i in sorted(sid_map)]
+    rdr = rdr.loc[seg_order]
+    baf = baf.loc[seg_order]
+    rdr_se = rdr_se.loc[seg_order]
+    baf_se = baf_se.loc[seg_order]
+    nbins = nbins.loc[seg_order]
+
+    first_agg = (
+        agg.loc[agg["SAMPLE"] == first_sample].set_index("_seg_id").loc[seg_order]
+    )
     seg_lengths = first_agg["LENGTH"]
     weights = 100 * seg_lengths / seg_lengths.sum()
-
-    # Cluster assignment per segment
     seg_to_cluster = first_agg["CLUSTER"]
-
-    # Chromosome boundaries: True at the first segment of each chromosome
     chr_boundaries = (first_agg["CHR"] != first_agg["CHR"].shift()).values
 
-    bbcs.drop(columns=["_seg_id"], inplace=True)
+    bbcs.drop(columns=["_seg_int"], inplace=True)
 
-    n_segs = rdr.shape[0]
-    n_samples = rdr.shape[1]
+    n_segs, n_samples = rdr.shape
     logging.info(
         f"segment mode: {n_segs} genomic segments x {n_samples} samples "
         f"(from {len(segs['#ID'].unique())} clusters)"
@@ -144,6 +148,8 @@ def build_segment_data(bbcs, segs):
         "baf_se": baf_se,
         "nbins": nbins,
         "weights": weights,
+        "cluster_ids": rdr.index.tolist(),
+        "sample_ids": rdr.columns.tolist(),
         "seg_to_cluster": seg_to_cluster,
         "chr_boundaries": chr_boundaries,
     }
@@ -245,35 +251,150 @@ def filtering(
     return good_clusters, bad_clusters
 
 
-def compute_fractional_cn(
-    rdr, baf, gammas, rdr_se, nbins, alpha=0.05, min_ci_margin=0.1
-):
-    """Compute fractional copy numbers and CI from upstream RDR variance.
+def store_solve_input(out_file, input_data):
+    """Write solver input (FCN + weights) to a TSV."""
+    weights = input_data["weights"]
+    nbins = input_data["nbins"]
+    fcn_cols = ["fcn", "fa", "fb", "fa_lo", "fa_hi", "fb_lo", "fb_hi"]
+    header = "CLUSTER\tSAMPLE\t#BINS\t" + "\t".join(fcn_cols) + "\tweight"
+    fa = input_data["fa"]
+    with open(out_file, "w") as fd:
+        fd.write(header + "\n")
+        for sample in fa.columns:
+            for cid in fa.index:
+                nb = int(nbins.loc[cid, sample])
+                vals = [str(input_data[c].loc[cid, sample]) for c in fcn_cols]
+                fd.write(
+                    f"{cid}\t{sample}\t{nb}\t" + "\t".join(vals) + f"\t{weights[cid]}\n"
+                )
+
+
+def _write_solution_tsv(fd, input_data, cA, cB, u, n, cluster_ids, sample_ids, header):
+    """Write a single solution's per-cluster/sample details to an open file."""
+    cA_ = np.array(cA)
+    cB_ = np.array(cB)
+    u_ = np.array(u)
+    exp_a = cA_ @ u_
+    exp_b = cB_ @ u_
+
+    fd.write(header + "\n")
+    for ci, cid in enumerate(cluster_ids):
+        for si, sample in enumerate(sample_ids):
+            fa_lo = input_data["fa_lo"].iloc[ci, si]
+            fa_hi = input_data["fa_hi"].iloc[ci, si]
+            fb_lo = input_data["fb_lo"].iloc[ci, si]
+            fb_hi = input_data["fb_hi"].iloc[ci, si]
+            ea, eb = exp_a[ci, si], exp_b[ci, si]
+            accepted = ea >= fa_lo and ea <= fa_hi and eb >= fb_lo and eb <= fb_hi
+            n_bins = int(input_data["nbins"].loc[cid, sample])
+            fields = [
+                cid,
+                sample,
+                n_bins,
+                input_data["fa"].loc[cid, sample],
+                input_data["fb"].loc[cid, sample],
+                ea,
+                eb,
+                fa_lo,
+                fa_hi,
+                fb_lo,
+                fb_hi,
+            ]
+            for oi in range(n):
+                fields.extend([f"{cA[ci][oi]}|{cB[ci][oi]}", u[oi][si]])
+            fields.append(accepted)
+            fd.write("\t".join(str(v) for v in fields) + "\n")
+
+
+def store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode):
+    """Store all solution detail TSVs (and Newick/JSON for cnt_cd)."""
+    import json as _json
+
+    n = len(pool_instances[next(iter(pool_instances))]["cA"][0])
+    cluster_ids = input_data["cluster_ids"]
+    sample_ids = input_data["sample_ids"]
+    clone_cols = ["cn_normal\tu_normal"] + [
+        f"cn_clone{i}\tu_clone{i}" for i in range(1, n)
+    ]
+    cols = (
+        [
+            "CLUSTER",
+            "SAMPLE",
+            "#BINS",
+            "f_a",
+            "f_b",
+            "exp_f_a",
+            "exp_f_b",
+            "fa_lo",
+            "fa_hi",
+            "fb_lo",
+            "fb_hi",
+        ]
+        + clone_cols
+        + ["ci_accepted"]
+    )
+    header = "\t".join(cols)
+
+    for sol_id, sol in pool_instances.items():
+        path = os.path.join(sol_dir, f"{solve_mode}_{sol_id}.tsv")
+        with open(path, "w") as fd:
+            _write_solution_tsv(
+                fd,
+                input_data,
+                sol["cA"],
+                sol["cB"],
+                sol["u"],
+                n,
+                cluster_ids,
+                sample_ids,
+                header,
+            )
+
+        if solve_mode == "cnt_cd":
+            from hatchet.compute_cn.solve.cnt_tree import LabeledCloneTree
+
+            tree = sol.get("tree")
+            if tree is not None and isinstance(tree, LabeledCloneTree):
+                prefix = os.path.join(sol_dir, f"{solve_mode}_{sol_id}")
+                with open(f"{prefix}.nwk", "w") as f:
+                    f.write(tree.to_newick() + "\n")
+                d = tree.to_dict()
+                d["fit_loss"] = sol.get("fit_loss")
+                d["tree_loss"] = sol.get("tree_loss")
+                d["u"] = sol.get("u")
+                with open(f"{prefix}.json", "w") as f:
+                    _json.dump(d, f, indent=2)
+
+
+def compute_fractional_cn(input_data, gammas, alpha=0.05, min_ci_margin=0.1):
+    """Compute fractional copy numbers and CI.
+
+    Returns a new dict containing all fields from input_data plus
+    fcn, fa, fb, fa_lo, fa_hi, fb_lo, fb_hi. input_data is not modified.
 
     Args:
-        rdr: (cluster * sample) DataFrame of cluster-level RDR means.
-        baf: (cluster * sample) DataFrame of cluster-level BAF means.
-        gammas: Series of per-sample gamma values.
-        rdr_se: (cluster * sample) DataFrame of cluster-level RDR standard errors.
-        nbins: (cluster * sample) DataFrame of bin counts per cluster per sample.
+        input_data: dict from build_data with rdr, baf, rdr_se.
+        gammas: dict or Series of per-sample gamma values.
         alpha: significance level (default 0.05 → 95% CI).
         min_ci_margin: hard minimum CI half-width in FCN space.
-
-    Returns a dict with keys: fcn, fa, fb, fa_lo, fa_hi, fb_lo, fb_hi.
     """
     from scipy.stats import norm
 
+    rdr = input_data["rdr"]
+    baf = input_data["baf"]
+    rdr_se = input_data["rdr_se"]
+
+    gammas = pd.Series(gammas).sort_index()
     fcn = rdr * gammas
     fb = fcn * baf
     fa = fcn - fb
 
     z = norm.ppf(1 - alpha / 2)
-
-    # rdr_se is already SEM (σ/√n); scale by K_A = gamma*(1-BAF), K_B = gamma*BAF
     margin_fa = np.maximum(z * gammas * (1 - baf) * rdr_se, min_ci_margin)
     margin_fb = np.maximum(z * gammas * baf * rdr_se, min_ci_margin)
 
     return {
+        **input_data,
         "fcn": fcn,
         "fa": fa,
         "fb": fb,
@@ -288,8 +409,7 @@ def segmentation(
     cA,
     cB,
     u,
-    cluster_ids,
-    sample_ids,
+    input_data: dict,
     bbcs: pd.DataFrame,
     region_file: str,
     bbc_out_file=None,
@@ -297,44 +417,55 @@ def segmentation(
 ):
     """Annotate bins with inferred CN states and build a segment-level DataFrame.
 
-    Merges the inferred allele-specific copy numbers (``cA``, ``cB``) and clone
-    proportions (``u``) into the bin-level BBC DataFrame, then calls
-    ``build_seg_from_bbc`` to merge adjacent bins with identical CN states into
-    segments (respecting region boundaries).
-
     Args:
-        cA: List of shape (num_clusters, num_clones) with allele-A CN integers.
-        cB: List of shape (num_clusters, num_clones) with allele-B CN integers.
-        u: List of shape (num_clones, num_samples) with clone proportions.
-        cluster_ids: Ordered cluster identifiers matching the row order of cA/cB.
-        sample_ids: Ordered sample identifiers matching the column order of u.
-        bbcs: Bin-level DataFrame; must contain at least ``#CHR``, ``START``,
-            ``END``, ``SAMPLE``, ``CLUSTER``.
-        region_file: Path to the BED file of genomic regions used as segment
-            merge barriers.
-        bbc_out_file: If provided, write the annotated bin-level TSV to this path.
-        seg_out_file: If provided, write the segment-level TSV to this path.
+        cA: (num_clusters, num_clones) allele-A CN.
+        cB: (num_clusters, num_clones) allele-B CN.
+        u: (num_clones, num_samples) clone proportions.
+        input_data: dict from build_data with cluster_ids, sample_ids.
+        bbcs: Bin-level DataFrame.
+        region_file: Path to region BED file.
+        bbc_out_file: If provided, write annotated bin-level TSV.
+        seg_out_file: If provided, write segment-level TSV.
 
     Returns:
-        The segment-level DataFrame (always returned regardless of whether
-        ``seg_out_file`` is set).
+        Segment-level DataFrame.
     """
+    cluster_ids = input_data["cluster_ids"]
+    sample_ids = input_data["sample_ids"]
+    seg_to_cluster = input_data.get("seg_to_cluster")
     df = bbcs.copy()
 
     n_clone = len(cA[0])
-    cA = pd.DataFrame(cA, index=cluster_ids, columns=range(n_clone))
-    cB = pd.DataFrame(cB, index=cluster_ids, columns=range(n_clone))
-    u = pd.DataFrame(
-        u, index=range(n_clone), columns=sample_ids
-    ).T  # (n_sample, n_clone)
+    cN = pd.DataFrame(
+        np.array(cA).astype(str) + "|" + np.array(cB).astype(str),
+        index=cluster_ids,
+        columns=["cn_normal"] + [f"cn_clone{i}" for i in range(1, n_clone)],
+    )
+    u_df = pd.DataFrame(u, index=range(n_clone), columns=sample_ids).T
+    u_df.columns = ["u_normal"] + [f"u_clone{i}" for i in range(1, n_clone)]
+    extra_columns = [col for pair in zip(cN.columns, u_df.columns) for col in pair]
 
-    cN = cA.astype(str) + "|" + cB.astype(str)
-    cN.columns = ["cn_normal"] + [f"cn_clone{i}" for i in range(1, n_clone)]
-    u.columns = ["u_normal"] + [f"u_clone{i}" for i in range(1, n_clone)]
-    extra_columns = [col for pair in zip(cN.columns, u.columns) for col in pair]
+    if seg_to_cluster is not None:
+        # Segment mode: assign each bin its segment ID, merge CN by segment.
+        df = df.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
+        samples_sorted = sorted(df["SAMPLE"].unique())
+        first_mask = df["SAMPLE"] == samples_sorted[0]
+        first_df = df.loc[first_mask].reset_index(drop=True)
+        seg_boundary = (first_df["CLUSTER"] != first_df["CLUSTER"].shift()) | (
+            first_df["#CHR"] != first_df["#CHR"].shift()
+        )
+        seg_int = (seg_boundary.cumsum() - 1).values
+        df["_seg_int"] = np.tile(seg_int, len(samples_sorted))
+        # Map integer seg index to string seg ID (same logic as build_data)
+        seg_id_list = cluster_ids  # already in segment order
+        int_to_seg = {i: seg_id_list[i] for i in range(len(seg_id_list))}
+        df["_seg_id"] = df["_seg_int"].map(int_to_seg)
+        df = df.merge(cN, left_on="_seg_id", right_index=True)
+        df = df.drop(columns=["_seg_int", "_seg_id"])
+    else:
+        df = df.merge(cN, left_on="CLUSTER", right_index=True)
 
-    df = df.merge(cN, left_on="CLUSTER", right_index=True)
-    df = df.merge(u, left_on="SAMPLE", right_index=True)
+    df = df.merge(u_df, left_on="SAMPLE", right_index=True)
     df = df.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
 
     if bbc_out_file is not None:
@@ -425,7 +556,7 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
                     zorder=3,
                 )
 
-            sel = grp[grp["is_instance_selected"]]
+            sel = grp[grp["selected"] == "*"]
             if len(sel) > 0:
                 ax.scatter(
                     sel[reg_col],
@@ -491,22 +622,21 @@ def annotate_seg_pi_violations(seg_df, cA, cB, u, fcn_data, cluster_ids, sample_
     return seg_df
 
 
-def pool_entries_for_plot(pool):
-    """Extract plot-ready tuples from pool dict, dropping cnt_pairs."""
-    return [
-        (tag, seg_df, imf, pareto, selected)
-        for tag, (seg_df, imf, _reg, pareto, selected, _cnt) in pool.items()
-    ]
-
-
 def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
-    """Read pool solution TSVs from sol_dir into {pparam: [(obj, cA, cB, u), ...]}."""
+    """Read pool solution TSVs from sol_dir into {sol_id: {"fit_loss": ..., "cA": ..., ...}}."""
     pool = {}
-    for path in sorted(glob.glob(os.path.join(sol_dir, "*_sol*_pool*.tsv"))):
-        m = re.match(r".*_sol([\d.]+)_pool(\d+)\.tsv", os.path.basename(path))
-        if not m:
-            continue
-        pparam = float(m.group(1)) if "." in m.group(1) else int(m.group(1))
+    for path in sorted(glob.glob(os.path.join(sol_dir, "*.tsv"))):
+        basename = os.path.basename(path)
+        # Match old format (sol*_pool*) or new format (mode_solid)
+        m = re.match(r".*_sol([\d.]+)_pool(\d+)\.tsv", basename)
+        if m:
+            sol_id = f"p{m.group(1)}_s{m.group(2)}"
+        else:
+            m2 = re.match(r"(?:cd|ilp|cnt_cd)_(.+)\.tsv", basename)
+            if m2:
+                sol_id = m2.group(1)
+            else:
+                continue
 
         sol = pd.read_csv(path, sep="\t")
         cn_cols = sorted(
@@ -538,130 +668,8 @@ def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
             [float(sol[sol["SAMPLE"] == sid].iloc[0][uc]) for sid in sample_ids]
             for uc in u_cols
         ]
-        pool.setdefault(pparam, []).append((0.0, cA, cB, u))
+        pool[sol_id] = {"fit_loss": 0.0, "cA": cA, "cB": cB, "u": u}
 
     if pool:
-        logging.info(
-            f"loaded {sum(len(v) for v in pool.values())} pool solutions from {sol_dir}"
-        )
+        logging.info(f"loaded {len(pool)} pool solutions from {sol_dir}")
     return pool
-
-
-def build_pool_output(
-    pool_instances,
-    f_a,
-    f_b,
-    fcn_data,
-    weights,
-    nbins,
-    args,
-    cluster_ids,
-    sample_ids,
-    bbcs,
-    out_bbc,
-    out_seg,
-    sol_dir,
-    tree_info=None,
-):
-    """Run model selection on pool_instances and build the pool output dict."""
-    reg_term = args["reg_term"]
-    pname = reg_term
-
-    best_instance, imf_obj, selected_key = model_selection_instance(
-        f_a,
-        f_b,
-        weights,
-        pool_instances,
-        pname,
-        args["mode"],
-        sol_dir,
-        fcn_data,
-        nbins,
-        tree_info=tree_info,
-    )
-    if best_instance is None:
-        return 0.0, 0.0, {}
-
-    obj, cA, cB, u = best_instance
-    if not os.path.exists(out_bbc) or not os.path.exists(out_seg):
-        segmentation(
-            cA,
-            cB,
-            u,
-            cluster_ids,
-            sample_ids,
-            bbcs=bbcs,
-            region_file=args["region_bed"],
-            bbc_out_file=out_bbc,
-            seg_out_file=out_seg,
-        )
-
-    all_pool = {}
-    pool_objs = []
-    pool_tags = []
-    pool_keys = []
-    for pparam, sols in pool_instances.items():
-        for pidx, (pobj, pcA, pcB, pu) in enumerate(sols):
-            tag = f"pool_p{pparam}_s{pidx}"
-            seg_df = segmentation(
-                pcA,
-                pcB,
-                pu,
-                cluster_ids,
-                sample_ids,
-                bbcs=bbcs,
-                region_file=args["region_bed"],
-            )
-            seg_df = annotate_seg_pi_violations(
-                seg_df, pcA, pcB, pu, fcn_data, cluster_ids, sample_ids
-            )
-            _tree_edges = None
-            if tree_info is not None and pparam in tree_info:
-                _tree_edges = tree_info[pparam].get("tree_edges")
-            p_imf, p_reg = compute_individual_objs(
-                pname,
-                weights,
-                f_a,
-                f_b,
-                pcA,
-                pcB,
-                pu,
-                tree_edges=_tree_edges,
-            )
-            cnt_pairs = compute_pairwise_cnt(pcA, pcB, bbcs, cluster_ids)
-            if _tree_edges is not None:
-                cnt_pairs["tree_edges"] = json.dumps(
-                    {str(k): v for k, v in _tree_edges.items()}
-                )
-                cnt_pairs["tree_edge_length"] = round(p_reg, 1)
-            pool_objs.append([p_imf, p_reg])
-            pool_tags.append(tag)
-            pool_keys.append((pparam, pidx))
-            all_pool[tag] = (seg_df, p_imf, p_reg, False, False, cnt_pairs)
-
-    if pool_objs:
-        is_pareto = filter_non_pareto(np.array(pool_objs))
-        for tag, key, pareto in zip(pool_tags, pool_keys, is_pareto):
-            seg_df_, imf_, reg_, _, _, cnt_ = all_pool[tag]
-            is_selected = key == selected_key
-            all_pool[tag] = (seg_df_, imf_, reg_, bool(pareto), is_selected, cnt_)
-
-    return obj, imf_obj, all_pool
-
-
-def dedup_pool(pool_instances):
-    """Deduplicate pool_instances dict across all pparam values."""
-    flat_sols, flat_keys = [], []
-    for pparam, sols in pool_instances.items():
-        for pidx, sol in enumerate(sols):
-            flat_sols.append(sol)
-            flat_keys.append((pparam, pidx))
-
-    deduped = dedup_solutions(flat_sols)
-    deduped_ids = {id(s) for s in deduped}
-
-    out = {}
-    for sol, (pparam, _) in zip(flat_sols, flat_keys):
-        if id(sol) in deduped_ids:
-            out.setdefault(pparam, []).append(sol)
-    return out

@@ -39,24 +39,20 @@ if bool(config["compute_cn"]["diploid"]):
     compute_cn_args_list.append("--diploid")
 if bool(config["compute_cn"]["tetraploid"]):
     compute_cn_args_list.append("--tetraploid")
-if bool(config["compute_cn"].get("segment", False)):
-    compute_cn_args_list.append("--segment")
 if bool(config["compute_cn"]["no_ampdel"]):
     compute_cn_args_list.append("--no_ampdel")
-if bool(config["compute_cn"].get("mrca", False)):
-    compute_cn_args_list.append("--mrca")
 if config["compute_cn"].get("purities"):
     compute_cn_args_list.extend(["--purities", str(config["compute_cn"]["purities"])])
 if config["compute_cn"].get("fix_cn_dip"):
     compute_cn_args_list.extend(["--fix_cn_dip", str(config["compute_cn"]["fix_cn_dip"])])
 if config["compute_cn"].get("fix_cn_tet"):
     compute_cn_args_list.extend(["--fix_cn_tet", str(config["compute_cn"]["fix_cn_tet"])])
-if int(config["compute_cn"].get("pool_size", 1)) > 1:
-    compute_cn_args_list.extend(["--pool_size", int(config["compute_cn"]["pool_size"])])
-if config["compute_cn"].get("pool_gap") is not None:
-    compute_cn_args_list.extend(["--pool_gap", float(config["compute_cn"]["pool_gap"])])
 if config["compute_cn"].get("solver_threads") is not None:
     compute_cn_args_list.extend(["--solver_threads", int(config["compute_cn"]["solver_threads"])])
+if config["compute_cn"].get("tree_file"):
+    compute_cn_args_list.extend(["--tree_file", str(config["compute_cn"]["tree_file"])])
+if config["compute_cn"].get("eps_fit") is not None:
+    compute_cn_args_list.extend(["--eps_fit", float(config["compute_cn"]["eps_fit"])])
 compute_cn_args = " ".join(shlex.quote(str(x)) for x in compute_cn_args_list + xargs)
 
 ##################################################
@@ -219,6 +215,7 @@ rule run_compute_cn:
             )
         ),
         mode=str(config["compute_cn"]["mode"]),
+        model_select=str(config["compute_cn"]["model_select"]),
         solver=str(config["compute_cn"]["solver"]),
         fcn_ci_alpha=float(config["compute_cn"]["fcn_ci_alpha"]),
         min_ci_margin=float(config["compute_cn"]["min_ci_margin"]),
@@ -232,7 +229,6 @@ rule run_compute_cn:
         diploidcmax=int(config["compute_cn"]["diploidcmax"]),
         tetraploidcmax=int(config["compute_cn"]["tetraploidcmax"]),
         min_prop=float(config["compute_cn"]["min_prop"]),
-        max_degree=int(config["compute_cn"]["max_degree"]),
         zero_cn_thres=float(config["compute_cn"]["zero_cn_thres"]),
         cd_niters=int(config["compute_cn"]["cd_niters"]),
         cd_convergence_iters=int(config["compute_cn"]["cd_convergence_iters"]),
@@ -252,6 +248,7 @@ rule run_compute_cn:
             --seg {params.seg} \
             --result_dir {output.result_dir} \
             --mode {params.mode} \
+            --model_select {params.model_select} \
             --solver {params.solver} \
             --genome_size {input.genome_size} \
             --region_bed {input.region_bed} \
@@ -267,7 +264,6 @@ rule run_compute_cn:
             --diploidcmax {params.diploidcmax} \
             --tetraploidcmax {params.tetraploidcmax} \
             --min_prop {params.min_prop} \
-            --max_degree {params.max_degree} \
             --zero_cn_thres {params.zero_cn_thres} \
             --cd_niters {params.cd_niters} \
             --cd_convergence_iters {params.cd_convergence_iters} \

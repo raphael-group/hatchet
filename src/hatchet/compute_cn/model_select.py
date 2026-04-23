@@ -125,47 +125,29 @@ def _count_params(n, n_clusters, n_samples):
     return 2 * n_clusters * n_tumor + n_tumor * n_samples
 
 
-def model_selection(
-    diploid_sols: dict,
-    tetraploid_sols: dict,
+def model_selection_ploidy(
+    chosen_sols: dict,
     out_dir: str,
-    gammas_noWGD: dict,
-    gammas_WGD: dict,
+    scaling: dict,
     segs: pd.DataFrame,
     method="elbow",
-    plot_dir=None,
 ):
-    """Select best n and ploidy.
+    """Select best n and ploidy across ploidies.
 
-    Two methods are supported (controlled by *method*):
-
-    ``"elbow"`` (default)
-        Compute conditioned log-likelihood for every n, select the elbow/knee
-        on the neg-loglik curve (kneed).  Ploidy chosen by parsimony (fewer
-        clones; diploid preferred on tie).
-
-    ``"bic"``
-        Compute BIC = -2·LL + k·ln(N) for every n, select the n with
-        minimum BIC.  Ploidy chosen by minimum BIC across ploidies.
+    Args:
+        chosen_sols: {ploidy: {n: best_sol_dict}} from the solve loop.
+        out_dir: output directory (for reading UCN files).
+        scaling: dict from get_scaling_factor with per-ploidy gammas.
+        segs: cluster-level SEG DataFrame.
+        method: "elbow" or "bic".
 
     Returns:
-        (n_dip, n_tet, final_selection) where final_selection is "diploid" or
-        "tetraploid" (or None if no solutions exist for that ploidy).
+        (best_ploidy, best_n, fig) where fig is the elbow/BIC plot.
     """
-    if len(diploid_sols) == 0 and len(tetraploid_sols) == 0:
-        logging.info(
-            "ERROR! no solution found for either diploid or tetraploid setting!"
-        )
-        raise ValueError("final model selection error")
 
-    def _compute_scores(sols: dict, ploidy: str, gammas: dict):
-        """Compute loglik (and BIC) for all n values including n=1 baseline.
-
-        n_clusters and n_samples are constant across all n for a given ploidy
-        (same clusters/samples in every UCN file).  The loop overwrites these
-        variables on each iteration; using the final values is correct.
-        """
-        ns_sorted = sorted(sols.keys())
+    def _compute_scores(ploidy):
+        gammas = scaling[ploidy]["gammas"]
+        ns_sorted = sorted(chosen_sols[ploidy].keys())
         first_ucn = os.path.join(
             out_dir, f"results.{ploidy}.n{ns_sorted[0]}.bbc.ucn.tsv"
         )
@@ -176,151 +158,175 @@ def model_selection(
 
         ns_all = [1] + ns_sorted
         lls = [ll_n1]
-        n_obs_list = [nobs_n1]
         for clone_n in ns_sorted:
             ucn_file = os.path.join(out_dir, f"results.{ploidy}.n{clone_n}.bbc.ucn.tsv")
             ll, nobs, n_clusters, n_samples = _compute_loglik_from_ucn(
                 ucn_file, clone_n, gammas, segs
             )
             lls.append(ll)
-            n_obs_list.append(nobs)
             logging.info(f"{ploidy}: n={clone_n}, loglik={ll:.4f}")
 
         ns = np.array(ns_all, dtype=np.int32)
         lls = np.array(lls)
-        neg_lls = -lls
-        n_obs = n_obs_list[0]  # same across all n for a given ploidy
-
         bics = np.array(
             [
                 -2 * lls[i]
-                + _count_params(ns[i], n_clusters, n_samples) * np.log(n_obs)
+                + _count_params(ns[i], n_clusters, n_samples) * np.log(nobs_n1)
                 for i in range(len(ns))
             ]
         )
+        return ns, lls, -lls, bics, ns_sorted
 
-        return ns, lls, neg_lls, bics, ns_sorted
-
-    def _select_elbow(ns, neg_lls, ns_sorted, ploidy):
-        chosen_n = int(ns_sorted[0])
-        if len(ns) >= 3:
-            kl = kneed.KneeLocator(
-                x=ns, y=neg_lls, curve="convex", direction="decreasing"
-            )
-            if kl.elbow is not None:
-                chosen_n = max(int(ns_sorted[0]), int(kl.elbow))
-        logging.info(f"{ploidy}: chosen n={chosen_n} via loglik elbow")
-        return chosen_n
-
-    def _select_bic(ns, bics, ns_sorted, ploidy):
-        best_idx = int(np.argmin(bics))
-        chosen_n = int(ns[best_idx])
-        # n=1 is synthetic; if BIC picks it, fall back to smallest real n
-        if chosen_n < ns_sorted[0]:
-            chosen_n = int(ns_sorted[0])
-        for i, clone_n in enumerate(ns):
-            logging.info(f"{ploidy}: n={clone_n}, BIC={bics[i]:.2f}")
-        logging.info(f"{ploidy}: chosen n={chosen_n} via BIC")
-        return chosen_n
-
-    ploidy2scores = {}
-
-    n_dip = 0
-    bic_dip = np.inf
-    if len(diploid_sols) > 0:
-        ns, lls, neg_lls, bics, ns_sorted = _compute_scores(
-            diploid_sols, "diploid", gammas_noWGD
-        )
+    def _select(ns, neg_lls, bics, ns_sorted, ploidy):
         if method == "bic":
-            n_dip = _select_bic(ns, bics, ns_sorted, "diploid")
+            idx = int(np.argmin(bics))
+            chosen = max(int(ns[idx]), int(ns_sorted[0]))
+            logging.info(f"{ploidy}: chosen n={chosen} via BIC")
         else:
-            n_dip = _select_elbow(ns, neg_lls, ns_sorted, "diploid")
-        ploidy2scores["diploid"] = (n_dip, ns, neg_lls, bics)
-        bic_dip = float(bics[list(ns).index(n_dip)])
-        logging.info(f"best diploid solution: n={n_dip}")
+            chosen = int(ns_sorted[0])
+            if len(ns) >= 3:
+                kl = kneed.KneeLocator(
+                    x=ns, y=neg_lls, curve="convex", direction="decreasing"
+                )
+                if kl.elbow is not None:
+                    chosen = max(int(ns_sorted[0]), int(kl.elbow))
+            logging.info(f"{ploidy}: chosen n={chosen} via loglik elbow")
+        return chosen
 
-    n_tet = 0
-    bic_tet = np.inf
-    if len(tetraploid_sols) > 0:
-        ns, lls, neg_lls, bics, ns_sorted = _compute_scores(
-            tetraploid_sols, "tetraploid", gammas_WGD
-        )
-        if method == "bic":
-            n_tet = _select_bic(ns, bics, ns_sorted, "tetraploid")
-        else:
-            n_tet = _select_elbow(ns, neg_lls, ns_sorted, "tetraploid")
-        ploidy2scores["tetraploid"] = (n_tet, ns, neg_lls, bics)
-        bic_tet = float(bics[list(ns).index(n_tet)])
-        logging.info(f"best tetraploid solution: n={n_tet}")
+    results = {}  # ploidy -> (chosen_n, ns, neg_lls, bics)
+    for ploidy in chosen_sols:
+        ns, lls, neg_lls, bics, ns_sorted = _compute_scores(ploidy)
+        chosen_n = _select(ns, neg_lls, bics, ns_sorted, ploidy)
+        results[ploidy] = (chosen_n, ns, neg_lls, bics)
+        logging.info(f"best {ploidy} solution: n={chosen_n}")
 
     # Ploidy selection
-    if len(tetraploid_sols) == 0:
-        final_selection = "diploid"
-    elif len(diploid_sols) == 0:
-        final_selection = "tetraploid"
+    ploidies = list(results.keys())
+    if len(ploidies) == 1:
+        best_ploidy = ploidies[0]
     elif method == "bic":
-        # pick ploidy by minimum BIC
-        final_selection = "diploid" if bic_dip <= bic_tet else "tetraploid"
-        logging.info(
-            f"ploidy selection by BIC: diploid={bic_dip:.2f}, tetraploid={bic_tet:.2f}"
-        )
+        bic_vals = {
+            p: float(bics[list(ns).index(n)]) for p, (n, ns, _, bics) in results.items()
+        }
+        best_ploidy = min(bic_vals, key=bic_vals.get)
+        logging.info(f"ploidy selection by BIC: {bic_vals}")
     else:
-        # parsimony: prefer fewer clones; diploid preferred on tie
-        final_selection = "diploid" if n_dip <= n_tet else "tetraploid"
+        n_vals = {p: n for p, (n, _, _, _) in results.items()}
+        best_ploidy = (
+            "diploid"
+            if n_vals.get("diploid", 999) <= n_vals.get("tetraploid", 999)
+            else "tetraploid"
+        )
 
-    logging.info(f"final selection ({method}): {final_selection}")
+    best_n = results[best_ploidy][0]
+    logging.info(f"final selection ({method}): {best_ploidy}, n={best_n}")
 
-    # plot
+    # Plot
     fig, axes = plt.subplots(
         1, 2 if method == "bic" else 1, figsize=(9 if method == "bic" else 4.5, 3.5)
     )
     if method != "bic":
         axes = [axes]
-    all_ns = []
     colors = {"diploid": "#1f77b4", "tetraploid": "#d62728"}
-    for ploidy_key in ["diploid", "tetraploid"]:
-        if ploidy_key not in ploidy2scores:
-            continue
-        chosen_n, ns, neg_lls, bics = ploidy2scores[ploidy_key]
-        c = colors[ploidy_key]
-
-        # neg-loglik panel (always shown)
-        ax = axes[0]
-        ax.plot(ns, neg_lls, "-o", color=c, markersize=5, label=ploidy_key.capitalize())
+    all_ns = []
+    for ploidy, (chosen_n, ns, neg_lls, bics) in results.items():
+        c = colors.get(ploidy, "gray")
+        axes[0].plot(
+            ns, neg_lls, "-o", color=c, markersize=5, label=ploidy.capitalize()
+        )
         if method == "elbow":
             idx = list(ns).index(chosen_n)
-            ax.plot(chosen_n, neg_lls[idx], "*", color=c, markersize=14, zorder=5)
+            axes[0].plot(chosen_n, neg_lls[idx], "*", color=c, markersize=14, zorder=5)
         all_ns.extend(ns.tolist())
-
-        # BIC panel
         if method == "bic":
-            ax2 = axes[1]
-            ax2.plot(
-                ns, bics, "-s", color=c, markersize=5, label=ploidy_key.capitalize()
+            axes[1].plot(
+                ns, bics, "-s", color=c, markersize=5, label=ploidy.capitalize()
             )
             idx = list(ns).index(chosen_n)
-            ax2.plot(chosen_n, bics[idx], "*", color=c, markersize=14, zorder=5)
+            axes[1].plot(chosen_n, bics[idx], "*", color=c, markersize=14, zorder=5)
 
-    ax0 = axes[0]
-    ax0.set_xticks(sorted(set(int(x) for x in all_ns)))
-    ax0.set_xlabel("Number of clones")
-    ax0.set_ylabel("Negative log-likelihood")
-    ax0.legend(framealpha=0.9)
-    ax0.grid(True, alpha=0.3)
-
-    best_n = n_dip if final_selection == "diploid" else n_tet
+    axes[0].set_xticks(sorted(set(int(x) for x in all_ns)))
+    axes[0].set_xlabel("Number of clones")
+    axes[0].set_ylabel("Negative log-likelihood")
+    axes[0].legend(framealpha=0.9)
+    axes[0].grid(True, alpha=0.3)
     if method == "bic":
-        ax0.set_title("Log-likelihood")
-        ax2 = axes[1]
-        ax2.set_xticks(sorted(set(int(x) for x in all_ns)))
-        ax2.set_xlabel("Number of clones")
-        ax2.set_ylabel("BIC")
-        ax2.set_title(f"BIC (best: {final_selection}, n={best_n})")
-        ax2.legend(framealpha=0.9)
-        ax2.grid(True, alpha=0.3)
+        axes[0].set_title("Log-likelihood")
+        axes[1].set_xticks(sorted(set(int(x) for x in all_ns)))
+        axes[1].set_xlabel("Number of clones")
+        axes[1].set_ylabel("BIC")
+        axes[1].set_title(f"BIC (best: {best_ploidy}, n={best_n})")
+        axes[1].legend(framealpha=0.9)
+        axes[1].grid(True, alpha=0.3)
     else:
-        ax0.set_title(f"Elbow (best: {final_selection}, n={best_n})")
-
+        axes[0].set_title(f"Elbow (best: {best_ploidy}, n={best_n})")
     fig.tight_layout()
 
-    return n_dip, n_tet, final_selection, fig
+    chosen_n = {p: n for p, (n, _, _, _) in results.items()}
+    return best_ploidy, best_n, chosen_n, fig
+
+
+def model_select_elbow_from_regularization(pool_instances):
+    """Select the best solution from a regularization-path pool using elbow criterion.
+
+    Each solution in pool_instances must have imf_obj and reg_obj.
+
+    Args:
+        pool_instances: {sol_id: {"fit_loss", "imf_obj", "reg_obj", "cA", "cB", "u", ...}}.
+
+    Returns (best_sol_id, df) where df has Pareto/selected annotations.
+    """
+    assert len(pool_instances) > 0, "no solutions to select from"
+
+    reg_col = "REG"
+    imf_col = "IMF"
+
+    sol_ids = sorted(pool_instances)
+    df = pd.DataFrame(
+        {
+            "instance_id": sol_ids,
+            imf_col: [pool_instances[s]["imf_obj"] for s in sol_ids],
+            reg_col: [pool_instances[s]["reg_obj"] for s in sol_ids],
+        }
+    )
+
+    df["is_pareto"] = True
+    df["selected"] = ""
+    for i in range(len(df)):
+        for j in range(len(df)):
+            if (
+                i != j
+                and df[imf_col].iloc[j] <= df[imf_col].iloc[i]
+                and df[reg_col].iloc[j] <= df[reg_col].iloc[i]
+                and (
+                    df[imf_col].iloc[j] < df[imf_col].iloc[i]
+                    or df[reg_col].iloc[j] < df[reg_col].iloc[i]
+                )
+            ):
+                df.iloc[i, df.columns.get_loc("is_pareto")] = False
+                break
+    pids = df.loc[df["is_pareto"]].index.to_numpy()
+    if len(pids) <= 1:
+        df["is_pareto"] = True
+        df["selected"] = "*"
+        return sol_ids[0], df
+    logging.info(f"model selection, #pareto={len(pids)}/{len(df)}")
+
+    pareto_df = df.loc[pids].sort_values(reg_col)
+    pids_sorted = pareto_df.index.to_numpy()
+    xs = pareto_df[reg_col].to_numpy()
+    ys = pareto_df[imf_col].to_numpy()
+
+    best_idx = pids_sorted[-1]
+    elbow_x, elbow_y = None, None
+    if len(pids_sorted) >= 3:
+        kl = kneed.KneeLocator(x=xs, y=ys, curve="convex", direction="decreasing")
+        elbow_x, elbow_y = kl.elbow, kl.elbow_y
+        if elbow_x is not None and elbow_x != xs[0]:
+            sol_indices = np.where(ys <= elbow_y)[0]
+            if len(sol_indices) > 0:
+                best_idx = pids_sorted[sol_indices[0]]
+                logging.info(f"Model selection elbow at index={best_idx}")
+    df.loc[best_idx, "selected"] = "*"
+    best_sol_id = df.loc[best_idx, "instance_id"]
+    return best_sol_id, df

@@ -289,7 +289,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--mode",
         required=False,
-        choices=["both", "cd", "ilp"],
+        choices=["both", "cd", "ilp", "cnt_cd"],
         type=str,
         help="Solver mode (default: ilp)",
         default="ilp",
@@ -324,31 +324,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         default=None,
         type=int,
         help="ILP solver timelimit in seconds (default: None)",
-    )
-
-    parser.add_argument(
-        "--pool_size",
-        required=False,
-        default=1,
-        type=int,
-        help="Number of Gurobi solution-pool solutions to collect (mode 0, default: 1 = disabled). "
-        "Only effective with --solver gurobi.",
-    )
-
-    parser.add_argument(
-        "--pool_gap",
-        required=False,
-        default=None,
-        type=float,
-        help="Relative optimality gap for Gurobi solution pool (default: None = keep all). "
-        "E.g. 0.0 keeps only optimal, 0.1 keeps within 10%% of optimal.",
-    )
-    parser.add_argument(
-        "--segment",
-        action="store_true",
-        default=False,
-        required=False,
-        help="Use genomic-segment-level data instead of cluster-level summaries (default: false)",
     )
 
     parser.add_argument(
@@ -419,7 +394,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
             "DBOX_L0",
             "DROOT_SUM",
             "DADJ_SUM",
-            "DRMST",
         ],
         type=str,
         help="regularization term (default: MAXCN)",
@@ -438,19 +412,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         default=0.15,
         type=float,
         help="Maximum pparam value for the regularization path (default: 0.15)",
-    )
-    parser.add_argument(
-        "--max_degree",
-        required=False,
-        default=3,
-        type=int,
-        help="Max node degree in tree topology for DRMST: 2=linear, 3=binary (default: 3)",
-    )
-    parser.add_argument(
-        "--mrca",
-        action="store_true",
-        default=False,
-        help="Enforce clone 1 as MRCA with LOH: if MRCA lost an allele, subclones cannot regain it",
     )
     parser.add_argument(
         "--fix_cn_dip",
@@ -601,6 +562,23 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         help="Max threads per solver call (Gurobi). Set to 1 for parallel CD workers (default: solver default)",
     )
 
+    ##################################################
+    # CNT-CD parameters
+    parser.add_argument(
+        "--tree_file",
+        required=False,
+        default=None,
+        type=str,
+        help="CNT-CD: Newick tree file. If not provided, enumerate all unlabeled shapes.",
+    )
+    parser.add_argument(
+        "--eps_fit",
+        required=False,
+        default=0.01,
+        type=float,
+        help="CNT-CD: fit tolerance for C-step CNT stage lexicographic bound (default: 0.01)",
+    )
+
     parser.add_argument(
         "--verbosity",
         required=False,
@@ -646,29 +624,32 @@ def parse_fix_cn(fix_cn_str):
 
 
 ##################################################
-def parse_arguments_compute_cn(argv=None):
-    parser = argparse.ArgumentParser(description="HATCHet compute-cn")
-    add_arguments_compute_cn(parser)
-    args = parser.parse_args(argv)
-
-    # Validate solver availability only when ILP is needed
-    if args.mode in ("ilp", "both"):
-        if not solver_available(args.solver):
-            if args.solver == "gurobi":
-                parser.error(
-                    "Gurobi solver is not available. "
-                    "Ensure gurobipy is installed and a valid Gurobi license is active "
-                    "(check GRB_LICENSE_FILE or ~/.gurobi/gurobi.lic)."
-                )
-            else:
-                parser.error(
-                    f"Solver '{args.solver}' is not available. "
-                    "Ensure the corresponding Pyomo solver backend is installed and on PATH."
-                )
-    # Parse fix_cn strings into dicts
-    args.fix_cn_dip = parse_fix_cn(args.fix_cn_dip)
-    args.fix_cn_tet = parse_fix_cn(args.fix_cn_tet)
-
+def parse_arguments_compute_cn(args):
+    """Post-process compute-cn args: validate solver, parse fix_cn strings."""
+    if isinstance(args, argparse.Namespace):
+        args = vars(args)
+    solver = args["solver"]
+    if args["mode"] in ("ilp", "both") and not solver_available(solver):
+        raise RuntimeError(
+            f"Solver '{solver}' is not available. "
+            + (
+                "Ensure gurobipy is installed and a valid Gurobi license is active."
+                if solver == "gurobi"
+                else "Ensure the corresponding Pyomo solver backend is installed and on PATH."
+            )
+        )
+    if isinstance(args.get("fix_cn_dip"), str):
+        args["fix_cn_dip"] = parse_fix_cn(args["fix_cn_dip"])
+    if args.get("fix_cn_dip") is None:
+        args["fix_cn_dip"] = {}
+    if isinstance(args.get("fix_cn_tet"), str):
+        args["fix_cn_tet"] = parse_fix_cn(args["fix_cn_tet"])
+    if args.get("fix_cn_tet") is None:
+        args["fix_cn_tet"] = {}
+    # Defaults for keys not always present in test dicts
+    args.setdefault("eps_fit", 0.01)
+    args.setdefault("tree_file", None)
+    args.setdefault("tol", 0.001)
     return args
 
 

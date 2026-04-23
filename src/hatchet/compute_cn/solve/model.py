@@ -14,8 +14,8 @@ from hatchet.compute_cn.solve.constraints import (
     add_proportion_constraints,
     add_domain_constraints,
     add_ncns_seg_constraints,
-    update_fixed_u,
-    update_fixed_cn,
+    update_fixed_u,  # noqa: F401 – re-exported for inference.py
+    update_fixed_cn,  # noqa: F401 – re-exported for inference.py
 )
 from hatchet.compute_cn.solve.regularization import build_regularization
 from hatchet.compute_cn.solve.objectives import (

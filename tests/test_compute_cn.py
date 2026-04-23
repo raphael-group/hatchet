@@ -117,7 +117,6 @@ class TestCDMode:
             "maxClone": 2,
             "diploid": True,
             "tetraploid": False,
-            "segment": False,
             "fcn_ci_alpha": 0.05,
             "min_ci_margin": 0.1,
             "obj_type": "imf",
@@ -131,8 +130,6 @@ class TestCDMode:
             "tetraploidcmax": 12,
             "min_prop": 0.01,
             "purities": None,
-            "pool_size": 1,
-            "pool_gap": None,
             "cd_niters": 5,
             "cd_convergence_iters": 2,
             "cd_nseeds": 10,
@@ -141,8 +138,6 @@ class TestCDMode:
             "u_init": "dirichlet",
             "u_dir_alpha": 0.3,
             "solver_threads": None,
-            "max_degree": 3,
-            "mrca": False,
             "zero_cn_thres": 0.005,
             "cd_tol": 0.001,
             "fix_cn_dip": {},
@@ -166,4 +161,67 @@ class TestCDMode:
         bbc = pd.read_table(ucn, sep="\t")
         assert (bbc["cn_normal"] == "1|1").all(), (
             f"Normal clone not 1|1 with {reg_term}"
+        )
+
+
+class TestCntCDMode:
+    """Test CNT-CD solver mode through the full pipeline."""
+
+    def test_cnt_cd(self, cluster_bins_result, synthetic_data, tmp_path):
+        from hatchet.compute_cn.compute_cn import run as run_compute_cn
+
+        bbc_dir, _ = cluster_bins_result
+        _, genome_sizes, regions_bed, _ = synthetic_data
+        result_dir = str(tmp_path / "cnt_cd")
+        args = {
+            "bbc": os.path.join(bbc_dir, "bulk.bbc"),
+            "seg": os.path.join(bbc_dir, "bulk.seg"),
+            "result_dir": result_dir,
+            "genome_size": genome_sizes,
+            "region_bed": regions_bed,
+            "mode": "cnt_cd",
+            "solver": "cbc",
+            "timelimit": 30,
+            "minClone": 2,
+            "maxClone": 2,
+            "diploid": True,
+            "tetraploid": False,
+            "fcn_ci_alpha": 0.05,
+            "min_ci_margin": 0.1,
+            "obj_type": "imf",
+            "model_select": "bic",
+            "force": True,
+            "reg_term": "RAW",
+            "reg_steps": 1,
+            "reg_bound": 0.0,
+            "no_ampdel": False,
+            "num_cnstates": -1,
+            "diploidcmax": 6,
+            "tetraploidcmax": 12,
+            "min_prop": 0.01,
+            "purities": None,
+            "cd_niters": 5,
+            "cd_convergence_iters": 2,
+            "cd_nseeds": 10,
+            "cd_njobs": 1,
+            "cd_seed": 42,
+            "u_init": "dirichlet",
+            "u_dir_alpha": 0.3,
+            "solver_threads": None,
+            "zero_cn_thres": 0.005,
+            "cd_tol": 0.001,
+            "fix_cn_dip": {},
+            "fix_cn_tet": {},
+            "verbosity": 0,
+        }
+        run_compute_cn(args)
+
+        ucn = os.path.join(result_dir, "best.bbc.ucn")
+        assert os.path.isfile(ucn), "cnt_cd did not produce best.bbc.ucn"
+        bbc = pd.read_table(ucn, sep="\t")
+        assert (bbc["cn_normal"] == "1|1").all(), "Normal clone not 1|1"
+        u_cols = [c for c in bbc.columns if c.startswith("u_")]
+        prop_sums = bbc[u_cols].sum(axis=1)
+        assert np.allclose(prop_sums, 1.0, atol=0.05), (
+            f"Proportions don't sum to 1: [{prop_sums.min():.3f}, {prop_sums.max():.3f}]"
         )

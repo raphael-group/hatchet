@@ -192,9 +192,7 @@ def plot_1d(
         matched = bin_info["abs_pos"] > 0
         if not matched.all():
             n_drop = (~matched).sum()
-            logging.warning(
-                f"plot_1d: dropping {n_drop} bins not matching any region"
-            )
+            logging.warning(f"plot_1d: dropping {n_drop} bins not matching any region")
             bin_info = bin_info[matched].reset_index(drop=True)
             vals = np.asarray(vals)[matched.to_numpy()]
             if colors is not None:

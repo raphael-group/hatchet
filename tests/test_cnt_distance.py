@@ -1,7 +1,6 @@
 """Unit tests for CNT distance computation."""
 
 import numpy as np
-import pytest
 
 from hatchet.compute_cn.solve.cnt_distance import (
     _cnt_distance_1d,

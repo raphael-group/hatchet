@@ -298,7 +298,5 @@ def build_regularization(model, mode: str, params: SolverParams, inputs: SolverI
     }
     if pname in builders:
         obj_reg = builders[pname](model, mode, params, inputs)
-    elif pname == "DRMST":
-        obj_reg, var_z = build_reg_drmst(model, mode, params, inputs)
 
     return obj_reg, var_z

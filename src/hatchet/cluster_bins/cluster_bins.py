@@ -431,7 +431,9 @@ def run(args=None):
             ub_nbins=args["ub_nbins"],
         )
         if filtered_ids:
-            logging.info(f"K={K} filtered clusters: {sorted(int(x) for x in filtered_ids)}")
+            logging.info(
+                f"K={K} filtered clusters: {sorted(int(x) for x in filtered_ids)}"
+            )
 
         if log_rdr:
             k_rdr_means_nat = np.exp(k_rdr_means)

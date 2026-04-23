@@ -235,12 +235,18 @@ def get_scaling_factor(
     if purities_tet is None:
         logging.warning("no valid WGD pair; tetraploid solution unavailable")
 
-    return (
-        clonal_dip,
-        gammas_noWGD,
-        purities_dip,
-        clonal_tet,
-        gammas_wgd,
-        purities_tet,
-        balanced_s,
-    )
+    result = {
+        "diploid": {
+            "clonal": clonal_dip,
+            "gammas": gammas_noWGD,
+            "purities": purities_dip,
+        },
+        "tetraploid": {
+            "clonal": clonal_tet,
+            "gammas": gammas_wgd,
+            "purities": purities_tet,
+        }
+        if clonal_tet is not None
+        else None,
+    }
+    return result, balanced_s

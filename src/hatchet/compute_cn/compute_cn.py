@@ -12,32 +12,39 @@ from hatchet.utils import (
     setup_logging,
 )
 from hatchet.compute_cn.compute_cn_utils import (
-    build_cluster_data,
-    build_pool_output,
-    build_segment_data,
+    store_gammas,
+    store_solve_input,
+    store_instance_tofile,
+    build_data,
     compute_fractional_cn,
     load_pool_from_disk,
     plot_pareto_pdf,
-    pool_entries_for_plot,
     run_plot_cn,
+    segmentation,
+)
+from hatchet.compute_cn.model_select import (
+    model_selection_ploidy,
+    model_select_elbow_from_regularization,
 )
 from hatchet.compute_cn.scaling import get_scaling_factor
-from hatchet.compute_cn.model_select import model_selection
-from hatchet.hatchet_parser import parse_arguments_compute_cn, parse_fix_cn
-from hatchet.compute_cn.solve.utils import store_solve_input
+from hatchet.hatchet_parser import parse_arguments_compute_cn, add_arguments_compute_cn
 from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
-from hatchet.compute_cn.solve.inference import run_full_ilp, run_coordinate_descent
-from hatchet.plot.plot_cnp_panel import plot_pool_cnp
+from hatchet.compute_cn.solve.inference import (
+    run_full_ilp,
+    run_coordinate_descent,
+    run_coordinate_descent_cnt,
+)
+from hatchet.plot.plot_pool import plot_pool_cnp
 
 
 def run(args=None):
     logging.info("run hatchet compute cn")
     if isinstance(args, argparse.Namespace):
         args = vars(args)
+    args = parse_arguments_compute_cn(args)
 
     bbc_file = args["bbc"]
     seg_file = args["seg"]
-
     out_dir = args["result_dir"]
     os.makedirs(out_dir, exist_ok=True)
     add_file_logging(out_dir, "compute-cn")
@@ -46,22 +53,6 @@ def run(args=None):
     sols_dir = os.path.join(out_dir, "sols")
     os.makedirs(plot_dir, exist_ok=True)
     os.makedirs(sols_dir, exist_ok=True)
-
-    logging.info("load arguments")
-
-    fix_cn_dip = args["fix_cn_dip"]
-    fix_cn_tet = args["fix_cn_tet"]
-    # Parse fix_cn strings into dicts if not already parsed
-    if fix_cn_dip is None:
-        fix_cn_dip = {}
-    elif isinstance(fix_cn_dip, str):
-        fix_cn_dip = parse_fix_cn(fix_cn_dip)
-    if fix_cn_tet is None:
-        fix_cn_tet = {}
-    elif isinstance(fix_cn_tet, str):
-        fix_cn_tet = parse_fix_cn(fix_cn_tet)
-    args["fix_cn_dip"] = fix_cn_dip
-    args["fix_cn_tet"] = fix_cn_tet
 
     bbcs = read_bbc_file(bbc_file)
     segs = pd.read_table(seg_file, sep="\t")
@@ -75,279 +66,176 @@ def run(args=None):
         segs = segs[~segs["is_filtered"]].reset_index(drop=True)
         bbcs = bbcs[~bbcs["CLUSTER"].isin(filtered_ids)].reset_index(drop=True)
 
-    (
-        clonal_dip,
-        gammas_noWGD,
-        purities_noWGD,
-        clonal_tet,
-        gammas_WGD,
-        purities_WGD,
-        balanced_clusters,
-    ) = get_scaling_factor(
+    scaling, balanced_clusters = get_scaling_factor(
         samples,
         segs,
         bbcs,
-        fix_cn_dip=fix_cn_dip,
-        fix_cn_tet=fix_cn_tet,
+        fix_cn_dip=args["fix_cn_dip"],
+        fix_cn_tet=args["fix_cn_tet"],
         maxcn=args["diploidcmax"],
         maxcn_wgd=args["tetraploidcmax"],
     )
     gamma_outfile = os.path.join(out_dir, "gammas.tsv")
-    with open(gamma_outfile, "w") as fd:
-        for sample in samples:
-            gamma_noWGD = gammas_noWGD.get(sample, 0)
-            gamma_WGD = gammas_WGD.get(sample, 0) if gammas_WGD is not None else 0
-            fd.write(f"{sample}\t{gamma_noWGD}\t{gamma_WGD}\n")
+    store_gammas(gamma_outfile, scaling, samples)
 
-    if args["segment"]:
-        seg_data = build_segment_data(bbcs, segs)
-    else:
-        seg_data = build_cluster_data(segs)
-    rdr = seg_data["rdr"]
-    baf = seg_data["baf"]
-    rdr_se = seg_data["rdr_se"]
-    nbins = seg_data["nbins"]
-    weights = seg_data["weights"]
-    cluster_ids = rdr.index.tolist()
-    sample_ids = rdr.columns.tolist()
-
+    solve_mode = args["mode"]
+    input_data = build_data(bbcs, segs, segment=(solve_mode == "cnt_cd"))
     minClone = args["minClone"]
     maxClone = args["maxClone"] + 1
 
-    run_diploid = args["diploid"]
-    run_tetraploid = args["tetraploid"]
-    if not run_diploid and not run_tetraploid:
-        run_diploid = run_tetraploid = True
+    run_ploidy = {"diploid": args["diploid"], "tetraploid": args["tetraploid"]}
+    if not run_ploidy["diploid"] and not run_ploidy["tetraploid"]:
+        run_ploidy["diploid"] = True
+        run_ploidy["tetraploid"] = True
 
-    all_summary_rows = []
+    # 3. Run solves
+    whole_pool = {}
+    chosen_sols = {}
+    model_selection_df = []
+    for ploidy, run_it in run_ploidy.items():
+        if not run_it or scaling[ploidy] is None:
+            continue
+        logging.info(f"running {ploidy} with n={minClone}..{maxClone}")
+        whole_pool[ploidy] = {}
+        chosen_sols[ploidy] = {}
+        gammas = scaling[ploidy]["gammas"]
+        clonals = scaling[ploidy]["clonal"]
+        purities = scaling[ploidy]["purities"]
+        logging.info(f"{ploidy} clonal CN: {clonals}")
+        for sample, gamma in gammas.items():
+            logging.info(f"  {sample}\tgamma={gamma}")
 
-    # 1. Compute FCN for both ploidies
-    gammas_dip = pd.Series(gammas_noWGD).sort_index()
-    fcn_dip = compute_fractional_cn(
-        rdr,
-        baf,
-        gammas_dip,
-        rdr_se,
-        nbins,
-        alpha=args["fcn_ci_alpha"],
-        min_ci_margin=args["min_ci_margin"],
-    )
-    logging.info(f"Diploid clonal CN: {clonal_dip}")
-    logging.info("Diploid RD scaling factor gamma per sample:")
-    for sample, gamma in gammas_noWGD.items():
-        logging.info(f"{sample}\tgamma={gamma}")
-
-    fcn_tet = None
-    if clonal_tet is not None:
-        gammas_tet = pd.Series(gammas_WGD).sort_index()
-        fcn_tet = compute_fractional_cn(
-            rdr,
-            baf,
-            gammas_tet,
-            rdr_se,
-            nbins,
+        fcn_data = compute_fractional_cn(
+            input_data,
+            gammas,
             alpha=args["fcn_ci_alpha"],
             min_ci_margin=args["min_ci_margin"],
         )
-        logging.info(f"Tetraploid clonal CN: {clonal_tet}")
-        logging.info("Tetraploid RD scaling factor gamma per sample:")
-        for sample, gamma in gammas_WGD.items():
-            logging.info(f"{sample}\tgamma={gamma}")
+        store_solve_input(
+            os.path.join(out_dir, "sols", f"solver_input.{ploidy}.tsv"),
+            fcn_data,
+        )
 
-    # 2. Store solver input (both ploidies in one file)
-    store_solve_input(
-        os.path.join(out_dir, "sols", "solver_input.tsv"),
-        weights,
-        nbins,
-        fcn_diploid=fcn_dip,
-        fcn_tetraploid=fcn_tet,
+        for n in range(minClone, maxClone):
+            out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
+            out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
+            sol_dir = os.path.join(out_dir, f"sols/{ploidy}_n{n}")
+            if (
+                not args["force"]
+                and os.path.exists(out_bbc)
+                and os.path.exists(out_seg)
+                and os.path.isdir(sol_dir)
+            ):
+                logging.info(
+                    f"skip {ploidy} n={n}: results already exist (use --force to re-solve)"
+                )
+                pool_instances = load_pool_from_disk(
+                    sol_dir, fcn_data["cluster_ids"], fcn_data["sample_ids"]
+                )
+            else:
+                os.makedirs(sol_dir, exist_ok=True)
+                pool_instances = solve(
+                    n,
+                    clonals,
+                    args,
+                    ploidy,
+                    bbcs,
+                    fcn_data,
+                    purities,
+                    sol_dir,
+                    solve_mode=solve_mode,
+                    balanced_clusters=balanced_clusters,
+                )
+            whole_pool[ploidy][n] = pool_instances
+
+            selected_id, sel_df = model_select_elbow_from_regularization(pool_instances)
+            best_sol = pool_instances[selected_id]
+            chosen_sols[ploidy][n] = best_sol
+            logging.info(
+                f"{ploidy} n={n} selected={selected_id} "
+                f"fit_loss={best_sol['fit_loss']:.4f} imf={best_sol['imf_obj']:.4f}"
+            )
+            sel_df["ploidy"] = ploidy
+            sel_df["n_clones"] = n
+            model_selection_df.append(sel_df)
+
+            cn_segs = {}
+            for sol_id, sol in pool_instances.items():
+                bbc_out = out_bbc if sol_id == selected_id else None
+                seg_out = out_seg if sol_id == selected_id else None
+                cn_segs[sol_id] = segmentation(
+                    sol["cA"],
+                    sol["cB"],
+                    sol["u"],
+                    fcn_data,
+                    bbcs=bbcs,
+                    region_file=args["region_bed"],
+                    bbc_out_file=bbc_out,
+                    seg_out_file=seg_out,
+                )
+
+            run_plot_cn(
+                args,
+                out_bbc,
+                out_seg,
+                gamma_outfile,
+                os.path.join(plot_dir, f"{ploidy}_n{n}"),
+                ploidy,
+            )
+
+            plot_pool_cnp(
+                pool_instances,
+                args["region_bed"],
+                os.path.join(plot_dir, f"{ploidy}_n{n}_pool"),
+                sel_df=sel_df,
+                segs=cn_segs,
+                title=f"{ploidy} n={n}",
+                solve_mode=solve_mode,
+                sample_names=fcn_data["sample_ids"],
+            )
+
+    summary_df = (
+        pd.concat(model_selection_df, ignore_index=True)
+        if model_selection_df
+        else pd.DataFrame()
     )
+    summary_path = os.path.join(out_dir, "summary.tsv")
+    summary_df.to_csv(summary_path, sep="\t", index=False)
+    logging.info(f"wrote {summary_path} ({len(summary_df)} solutions)")
 
-    # 3. Run solves
-    diploid_sols = {}
-    if run_diploid:
-        for n in range(minClone, maxClone):
-            logging.info(f"running diploid with n={n}")
-            obj, imf_obj, pool = solve(
-                n,
-                clonal_dip,
-                args,
-                "diploid",
-                out_dir,
-                plot_dir,
-                bbcs,
-                fcn_dip,
-                weights,
-                cluster_ids,
-                sample_ids,
-                purities_noWGD,
-                nbins,
-                args["mode"],
-                args["verbosity"],
-                balanced_clusters=balanced_clusters,
-            )
-            diploid_sols[n] = (obj, imf_obj)
-            logging.info(f"diploid n={n} objective={obj} imf-objective={imf_obj}")
-            out_bbc = os.path.join(out_dir, f"results.diploid.n{n}.bbc.ucn.tsv")
-            out_seg = os.path.join(out_dir, f"results.diploid.n{n}.seg.ucn.tsv")
-            run_plot_cn(
-                args,
-                out_bbc,
-                out_seg,
-                gamma_outfile,
-                os.path.join(plot_dir, f"diploid_n{n}"),
-                "diploid",
-            )
-            for tag, (seg_df, imf_, reg_, pareto, selected, cnt_pairs) in pool.items():
-                row = {
-                    "ploidy": "diploid",
-                    "n_clones": n,
-                    "tag": tag,
-                    "IMF": round(imf_, 4),
-                    args["reg_term"]: round(reg_, 4),
-                    "is_pareto": pareto,
-                    "is_instance_selected": selected,
-                }
-                row.update(cnt_pairs)
-                all_summary_rows.append(row)
-            if pool:
-                plot_pool_cnp(
-                    pool_entries_for_plot(pool),
-                    args["region_bed"],
-                    os.path.join(plot_dir, f"diploid_n{n}_pool_pareto.pdf"),
-                    title=f"diploid n={n} pool solutions",
-                )
-
-    tetraploid_sols = {}
-    if run_tetraploid and fcn_tet is not None:
-        for n in range(minClone, maxClone):
-            logging.info(f"running tetraploid with n={n}")
-            obj, imf_obj, pool = solve(
-                n,
-                clonal_tet,
-                args,
-                "tetraploid",
-                out_dir,
-                plot_dir,
-                bbcs,
-                fcn_tet,
-                weights,
-                cluster_ids,
-                sample_ids,
-                purities_WGD,
-                nbins,
-                args["mode"],
-                args["verbosity"],
-                balanced_clusters=balanced_clusters,
-            )
-            tetraploid_sols[n] = (obj, imf_obj)
-            logging.info(f"tetraploid n={n} objective={obj} imf-objective={imf_obj}")
-            out_bbc = os.path.join(out_dir, f"results.tetraploid.n{n}.bbc.ucn.tsv")
-            out_seg = os.path.join(out_dir, f"results.tetraploid.n{n}.seg.ucn.tsv")
-            run_plot_cn(
-                args,
-                out_bbc,
-                out_seg,
-                gamma_outfile,
-                os.path.join(plot_dir, f"tetraploid_n{n}"),
-                "tetraploid",
-            )
-            for tag, (seg_df, imf_, reg_, pareto, selected, cnt_pairs) in pool.items():
-                row = {
-                    "ploidy": "tetraploid",
-                    "n_clones": n,
-                    "tag": tag,
-                    "IMF": round(imf_, 4),
-                    args["reg_term"]: round(reg_, 4),
-                    "is_pareto": pareto,
-                    "is_instance_selected": selected,
-                }
-                row.update(cnt_pairs)
-                all_summary_rows.append(row)
-            if pool:
-                plot_pool_cnp(
-                    pool_entries_for_plot(pool),
-                    args["region_bed"],
-                    os.path.join(plot_dir, f"tetraploid_n{n}_pool_pareto.pdf"),
-                    title=f"tetraploid n={n} pool solutions",
-                )
-    elif run_tetraploid:
-        logging.warning("run_tetraploid=True, but failed to infer clonal pair")
-
-    if len(diploid_sols) == 0 and len(tetraploid_sols) == 0:
-        raise ValueError("No solutions found for either noWGD or WGD case, exit..")
-
-    n_dip, n_tet, best_type, elbow_fig = model_selection(
-        diploid_sols,
-        tetraploid_sols,
+    best_ploidy, best_n, chosen_n, elbow_fig = model_selection_ploidy(
+        chosen_sols,
         out_dir,
-        gammas_noWGD,
-        gammas_WGD,
+        scaling,
         segs,
         method=args["model_select"],
     )
+    plot_pareto_pdf(summary_df, plot_dir, args["reg_term"], elbow_fig)
 
-    # Mark model-selected solutions in summary
-    best_n = {"diploid": n_dip, "tetraploid": n_tet}.get(best_type, 0)
-    for row in all_summary_rows:
-        row["is_model_selected"] = (
-            row["ploidy"] == best_type
-            and row["n_clones"] == best_n
-            and row.get("is_instance_selected", False)
-        )
-    if all_summary_rows:
-        summary_df = pd.DataFrame(all_summary_rows)
-        summary_path = os.path.join(out_dir, "summary.tsv")
-        summary_df.to_csv(summary_path, sep="\t", index=False)
-        logging.info(f"wrote {summary_path} ({len(summary_df)} solutions)")
-        plot_pareto_pdf(summary_df, plot_dir, args["reg_term"], elbow_fig)
-
-    if n_dip > 0:
+    # Write chosen per-ploidy
+    for ploidy, n in chosen_n.items():
         shutil.copy2(
-            os.path.join(out_dir, f"results.diploid.n{n_dip}.bbc.ucn.tsv"),
-            os.path.join(out_dir, "chosen.diploid.bbc.ucn"),
+            os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv"),
+            os.path.join(out_dir, f"chosen.{ploidy}.bbc.ucn"),
         )
         shutil.copy2(
-            os.path.join(out_dir, f"results.diploid.n{n_dip}.seg.ucn.tsv"),
-            os.path.join(out_dir, "chosen.diploid.seg.ucn"),
+            os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv"),
+            os.path.join(out_dir, f"chosen.{ploidy}.seg.ucn"),
         )
         logging.info(
-            f"chosen diploid n={n_dip}: {os.path.join(out_dir, 'chosen.diploid.bbc.ucn')}"
-        )
-        logging.info(
-            f"chosen diploid plots: {os.path.join(plot_dir, f'diploid_n{n_dip}')}"
+            f"chosen {ploidy} n={n}: {os.path.join(out_dir, f'chosen.{ploidy}.bbc.ucn')}"
         )
 
-    if n_tet > 0:
-        shutil.copy2(
-            os.path.join(out_dir, f"results.tetraploid.n{n_tet}.bbc.ucn.tsv"),
-            os.path.join(out_dir, "chosen.tetraploid.bbc.ucn"),
-        )
-        shutil.copy2(
-            os.path.join(out_dir, f"results.tetraploid.n{n_tet}.seg.ucn.tsv"),
-            os.path.join(out_dir, "chosen.tetraploid.seg.ucn"),
-        )
-        logging.info(
-            f"chosen tetraploid n={n_tet}: {os.path.join(out_dir, 'chosen.tetraploid.bbc.ucn')}"
-        )
-        logging.info(
-            f"chosen tetraploid plots: {os.path.join(plot_dir, f'tetraploid_n{n_tet}')}"
-        )
-
-    if best_type is not None:
-        shutil.copy2(
-            os.path.join(out_dir, f"chosen.{best_type}.bbc.ucn"),
-            os.path.join(out_dir, "best.bbc.ucn"),
-        )
-        shutil.copy2(
-            os.path.join(out_dir, f"chosen.{best_type}.seg.ucn"),
-            os.path.join(out_dir, "best.seg.ucn"),
-        )
-        logging.info(
-            f"model-selected result ({best_type}): {os.path.join(out_dir, 'best.bbc.ucn')}"
-        )
-        # best_n was computed above for the summary marking block
-        logging.info(f"best plots: {os.path.join(plot_dir, f'{best_type}_n{best_n}')}")
+    # Write best (across ploidies)
+    shutil.copy2(
+        os.path.join(out_dir, f"chosen.{best_ploidy}.bbc.ucn"),
+        os.path.join(out_dir, "best.bbc.ucn"),
+    )
+    shutil.copy2(
+        os.path.join(out_dir, f"chosen.{best_ploidy}.seg.ucn"),
+        os.path.join(out_dir, "best.seg.ucn"),
+    )
+    logging.info(f"model-selected: {best_ploidy} n={best_n}")
 
 
 def solve(
@@ -355,17 +243,11 @@ def solve(
     clonal: dict,
     args: dict,
     ploidy: str,
-    out_dir: str,
-    plot_dir: str,
     bbcs: pd.DataFrame,
-    fcn_data: dict,
-    weights: pd.Series,
-    cluster_ids: list,
-    sample_ids: list,
+    input_data: dict,
     purities: dict,
-    nbins: pd.DataFrame,
+    sol_dir: str,
     solve_mode="ilp",
-    verbosity=0,
     balanced_clusters=None,
 ):
     """Solve for allele-specific integer copy numbers and clone proportions.
@@ -376,38 +258,7 @@ def solve(
 
     Returns (objective, IMF-objective, pool_dict) of the selected solution.
     """
-    f_a = fcn_data["fa"]
-    f_b = fcn_data["fb"]
-
-    sol_dir = os.path.join(out_dir, f"sols/{ploidy}_n{n}")
-    os.makedirs(sol_dir, exist_ok=True)
-
-    out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
-    out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
-
-    if not args["force"] and os.path.exists(out_bbc) and os.path.exists(out_seg):
-        logging.info(
-            f"skip {ploidy} n={n}: results already exist (use --force to re-solve)"
-        )
-        pool_instances = load_pool_from_disk(sol_dir, cluster_ids, sample_ids)
-        if pool_instances:
-            return build_pool_output(
-                pool_instances,
-                f_a,
-                f_b,
-                fcn_data,
-                weights,
-                nbins,
-                args,
-                cluster_ids,
-                sample_ids,
-                bbcs,
-                out_bbc,
-                out_seg,
-                sol_dir,
-            )
-        return 0.0, 0.0, {}
-
+    logging.info(f"running {ploidy} with n={n}")
     cn_max = {"diploid": args["diploidcmax"], "tetraploid": args["tetraploidcmax"]}[
         ploidy
     ]
@@ -419,14 +270,10 @@ def solve(
         logging.info(f"purities: {purities}")
 
     reg_term = args["reg_term"]
-    if reg_term == "DMRCA_SUM" and n >= 3:
-        logging.info("DMRCA_SUM: allele-LOH constraints active")
     reg_steps = args["reg_steps"]
     solver_type = args["solver"]
     timelimit = args["timelimit"]
     ampdel = not args["no_ampdel"]
-    pool_size = args["pool_size"]
-    pool_gap = args["pool_gap"]
 
     cd_instances = None
     pool_instances = {}
@@ -443,16 +290,20 @@ def solve(
     )
 
     # Build SolverParams shared by both CD and ILP
+    weights = input_data["weights"]
+    cluster_ids = input_data["cluster_ids"]
+    sample_ids = input_data["sample_ids"]
+    nbins = input_data["nbins"]
+
     fixed_rows = set()
-    free_rows_list = list(range(len(cluster_ids)))
     for _m, cid in enumerate(cluster_ids):
         if cid in clonal:
             fixed_rows.add(_m)
     free_rows_list = [_m for _m in range(len(cluster_ids)) if _m not in fixed_rows]
 
     inputs = SolverInputs(
-        f_a=f_a,
-        f_b=f_b,
+        f_a=input_data["fa"],
+        f_b=input_data["fb"],
         w=weights,
         cluster_ids=cluster_ids,
         sample_ids=sample_ids,
@@ -461,10 +312,12 @@ def solve(
         fixed_rows=fixed_rows,
         purities=purities,
         balanced_clusters=balanced_clusters,
-        fa_lo=fcn_data["fa_lo"],
-        fa_hi=fcn_data["fa_hi"],
-        fb_lo=fcn_data["fb_lo"],
-        fb_hi=fcn_data["fb_hi"],
+        fa_lo=input_data["fa_lo"],
+        fa_hi=input_data["fa_hi"],
+        fb_lo=input_data["fb_lo"],
+        fb_hi=input_data["fb_hi"],
+        nbins=nbins,
+        chr_boundaries=input_data.get("chr_boundaries"),
     )
     params = SolverParams(
         n=n,
@@ -473,16 +326,31 @@ def solve(
         ampdel=ampdel,
         minprop=args["min_prop"],
         max_ncns_seg=args["num_cnstates"],
-        mrca=args["mrca"],
-        max_degree=args["max_degree"],
-        tol=args.get("tol", 0.001),
+        tol=args["tol"],
         zero_cn_thres=args["zero_cn_thres"],
         reg_name=reg_term if reg_term is not None else "RAW",
         obj_type=args["obj_type"],
+        eps_fit=args["eps_fit"],
     )
 
-    if solve_mode in ("cd", "both"):
-        cd_instances, tree_info = run_coordinate_descent(
+    if solve_mode == "cnt_cd":
+        pool_instances = run_coordinate_descent_cnt(
+            params=params,
+            inputs=inputs,
+            solver_type=solver_type,
+            max_iters=args["cd_niters"],
+            max_convergence_iters=args["cd_convergence_iters"],
+            n_seed=args["cd_nseeds"],
+            j=args["cd_njobs"],
+            cd_tol=args["cd_tol"],
+            random_seed=args["cd_seed"],
+            timelimit=timelimit,
+            tree_file=args["tree_file"],
+            u_dir_alpha=args["u_dir_alpha"],
+        )
+
+    elif solve_mode in ("cd", "both"):
+        cd_instances = run_coordinate_descent(
             params=params,
             inputs=inputs,
             reg_steps=reg_steps,
@@ -491,9 +359,6 @@ def solve(
             u_dir_alpha=args["u_dir_alpha"],
             solver_threads=args["solver_threads"],
             cd_tol=args["cd_tol"],
-            sol_dir=sol_dir,
-            fcn_data=fcn_data,
-            nbins=nbins,
             **cd_run_kwargs,
         )
         pool_instances = cd_instances
@@ -501,49 +366,34 @@ def solve(
     if solve_mode in ("ilp", "both"):
         warm_cA = warm_cB = None
         if solve_mode == "both":
-            best_cd = min(
-                (sol for sols in cd_instances.values() for sol in sols),
-                key=lambda s: s[0],
-            )
+            best_cd = min(cd_instances.values(), key=lambda s: s["fit_loss"])
             logging.info(
-                f"use CD local opt with obj={best_cd[0]:.4f} to initialize ILP model"
+                f"use CD local opt with obj={best_cd['fit_loss']:.4f} to initialize ILP model"
             )
-            warm_cA, warm_cB = best_cd[1], best_cd[2]
+            warm_cA, warm_cB = best_cd["cA"], best_cd["cB"]
 
-        pool_instances, _ = run_full_ilp(
+        pool_instances = run_full_ilp(
             params=params,
             inputs=inputs,
             reg_steps=reg_steps,
             reg_bound=args["reg_bound"],
             solver_type=solver_type,
             timelimit=timelimit,
-            pool_size=pool_size,
-            pool_gap=pool_gap,
             warm_start_cA=warm_cA,
             warm_start_cB=warm_cB,
-            sol_dir=sol_dir,
-            fcn_data=fcn_data,
-            nbins=nbins,
         )
 
-    return build_pool_output(
-        pool_instances,
-        f_a,
-        f_b,
-        fcn_data,
-        weights,
-        nbins,
-        args,
-        cluster_ids,
-        sample_ids,
-        bbcs,
-        out_bbc,
-        out_seg,
-        sol_dir,
-    )
+    store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode)
+    return pool_instances
 
 
 if __name__ == "__main__":
-    args = parse_arguments_compute_cn()
+    parser = argparse.ArgumentParser(
+        prog="HATCHet compute-cn",
+        description="solve copy-numbers",
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    add_arguments_compute_cn(parser)
+    args = parser.parse_args()
     setup_logging(args)
     run(args)

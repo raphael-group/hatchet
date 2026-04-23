@@ -209,17 +209,6 @@ def add_domain_constraints(
                 for _n in params.tumor_clones:
                     model.constraints.add(model.cA[_m, _n] == model.cB[_m, _n])
 
-    # MRCA LOH
-    if params.mrca and params.n >= 3:
-        for _m in inputs.free_rows:
-            for _n in range(2, params.n):
-                model.constraints.add(
-                    model.cA[_m, _n] <= model.cA[_m, 1] * params.cn_max
-                )
-                model.constraints.add(
-                    model.cB[_m, _n] <= model.cB[_m, 1] * params.cn_max
-                )
-
     # Symmetry breaking
     for i in range(1, params.n - 1):
         sum1 = sum(
