@@ -67,7 +67,7 @@ def build_data(bbcs, segs, segment=False):
         }
 
     # Segment mode
-    bbcs = bbcs.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
+    bbcs = bbcs.sort_values(["SAMPLE", "#CHR", "START", "END"]).reset_index(drop=True)
     samples_sorted = sorted(bbcs["SAMPLE"].unique())
     first_sample = samples_sorted[0]
 
@@ -100,7 +100,7 @@ def build_data(bbcs, segs, segment=False):
         cid, chrom = row["CLUSTER"], row["CHR"]
         idx = cluster_counters.get(cid, 0)
         cluster_counters[cid] = idx + 1
-        sid_map[row["_seg_int"]] = f"{cid}:chr{chrom}:{idx}"
+        sid_map[row["_seg_int"]] = f"{cid}:{chrom}:{idx}"
     agg["_seg_id"] = agg["_seg_int"].map(sid_map)
 
     seg_cols = ["#ID", "SAMPLE", "RD", "BAF", "RD-se", "BAF-se"]
@@ -359,8 +359,8 @@ def store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode):
                 with open(f"{prefix}.nwk", "w") as f:
                     f.write(tree.to_newick() + "\n")
                 d = tree.to_dict()
-                d["fit_loss"] = sol.get("fit_loss")
-                d["tree_loss"] = sol.get("tree_loss")
+                d["imf_obj"] = sol.get("imf_obj")
+                d["tree_obj"] = sol.get("tree_obj")
                 d["u"] = sol.get("u")
                 with open(f"{prefix}.json", "w") as f:
                     _json.dump(d, f, indent=2)
@@ -447,7 +447,7 @@ def segmentation(
 
     if seg_to_cluster is not None:
         # Segment mode: assign each bin its segment ID, merge CN by segment.
-        df = df.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
+        df = df.sort_values(["SAMPLE", "#CHR", "START", "END"]).reset_index(drop=True)
         samples_sorted = sorted(df["SAMPLE"].unique())
         first_mask = df["SAMPLE"] == samples_sorted[0]
         first_df = df.loc[first_mask].reset_index(drop=True)
@@ -623,7 +623,7 @@ def annotate_seg_pi_violations(seg_df, cA, cB, u, fcn_data, cluster_ids, sample_
 
 
 def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
-    """Read pool solution TSVs from sol_dir into {sol_id: {"fit_loss": ..., "cA": ..., ...}}."""
+    """Read pool solution TSVs from sol_dir into {sol_id: {"imf_obj": ..., "cA": ..., ...}}."""
     pool = {}
     for path in sorted(glob.glob(os.path.join(sol_dir, "*.tsv"))):
         basename = os.path.basename(path)
@@ -668,7 +668,7 @@ def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
             [float(sol[sol["SAMPLE"] == sid].iloc[0][uc]) for sid in sample_ids]
             for uc in u_cols
         ]
-        pool[sol_id] = {"fit_loss": 0.0, "cA": cA, "cB": cB, "u": u}
+        pool[sol_id] = {"imf_obj": 0.0, "reg_obj": 0.0, "cA": cA, "cB": cB, "u": u}
 
     if pool:
         logging.info(f"loaded {len(pool)} pool solutions from {sol_dir}")

@@ -78,7 +78,7 @@ def _draw_sample_tree(
     ax.text(
         root_x + 0.6,
         normal_y,
-        f"normal ({normal_prop:.0%})",
+        f"normal ({normal_prop:.2%})",
         ha="left",
         va="center",
         fontsize=fontsize,
@@ -133,7 +133,7 @@ def _draw_sample_tree(
             ax.text(
                 vx + 0.15,
                 vy,
-                f"{_display_name(v, tree)} ({prop:.0%})",
+                f"{_display_name(v, tree)} ({prop:.2%})",
                 ha="left",
                 va="center",
                 fontsize=fontsize,
@@ -209,7 +209,6 @@ def render_cnt_tree(
     with PdfPages(out_path) as pdf:
         # Page 1
         fig = plt.figure(figsize=(26, max(8, num_rows * 0.9)))
-        fig.suptitle("Clone Tree + Copy Number Profiles", fontsize=fontsize + 4, y=0.98)
         gs = fig.add_gridspec(
             2,
             2,
@@ -217,7 +216,6 @@ def render_cnt_tree(
             height_ratios=[5, 1],
             wspace=0.08,
             hspace=0.3,
-            top=0.93,
         )
         ax_tree = fig.add_subplot(gs[0, 0])
         ax_cn = fig.add_subplot(gs[0, 1])
@@ -237,7 +235,6 @@ def render_cnt_tree(
             [_display_name(v, tree) for v in cnp_nodes], fontsize=fontsize
         )
         ax_cn.tick_params(axis="x", labelsize=fontsize - 2)
-        ax_cn.set_title("")
 
         for child in ax_cn.get_children():
             if isinstance(child, LineCollection):

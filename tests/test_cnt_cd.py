@@ -6,11 +6,11 @@ import pytest
 
 from hatchet.compute_cn.solve.cnt_tree import enumerate_binary_trees
 from hatchet.compute_cn.solve.cnt_model import (
-    build_cnt_c_model,
-    solve_cnt_c_lexi,
-    extract_cnt_c,
-    build_cnt_u_model,
-    extract_u,
+    build_c_step_model,
+    solve_c_step,
+    extract_c_step,
+    build_u_step_model,
+    extract_u_step,
 )
 from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 
@@ -130,11 +130,11 @@ class TestCStepModel:
         u = np.array([[1.0 / n]] * n * P).reshape(n, P)
 
         seg_idx = np.arange(S)
-        model, aux = build_cnt_c_model(tree, params, inputs, u, seg_idx)
+        model, aux = build_c_step_model(tree, params, inputs, u, seg_idx)
         from hatchet.compute_cn.solve.inference import create_solver
 
         solver = create_solver(SOLVER, threads=1)
-        result = solve_cnt_c_lexi(model, aux, solver, params.eps_fit)
+        result = solve_c_step(model, aux, solver, params.eps_fit)
 
         assert result is not None
         assert result["T_star"] == 0.0, f"expected tree cost 0, got {result['T_star']}"
@@ -156,18 +156,18 @@ class TestCStepModel:
         u = np.array([[0.5], [0.5]])
 
         seg_idx = np.arange(S)
-        model, aux = build_cnt_c_model(tree, params, inputs, u, seg_idx)
+        model, aux = build_c_step_model(tree, params, inputs, u, seg_idx)
         from hatchet.compute_cn.solve.inference import create_solver
 
         solver = create_solver(SOLVER, threads=1)
-        result = solve_cnt_c_lexi(model, aux, solver, params.eps_fit)
+        result = solve_c_step(model, aux, solver, params.eps_fit)
 
         assert result is not None
         assert result["F_star"] < 0.01, (
             f"fit should be near-zero, got {result['F_star']}"
         )
 
-        ab = extract_cnt_c(model, tree, aux)
+        ab = extract_c_step(model, tree, aux)
         # Check tumor leaf (v2) CN
         assert ab["a"][0, 2] == 2  # seg0, hap A
         assert ab["b"][0, 2] == 1  # seg0, hap B
@@ -191,14 +191,14 @@ class TestCStepModel:
         u = np.array([[0.5], [0.25], [0.25]])
 
         seg_idx = np.arange(S)
-        model, aux = build_cnt_c_model(tree, params, inputs, u, seg_idx)
+        model, aux = build_c_step_model(tree, params, inputs, u, seg_idx)
         from hatchet.compute_cn.solve.inference import create_solver
 
         solver = create_solver(SOLVER, threads=1)
-        result = solve_cnt_c_lexi(model, aux, solver, params.eps_fit)
+        result = solve_c_step(model, aux, solver, params.eps_fit)
 
         assert result is not None
-        ab = extract_cnt_c(model, tree, aux)
+        ab = extract_c_step(model, tree, aux)
         # Check zero-inheritance: for each edge, if parent z=0 then child z=0
         for v in tree.tumor_leaves + tree.internal_nodes:
             if v == tree.root:
@@ -233,12 +233,12 @@ class TestUStepModel:
         inputs = _make_inputs(fa, fb)
         params = _make_params(n)
 
-        model, _ = build_cnt_u_model(params, inputs, a_leaves, b_leaves)
+        model, _ = build_u_step_model(params, inputs, a_leaves, b_leaves)
         from hatchet.compute_cn.solve.inference import create_solver
 
         solver = create_solver(SOLVER, threads=1)
         solver.solve(model, tee=False)
-        u = extract_u(model, params, inputs)
+        u = extract_u_step(model, params, inputs)
 
         for p in range(P):
             assert abs(u[:, p].sum() - 1.0) < 1e-6, f"U col {p} sums to {u[:, p].sum()}"
@@ -279,8 +279,8 @@ class TestChromDecomposition:
 
         total_tree_cost = 0
         for cg in chrom_groups:
-            model, aux = build_cnt_c_model(tree, params, inputs, u, cg)
-            result = solve_cnt_c_lexi(model, aux, solver, params.eps_fit)
+            model, aux = build_c_step_model(tree, params, inputs, u, cg)
+            result = solve_c_step(model, aux, solver, params.eps_fit)
             assert result is not None
             total_tree_cost += result["T_star"]
 
@@ -296,7 +296,7 @@ class TestRecovery:
     @needs_solver
     def test_recovery_n3(self):
         """Generate synthetic noiseless FCN from a known n=3 tree, run cnt_cd, check recovery."""
-        from hatchet.compute_cn.solve.inference import run_coordinate_descent_cnt
+        from hatchet.compute_cn.solve.inference import run_coordinate_descent
 
         n = 3
 
@@ -335,9 +335,10 @@ class TestRecovery:
         inputs = _make_inputs(fa_obs, fb_obs)
         params = _make_params(n, cn_max=4, eps_fit=0.005)
 
-        pool = run_coordinate_descent_cnt(
+        pool = run_coordinate_descent(
             params=params,
             inputs=inputs,
+            mode="cnt_cd",
             solver_type=SOLVER,
             max_iters=10,
             max_convergence_iters=2,
@@ -348,9 +349,9 @@ class TestRecovery:
             timelimit=60,
         )
 
-        best_id = min(pool, key=lambda k: pool[k]["fit_loss"])
+        best_id = min(pool, key=lambda k: pool[k]["imf_obj"])
         best = pool[best_id]
-        assert best["fit_loss"] < 0.05, f"fit loss too high: {best['fit_loss']}"
+        assert best["imf_obj"] < 0.05, f"imf_obj too high: {best['imf_obj']}"
         cA_rec = np.array(best["cA"])
         cB_rec = np.array(best["cB"])
         u_rec = np.array(best["u"])

@@ -32,7 +32,6 @@ from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 from hatchet.compute_cn.solve.inference import (
     run_full_ilp,
     run_coordinate_descent,
-    run_coordinate_descent_cnt,
 )
 from hatchet.plot.plot_pool import plot_pool_cnp
 
@@ -153,7 +152,7 @@ def run(args=None):
             chosen_sols[ploidy][n] = best_sol
             logging.info(
                 f"{ploidy} n={n} selected={selected_id} "
-                f"fit_loss={best_sol['fit_loss']:.4f} imf={best_sol['imf_obj']:.4f}"
+                f"imf={best_sol['imf_obj']:.4f} reg={best_sol['reg_obj']:.1f}"
             )
             sel_df["ploidy"] = ploidy
             sel_df["n_clones"] = n
@@ -334,9 +333,10 @@ def solve(
     )
 
     if solve_mode == "cnt_cd":
-        pool_instances = run_coordinate_descent_cnt(
+        pool_instances = run_coordinate_descent(
             params=params,
             inputs=inputs,
+            mode="cnt_cd",
             solver_type=solver_type,
             max_iters=args["cd_niters"],
             max_convergence_iters=args["cd_convergence_iters"],
@@ -347,6 +347,7 @@ def solve(
             timelimit=timelimit,
             tree_file=args["tree_file"],
             u_dir_alpha=args["u_dir_alpha"],
+            solver_threads=args["solver_threads"],
         )
 
     elif solve_mode in ("cd", "both"):
@@ -366,9 +367,9 @@ def solve(
     if solve_mode in ("ilp", "both"):
         warm_cA = warm_cB = None
         if solve_mode == "both":
-            best_cd = min(cd_instances.values(), key=lambda s: s["fit_loss"])
+            best_cd = min(cd_instances.values(), key=lambda s: s["imf_obj"])
             logging.info(
-                f"use CD local opt with obj={best_cd['fit_loss']:.4f} to initialize ILP model"
+                f"use CD local opt with obj={best_cd['imf_obj']:.4f} to initialize ILP model"
             )
             warm_cA, warm_cB = best_cd["cA"], best_cd["cB"]
 

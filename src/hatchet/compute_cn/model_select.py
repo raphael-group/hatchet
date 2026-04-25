@@ -272,7 +272,7 @@ def model_select_elbow_from_regularization(pool_instances):
     Each solution in pool_instances must have imf_obj and reg_obj.
 
     Args:
-        pool_instances: {sol_id: {"fit_loss", "imf_obj", "reg_obj", "cA", "cB", "u", ...}}.
+        pool_instances: {sol_id: {"imf_obj", "reg_obj", "cA", "cB", "u", ...}}.
 
     Returns (best_sol_id, df) where df has Pareto/selected annotations.
     """

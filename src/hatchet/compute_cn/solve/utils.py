@@ -25,7 +25,7 @@ def dedup_pool_instances(pool_instances, u_atol=1e-3):
     agree within ``u_atol``.
 
     Args:
-        pool_instances: dict of {sol_id: {"fit_loss": ..., "cA": ..., "cB": ..., "u": ...}}.
+        pool_instances: dict of {sol_id: {"imf_obj": ..., "cA": ..., "cB": ..., "u": ...}}.
         u_atol: Absolute tolerance for comparing clone proportions.
 
     Returns:

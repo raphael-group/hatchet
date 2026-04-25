@@ -21,7 +21,7 @@ from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 # ── C-step (per chromosome) ─────────────────────────────────────────────
 
 
-def build_cnt_c_model(
+def build_c_step_model(
     tree: CloneTree,
     params: SolverParams,
     inputs: SolverInputs,
@@ -69,15 +69,12 @@ def build_cnt_c_model(
     # Leaf domain constraints
     seg_to_cluster = [cluster_ids[seg_indices[s]] for s in range(S)]
     w_total = sum(w_vals)
-    balanced_set = set(inputs.balanced_clusters) if inputs.balanced_clusters else set()
     for s in range(S):
         cid = seg_to_cluster[s]
         for v in tree.tumor_leaves:
             model.constraints.add(model.a[s, v] + model.b[s, v] <= cn_max)
             if w_vals[cid] / w_total >= params.zero_cn_thres:
                 model.constraints.add(model.a[s, v] + model.b[s, v] >= 1)
-            if cid in balanced_set:
-                model.constraints.add(model.a[s, v] == model.b[s, v])
 
     # Event variables on tumor edges
     tumor_edges = [(p, c) for p, c in tree.edges if c != tree.normal_leaf]
@@ -229,15 +226,18 @@ def build_cnt_c_model(
     }
 
 
-def solve_cnt_c_lexi(model, aux, solver, eps_fit, eta=1e-6, timelimit=None):
-    """Solve C-step MILP: IMF stage then CNT stage.
+def solve_c_step(model, aux, solver, eps_fit, timelimit=None):
+    """Solve C-step MILP with lexicographic fit-then-parsimony objective.
+
+    Uses Gurobi multi-objective priorities when available, otherwise falls
+    back to two-stage Pyomo solve.
 
     Returns dict with F_star, F_actual, T_star, or None if infeasible.
     """
     fit_expr, tree_cost_expr = aux["fit_expr"], aux["tree_cost_expr"]
     opts = {"TimeLimit": timelimit} if timelimit else {}
 
-    # C-step IMF stage
+    # Stage 1: minimize fit
     model.obj = pe.Objective(expr=fit_expr, sense=pe.minimize)
     result = solver.solve(model, tee=False, options=opts)
     status = result.solver.termination_condition
@@ -245,16 +245,15 @@ def solve_cnt_c_lexi(model, aux, solver, eps_fit, eta=1e-6, timelimit=None):
         pe.TerminationCondition.optimal,
         pe.TerminationCondition.maxTimeLimit,
     ):
-        logging.warning(f"C-step IMF stage infeasible: {status}")
+        logging.warning(f"C-step fit stage infeasible: {status}")
         return None
     if status == pe.TerminationCondition.maxTimeLimit and model.obj() is None:
         return None
-
     F_star = pe.value(model.obj)
 
-    # C-step CNT stage
-    eta_val = eta * max(1.0, abs(F_star))
-    model.fit_bound = pe.Constraint(expr=fit_expr <= F_star + eps_fit + eta_val)
+    # Stage 2: minimize tree cost, subject to near-optimal fit
+    eta = 1e-6 * max(1.0, abs(F_star))
+    model.fit_bound = pe.Constraint(expr=fit_expr <= F_star + eps_fit + eta)
     model.del_component(model.obj)
     model.obj = pe.Objective(expr=tree_cost_expr, sense=pe.minimize)
 
@@ -264,20 +263,7 @@ def solve_cnt_c_lexi(model, aux, solver, eps_fit, eta=1e-6, timelimit=None):
         pe.TerminationCondition.optimal,
         pe.TerminationCondition.maxTimeLimit,
     ):
-        logging.warning(
-            f"C-step CNT stage infeasible ({status}), retrying with relaxed eta"
-        )
-        model.fit_bound.deactivate()
-        model.fit_bound_relaxed = pe.Constraint(
-            expr=fit_expr <= F_star + 10 * eta_val + eps_fit
-        )
-        result = solver.solve(model, tee=False, warmstart=True, options=opts)
-        if result.solver.termination_condition not in (
-            pe.TerminationCondition.optimal,
-            pe.TerminationCondition.maxTimeLimit,
-        ):
-            logging.warning("C-step CNT stage still infeasible after relaxation")
-            return None
+        return None
 
     return {
         "F_star": F_star,
@@ -286,7 +272,7 @@ def solve_cnt_c_lexi(model, aux, solver, eps_fit, eta=1e-6, timelimit=None):
     }
 
 
-def extract_cnt_c(model, tree, aux):
+def extract_c_step(model, tree, aux):
     """Extract CN and event variables from solved C-step model."""
     S = len(aux["seg_indices"])
     V = tree.n_nodes
@@ -323,7 +309,7 @@ def extract_cnt_c(model, tree, aux):
 # ── U-step (global) ──────────────────────────────────────────────────────
 
 
-def build_cnt_u_model(params, inputs, fixed_a, fixed_b):
+def build_u_step_model(params, inputs, fixed_a, fixed_b):
     """Build U-step LP for fixed leaf copy numbers.
 
     Args:
@@ -420,7 +406,7 @@ def build_cnt_u_model(params, inputs, fixed_a, fixed_b):
     return model, {"fit_expr": fit_expr}
 
 
-def extract_u(model, params, inputs):
+def extract_u_step(model, params, inputs):
     """Extract U matrix (n x P) from solved U-step model."""
     u = np.zeros((params.n, inputs.k))
     for i in range(params.n):

@@ -46,7 +46,7 @@ def plot_pool_cnp(
     For cd/ilp: plots a single multi-row CNV profile panel of Pareto solutions.
 
     Args:
-        pool_instances: {sol_id: {"fit_loss", "cA", "cB", "u", "imf_obj", ...}}.
+        pool_instances: {sol_id: {"imf_obj", "reg_obj", "cA", "cB", "u", ...}}.
         region_bed: Path to the whitelist region BED file.
         out_dir: Output directory for pool plots.
         sel_df: Selection DataFrame from model_select_elbow_from_regularization.
