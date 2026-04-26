@@ -42,9 +42,28 @@ class CloneTree:
         return [(p, c) for p, c in self.edges if c != self.normal_leaf]
 
     def label(
-        self, a_all: np.ndarray, b_all: np.ndarray, events: dict[str, np.ndarray]
+        self,
+        a_all: np.ndarray,
+        b_all: np.ndarray,
+        events: dict[str, np.ndarray],
+        u: np.ndarray,
     ) -> LabeledCloneTree:
-        """Attach inferred CN and event values to produce a LabeledCloneTree."""
+        """Attach inferred CN, event values, and node proportions."""
+        u_arr = np.asarray(u)
+        props = {}
+        for i, v in enumerate(self.leaves):
+            props[v] = u_arr[i]
+
+        def _prop(v):
+            if v in props:
+                return props[v]
+            l, r = self.children[v]
+            props[v] = _prop(l) + _prop(r)
+            return props[v]
+
+        for v in self.internal_nodes:
+            _prop(v)
+
         return LabeledCloneTree(
             n=self.n,
             n_nodes=self.n_nodes,
@@ -59,6 +78,7 @@ class CloneTree:
             a_all=a_all,
             b_all=b_all,
             events=events,
+            node_props=props,
         )
 
 
@@ -77,6 +97,7 @@ class LabeledCloneTree(CloneTree):
     a_all: np.ndarray = field(default=None, repr=False)
     b_all: np.ndarray = field(default=None, repr=False)
     events: dict[str, np.ndarray] = field(default=None, repr=False)
+    node_props: dict = field(default=None, repr=False)
 
     def _edge_cost(self, ei):
         """Total interval starts on tumor edge ei."""

@@ -231,6 +231,10 @@ def render_cnt_tree(
             parts.append(f"{int(tree.a_all[s, v])}|{int(tree.b_all[s, v])}")
         new_cnps.append(";".join(parts))
     bin_info["CNP"] = new_cnps
+    prop_parts = [str(np.mean(tree.node_props[tree.normal_leaf]))]
+    for v in cnp_rev:
+        prop_parts.append(str(np.mean(tree.node_props[v])))
+    bin_info["PROPS"] = ";".join(prop_parts)
 
     with PdfPages(out_path) as pdf:
         # Page 1

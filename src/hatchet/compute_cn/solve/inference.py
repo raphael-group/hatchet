@@ -545,7 +545,9 @@ def run_coordinate_descent(
                 sol_dict.update(
                     imf_obj_stage1=best["imf_obj_stage1"],
                     tree_obj=best["tree_obj"],
-                    tree=tree.label(best["a_all"], best["b_all"], best["events"]),
+                    tree=tree.label(
+                        best["a_all"], best["b_all"], best["events"], best["u"]
+                    ),
                 )
 
             logging.info(
