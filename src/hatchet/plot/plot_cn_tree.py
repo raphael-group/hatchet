@@ -206,6 +206,32 @@ def render_cnt_tree(
     x_weighted = _compute_x_weighted(tumor_subtree_root, tumor_children, edge_cost, 0)
     max_leaf_x = max((x_weighted[v] for v in tree.tumor_leaves), default=1) or 1
 
+    # Rebuild CNP to include all tree nodes (leaves + internal) in reverse
+    # inorder, since plot_cnv_profile renders entries bottom-to-top.
+    cnp_rev = list(reversed(cnp_nodes))
+    leaf_cn_to_seg = {}
+    for s in range(tree.a_all.shape[0]):
+        key = tuple(
+            (int(tree.a_all[s, v]), int(tree.b_all[s, v])) for v in tree.tumor_leaves
+        )
+        leaf_cn_to_seg[key] = s
+    clone_cols = [f"cn_clone{i}" for i in range(1, len(tree.tumor_leaves) + 1)]
+    bin_info = bin_info.copy()
+    new_cnps = []
+    for _, row in bin_info.iterrows():
+        key = tuple(
+            (int(v.split("|")[0]), int(v.split("|")[1]))
+            for v in (row[c] for c in clone_cols)
+        )
+        s = leaf_cn_to_seg[key]
+        parts = [
+            f"{int(tree.a_all[s, tree.normal_leaf])}|{int(tree.b_all[s, tree.normal_leaf])}"
+        ]
+        for v in cnp_rev:
+            parts.append(f"{int(tree.a_all[s, v])}|{int(tree.b_all[s, v])}")
+        new_cnps.append(";".join(parts))
+    bin_info["CNP"] = new_cnps
+
     with PdfPages(out_path) as pdf:
         # Page 1
         fig = plt.figure(figsize=(26, max(8, num_rows * 0.9)))
