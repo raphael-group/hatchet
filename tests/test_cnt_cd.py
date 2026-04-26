@@ -35,7 +35,7 @@ SOLVER = _check_solver()
 needs_solver = pytest.mark.skipif(SOLVER is None, reason="no MILP solver available")
 
 
-def _make_inputs(fa, fb, w=None, balanced=None):
+def _make_inputs(fa, fb, w=None):
     """Build SolverInputs from numpy arrays (S x P)."""
     S, P = fa.shape
     seg_ids = list(range(S))
@@ -58,7 +58,6 @@ def _make_inputs(fa, fb, w=None, balanced=None):
         free_rows=list(range(S)),
         fixed_rows=set(),
         purities=None,
-        balanced_clusters=balanced or [],
         fa_lo=fa_df - margin,
         fa_hi=fa_df + margin,
         fb_lo=fb_df - margin,

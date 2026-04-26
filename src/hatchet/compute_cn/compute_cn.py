@@ -65,7 +65,7 @@ def run(args=None):
         segs = segs[~segs["is_filtered"]].reset_index(drop=True)
         bbcs = bbcs[~bbcs["CLUSTER"].isin(filtered_ids)].reset_index(drop=True)
 
-    scaling, balanced_clusters = get_scaling_factor(
+    scaling, _balanced_clusters = get_scaling_factor(
         samples,
         segs,
         bbcs,
@@ -143,7 +143,6 @@ def run(args=None):
                     purities,
                     sol_dir,
                     solve_mode=solve_mode,
-                    balanced_clusters=balanced_clusters,
                 )
             whole_pool[ploidy][n] = pool_instances
 
@@ -247,7 +246,6 @@ def solve(
     purities: dict,
     sol_dir: str,
     solve_mode="ilp",
-    balanced_clusters=None,
 ):
     """Solve for allele-specific integer copy numbers and clone proportions.
 
@@ -277,6 +275,11 @@ def solve(
     cd_instances = None
     pool_instances = {}
     u0_tsv_path = os.path.join(sol_dir, "u0_seeds.tsv") if sol_dir is not None else None
+    obj_tsv_path = (
+        os.path.join(sol_dir, "objectives_per_restart.tsv")
+        if sol_dir is not None
+        else None
+    )
     cd_run_kwargs = dict(
         solver_type=solver_type,
         max_iters=args["cd_niters"],
@@ -286,6 +289,7 @@ def solve(
         random_seed=args["cd_seed"],
         timelimit=timelimit,
         u0_tsv_path=u0_tsv_path,
+        obj_tsv_path=obj_tsv_path,
     )
 
     # Build SolverParams shared by both CD and ILP
@@ -310,7 +314,6 @@ def solve(
         free_rows=free_rows_list,
         fixed_rows=fixed_rows,
         purities=purities,
-        balanced_clusters=balanced_clusters,
         fa_lo=input_data["fa_lo"],
         fa_hi=input_data["fa_hi"],
         fb_lo=input_data["fb_lo"],
@@ -348,6 +351,8 @@ def solve(
             tree_file=args["tree_file"],
             u_dir_alpha=args["u_dir_alpha"],
             solver_threads=args["solver_threads"],
+            u0_tsv_path=u0_tsv_path,
+            obj_tsv_path=obj_tsv_path,
         )
 
     elif solve_mode in ("cd", "both"):

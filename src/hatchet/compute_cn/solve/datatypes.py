@@ -22,7 +22,6 @@ class SolverInputs:
     free_rows: list
     fixed_rows: set
     purities: dict | None
-    balanced_clusters: list | None
     fa_lo: pd.DataFrame = field(repr=False)
     fa_hi: pd.DataFrame = field(repr=False)
     fb_lo: pd.DataFrame = field(repr=False)

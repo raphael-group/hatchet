@@ -201,14 +201,6 @@ def add_domain_constraints(
                 )
                 model.constraints.add(model.cB[_m, _n] >= params.base * model.adB[_m])
 
-    # Balanced: cA == cB
-    if inputs.balanced_clusters:
-        bal_set = set(inputs.balanced_clusters)
-        for _m in inputs.free_rows:
-            if inputs.cluster_ids[_m] in bal_set:
-                for _n in params.tumor_clones:
-                    model.constraints.add(model.cA[_m, _n] == model.cB[_m, _n])
-
     # Symmetry breaking
     for i in range(1, params.n - 1):
         sum1 = sum(

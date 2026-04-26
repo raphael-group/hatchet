@@ -286,6 +286,7 @@ def _cd_work(
         _iters += 1
 
     return {
+        "restart_id": work_id,
         "imf_obj": _obj_u,
         "reg_obj": _reg_c,
         "cA": _cA,
@@ -382,6 +383,7 @@ def _cnt_cd_work(
             break
 
     return {
+        "restart_id": work_id,
         "imf_obj": F_actual,
         "reg_obj": 0.0,
         "imf_obj_stage1": F_stage1,
@@ -413,6 +415,7 @@ def run_coordinate_descent(
     random_seed=None,
     timelimit=None,
     u0_tsv_path=None,
+    obj_tsv_path=None,
     tree_file=None,
 ):
     """Run coordinate descent with parallel restarts.
@@ -431,11 +434,10 @@ def run_coordinate_descent(
     if u0_tsv_path is not None:
         rows = []
         for restart, u in enumerate(seeds):
-            for clone in range(u.shape[0]):
-                row = {"restart": restart, "clone": clone}
-                for j_idx, sid in enumerate(inputs.sample_ids):
-                    row[sid] = u[clone, j_idx]
-                rows.append(row)
+            row = {"restart": restart}
+            for j_idx, sid in enumerate(inputs.sample_ids):
+                row[sid] = ":".join(f"{u[c, j_idx]:.4f}" for c in range(u.shape[0]))
+            rows.append(row)
         pd.DataFrame(rows).to_csv(u0_tsv_path, sep="\t", index=False)
 
     # Build work groups and config
@@ -530,6 +532,19 @@ def run_coordinate_descent(
             if not instances:
                 logging.warning(f"{mode.upper()}: no feasible solution for {sol_id}")
                 continue
+
+            if obj_tsv_path is not None:
+                obj_keys = [
+                    "restart_id",
+                    "imf_obj",
+                    "reg_obj",
+                    "imf_obj_stage1",
+                    "tree_obj",
+                ]
+                rows = [
+                    {k: inst[k] for k in obj_keys if k in inst} for inst in instances
+                ]
+                pd.DataFrame(rows).to_csv(obj_tsv_path, sep="\t", index=False)
 
             best = min(instances, key=lambda x: x["imf_obj"])
             sol_dict = {
