@@ -242,11 +242,7 @@ def build_model(
     fixed_cA=None,
     fixed_cB=None,
 ):
-    """Build a complete Pyomo ConcreteModel.
-
-    Returns:
-        (model, var_z): Pyomo model and DRMST topology vars (None if not DRMST).
-    """
+    """Build a complete Pyomo ConcreteModel."""
     model = pe.ConcreteModel()
     _build_variables(model, mode, params, inputs)
     model.constraints = pe.ConstraintList()
@@ -265,10 +261,10 @@ def build_model(
         obj_imf = build_ci_violation_objective(model, mode, params, inputs)
     else:
         obj_imf = build_imf_objective(model, mode, params, inputs)
-    obj_reg, var_z = build_regularization(model, mode, params, inputs)
+    obj_reg = build_regularization(model, mode, params, inputs)
     build_final_objective(model, obj_imf, obj_reg, params)
 
     if mode == "FULL":
         hot_start(model, params, inputs)
 
-    return model, var_z
+    return model

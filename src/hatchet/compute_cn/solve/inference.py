@@ -159,7 +159,7 @@ def run_full_ilp(
 
     Returns pool_instances dict.
     """
-    model, var_z = build_model("FULL", params, inputs)
+    model = build_model("FULL", params, inputs)
 
     solver = create_solver(solver_type)
 
@@ -231,8 +231,8 @@ def _cd_work(
 
     _u, _cA, _cB = u, cfg["hcA"], cfg["hcB"]
 
-    model_c, var_z_c = build_model("CARCH", params, inputs, fixed_u=_u)
-    model_u, _ = build_model("UARCH", params, inputs, fixed_cA=_cA, fixed_cB=_cB)
+    model_c = build_model("CARCH", params, inputs, fixed_u=_u)
+    model_u = build_model("UARCH", params, inputs, fixed_cA=_cA, fixed_cB=_cB)
 
     _prev_obj_u = None
     _imf_c = _reg_c = 0.0

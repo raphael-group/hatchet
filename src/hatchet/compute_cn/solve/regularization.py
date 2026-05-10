@@ -171,18 +171,13 @@ def build_reg_dbox_l0(model, mode: str, params: SolverParams, inputs: SolverInpu
 
 
 def build_regularization(model, mode: str, params: SolverParams, inputs: SolverInputs):
-    """Dispatch to the appropriate regularization builder.
-
-    Returns (obj_reg_expression, var_z_dict_or_None).
-    """
+    """Dispatch to the appropriate regularization builder."""
     pname = params.reg_name
     model.pparam = pe.Param(mutable=True, initialize=0.0)
 
-    var_z = None
     obj_reg = 0
-
     if mode not in ("FULL", "CARCH") or pname == "RAW":
-        return obj_reg, var_z
+        return obj_reg
 
     builders = {
         "MAXCN": build_reg_maxcn,
@@ -194,4 +189,4 @@ def build_regularization(model, mode: str, params: SolverParams, inputs: SolverI
     if pname in builders:
         obj_reg = builders[pname](model, mode, params, inputs)
 
-    return obj_reg, var_z
+    return obj_reg
