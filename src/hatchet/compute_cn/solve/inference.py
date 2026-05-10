@@ -112,24 +112,6 @@ def extract_solution(
     return {"imf_obj": model.obj(), "cA": cA, "cB": cB, "u": u}
 
 
-def extract_tree_edges(var_z, n):
-    """Extract tree edges from DRMST topology variables."""
-    if var_z is None:
-        return None
-    tree_edges = {}
-    for i in range(1, n):
-        for j in range(i):
-            if (i, j) not in var_z:
-                continue
-            if var_z[(i, j)].value is not None and round(var_z[(i, j)].value) == 1:
-                tree_edges[i] = j
-                break
-        if i not in tree_edges:
-            logging.warning(f"DRMST: clone {i} has no parent, defaulting to root")
-            tree_edges[i] = 0
-    return tree_edges
-
-
 def extract_pool_solutions(
     solver, model, params: SolverParams, inputs: SolverInputs, pool_size=10
 ):
@@ -268,8 +250,6 @@ def _cd_work(
         _cA, _cB = c_sol["cA"], c_sol["cB"]
         _imf_c = pe.value(model_c.obj_imf)
         _reg_c = pe.value(model_c.obj_reg)
-        _tree_edges = extract_tree_edges(var_z_c, params.n)
-
         update_fixed_cn(model_u, _cA, _cB, params, inputs)
         if not solve_model(model_u, solver, False, timelimit):
             return None

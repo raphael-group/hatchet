@@ -99,6 +99,40 @@ def hot_start(model, params: SolverParams, inputs: SolverInputs, _cA=None, _cB=N
             model.cB[_m, rank_indices[_n]].value = _cB[_m][_n]
 
 
+def _random_tumor_props_dirichlet(n_tumor, alpha, minprop):
+    t = np.random.dirichlet(alpha * np.ones(n_tumor))
+    t[t < minprop] = 0
+    if t.sum() > 0:
+        t = t / t.sum()
+    else:
+        t = np.zeros(n_tumor)
+        t[np.random.randint(n_tumor)] = 1.0
+    return t
+
+
+def _random_tumor_props_bubble(n_tumor, minprop, size_bubbles=100):
+    t = np.zeros(n_tumor)
+    n0 = np.random.randint(1, n_tumor + 1)
+    n1 = np.random.randint(1, n_tumor + 1)
+    n_parts = min(max(n0, n1), min(size_bubbles, n_tumor))
+    positions = np.random.choice(n_tumor, n_parts, replace=False)
+    breaks = (
+        np.sort(
+            np.random.choice(np.arange(1, size_bubbles), n_parts - 1, replace=False)
+        )
+        / size_bubbles
+    )
+    t[positions] = np.diff(breaks, prepend=0, append=1)
+    t[(minprop - 1e-6 <= t) & (t < minprop)] = minprop
+    t[t < minprop] = 0
+    if t.sum() > 0:
+        t = t / t.sum()
+    else:
+        t = np.zeros(n_tumor)
+        t[np.random.randint(n_tumor)] = 1.0
+    return t
+
+
 def build_random_u(
     params: SolverParams, inputs: SolverInputs, method="dirichlet", alpha=0.3
 ):
@@ -113,22 +147,16 @@ def build_random_u(
             if n_tumor == 1:
                 U[1, _k] = purity
             else:
-                t = np.random.dirichlet(alpha * np.ones(n_tumor))
-                t[t < params.minprop] = 0
-                if t.sum() > 0:
-                    t = t / t.sum()
+                if method == "bubble":
+                    t = _random_tumor_props_bubble(n_tumor, params.minprop)
                 else:
-                    t = np.zeros(n_tumor)
-                    t[np.random.randint(n_tumor)] = 1.0
+                    t = _random_tumor_props_dirichlet(n_tumor, alpha, params.minprop)
                 U[1:, _k] = purity * t
         else:
-            t = np.random.dirichlet(alpha * np.ones(params.n))
-            t[t < params.minprop] = 0
-            if t.sum() > 0:
-                t = t / t.sum()
+            if method == "bubble":
+                t = _random_tumor_props_bubble(params.n, params.minprop)
             else:
-                t = np.zeros(params.n)
-                t[0] = 1.0
+                t = _random_tumor_props_dirichlet(params.n, alpha, params.minprop)
             U[:, _k] = t
     return U
 
