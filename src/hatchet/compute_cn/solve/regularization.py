@@ -67,20 +67,20 @@ def build_reg_droot_sum(model, mode: str, params: SolverParams, inputs: SolverIn
 
 
 def build_reg_dadj_sum(model, mode: str, params: SolverParams, inputs: SolverInputs):
-    """DADJ_SUM: pairwise L1 distance between all clone pairs."""
+    """DADJ_SUM: pairwise L1 distance between tumor clone pairs (normal excluded)."""
     n = params.n
     obj = 0
     md_idx = [
         (_m, _n1, _n2, ab)
         for _m in inputs.free_rows
-        for _n1 in range(n - 1)
+        for _n1 in range(1, n - 1)
         for _n2 in range(_n1 + 1, n)
         for ab in ("a", "b")
     ]
     model.md_adj = pe.Var(md_idx, bounds=(0, np.inf), domain=pe.Reals)
     for _m in inputs.free_rows:
         cid = inputs.cluster_ids[_m]
-        for _n1 in range(n - 1):
+        for _n1 in range(1, n - 1):
             for _n2 in range(_n1 + 1, n):
                 model.constraints.add(
                     model.cA[_m, _n1] - model.cA[_m, _n2]
@@ -101,10 +101,6 @@ def build_reg_dadj_sum(model, mode: str, params: SolverParams, inputs: SolverInp
                 obj += inputs.w[cid] * (
                     model.md_adj[_m, _n1, _n2, "a"] + model.md_adj[_m, _n1, _n2, "b"]
                 )
-    for _m in inputs.fixed_rows:
-        cid = inputs.cluster_ids[_m]
-        ca, cb = inputs.copy_numbers[cid]
-        obj += inputs.w[cid] * (n - 1) * (abs(ca - params.base) + abs(cb - params.base))
     return obj
 
 
