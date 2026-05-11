@@ -540,10 +540,10 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--u_init",
         required=False,
-        choices=["dirichlet", "bubble"],
+        choices=["dirichlet", "bubble", "bin_dir"],
         default=argparse.SUPPRESS,
         type=str,
-        help="U initialization method: dirichlet or bubble (default: dirichlet)",
+        help="U initialization method: dirichlet | bubble | bin_dir",
     )
 
     parser.add_argument(
@@ -551,7 +551,15 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         required=False,
         default=argparse.SUPPRESS,
         type=float,
-        help="Dirichlet alpha for U initialization; lower = sparser (default: 0.3)",
+        help="Dirichlet alpha for U initialization; lower = sparser",
+    )
+
+    parser.add_argument(
+        "--u_bin_p",
+        required=False,
+        default=argparse.SUPPRESS,
+        type=float,
+        help="bin_dir: per-cell Bernoulli presence probability (anchor sample always 1)",
     )
 
     parser.add_argument(

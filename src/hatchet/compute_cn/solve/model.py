@@ -133,11 +133,41 @@ def _random_tumor_props_bubble(n_tumor, minprop, size_bubbles=100):
     return t
 
 
+def _random_tumor_matrix_bin_dir(n_tumor, k, p_bin, alpha, minprop):
+    """Tumor proportion matrix (n_tumor, k) via anchored-Bernoulli + per-column Dirichlet.
+
+    1. Each clone is anchored to a uniformly-random sample (guarantees row >= 1).
+    2. For non-anchor cells, Bernoulli(p_bin).
+    3. Any all-zero column is fixed up by activating a random clone.
+    4. Per-sample Dirichlet(alpha) over active cells; inactive cells stay 0.
+    5. Same minprop floor + renorm as the other methods.
+    """
+    Z = (np.random.rand(n_tumor, k) < p_bin).astype(int)
+    anchors = np.random.randint(k, size=n_tumor)
+    Z[np.arange(n_tumor), anchors] = 1
+    for j in np.where(Z.sum(axis=0) == 0)[0]:
+        Z[np.random.randint(n_tumor), j] = 1
+
+    props = np.zeros((n_tumor, k))
+    for j in range(k):
+        active = np.where(Z[:, j] == 1)[0]
+        t = np.random.dirichlet([alpha] * len(active))
+        t[t < minprop] = 0
+        if t.sum() > 0:
+            t = t / t.sum()
+        else:
+            t = np.zeros(len(active))
+            t[np.random.randint(len(active))] = 1.0
+        props[active, j] = t
+    return props
+
+
 def build_random_u(
     params: SolverParams,
     inputs: SolverInputs,
     method="dirichlet",
     alpha=0.3,
+    p_bin=0.5,
     max_attempts=3,
 ):
     """Generate random U initialization matrix (n * k).
@@ -145,30 +175,58 @@ def build_random_u(
     Re-samples up to ``max_attempts`` times if any tumor clone (row 1..n-1)
     has zero proportion in every sample — such "wasted clone" seeds reduce
     an n-clone restart to an effective (n-1)-clone restart and are dropped
-    by the U-step's min_prop binary anyway.
+    by the U-step's min_prop binary anyway. ``bin_dir`` guarantees row >= 1
+    by construction (anchored Bernoulli), so the retry rarely triggers there.
     """
     U = np.empty((params.n, inputs.k))
     n_tumor = params.n - 1
+
     for _ in range(max_attempts):
-        for _k in range(inputs.k):
-            sid = inputs.sample_ids[_k]
-            if inputs.purities is not None and sid in inputs.purities:
-                purity = inputs.purities[sid]
-                U[0, _k] = 1 - purity
-                if n_tumor == 1:
-                    U[1, _k] = purity
+        if method == "bin_dir":
+            tumor_props = _random_tumor_matrix_bin_dir(
+                n_tumor, inputs.k, p_bin, alpha, params.minprop
+            )
+            for _k in range(inputs.k):
+                sid = inputs.sample_ids[_k]
+                if inputs.purities is not None and sid in inputs.purities:
+                    purity = inputs.purities[sid]
+                    U[0, _k] = 1 - purity
+                    U[1:, _k] = purity * tumor_props[:, _k]
                 else:
-                    if method == "bubble":
-                        t = _random_tumor_props_bubble(n_tumor, params.minprop)
+                    U[:, _k] = _random_tumor_props_dirichlet(
+                        params.n, alpha, params.minprop
+                    )
+        elif method == "bubble":
+            for _k in range(inputs.k):
+                sid = inputs.sample_ids[_k]
+                if inputs.purities is not None and sid in inputs.purities:
+                    purity = inputs.purities[sid]
+                    U[0, _k] = 1 - purity
+                    if n_tumor == 1:
+                        U[1, _k] = purity
                     else:
-                        t = _random_tumor_props_dirichlet(n_tumor, alpha, params.minprop)
-                    U[1:, _k] = purity * t
-            else:
-                if method == "bubble":
+                        t = _random_tumor_props_bubble(n_tumor, params.minprop)
+                        U[1:, _k] = purity * t
+                else:
                     t = _random_tumor_props_bubble(params.n, params.minprop)
+                    U[:, _k] = t
+        else:  # dirichlet
+            for _k in range(inputs.k):
+                sid = inputs.sample_ids[_k]
+                if inputs.purities is not None and sid in inputs.purities:
+                    purity = inputs.purities[sid]
+                    U[0, _k] = 1 - purity
+                    if n_tumor == 1:
+                        U[1, _k] = purity
+                    else:
+                        t = _random_tumor_props_dirichlet(
+                            n_tumor, alpha, params.minprop
+                        )
+                        U[1:, _k] = purity * t
                 else:
                     t = _random_tumor_props_dirichlet(params.n, alpha, params.minprop)
-                U[:, _k] = t
+                    U[:, _k] = t
+
         if not np.any(U[1:, :].sum(axis=1) == 0):
             return U
     return U

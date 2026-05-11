@@ -444,21 +444,17 @@ def get_cn_colors():
 
 
 def get_ascn_colors():
-    """Return (state_style, tcn_states) for allele-CN coloring.
-
-    cn=0..6 → explicit colors; cn≥7 → state_style["default"].
-    Use state_style.get(cn, state_style["default"]) at call sites.
-    """
+    """Return (state_style, tcn_states) for allele-CN coloring."""
     state_style = {
         0: "#FFFFFF",  # white
         1: "#BDBDBD",  # gray
-        2: "#A6CEE3",  # pale blue
-        3: "#FDBF6F",  # orange
-        4: "#FB6A4A",  # red-orange
-        5: "#CB181D",  # red
-        6: "#6A3D9A",  # dark purple
+        2: "#FEE5D9",  # red, lightest
+        3: "#FCAE91",
+        4: "#FB6A4A",
+        5: "#DE2D26",
+        6: "#A50F15",  # red, darkest
     }
-    state_style["default"] = "#00cc99"
+    state_style["default"] = "#67000D"  # 7+: extra-dark red beyond cn=6
     tcn_states = sorted(k for k in state_style if isinstance(k, int))
     return state_style, tcn_states
 
