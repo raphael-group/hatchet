@@ -134,30 +134,43 @@ def _random_tumor_props_bubble(n_tumor, minprop, size_bubbles=100):
 
 
 def build_random_u(
-    params: SolverParams, inputs: SolverInputs, method="dirichlet", alpha=0.3
+    params: SolverParams,
+    inputs: SolverInputs,
+    method="dirichlet",
+    alpha=0.3,
+    max_attempts=3,
 ):
-    """Generate random U initialization matrix (n * k)."""
+    """Generate random U initialization matrix (n * k).
+
+    Re-samples up to ``max_attempts`` times if any tumor clone (row 1..n-1)
+    has zero proportion in every sample — such "wasted clone" seeds reduce
+    an n-clone restart to an effective (n-1)-clone restart and are dropped
+    by the U-step's min_prop binary anyway.
+    """
     U = np.empty((params.n, inputs.k))
     n_tumor = params.n - 1
-    for _k in range(inputs.k):
-        sid = inputs.sample_ids[_k]
-        if inputs.purities is not None and sid in inputs.purities:
-            purity = inputs.purities[sid]
-            U[0, _k] = 1 - purity
-            if n_tumor == 1:
-                U[1, _k] = purity
+    for _ in range(max_attempts):
+        for _k in range(inputs.k):
+            sid = inputs.sample_ids[_k]
+            if inputs.purities is not None and sid in inputs.purities:
+                purity = inputs.purities[sid]
+                U[0, _k] = 1 - purity
+                if n_tumor == 1:
+                    U[1, _k] = purity
+                else:
+                    if method == "bubble":
+                        t = _random_tumor_props_bubble(n_tumor, params.minprop)
+                    else:
+                        t = _random_tumor_props_dirichlet(n_tumor, alpha, params.minprop)
+                    U[1:, _k] = purity * t
             else:
                 if method == "bubble":
-                    t = _random_tumor_props_bubble(n_tumor, params.minprop)
+                    t = _random_tumor_props_bubble(params.n, params.minprop)
                 else:
-                    t = _random_tumor_props_dirichlet(n_tumor, alpha, params.minprop)
-                U[1:, _k] = purity * t
-        else:
-            if method == "bubble":
-                t = _random_tumor_props_bubble(params.n, params.minprop)
-            else:
-                t = _random_tumor_props_dirichlet(params.n, alpha, params.minprop)
-            U[:, _k] = t
+                    t = _random_tumor_props_dirichlet(params.n, alpha, params.minprop)
+                U[:, _k] = t
+        if not np.any(U[1:, :].sum(axis=1) == 0):
+            return U
     return U
 
 
