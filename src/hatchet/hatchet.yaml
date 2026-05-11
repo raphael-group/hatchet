@@ -1,0 +1,120 @@
+# HATCHet3 default parameter values for all subcommands.
+# Loaded by hatchet.utils.normalize_args at the top of each run().
+# CLI flags override these values.
+# NOT listed here:
+#   - required CLI args (input paths, --ploidy) — argparse enforces them
+#   - optional file/dir args (--solfile, --tree_file, --out_dir, evaluate's
+#     paths) — argparse keeps default=None / default="."
+
+##################################################
+# global
+# verbosity: 0 | 1 | 2
+verbosity: 0
+
+##################################################
+# cluster-bins
+force: false
+minK: 3
+maxK: 30
+t: 1.0e-6
+restarts: 30
+top_restarts: null
+n_local_trials: 3
+niters: 50
+# decode_method: viterbi | map
+decode_method: map
+# score_method: bic | icl
+score_method: icl
+# init_method: cna_plus_plus | kmeans_plus_plus
+init_method: cna_plus_plus
+free_baf_c0: false
+# training_method: baum_welch | viterbi
+training_method: baum_welch
+min_tau: 50.0
+max_tau: 200.0
+baf_eps: 1.0e-3
+min_covar: 1.0e-3
+ig_alpha: 10.0
+tau_iters: 0
+seed: 42
+log_rdr: false
+bal_lrt_alpha: 0.05
+bal_margin: 0.03
+filter_std: 2.0
+min_nbins: 10
+ub_nbins: 50
+skip_mhbafs: false
+
+##################################################
+# compute-cn
+# mode: ilp | cd | both | cnt_cd
+mode: ilp
+# model_select: elbow | bic
+model_select: bic
+# solver: gurobi | cbc
+solver: gurobi
+timelimit: null
+fcn_ci_alpha: 0.05
+min_ci_margin: 0.1
+# obj_type: imf | ci
+obj_type: imf
+minClone: 2
+maxClone: 4
+diploid: false
+tetraploid: false
+# reg_term: RAW | MAXCN | DBOX_L1 | DBOX_L0 | DROOT_SUM | DADJ_SUM
+reg_term: MAXCN
+reg_steps: 15
+reg_bound: 0.15
+fix_cn_dip: null
+fix_cn_tet: null
+zero_cn_thres: 0.001
+cd_tol: 0.001
+tol: 0.001
+no_ampdel: false
+num_cnstates: -1
+diploidcmax: 8
+tetraploidcmax: 12
+min_prop: 0.01
+purities: null
+cd_niters: 10
+cd_convergence_iters: 2
+cd_nseeds: 400
+cd_njobs: 8
+cd_seed: 42
+# u_init: dirichlet | bubble
+u_init: dirichlet
+u_dir_alpha: 0.3
+solver_threads: null
+eps_fit: 0.01
+
+##################################################
+# plot-cn / plot-panel (shared --dpi default)
+dpi: 300
+# img_type: pdf | png | svg
+img_type: png
+transparent: false
+keep_gap: false
+tail_alpha: 0.8
+center_alpha: 1.0
+onetail_area: 0.025
+maxlim_fcn: 30
+plot_ascn: true
+
+##################################################
+# plot-panel
+width: 20
+height: 1
+show_clone_name: false
+show_prop: false
+title: panel
+plot_1d2d: false
+plot_summary: false
+
+##################################################
+# evaluate
+vcf_sample: tumor
+gamma: 0.05
+min_vaf: 0.0
+min_depth: 5
+eval_all: false

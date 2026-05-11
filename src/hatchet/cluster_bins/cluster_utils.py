@@ -598,9 +598,3 @@ def count_multimodal_clusters(labels, X_rdrs, X_bafs, log_rdr):
                 multimodal_ids.append(int(k))
                 break
     return len(multimodal_ids), multimodal_ids
-
-
-def label_multimodal_bins(labels, X_rdrs, X_bafs, log_rdr):
-    """Return (N,) bool array: True if bin belongs to a multimodal cluster."""
-    _, multimodal_ids = count_multimodal_clusters(labels, X_rdrs, X_bafs, log_rdr)
-    return np.isin(labels, multimodal_ids)

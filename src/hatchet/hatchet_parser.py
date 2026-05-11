@@ -37,7 +37,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--force",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="Re-run even if results already exist (default: skip existing)",
     )
 
@@ -46,42 +46,42 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--minK",
         required=False,
-        default=3,
+        default=argparse.SUPPRESS,
         type=int,
         help="Minimum number of HMM cluster states (default: 3)",
     )
     parser.add_argument(
         "--maxK",
         required=False,
-        default=30,
+        default=argparse.SUPPRESS,
         type=int,
         help="Maximum number of HMM cluster states (default: 30)",
     )
     parser.add_argument(
         "-t",
         required=False,
-        default=1e-6,
+        default=argparse.SUPPRESS,
         type=float,
         help="initial off-diagonal transition mass (default: 1e-6)",
     )
     parser.add_argument(
         "--restarts",
         required=False,
-        default=30,
+        default=argparse.SUPPRESS,
         type=int,
         help="#restarts per K (default: 30)",
     )
     parser.add_argument(
         "--top_restarts",
         required=False,
-        default=None,
+        default=argparse.SUPPRESS,
         type=int,
         help="number of top-scoring inits to run full EM on (default: same as --restarts)",
     )
     parser.add_argument(
         "--n_local_trials",
         required=False,
-        default=3,
+        default=argparse.SUPPRESS,
         type=int,
         help="number of local search per init seeding iteration"
         "best by log-likelihood is kept (default: 3)",
@@ -89,7 +89,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--niters",
         required=False,
-        default=50,
+        default=argparse.SUPPRESS,
         type=int,
         help="Number of EM iterations per restart (default: 50)",
     )
@@ -100,7 +100,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         choices=["viterbi", "map"],
         type=str,
         help="HMM decoding method: viterbi (most-likely path) or map (marginal per-bin posterior) (default: map)",
-        default="map",
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--score_method",
@@ -108,21 +108,21 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         choices=["bic", "icl"],
         type=str,
         help="Model selection criterion (default: icl)",
-        default="icl",
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--init_method",
         required=False,
         choices=["cna_plus_plus", "kmeans_plus_plus"],
         type=str,
-        default="cna_plus_plus",
+        default=argparse.SUPPRESS,
         help="HMM initialization method: 'cna_plus_plus' (HMM-aware seeding) or 'kmeans_plus_plus' (sklearn KMeans++ in [RDR, mhBAF] space) (default: cna_plus_plus)",
     )
 
     parser.add_argument(
         "--free_baf_c0",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="Allow cluster 0 BAF to update during EM. By default, cluster 0 BAF is fixed at 0.5.",
     )
 
@@ -131,14 +131,14 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         required=False,
         choices=["baum_welch", "viterbi"],
         type=str,
-        default="baum_welch",
+        default=argparse.SUPPRESS,
         help="HMM training algorithm: 'baum_welch' (soft EM) or 'viterbi' (hard EM) (default: baum_welch)",
     )
 
     parser.add_argument(
         "--min_tau",
         required=False,
-        default=50,
+        default=argparse.SUPPRESS,
         type=float,
         help="Minimum Beta-Binomial dispersion tau (default: 50)",
     )
@@ -146,7 +146,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--max_tau",
         required=False,
-        default=200,
+        default=argparse.SUPPRESS,
         type=float,
         help="Maximum Beta-Binomial dispersion tau (default: 200)",
     )
@@ -154,7 +154,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--baf_eps",
         required=False,
-        default=1e-3,
+        default=argparse.SUPPRESS,
         type=float,
         help="BAF mean Brent search bounds [baf_eps, 1-baf_eps]; related to sequencing error floor (default: 1e-3)",
     )
@@ -162,7 +162,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--min_covar",
         required=False,
-        default=1e-3,
+        default=argparse.SUPPRESS,
         type=float,
         help="Minimum RDR variance floor applied after each M-step (default: 1e-3)",
     )
@@ -170,7 +170,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--ig_alpha",
         required=False,
-        default=10.0,
+        default=argparse.SUPPRESS,
         type=float,
         help="Inverse-gamma prior shape parameter for RDR variance updates (default: 10.0)",
     )
@@ -178,7 +178,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--tau_iters",
         required=False,
-        default=0,
+        default=argparse.SUPPRESS,
         type=int,
         help="Number of EM iterations during which BAF dispersion tau is updated (default: 0)",
     )
@@ -186,7 +186,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--seed",
         required=False,
-        default=42,
+        default=argparse.SUPPRESS,
         type=int,
         help="random seed for HMM init step (default: 42)",
     )
@@ -194,7 +194,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--log_rdr",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="Use log(RDR) instead of raw RDR in the Gaussian emission (default: False).",
     )
 
@@ -209,7 +209,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--verbosity",
         required=False,
-        default=0,
+        default=argparse.SUPPRESS,
         type=int,
         help="verbose level, 0, 1, 2 (default: 0)",
     )
@@ -220,14 +220,14 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         "--bal_lrt_alpha",
         type=float,
         required=False,
-        default=0.05,
+        default=argparse.SUPPRESS,
         help="Significance level for balanced cluster interval LRT (default: 0.05)",
     )
     parser.add_argument(
         "--bal_margin",
         type=float,
         required=False,
-        default=0.03,
+        default=argparse.SUPPRESS,
         help="Half-width of neutral zone [0.5-δ, 0.5+δ] for balanced cluster test (default: 0.03)",
     )
 
@@ -236,28 +236,28 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--filter_std",
         required=False,
-        default=2.0,
+        default=argparse.SUPPRESS,
         type=float,
         help="Filter clusters whose variance deviates from mean by filter_std * std (default: 2.0)",
     )
     parser.add_argument(
         "--min_nbins",
         required=False,
-        default=10,
+        default=argparse.SUPPRESS,
         type=int,
         help="Remove clusters with fewer than min_nbins bins (default: 10)",
     )
     parser.add_argument(
         "--ub_nbins",
         required=False,
-        default=50,
+        default=argparse.SUPPRESS,
         type=int,
         help="Variance-outlier filtering only applies to clusters with #bins <= ub_nbins (default: 50)",
     )
     parser.add_argument(
         "--skip_mhbafs",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="Skip mhBAF folding after decoding. By default, clusters with BAF > 0.5 "
         "have their BAF means and per-bin phases flipped to enforce the minor-allele convention.",
     )
@@ -292,7 +292,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         choices=["both", "cd", "ilp", "cnt_cd"],
         type=str,
         help="Solver mode (default: ilp)",
-        default="ilp",
+        default=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -301,12 +301,12 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         choices=["elbow", "bic"],
         type=str,
         help="Model selection method for clone number and ploidy (default: bic)",
-        default="bic",
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--force",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="Re-solve even if results already exist (default: skip existing)",
     )
     parser.add_argument(
@@ -315,13 +315,13 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         choices=["gurobi", "cbc"],
         type=str,
         help="ILP solver (default: gurobi)",
-        default="gurobi",
+        default=argparse.SUPPRESS,
     )
 
     parser.add_argument(
         "--timelimit",
         required=False,
-        default=None,
+        default=argparse.SUPPRESS,
         type=int,
         help="ILP solver timelimit in seconds (default: None)",
     )
@@ -330,14 +330,14 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         "--fcn_ci_alpha",
         type=float,
         required=False,
-        default=0.05,
+        default=argparse.SUPPRESS,
         help="Significance level for FCN confidence interval (default: 0.05 → 95%% CI)",
     )
     parser.add_argument(
         "--min_ci_margin",
         type=float,
         required=False,
-        default=0.1,
+        default=argparse.SUPPRESS,
         help="Hard minimum CI half-width in FCN space (default: 0.1)",
     )
 
@@ -345,7 +345,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         "--obj_type",
         type=str,
         required=False,
-        default="imf",
+        default=argparse.SUPPRESS,
         choices=["imf", "ci"],
         help="Fitting objective: imf (weighted L1) or ci (CI-violation hinge) (default: imf)",
     )
@@ -355,14 +355,14 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--minClone",
         required=False,
-        default=2,
+        default=argparse.SUPPRESS,
         type=int,
         help="Minimum number of tumor clones to solve for (default: 2)",
     )
     parser.add_argument(
         "--maxClone",
         required=False,
-        default=4,
+        default=argparse.SUPPRESS,
         type=int,
         help="Maximum number of tumor clones to solve for (default: 4)",
     )
@@ -370,14 +370,14 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--diploid",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         required=False,
         help="Solve under diploid assumption (cn_max=6)",
     )
     parser.add_argument(
         "--tetraploid",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         required=False,
         help="Solve under tetraploid/WGD assumption (cn_max=12)",
     )
@@ -397,33 +397,33 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         ],
         type=str,
         help="regularization term (default: MAXCN)",
-        default="MAXCN",
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--reg_steps",
         required=False,
-        default=15,
+        default=argparse.SUPPRESS,
         type=int,
         help="Number of steps in regularization path (default: 15)",
     )
     parser.add_argument(
         "--reg_bound",
         required=False,
-        default=0.15,
+        default=argparse.SUPPRESS,
         type=float,
         help="Maximum pparam value for the regularization path (default: 0.15)",
     )
     parser.add_argument(
         "--fix_cn_dip",
         required=False,
-        default=None,
+        default=argparse.SUPPRESS,
         type=str,
         help="Fix diploid cluster CN states: 'cid1:cA|cB;cid2:cA|cB' e.g. '6:2|0;8:3|1'",
     )
     parser.add_argument(
         "--fix_cn_tet",
         required=False,
-        default=None,
+        default=argparse.SUPPRESS,
         type=str,
         help="Fix tetraploid cluster CN states: 'cid1:cA|cB;cid2:cA|cB' e.g. '6:4|2'",
     )
@@ -431,28 +431,28 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--zero_cn_thres",
         required=False,
-        default=0.001,
+        default=argparse.SUPPRESS,
         type=float,
         help="Clusters with weight >= this fraction of total cannot have (0,0) CN state (default: 0.005)",
     )
     parser.add_argument(
         "--cd_tol",
         required=False,
-        default=0.001,
+        default=argparse.SUPPRESS,
         type=float,
         help="CD convergence tolerance: stop when U-step objective changes less than this (default: 0.001)",
     )
     parser.add_argument(
         "--no_ampdel",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         required=False,
         help="Disable the amp/del symmetry constraint (default: off)",
     )
     parser.add_argument(
         "--num_cnstates",
         required=False,
-        default=-1,
+        default=argparse.SUPPRESS,
         type=int,
         help="Constrain the number of distinct CN states per clone (-1 = unconstrained, default: -1)",
     )
@@ -461,7 +461,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         "--diploidcmax",
         type=int,
         required=False,
-        default=8,
+        default=argparse.SUPPRESS,
         help=(
             "Maximum copy-number value overall segments (default: 8, 0 means inferred from scaled fractional copy "
             "numbers)"
@@ -472,7 +472,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         "--tetraploidcmax",
         type=int,
         required=False,
-        default=12,
+        default=argparse.SUPPRESS,
         help=(
             "Maximum copy-number value overall segments (default: 12, 0 means inferred from scaled fractional "
             "copy numbers)"
@@ -481,7 +481,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--min_prop",
         required=False,
-        default=0.01,
+        default=argparse.SUPPRESS,
         type=float,
         help="minimum clone proportion (default: 0.01)",
     )
@@ -489,7 +489,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--purities",
         required=False,
-        default=None,
+        default=argparse.SUPPRESS,
         type=lambda s: {
             k: float(v) for k, v in (pair.split(":") for pair in s.split(";"))
         },
@@ -504,35 +504,35 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--cd_niters",
         required=False,
-        default=10,
+        default=argparse.SUPPRESS,
         type=int,
         help="CD: max outer CD iterations per seed (default: 10)",
     )
     parser.add_argument(
         "--cd_convergence_iters",
         required=False,
-        default=2,
+        default=argparse.SUPPRESS,
         type=int,
         help="CD: consecutive convergence iterations required to stop (default: 2)",
     )
     parser.add_argument(
         "--cd_nseeds",
         required=False,
-        default=400,
+        default=argparse.SUPPRESS,
         type=int,
         help="CD: number of random restarts (default: 400)",
     )
     parser.add_argument(
         "--cd_njobs",
         required=False,
-        default=8,
+        default=argparse.SUPPRESS,
         type=int,
         help="CD: number of parallel worker processes (default: 8)",
     )
     parser.add_argument(
         "--cd_seed",
         required=False,
-        default=42,
+        default=argparse.SUPPRESS,
         type=int,
         help="CD: random seed for reproducibility (default: 42)",
     )
@@ -541,7 +541,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         "--u_init",
         required=False,
         choices=["dirichlet", "bubble"],
-        default="dirichlet",
+        default=argparse.SUPPRESS,
         type=str,
         help="U initialization method: dirichlet or bubble (default: dirichlet)",
     )
@@ -549,7 +549,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--u_dir_alpha",
         required=False,
-        default=0.3,
+        default=argparse.SUPPRESS,
         type=float,
         help="Dirichlet alpha for U initialization; lower = sparser (default: 0.3)",
     )
@@ -557,7 +557,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--solver_threads",
         required=False,
-        default=None,
+        default=argparse.SUPPRESS,
         type=int,
         help="Max threads per solver call (Gurobi). Set to 1 for parallel CD workers (default: solver default)",
     )
@@ -574,7 +574,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--eps_fit",
         required=False,
-        default=0.01,
+        default=argparse.SUPPRESS,
         type=float,
         help="CNT-CD: fit tolerance for C-step CNT stage lexicographic bound (default: 0.01)",
     )
@@ -582,7 +582,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--verbosity",
         required=False,
-        default=0,
+        default=argparse.SUPPRESS,
         type=int,
         help="verbose level, 0, 1, 2 (default: 0)",
     )
@@ -626,8 +626,6 @@ def parse_fix_cn(fix_cn_str):
 ##################################################
 def parse_arguments_compute_cn(args):
     """Post-process compute-cn args: validate solver, parse fix_cn strings."""
-    if isinstance(args, argparse.Namespace):
-        args = vars(args)
     solver = args["solver"]
     if args["mode"] in ("ilp", "both") and not solver_available(solver):
         raise RuntimeError(
@@ -638,18 +636,8 @@ def parse_arguments_compute_cn(args):
                 else "Ensure the corresponding Pyomo solver backend is installed and on PATH."
             )
         )
-    if isinstance(args.get("fix_cn_dip"), str):
-        args["fix_cn_dip"] = parse_fix_cn(args["fix_cn_dip"])
-    if args.get("fix_cn_dip") is None:
-        args["fix_cn_dip"] = {}
-    if isinstance(args.get("fix_cn_tet"), str):
-        args["fix_cn_tet"] = parse_fix_cn(args["fix_cn_tet"])
-    if args.get("fix_cn_tet") is None:
-        args["fix_cn_tet"] = {}
-    # Defaults for keys not always present in test dicts
-    args.setdefault("eps_fit", 0.01)
-    args.setdefault("tree_file", None)
-    args.setdefault("tol", 0.001)
+    args["fix_cn_dip"] = parse_fix_cn(args["fix_cn_dip"]) if args["fix_cn_dip"] else {}
+    args["fix_cn_tet"] = parse_fix_cn(args["fix_cn_tet"]) if args["fix_cn_tet"] else {}
     return args
 
 
@@ -706,7 +694,7 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         required=False,
         type=int,
         help="image resolution (default: 500)",
-        default=500,
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--img_type",
@@ -714,20 +702,20 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         choices=["pdf", "png", "svg"],
         type=str,
         help="file format (default: png)",
-        default="png",
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--transparent",
         required=False,
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="transparent background (default: False)",
     )
     parser.add_argument(
         "--keep_gap",
         required=False,
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="keep gap region in the plot (default: False)",
     )
     parser.add_argument(
@@ -735,28 +723,28 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         required=False,
         type=float,
         help="transparency on the tail region per CN state (default: 0.8)",
-        default=0.8,
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--center_alpha",
         required=False,
         type=float,
         help="transparency on the center region per CN state (default: 1.0)",
-        default=1.0,
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--onetail_area",
         required=False,
         type=float,
         help="area for each tail per CN state to set transparency (default: 0.025)",
-        default=0.025,
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--maxlim_fcn",
         required=False,
         type=int,
         help="figure axis limit for FCN (default: 30)",
-        default=30,
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--ploidy",
@@ -792,27 +780,27 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         required=False,
         type=int,
         help="panel image width (default: 20)",
-        default=20,
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--height",
         required=False,
         type=int,
         help="panel image height per row (default: 1)",
-        default=1,
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--show_clone_name",
         required=False,
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="plot clone name (default: False)",
     )
     parser.add_argument(
         "--show_prop",
         required=False,
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="plot clone proportion (default: False)",
     )
     parser.add_argument(
@@ -820,20 +808,20 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         required=False,
         type=int,
         help="image resolution (default: 300)",
-        default=300,
+        default=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--transparent",
         required=False,
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="transparent background (default: False)",
     )
     parser.add_argument(
         "--title",
         required=False,
         type=str,
-        default="panel",
+        default=argparse.SUPPRESS,
         help="plot title (default: panel)",
     )
     parser.add_argument(
@@ -847,14 +835,14 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         "--plot_1d2d",
         required=False,
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="also run plot-cn per panel row (requires PATH_TO_BBC column)",
     )
     parser.add_argument(
         "--plot_summary",
         required=False,
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="emit per-sample tumor purity + ploidy barplots; one page per "
         "metric per cancer_type (or single page per metric if column absent)",
     )
@@ -889,8 +877,8 @@ def add_arguments_evaluate(parser):
     parser.add_argument(
         "--vcf_sample",
         type=str,
-        default="tumor",
-        help="Sample name in VCF to use (default: tumor)",
+        default=argparse.SUPPRESS,
+        help="Sample name in VCF to use",
     )
     parser.add_argument(
         "-O",
@@ -902,25 +890,25 @@ def add_arguments_evaluate(parser):
     parser.add_argument(
         "--gamma",
         type=float,
-        default=0.05,
-        help="CI significance level for explained test (default: 0.05)",
+        default=argparse.SUPPRESS,
+        help="CI significance level for explained test",
     )
     parser.add_argument(
         "--min_vaf",
         type=float,
-        default=0.0,
-        help="Minimum observed VAF filter (default: 0.0)",
+        default=argparse.SUPPRESS,
+        help="Minimum observed VAF filter",
     )
     parser.add_argument(
         "--min_depth",
         type=int,
-        default=5,
-        help="Minimum read depth filter (default: 5)",
+        default=argparse.SUPPRESS,
+        help="Minimum read depth filter",
     )
     parser.add_argument(
         "--eval_all",
         action="store_true",
-        default=False,
+        default=argparse.SUPPRESS,
         help="Evaluate all pool solutions (requires --result_dir)",
     )
     parser.add_argument(
@@ -938,7 +926,7 @@ def add_arguments_evaluate(parser):
     parser.add_argument(
         "--verbosity",
         type=int,
-        default=0,
+        default=argparse.SUPPRESS,
         help="Logging verbosity (default: 0)",
     )
     return parser

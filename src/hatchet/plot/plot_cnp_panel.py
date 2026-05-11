@@ -2,7 +2,6 @@
 
 import os
 import logging
-import argparse
 
 import numpy as np
 import pandas as pd
@@ -12,12 +11,14 @@ import matplotlib.pyplot as plt
 from hatchet.utils import (
     compute_clone_ploidies,
     compute_tumor_ploidy,
+    normalize_args,
     read_region_bed,
     read_seg_ucn_file,
     setup_logging,
 )
-from hatchet.hatchet_parser import add_arguments_plot_panel
 from hatchet.plot.plot_cn_utils import (
+    plot_ascn_legend,
+    plot_ascn_profile,
     plot_cnv_legend,
     plot_cnv_profile,
 )
@@ -26,9 +27,9 @@ from hatchet.plot.plot_utils import override_solution
 
 
 def run(args=None):
+    args = normalize_args(args)
+    setup_logging(args)
     logging.info("run hatchet plot_panel")
-    if isinstance(args, argparse.Namespace):
-        args = vars(args)
 
     title = args["title"]
     panel_file = args["panel_file"]
@@ -102,7 +103,8 @@ def run(args=None):
             logging.info(f"{label} / {sid}: purity={purity}, ploidy={ploidy}")
 
         clone_ploidies = compute_clone_ploidies(seg_info, clones)
-        plot_cnv_profile(
+        _profile_fn = plot_ascn_profile if args["plot_ascn"] else plot_cnv_profile
+        _profile_fn(
             main_axes[i],
             seg_info,
             regions,
@@ -116,7 +118,8 @@ def run(args=None):
         stats_lines = "\n".join(f"{sid}: p={p} pl={pl}" for sid, p, pl in stats)
         ylabel = f"{label}\n{stats_lines}"
         main_axes[i].set_ylabel(ylabel, rotation=0, ha="right", va="center")
-    plot_cnv_legend(ax_leg)
+    _legend_fn = plot_ascn_legend if args["plot_ascn"] else plot_cnv_legend
+    _legend_fn(ax_leg)
 
     main_axes[0].set_title(title, pad=30)
     plt.savefig(out_file, dpi=dpi, bbox_inches="tight", transparent=transparent)
@@ -167,15 +170,3 @@ def run(args=None):
 
     logging.info("Done")
     return
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        prog="HATCHet plot_panel",
-        description="plot panel",
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    add_arguments_plot_panel(parser)
-    args = parser.parse_args()
-    setup_logging(args)
-    run(args)

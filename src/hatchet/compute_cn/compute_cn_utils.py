@@ -591,37 +591,6 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
     logging.info(f"wrote {outfile} ({len(groups) + (1 if elbow_fig else 0)} pages)")
 
 
-def annotate_seg_pi_violations(seg_df, cA, cB, u, fcn_data, cluster_ids, sample_ids):
-    """Add PI_VIOL column to seg_df using the prediction interval bounds in fcn_data.
-
-    Each segment belongs to a cluster (CLUSTER column). A segment violates
-    the PI when the expected FCN (cA @ u or cB @ u) falls outside the
-    [fa_lo, fa_hi] / [fb_lo, fb_hi] bounds for that (cluster, sample).
-    """
-    if "CLUSTER" not in seg_df.columns or fcn_data is None or "fa_lo" not in fcn_data:
-        return seg_df
-
-    exp_a = np.array(cA) @ np.array(u)
-    exp_b = np.array(cB) @ np.array(u)
-    fa_lo = fcn_data["fa_lo"].loc[cluster_ids, sample_ids].to_numpy()
-    fa_hi = fcn_data["fa_hi"].loc[cluster_ids, sample_ids].to_numpy()
-    fb_lo = fcn_data["fb_lo"].loc[cluster_ids, sample_ids].to_numpy()
-    fb_hi = fcn_data["fb_hi"].loc[cluster_ids, sample_ids].to_numpy()
-    violations = (exp_a < fa_lo) | (exp_a > fa_hi) | (exp_b < fb_lo) | (exp_b > fb_hi)
-    viol_df = pd.DataFrame(violations, index=cluster_ids, columns=sample_ids)
-
-    seg_df = seg_df.copy()
-    seg_df["PI_VIOL"] = seg_df.apply(
-        lambda r: (
-            bool(viol_df.loc[r["CLUSTER"], r["SAMPLE"]])
-            if r["CLUSTER"] in viol_df.index
-            else False
-        ),
-        axis=1,
-    )
-    return seg_df
-
-
 def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
     """Read pool solution TSVs from sol_dir into {sol_id: {"imf_obj": ..., "cA": ..., ...}}."""
     pool = {}

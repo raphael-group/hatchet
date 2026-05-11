@@ -1,6 +1,5 @@
 import os
 import logging
-import argparse
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -10,12 +9,12 @@ from hatchet.utils import (
     add_file_logging,
     compute_clone_ploidies,
     compute_tumor_ploidy,
+    normalize_args,
     read_genome_sizes,
     read_region_bed,
     read_seg_ucn_file,
     setup_logging,
 )
-from hatchet.hatchet_parser import add_arguments_plot_cn
 from hatchet.plot.plot_utils import (
     get_expected_baf_fcn,
     load_gammas,
@@ -24,16 +23,17 @@ from hatchet.plot.plot_utils import (
 )
 from hatchet.plot.plot_1d2d import get_transparency, plot_1d, plot_2d
 from hatchet.plot.plot_cn_utils import (
-    get_cn_colors,
+    plot_ascn_legend,
+    plot_ascn_profile,
     plot_cnv_legend,
     plot_cnv_profile,
 )
 
 
 def run(args=None):
+    args = normalize_args(args)
+    setup_logging(args)
     logging.info("run hatchet plot-cn one sample")
-    if isinstance(args, argparse.Namespace):
-        args = vars(args)
 
     ##################################################
     # files
@@ -44,7 +44,6 @@ def run(args=None):
 
     solfile = args["solfile"]
     gamma_file = args["gamma_file"]
-    # is_diploid = not args["tetraploid"]
     plot_dir = args["plot_dir"]
     os.makedirs(plot_dir, exist_ok=True)
     add_file_logging(plot_dir, "plot-cn")
@@ -109,7 +108,6 @@ def run(args=None):
     # start plotting 1D and 2D
     from matplotlib.backends.backend_pdf import PdfPages
 
-    state_style, _ = get_cn_colors()
     sns.set_style("whitegrid")
     for sample in samples:
         logging.info(f"plot {sample}")
@@ -221,7 +219,8 @@ def run(args=None):
             )
 
         clone_ploidies = compute_clone_ploidies(seg_info, clones)
-        plot_cnv_profile(
+        _profile_fn = plot_ascn_profile if args["plot_ascn"] else plot_cnv_profile
+        _profile_fn(
             axes[2],
             seg_info,
             regions,
@@ -232,7 +231,8 @@ def run(args=None):
             show_prop=True,
             clone_ploidies=clone_ploidies,
         )
-        plot_cnv_legend(axes[-1])
+        _legend_fn = plot_ascn_legend if args["plot_ascn"] else plot_cnv_legend
+        _legend_fn(axes[-1])
 
         fig_1d.suptitle(sample_title)
         axes[1].set_ylabel("mhBAF")
@@ -266,15 +266,3 @@ def run(args=None):
         plt.close(fig_1d)
         logging.info(f"finish {sample}")
     return
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        prog="HATCHet plot 1D2D",
-        description="plot HATCHet results",
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    add_arguments_plot_cn(parser)
-    args = parser.parse_args()
-    setup_logging(args)
-    run(args)

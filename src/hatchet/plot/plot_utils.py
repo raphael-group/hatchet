@@ -4,11 +4,6 @@ import pandas as pd
 
 import seaborn as sns
 
-WHITE = (1, 1, 1, 1)
-BLACK = (0, 0, 0, 1)
-RED = (1, 0, 0, 1)
-BLUE = (0, 0, 1, 1)
-
 
 def load_gammas(gamma_file: str, is_diploid=True):
     gammas = {}
@@ -73,12 +68,6 @@ def override_solution(
     )
 
     return bbcs, segs, n_clones, n_tumors, solID
-
-
-def cn2total(s):
-    tkns = s.split("|")
-    assert len(tkns) == 2
-    return int(tkns[0]) + int(tkns[1])
 
 
 def get_expected_baf_fcn(cns, props):

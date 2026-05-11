@@ -395,37 +395,6 @@ def plot_2d(
 
 
 ##################################################
-def plot_baf_normal_sample(
-    bafs: np.ndarray,
-    out_file: str,
-    dpi=150,
-    transparent=False,
-):
-    fig, ax = plt.subplots(1, 1)
-    sns.histplot(x=bafs, ax=ax, bins=50, binrange=[0, 1])
-    ax.vlines(
-        0.5,
-        ymin=0,
-        ymax=1,
-        transform=ax.get_xaxis_transform(),
-        linewidth=0.5,
-        colors="k",
-    )
-    mu_baf = np.mean(bafs)
-    std_baf = np.std(bafs)
-    med_baf = np.median(bafs)
-    ax.set_title(
-        f"Normal #bins={len(bafs)}\nmu={mu_baf:.3f} std={std_baf:.3f} med={med_baf:.3f}"
-    )
-    ax.set_xlabel(xlabel="mhBAF")
-    ax.grid(False)
-    plt.tight_layout()
-    plt.savefig(out_file, dpi=dpi, transparent=transparent)
-    plt.close(fig)
-    return
-
-
-##################################################
 def _is_multimodal(obs, min_count=30):
     """Return True if KDE of obs has >1 prominent peak."""
     if len(obs) < min_count:

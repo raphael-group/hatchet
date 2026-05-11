@@ -366,19 +366,7 @@ def plot_cnv_legend(ax: plt.Axes):
     return ax
 
 
-WHITE = (1, 1, 1, 1)
 BLACK = (0, 0, 0, 1)
-RED = (1, 0, 0, 1)
-BLUE = (0, 0, 1, 1)
-
-
-def fcn_color(fcn: float, base=1, tol=1e-2):
-    if fcn > base + tol:
-        return RED
-    elif fcn < base - tol:
-        return BLUE
-    else:
-        return BLACK
 
 
 def get_cn_colors():
@@ -455,24 +443,24 @@ def get_cn_colors():
     return state_style, tcn_states
 
 
-_ASCN_COLORS = [
-    "#2166AC",  # CN=0  blue (homozygous deletion)
-    "#A8A8A8",  # CN=1  grey (neutral)
-    "#FDBE85",  # CN=2  light peach
-    "#FD8D3C",  # CN=3  light orange
-    "#F46D43",  # CN=4  orange
-    "#E8352E",  # CN=5  red
-    "#CC1620",  # CN=6  medium-dark red
-    "#B0000E",  # CN=7  dark red
-    "#8B0000",  # CN=8  deeper red
-    "#660000",  # CN=9  very dark red
-    "#400000",  # CN=10 darkest red
-]
+def get_ascn_colors():
+    """Return (state_style, tcn_states) for allele-CN coloring.
 
-
-def ascn_color(cn: int) -> str:
-    """Return a hex color for an integer allele copy number (0–10)."""
-    return _ASCN_COLORS[max(0, min(cn, 10))]
+    cn=0..6 → explicit colors; cn≥7 → state_style["default"].
+    Use state_style.get(cn, state_style["default"]) at call sites.
+    """
+    state_style = {
+        0: "#FFFFFF",  # white
+        1: "#BDBDBD",  # gray
+        2: "#A6CEE3",  # pale blue
+        3: "#FDBF6F",  # orange
+        4: "#FB6A4A",  # red-orange
+        5: "#CB181D",  # red
+        6: "#6A3D9A",  # dark purple
+    }
+    state_style["default"] = "#00cc99"
+    tcn_states = sorted(k for k in state_style if isinstance(k, int))
+    return state_style, tcn_states
 
 
 def plot_ascn_profile(
@@ -486,14 +474,16 @@ def plot_ascn_profile(
     plot_chrname=True,
     show_prop=True,
     show_clone_name=True,
+    clone_ploidies=None,
 ):
     """
     Plot allele-specific CN profile with two sub-bars (A/B) per clone.
 
     Same genome layout as plot_cnv_profile but each clone row is split into
     an upper A-allele bar and a lower B-allele bar, colored by individual
-    integer copy number on a blue→grey→red scale.
+    integer copy number.
     """
+    state_style, _ = get_ascn_colors()
     num_clones = len(str(bin_info.iloc[0]["CNP"]).split(";")) - 1
     h = height / num_clones
     h_sub = h / 2
@@ -544,7 +534,7 @@ def plot_ascn_profile(
                         (x0, y0),
                         w,
                         h_sub,
-                        facecolor=ascn_color(cnb),
+                        facecolor=state_style.get(cnb, state_style["default"]),
                         edgecolor="none",
                         transform=ax.get_xaxis_transform(),
                         linewidth=0,
@@ -555,7 +545,7 @@ def plot_ascn_profile(
                         (x0, y0 + h_sub),
                         w,
                         h_sub,
-                        facecolor=ascn_color(cna),
+                        facecolor=state_style.get(cna, state_style["default"]),
                         edgecolor="none",
                         transform=ax.get_xaxis_transform(),
                         linewidth=0,
@@ -618,13 +608,19 @@ def plot_ascn_profile(
     ylabels = []
     for ci in range(num_clones, 0, -1):
         prop = round(bulk_props[ci] * 100, 1)
-        cname = str(ci)
+        lines = []
         if show_clone_name:
-            cname = f"clone {cname}"
+            lines.append(f"Clone {ci}")
+        else:
+            lines.append(str(ci))
+        if clone_ploidies is not None:
+            clone_key = f"clone{ci}"
+            if clone_key in clone_ploidies:
+                lines.append(f"ploidy {round(clone_ploidies[clone_key], 2)}")
         if show_prop:
-            cname = f"{cname} ({prop}%)"
-        ylabels.append(cname)
-    ax.set_yticklabels(ylabels)
+            lines.append(f"prop {prop}%")
+        ylabels.append("\n".join(lines))
+    ax.set_yticklabels(ylabels, fontsize=8, va="center")
 
     # A/B sub-labels via minor ticks
     minor_positions = []
@@ -649,32 +645,35 @@ def plot_ascn_profile(
 
 
 def plot_ascn_legend(ax: plt.Axes):
-    """Draw a horizontal color bar legend for allele CN 0–10."""
+    """Draw a horizontal color bar legend for allele CN values."""
+    state_style, tcn_states = get_ascn_colors()
+    boxes = list(tcn_states) + ["7+"]
     ax.axis("off")
 
     box_w = 2.0
     box_h = 0.6
     x0 = 0.0
 
-    for cn in range(11):
+    for i, label in enumerate(boxes):
+        color = state_style["default"] if label == "7+" else state_style[label]
         rect = Rectangle(
-            (x0 + cn * box_w, 0.0),
+            (x0 + i * box_w, 0.0),
             box_w,
             box_h,
-            facecolor=ascn_color(cn),
+            facecolor=color,
             edgecolor="black",
         )
         ax.add_patch(rect)
         ax.text(
-            x0 + cn * box_w + box_w / 2.0,
+            x0 + i * box_w + box_w / 2.0,
             -0.15,
-            str(cn),
+            str(label),
             ha="center",
             va="top",
             fontsize=9,
         )
 
-    total_w = 11 * box_w
+    total_w = len(boxes) * box_w
     ax.text(
         -0.5, box_h / 2.0, "Allele copy number", fontsize=12, ha="right", va="center"
     )
@@ -683,51 +682,3 @@ def plot_ascn_legend(ax: plt.Axes):
     ax.set_ylim(-0.6, box_h + 0.4)
     ax.set_aspect("auto")
     return ax
-
-
-def make_cnp_palette(clone_states, clone_props, state_style, style="ascn"):
-    """Map each CNP string to a color blended by clone proportions.
-
-    Args:
-        clone_states: iterable of unique CNP strings (e.g. ["1|1;2|1", "1|1;1|1"]).
-        clone_props:  (n_clones,) proportions array (normal clone first).
-        state_style:  dict (a, b) -> hex color, from get_cn_colors().
-        style:        ``"ascn"`` to color tumor clones by total CN via
-                      ascn_color(a+b), re-normalised to exclude the normal
-                      clone; ``"cnv"`` to blend all clones using state_style.
-
-    Returns:
-        dict mapping cnp_string -> RGB tuple (values in [0, 1]).
-    """
-    from matplotlib.colors import to_rgb
-
-    palette = {}
-    for cnp in clone_states:
-        states = [(int(x.split("|")[0]), int(x.split("|")[1])) for x in cnp.split(";")]
-        if style == "ascn":
-            # Blend only tumor clones (index >= 1), re-normalised proportions
-            tumor_props = clone_props[1:]
-            tumor_sum = tumor_props.sum()
-            if tumor_sum > 0:
-                tumor_props_norm = tumor_props / tumor_sum
-            else:
-                tumor_props_norm = np.ones(len(tumor_props)) / len(tumor_props)
-            rgbs = np.array([to_rgb(ascn_color(a + b)) for a, b in states[1:]])
-            blended = np.clip(rgbs.T @ tumor_props_norm, 0.0, 1.0)
-        else:
-            # Blend only tumor clones (index >= 1) to avoid dilution by normal gray
-            tumor_props = clone_props[1:]
-            tumor_sum = tumor_props.sum()
-            if tumor_sum > 0:
-                tumor_props_norm = tumor_props / tumor_sum
-            else:
-                tumor_props_norm = np.ones(len(tumor_props)) / len(tumor_props)
-            rgbs = np.array(
-                [
-                    to_rgb(state_style.get((a, b), state_style["default"]))
-                    for a, b in states[1:]
-                ]
-            )
-            blended = np.clip(rgbs.T @ tumor_props_norm, 0.0, 1.0)
-        palette[cnp] = tuple(blended)
-    return palette

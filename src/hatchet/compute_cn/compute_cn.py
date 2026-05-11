@@ -1,13 +1,13 @@
 import os
 import logging
 import shutil
-import argparse
 
 import pandas as pd
 
 from hatchet.utils import (
     add_file_logging,
     log_arguments,
+    normalize_args,
     read_bbc_file,
     setup_logging,
 )
@@ -27,7 +27,7 @@ from hatchet.compute_cn.model_select import (
     model_select_elbow_from_regularization,
 )
 from hatchet.compute_cn.scaling import get_scaling_factor
-from hatchet.hatchet_parser import parse_arguments_compute_cn, add_arguments_compute_cn
+from hatchet.hatchet_parser import parse_arguments_compute_cn
 from hatchet.compute_cn.solve.datatypes import SolverParams, SolverInputs
 from hatchet.compute_cn.solve.inference import (
     run_full_ilp,
@@ -37,10 +37,9 @@ from hatchet.plot.plot_pool import plot_pool_cnp
 
 
 def run(args=None):
+    args = parse_arguments_compute_cn(normalize_args(args))
+    setup_logging(args)
     logging.info("run hatchet compute cn")
-    if isinstance(args, argparse.Namespace):
-        args = vars(args)
-    args = parse_arguments_compute_cn(args)
 
     bbc_file = args["bbc"]
     seg_file = args["seg"]
@@ -391,15 +390,3 @@ def solve(
 
     store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode)
     return pool_instances
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        prog="HATCHet compute-cn",
-        description="solve copy-numbers",
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    add_arguments_compute_cn(parser)
-    args = parser.parse_args()
-    setup_logging(args)
-    run(args)

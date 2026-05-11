@@ -1,11 +1,16 @@
 import os
 import logging
-import argparse
 
 import numpy as np
 import pandas as pd
 
-from hatchet.utils import read_seg_ucn_file, read_genome_sizes, read_region_bed
+from hatchet.utils import (
+    normalize_args,
+    read_seg_ucn_file,
+    read_genome_sizes,
+    read_region_bed,
+    setup_logging,
+)
 from hatchet.evaluate.evaluate_utils import (
     read_snv_vcf,
     read_snv_tsv,
@@ -17,9 +22,9 @@ from hatchet.evaluate.evaluate_utils import (
 
 
 def run(args=None):
+    args = normalize_args(args)
+    setup_logging(args)
     logging.info("run hatchet evaluate")
-    if isinstance(args, argparse.Namespace):
-        args = vars(args)
 
     gamma = args["gamma"]
     min_vaf = args["min_vaf"]
@@ -144,17 +149,3 @@ def run(args=None):
         out_summary = os.path.join(out_dir, "eval_summary.tsv")
         summary_df.to_csv(out_summary, sep="\t", index=False)
         logging.info(f"wrote {out_summary}")
-
-
-if __name__ == "__main__":
-    from hatchet.hatchet_parser import add_arguments_evaluate
-    from hatchet.utils import setup_logging
-
-    parser = argparse.ArgumentParser(
-        prog="HATCHet evaluate",
-        description="Evaluate CN solutions against somatic SNVs",
-    )
-    add_arguments_evaluate(parser)
-    args = parser.parse_args()
-    setup_logging(args)
-    run(args)

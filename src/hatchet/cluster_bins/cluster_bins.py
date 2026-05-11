@@ -2,12 +2,10 @@ import os
 import time
 import logging
 import shutil
-import argparse
 
 import numpy as np
 import pandas as pd
 from hatchet.utils import *
-from hatchet.hatchet_parser import add_arguments_cluster_bins
 from hatchet.cluster_bins.cluster_utils import *
 from hatchet.cluster_bins.hmm.hmm_init import *
 from hatchet.cluster_bins.hmm.hmm_transitions import *
@@ -34,13 +32,13 @@ def run(args=None):
         model_scores.tsv / .png — BIC or ICL scores across K
 
     Args:
-        args: dict or argparse.Namespace of CLI arguments (see hatchet_parser.py).
+        args: dict or Namespace of CLI arguments (see hatchet_parser.py).
     """
+    args = normalize_args(args)
+    setup_logging(args)
+    log_arguments(args)
     logging.info("cluster bins")
     _log_done = log_step_start()
-    if isinstance(args, argparse.Namespace):
-        args = vars(args)
-    log_arguments(args)
 
     bb_dir = args["bb_dir"]
     bb_file = os.path.join(bb_dir, "bb.tsv.gz")
@@ -544,15 +542,3 @@ def run(args=None):
 
     _log_done("cluster-bins")
     return
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        prog="HATCHet cluster_bins",
-        description="cluster haplotype blocks",
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    add_arguments_cluster_bins(parser)
-    args = parser.parse_args()
-    setup_logging(args)
-    run(args)

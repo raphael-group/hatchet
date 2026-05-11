@@ -1,35 +1,27 @@
+import argparse
 import os
 import time
 import logging
 import resource
 from collections import OrderedDict
-from contextlib import contextmanager
+from importlib.resources import files
 
 import pandas as pd
 import numpy as np
+import yaml
 
 
-@contextmanager
-def log_step(name):
-    """Context manager that logs wall time, CPU time, and peak RSS on exit.
+def load_defaults() -> dict:
+    """Load packaged tuning defaults from src/hatchet/hatchet.yaml."""
+    text = files("hatchet").joinpath("hatchet.yaml").read_text(encoding="utf-8")
+    return yaml.safe_load(text)
 
-    Usage::
 
-        with log_step("cluster-bins"):
-            ...  # work
-        # logs: cluster-bins done: wall=12.3s, cpu=45.6s, peak_rss=1.23 GB
-    """
-    t_wall = time.perf_counter()
-    t_cpu = time.process_time()
-    yield
-    wall = time.perf_counter() - t_wall
-    cpu = time.process_time() - t_cpu
-    # ru_maxrss is in bytes on macOS, kilobytes on Linux
-    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    rss_gb = rss / 1e9 if rss > 1e9 else rss / 1e6
-    logging.info(
-        f"{name} done: wall={wall:.1f}s, cpu={cpu:.1f}s, peak_rss={rss_gb:.2f} GB"
-    )
+def normalize_args(args) -> dict:
+    """Convert Namespace→dict if needed and merge YAML defaults under it (args win)."""
+    if isinstance(args, argparse.Namespace):
+        args = vars(args)
+    return {**load_defaults(), **args}
 
 
 def log_step_start():
@@ -55,18 +47,6 @@ def log_step_start():
         )
 
     return finish
-
-
-def symlink_force(src, dst):
-    try:
-        os.remove(dst)
-    except FileNotFoundError:
-        pass
-    os.symlink(os.path.abspath(src), os.path.abspath(dst))
-
-
-def get_ord2chr(ch="chr"):
-    return [f"{ch}{i}" for i in range(1, 23)] + [f"{ch}X", f"{ch}Y"]
 
 
 def get_chr2ord(ch):

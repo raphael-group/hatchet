@@ -14,6 +14,8 @@ from hatchet.utils import (
     read_region_bed,
 )
 from hatchet.plot.plot_cn_utils import (
+    plot_ascn_legend,
+    plot_ascn_profile,
     plot_cnv_legend,
     plot_cnv_profile,
 )
@@ -39,6 +41,7 @@ def plot_pool_cnp(
     dpi=150,
     solve_mode=None,
     sample_names=None,
+    plot_ascn=True,
 ):
     """Plot pool CNP panel into out_dir.
 
@@ -141,7 +144,8 @@ def plot_pool_cnp(
             sample_stats.append((sid, purity, ploidy))
 
         clone_ploidies = compute_clone_ploidies(seg_info, clones)
-        plot_cnv_profile(
+        _profile_fn = plot_ascn_profile if plot_ascn else plot_cnv_profile
+        _profile_fn(
             main_axes[i],
             seg_info,
             regions,
@@ -162,7 +166,8 @@ def plot_pool_cnp(
             ylabel, rotation=0, ha="right", va="center", color=color
         )
 
-    plot_cnv_legend(ax_leg)
+    _legend_fn = plot_ascn_legend if plot_ascn else plot_cnv_legend
+    _legend_fn(ax_leg)
 
     if title:
         main_axes[0].set_title(title)

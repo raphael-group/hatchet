@@ -7,7 +7,12 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.collections import LineCollection
 
-from hatchet.plot.plot_cn_utils import plot_cnv_profile, plot_cnv_legend
+from hatchet.plot.plot_cn_utils import (
+    plot_ascn_legend,
+    plot_ascn_profile,
+    plot_cnv_legend,
+    plot_cnv_profile,
+)
 
 
 def _display_name(v, tree):
@@ -170,6 +175,7 @@ def render_cnt_tree(
     sample_names=None,
     min_prop=0.03,
     fontsize=10,
+    plot_ascn=True,
 ):
     """Render a LabeledCloneTree as a multi-page PDF.
 
@@ -251,7 +257,8 @@ def render_cnt_tree(
         ax_cn = fig.add_subplot(gs[0, 1])
         ax_leg = fig.add_subplot(gs[1, :])
 
-        plot_cnv_profile(
+        _profile_fn = plot_ascn_profile if plot_ascn else plot_cnv_profile
+        _profile_fn(
             ax_cn,
             bin_info,
             regions,
@@ -311,7 +318,8 @@ def render_cnt_tree(
                     zorder=10,
                 )
 
-        plot_cnv_legend(ax_leg)
+        _legend_fn = plot_ascn_legend if plot_ascn else plot_cnv_legend
+        _legend_fn(ax_leg)
         pdf.savefig(fig, bbox_inches="tight", dpi=150)
         plt.close(fig)
 

@@ -7,8 +7,22 @@ from hatchet.compute_cn.compute_cn import run as hatchet_compute_cn
 from hatchet.plot.plot_cn import run as hatchet_plot_cn
 from hatchet.plot.plot_cnp_panel import run as hatchet_plot_panel
 from hatchet.evaluate.evaluate import run as hatchet_evaluate
-from hatchet.hatchet_parser import *
-from hatchet.utils import setup_logging, log_arguments
+from hatchet.hatchet_parser import (
+    add_arguments_cluster_bins,
+    add_arguments_compute_cn,
+    add_arguments_evaluate,
+    add_arguments_plot_cn,
+    add_arguments_plot_panel,
+)
+
+
+SUBCOMMANDS = [
+    ("cluster-bins", add_arguments_cluster_bins, hatchet_cluster_bins),
+    ("compute-cn", add_arguments_compute_cn, hatchet_compute_cn),
+    ("plot-cn", add_arguments_plot_cn, hatchet_plot_cn),
+    ("plot-panel", add_arguments_plot_panel, hatchet_plot_panel),
+    ("evaluate", add_arguments_evaluate, hatchet_evaluate),
+]
 
 
 def main(argv=None):
@@ -16,33 +30,12 @@ def main(argv=None):
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s {version('hatchet')}"
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    p_clu = subparsers.add_parser("cluster-bins", help="run cluster-bins")
-    add_arguments_cluster_bins(p_clu)
-    p_clu.set_defaults(func=hatchet_cluster_bins)
-
-    p_ccn = subparsers.add_parser("compute-cn", help="run hatchet_compute_cn")
-    add_arguments_compute_cn(p_ccn)
-    p_ccn.set_defaults(func=hatchet_compute_cn)
-
-    p_plot_cn = subparsers.add_parser("plot-cn", help="run plot-cn")
-    add_arguments_plot_cn(p_plot_cn)
-    p_plot_cn.set_defaults(func=hatchet_plot_cn)
-
-    p_plot_cnp = subparsers.add_parser("plot-panel", help="run plot-panel")
-    add_arguments_plot_panel(p_plot_cnp)
-    p_plot_cnp.set_defaults(func=hatchet_plot_panel)
-
-    p_eval = subparsers.add_parser(
-        "evaluate", help="evaluate CN solutions against somatic SNVs"
-    )
-    add_arguments_evaluate(p_eval)
-    p_eval.set_defaults(func=hatchet_evaluate)
-
+    sub = parser.add_subparsers(dest="command", required=True)
+    for name, add_args, fn in SUBCOMMANDS:
+        p = sub.add_parser(name, help=f"run {name}")
+        add_args(p)
+        p.set_defaults(func=fn)
     args = parser.parse_args(argv)
-    setup_logging(args)
-    log_arguments(args)
     args.func(args)
 
 

@@ -112,39 +112,6 @@ def extract_solution(
     return {"imf_obj": model.obj(), "cA": cA, "cB": cB, "u": u}
 
 
-def extract_pool_solutions(
-    solver, model, params: SolverParams, inputs: SolverInputs, pool_size=10
-):
-    """Extract additional solutions from Gurobi's solution pool."""
-    try:
-        grb_model = solver._solver_model
-        var_map = solver._pyomo_var_to_solver_var_map
-    except AttributeError:
-        return []
-    if grb_model.SolCount <= 1:
-        return []
-
-    solutions = []
-    for sol_idx in range(1, min(grb_model.SolCount, pool_size)):
-        grb_model.setParam("SolutionNumber", sol_idx)
-        cA = [[0] * params.n for _ in range(inputs.m)]
-        cB = [[0] * params.n for _ in range(inputs.m)]
-        u = [[0.0] * inputs.k for _ in range(params.n)]
-        for _m in range(inputs.m):
-            for _n in range(params.n):
-                for arr, cX in [(cA, model.cA), (cB, model.cB)]:
-                    pv = cX[_m, _n]
-                    gv = var_map.get(id(pv))
-                    arr[_m][_n] = int(round(gv.Xn)) if gv else int(round(pv.value))
-        for _n in range(params.n):
-            for _k in range(inputs.k):
-                pv = model.u[_n, _k]
-                gv = var_map.get(id(pv))
-                u[_n][_k] = gv.Xn if gv else pv.value
-        solutions.append((grb_model.PoolObjVal, cA, cB, u))
-    return solutions
-
-
 def run_full_ilp(
     params,
     inputs,
