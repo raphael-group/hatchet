@@ -635,7 +635,7 @@ def plot_ascn_profile(
     ax.tick_params(axis="y", which="minor", left=False, right=False, pad=2)
 
     ax.set_ylim(0, num_clones * h)
-    ax.tick_params(axis="y", which="major", left=False, right=False)
+    ax.tick_params(axis="y", which="major", left=True, right=False, length=4)
 
     if ylabel is not None:
         ax.set_ylabel(ylabel, rotation=0, ha="right", va="center")
