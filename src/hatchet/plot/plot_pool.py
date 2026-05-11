@@ -4,12 +4,9 @@ import os
 import re
 import logging
 
-import numpy as np
 import matplotlib.pyplot as plt
 
 from hatchet.utils import (
-    compute_clone_ploidies,
-    compute_tumor_ploidy,
     prepare_seg_ucn,
     read_region_bed,
 )
@@ -27,6 +24,12 @@ def _format_pool_label(tag):
     if m:
         return f"p={m.group(1)},s={m.group(2)}"
     return tag
+
+
+def _fmt_prop(v):
+    """Round proportion to 2 decimals as percent; literal '0' if zero."""
+    pct = round(v * 100, 2)
+    return "0" if pct == 0 else f"{pct}%"
 
 
 def plot_pool_cnp(
@@ -133,17 +136,6 @@ def plot_pool_cnp(
             seg_info_all["SAMPLE"] == samples[0], :
         ].reset_index(drop=True)
 
-        sample_stats = []
-        for sid in samples:
-            sp = seg_info_all.loc[seg_info_all["SAMPLE"] == sid, :].reset_index(
-                drop=True
-            )
-            cps = sp[[f"u_{c}" for c in clones]].iloc[0].tolist()
-            purity = round(np.sum(cps[1:]), 2)
-            ploidy = round(compute_tumor_ploidy(sp, clones, np.sum(cps[1:])), 2)
-            sample_stats.append((sid, purity, ploidy))
-
-        clone_ploidies = compute_clone_ploidies(seg_info, clones)
         _profile_fn = plot_ascn_profile if plot_ascn else plot_cnv_profile
         _profile_fn(
             main_axes[i],
@@ -153,14 +145,20 @@ def plot_pool_cnp(
             width=width,
             height=height,
             show_clone_name=False,
-            show_prop=True,
-            clone_ploidies=clone_ploidies,
+            show_prop=False,
         )
+
         short_label = _format_pool_label(str(label))
         if is_selected:
             short_label += " *"
-        stats_lines = "\n".join(f"{sid}: p={p} pl={pl}" for sid, p, pl in sample_stats)
-        ylabel = f"{short_label}\nimf {round(obj, 2)}\n{stats_lines}"
+        prop_lines = []
+        for sid in samples:
+            sp = seg_info_all.loc[seg_info_all["SAMPLE"] == sid, :].reset_index(
+                drop=True
+            )
+            cps = sp[[f"u_{c}" for c in clones]].iloc[0].tolist()
+            prop_lines.append(f"{sid}:" + "|".join(_fmt_prop(c) for c in cps))
+        ylabel = f"{short_label}\nimf {round(obj, 2)}\n" + "\n".join(prop_lines)
         color = "red" if is_selected else "black"
         main_axes[i].set_ylabel(
             ylabel, rotation=0, ha="right", va="center", color=color
