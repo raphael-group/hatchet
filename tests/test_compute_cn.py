@@ -105,6 +105,7 @@ class TestCDMode:
             pytest.skip("CBC solver not available")
         bbc_dir, _ = cluster_bins_result
         _, genome_sizes, regions_bed, _ = synthetic_data
+        # Only override defaults that differ from src/hatchet/hatchet.yaml.
         return {
             "bbc": os.path.join(bbc_dir, "bulk.bbc"),
             "seg": os.path.join(bbc_dir, "bulk.seg"),
@@ -113,36 +114,16 @@ class TestCDMode:
             "mode": "cd",
             "solver": "cbc",
             "timelimit": 30,
-            "minClone": 2,
             "maxClone": 2,
             "diploid": True,
-            "tetraploid": False,
-            "fcn_ci_alpha": 0.05,
-            "min_ci_margin": 0.1,
-            "obj_type": "imf",
-            "model_select": "bic",
             "force": True,
             "reg_steps": 2,
             "reg_bound": 0.1,
-            "no_ampdel": False,
-            "num_cnstates": -1,
             "diploidcmax": 6,
-            "tetraploidcmax": 12,
-            "min_prop": 0.01,
-            "purities": None,
             "cd_niters": 5,
-            "cd_convergence_iters": 2,
             "cd_nseeds": 10,
             "cd_njobs": 1,
-            "cd_seed": 42,
-            "u_init": "dirichlet",
-            "u_dir_alpha": 0.3,
-            "solver_threads": None,
             "zero_cn_thres": 0.005,
-            "cd_tol": 0.001,
-            "fix_cn_dip": {},
-            "fix_cn_tet": {},
-            "verbosity": 0,
         }
 
     @pytest.mark.parametrize(
@@ -173,6 +154,8 @@ class TestCntCDMode:
         bbc_dir, _ = cluster_bins_result
         _, genome_sizes, regions_bed, _ = synthetic_data
         result_dir = str(tmp_path / "cnt_cd")
+        # Only override defaults that differ from src/hatchet/hatchet.yaml.
+        # tree_file is a path arg (kept in argparse, not YAML) — must be supplied here.
         args = {
             "bbc": os.path.join(bbc_dir, "bulk.bbc"),
             "seg": os.path.join(bbc_dir, "bulk.seg"),
@@ -182,37 +165,18 @@ class TestCntCDMode:
             "mode": "cnt_cd",
             "solver": "cbc",
             "timelimit": 30,
-            "minClone": 2,
             "maxClone": 2,
             "diploid": True,
-            "tetraploid": False,
-            "fcn_ci_alpha": 0.05,
-            "min_ci_margin": 0.1,
-            "obj_type": "imf",
-            "model_select": "bic",
             "force": True,
             "reg_term": "RAW",
             "reg_steps": 1,
             "reg_bound": 0.0,
-            "no_ampdel": False,
-            "num_cnstates": -1,
             "diploidcmax": 6,
-            "tetraploidcmax": 12,
-            "min_prop": 0.01,
-            "purities": None,
             "cd_niters": 5,
-            "cd_convergence_iters": 2,
             "cd_nseeds": 10,
             "cd_njobs": 1,
-            "cd_seed": 42,
-            "u_init": "dirichlet",
-            "u_dir_alpha": 0.3,
-            "solver_threads": None,
             "zero_cn_thres": 0.005,
-            "cd_tol": 0.001,
-            "fix_cn_dip": {},
-            "fix_cn_tet": {},
-            "verbosity": 0,
+            "tree_file": None,
         }
         run_compute_cn(args)
 

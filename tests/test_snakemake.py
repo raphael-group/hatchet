@@ -75,7 +75,6 @@ def snakemake_result(tmp_path_factory):
             "maxClone": 2,
             "diploid": True,
             "tetraploid": False,
-            "segment": False,
             "reg_term": "MAXCN",
             "reg_steps": 3,
             "reg_bound": 0.15,

@@ -31,38 +31,20 @@ def cluster_bins_result(synthetic_data, tmp_path_factory):
 
     from hatchet.cluster_bins.cluster_bins import run as run_cluster_bins
 
+    # Only override defaults that differ from src/hatchet/hatchet.yaml.
     args = {
         "bb_dir": bb_dir,
         "bbc_dir": bbc_dir,
         "genome_size": genome_sizes,
-        "minK": 3,
         "maxK": 5,
         "restarts": 3,
         "top_restarts": 2,
         "n_local_trials": 2,
         "niters": 5,
-        "t": 1e-6,
-        "min_tau": 50,
-        "max_tau": 200,
-        "baf_eps": 1e-3,
-        "min_covar": 1e-3,
-        "ig_alpha": 10.0,
         "tau_iters": 1,
-        "seed": 42,
         "decode_method": "viterbi",
-        "score_method": "icl",
-        "log_rdr": False,
-        "init_method": "cna_plus_plus",
         "force": True,
         "verbosity": 1,
-        "bal_lrt_alpha": 0.05,
-        "bal_margin": 0.03,
-        "filter_std": 2.0,
-        "min_nbins": 10,
-        "ub_nbins": 50,
-        "skip_mhbafs": False,
-        "training_method": "baum_welch",
-        "free_baf_c0": False,
     }
     run_cluster_bins(args)
     return bbc_dir, ground_truth
@@ -95,45 +77,22 @@ def compute_cn_result(cluster_bins_result, synthetic_data, tmp_path_factory):
 
     from hatchet.compute_cn.compute_cn import run as run_compute_cn
 
+    # Only override defaults that differ from src/hatchet/hatchet.yaml.
     args = {
         "bbc": bbc_file,
         "seg": seg_file,
         "result_dir": result_dir,
         "genome_size": genome_sizes,
         "region_bed": regions_bed,
-        "mode": "ilp",
         "solver": "cbc",
         "timelimit": 60,
-        "minClone": 2,
         "maxClone": 2,
         "diploid": True,
-        "tetraploid": False,
-        "fcn_ci_alpha": 0.05,
-        "min_ci_margin": 0.1,
-        "obj_type": "imf",
-        "model_select": "bic",
         "force": True,
-        "reg_term": "MAXCN",
         "reg_steps": 3,
-        "reg_bound": 0.15,
-        "no_ampdel": False,
-        "num_cnstates": -1,
         "diploidcmax": 6,
-        "tetraploidcmax": 12,
-        "min_prop": 0.01,
-        "purities": None,
-        "cd_niters": 10,
-        "cd_convergence_iters": 2,
-        "cd_nseeds": 400,
         "cd_njobs": 1,
-        "cd_seed": 42,
-        "u_init": "dirichlet",
-        "u_dir_alpha": 0.3,
-        "solver_threads": None,
         "zero_cn_thres": 0.005,
-        "cd_tol": 0.001,
-        "fix_cn_dip": {},
-        "fix_cn_tet": {},
         "verbosity": 1,
     }
     run_compute_cn(args)
