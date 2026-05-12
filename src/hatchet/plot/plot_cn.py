@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 
 from hatchet.utils import (
     add_file_logging,
-    compute_clone_ploidies,
     compute_tumor_ploidy,
     normalize_args,
     read_genome_sizes,
@@ -49,9 +48,18 @@ def run(args=None):
     add_file_logging(plot_dir, "plot-cn")
 
     ##################################################
-    # parameters
-    row_width = 20
-    row_height = 6
+    # parameters (styling — defaults in hatchet.yaml)
+    row_width = args["plot_row_width"]
+    row_height = args["plot_row_height"]
+    inter_sample_hspace = args["plot_inter_sample_hspace"]
+    intra_sample_hspace = args["plot_intra_sample_hspace"]
+    baf_cnp_hspace = args["plot_baf_cnp_hspace"]
+    cnp_legend_hspace = args["plot_cnp_legend_hspace"]
+    title_fs = args["plot_title_fontsize"]
+    ylabel_fs = args["plot_ylabel_fontsize"]
+    chrname_fs = args["plot_chrname_fontsize"]
+    cnp_label_fs = args["plot_cnp_label_fontsize"]
+    cnp_ab_fs = args["plot_cnp_ab_fontsize"]
 
     plt.rcParams["pdf.fonttype"] = 42
     plt.rcParams["ps.fonttype"] = 42
@@ -60,7 +68,6 @@ def run(args=None):
     ignore_gap = not args["keep_gap"]
     dpi = args["dpi"]
     transparent = args["transparent"]
-    file_type = args["img_type"]
 
     tail_alpha = args["tail_alpha"]
     center_alpha = args["center_alpha"]
@@ -68,10 +75,6 @@ def run(args=None):
 
     # figure axis limits
     maxlim_fcn = args["maxlim_fcn"]
-
-    def get_filename(sample_id):
-        suffix = f".{solID}" if solID != "" else ""
-        return str(sample_id) + suffix
 
     ##################################################
     # load files
@@ -105,32 +108,27 @@ def run(args=None):
     assert len(gammas) == len(samples), "gamma-file doesn't match samples from BBC file"
 
     ##################################################
-    # start plotting 1D and 2D
+    # Per-sample setup: compute everything needed for FCN/BAF rows and 2D scatters.
     from matplotlib.backends.backend_pdf import PdfPages
 
     sns.set_style("whitegrid")
+
+    per_sample = {}
     for sample in samples:
-        logging.info(f"plot {sample}")
-        outfile = os.path.join(plot_dir, f"{get_filename(sample)}.{file_type}")
         bin_info: pd.DataFrame = bbcs[bbcs["SAMPLE"] == sample].reset_index(drop=True)
         seg_info: pd.DataFrame = segs[segs["SAMPLE"] == sample].reset_index(drop=True)
-        # CNP profile
         cnp_ids = bin_info["CNP"].to_numpy()
         clone_states = bin_info["CNP"].unique().tolist()
         clone_props = bin_info.iloc[0][[f"u_{clone}" for clone in clones]].to_numpy()
         palette = dict(zip(clone_states, set_palette(num_colors=len(clone_states))))
 
-        # compute per-segment FCN
-        bin_info["FCN"] = bin_info.apply(
-            func=lambda row: row["RD"] * gammas[sample], axis=1
-        )
+        bin_info["FCN"] = bin_info["RD"] * gammas[sample]
         tumor_purity = round(np.sum(clone_props[1:]), 3)
         tumor_ploidy = round(
             compute_tumor_ploidy(seg_info, clones, np.sum(clone_props[1:])), 3
         )
-        logging.info(f"purity={tumor_purity}, ploidy={tumor_ploidy}")
+        logging.info(f"{sample}: purity={tumor_purity}, ploidy={tumor_ploidy}")
 
-        # compute expected FCNs over clusters
         bin_info["exp-BAF"] = 0.0
         bin_info["exp-FCN"] = 0.0
         exp_bafs = np.zeros(len(clone_states), dtype=np.float32)
@@ -151,11 +149,9 @@ def run(args=None):
         if max_fcn > maxlim_fcn:
             num_exceeded = np.sum(bin_info["FCN"] >= maxlim_fcn)
             logging.warning(
-                f"there are {num_exceeded} bins having FCN exceed maxlim_fcn={maxlim_fcn}"
+                f"{sample}: {num_exceeded} bins have FCN > maxlim_fcn={maxlim_fcn}"
             )
         lim_fcn = (0, min(max(3, max_fcn), maxlim_fcn))
-
-        sample_title = f"sample={sample}; purity={tumor_purity}; ploidy={tumor_ploidy}"
 
         alphas = get_transparency(
             bin_info,
@@ -165,104 +161,206 @@ def run(args=None):
             nontail_alpha=center_alpha,
         ).to_numpy()
 
-        # Page 1: 2D scatter
-        fig_2d, g0_colors = plot_2d(
-            sample,
-            bin_info,
-            bin_info["BAF"].to_numpy(),
-            bin_info["FCN"].to_numpy(),
-            exp_bafs,
-            exp_fcns,
-            exp_labels,
-            clone_props,
-            alphas=alphas,
-            hue=cnp_ids,
-            palette=palette,
-            label_clone=True,
-            xlab="Minor haplotype B-allele frequency (mhBAF)",
-            ylab="Fractional copy number (FCN)",
-            xlim=lim_baf,
-            ylim=lim_fcn,
-            title=sample_title,
-            dpi=dpi,
-            transparent=transparent,
-        )
+        per_sample[sample] = {
+            "bin_info": bin_info,
+            "seg_info": seg_info,
+            "cnp_ids": cnp_ids,
+            "clone_props": clone_props,
+            "palette": palette,
+            "exp_bafs": exp_bafs,
+            "exp_fcns": exp_fcns,
+            "exp_labels": exp_labels,
+            "alphas": alphas,
+            "lim_fcn": lim_fcn,
+            "lim_baf": lim_baf,
+            "title": (
+                f"{sample}; purity={tumor_purity}; ploidy={tumor_ploidy}; "
+                "prop="
+                + "|".join(
+                    "0" if round(c * 100, 2) == 0 else f"{round(c * 100, 2)}%"
+                    for c in clone_props
+                )
+            ),
+        }
 
-        # Page 2: 1D scatter + CNP profile
-        cnp_h = max(3, n_tumors * 2)  # scale with clones, same as pool panel
-        fig_1d, axes = plt.subplots(
-            nrows=4,
-            ncols=1,
-            figsize=(row_width, row_height + cnp_h * 0.5),
-            gridspec_kw={"height_ratios": [3, 3, cnp_h, 1]},
-        )
-        for i, [ctype, ylim] in enumerate([["FCN", lim_fcn], ["BAF", lim_baf]]):
-            plot_1d(
-                axes[i],
+    patient_id = args["patient_id"] or "panel"
+    out_1d = os.path.join(plot_dir, f"{patient_id}{solID and '.' + solID}.1D.pdf")
+    out_2d = os.path.join(plot_dir, f"{patient_id}{solID and '.' + solID}.2D.pdf")
+
+    ##################################################
+    # 2D scatter: one multi-page PDF, one page per sample. Capture g0_colors
+    # for the 1D expected-value overlay so we don't re-run plot_2d below.
+    logging.info(f"writing combined 2D PDF: {out_2d}")
+    sample_g0 = {}
+    with PdfPages(out_2d) as pdf:
+        for sample in samples:
+            d = per_sample[sample]
+            bi = d["bin_info"]
+            fig_2d, g0c = plot_2d(
                 sample,
-                bin_info,
-                bin_info[ctype],
-                regions,
-                chrom_sizes,
-                exp_colname=f"exp-{ctype}",
-                exp_groups=cnp_ids,
-                val_type=ctype,
-                colors=g0_colors,
-                hue=cnp_ids if i == 0 else None,
-                palette=palette if i == 0 else None,
-                alphas=alphas,
-                ylim=ylim,
-                ylab=ctype,
-                plot_chrname=True,
-                ignore_gap=ignore_gap,
-                show_legend=False,
+                bi,
+                bi["BAF"].to_numpy(),
+                bi["FCN"].to_numpy(),
+                d["exp_bafs"],
+                d["exp_fcns"],
+                d["exp_labels"],
+                d["clone_props"],
+                alphas=d["alphas"],
+                hue=d["cnp_ids"],
+                palette=d["palette"],
+                label_clone=True,
+                xlab="Minor haplotype B-allele frequency (mhBAF)",
+                ylab="Fractional copy number (FCN)",
+                xlim=d["lim_baf"],
+                ylim=d["lim_fcn"],
+                title=d["title"],
+                dpi=dpi,
+                transparent=transparent,
             )
+            sample_g0[sample] = g0c
+            pdf.savefig(fig_2d, dpi=dpi, bbox_inches="tight", transparent=transparent)
+            plt.close(fig_2d)
 
-        clone_ploidies = compute_clone_ploidies(seg_info, clones)
-        _profile_fn = plot_ascn_profile if args["plot_ascn"] else plot_cnv_profile
-        _profile_fn(
-            axes[2],
-            seg_info,
-            regions,
-            width=row_width,
-            height=1,
-            plot_chrname=True,
-            show_clone_name=True,
-            show_prop=True,
-            clone_ploidies=clone_ploidies,
+    ##################################################
+    # Combined 1D PDF: per-sample (FCN, BAF) pairs + shared ASCN CNP + legend.
+    # Layout mirrors copytyping plot_rdr_baf_1d_pseudobulk: nested GridSpec
+    # gives a tight FCN/BAF pairing within each sample and a larger gap
+    # between samples.
+    from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
+
+    k = len(samples)
+    cnp_h = max(1.5, n_tumors)
+    fig_h = row_height * k + cnp_h * 0.5 + 0.5
+    fig_1d = plt.figure(figsize=(row_width, fig_h))
+    # Two-section layout: samples_block above, cnp_block below.
+    # Inter-sample gap (large) and BAF↔CNP gap (small) are controlled separately.
+    outer = GridSpec(
+        2,
+        1,
+        figure=fig_1d,
+        height_ratios=[2 * k, cnp_h * 0.5 + 0.3],
+        hspace=baf_cnp_hspace,
+        top=0.97,
+    )
+    samples_gs = GridSpecFromSubplotSpec(
+        k,
+        1,
+        subplot_spec=outer[0],
+        height_ratios=[2] * k,
+        hspace=inter_sample_hspace,
+    )
+    sample_axes = []
+    for si in range(k):
+        inner = GridSpecFromSubplotSpec(
+            2,
+            1,
+            subplot_spec=samples_gs[si],
+            height_ratios=[1, 1],
+            hspace=intra_sample_hspace,
         )
-        _legend_fn = plot_ascn_legend if args["plot_ascn"] else plot_cnv_legend
-        _legend_fn(axes[-1])
+        sample_axes.append((fig_1d.add_subplot(inner[0]), fig_1d.add_subplot(inner[1])))
+    inner_bot = GridSpecFromSubplotSpec(
+        2, 1, subplot_spec=outer[1], height_ratios=[cnp_h, 1], hspace=cnp_legend_hspace
+    )
+    ax_cnp = fig_1d.add_subplot(inner_bot[0])
+    ax_leg = fig_1d.add_subplot(inner_bot[1])
 
-        fig_1d.suptitle(sample_title)
-        axes[1].set_ylabel("mhBAF")
-        axes[0].grid(False)
-        axes[1].grid(False)
-        plt.tight_layout()
+    for si, sample in enumerate(samples):
+        d = per_sample[sample]
+        bi = d["bin_info"]
+        ax_fcn, ax_baf = sample_axes[si]
 
-        # Save: single PDF (page1=2D, page2=1D+CNP) or separate files
-        if file_type == "pdf":
-            with PdfPages(outfile) as pdf:
-                pdf.savefig(
-                    fig_2d, dpi=dpi, bbox_inches="tight", transparent=transparent
-                )
-                pdf.savefig(
-                    fig_1d, dpi=dpi, bbox_inches="tight", transparent=transparent
-                )
-        else:
-            fig_2d.savefig(
-                outfile.replace(f".{file_type}", f".2D.{file_type}"),
-                dpi=dpi,
-                bbox_inches="tight",
-                transparent=transparent,
-            )
-            fig_1d.savefig(
-                outfile.replace(f".{file_type}", f".1D.{file_type}"),
-                dpi=dpi,
-                bbox_inches="tight",
-                transparent=transparent,
-            )
-        plt.close(fig_2d)
-        plt.close(fig_1d)
-        logging.info(f"finish {sample}")
+        # FCN row: title with sample info, no chrname, no x ticks.
+        plot_1d(
+            ax_fcn,
+            sample,
+            bi,
+            bi["FCN"],
+            regions,
+            chrom_sizes,
+            exp_colname="exp-FCN",
+            exp_groups=d["cnp_ids"],
+            val_type="FCN",
+            colors=sample_g0[sample],
+            hue=d["cnp_ids"],
+            palette=d["palette"],
+            alphas=d["alphas"],
+            ylim=d["lim_fcn"],
+            ylab="FCN",
+            plot_chrname=False,
+            ignore_gap=ignore_gap,
+            show_legend=False,
+            chr_shift=0,
+        )
+        ax_fcn.set_xticklabels([])
+        ax_fcn.tick_params(axis="x", bottom=False)
+        ax_fcn.tick_params(axis="y", left=True, length=4)
+        ax_fcn.set_title(d["title"], fontsize=title_fs, fontweight="bold", loc="left")
+        ax_fcn.grid(False)
+        ax_fcn.yaxis.label.set_fontweight("bold")
+        ax_fcn.yaxis.label.set_fontsize(ylabel_fs)
+        for spine in ax_fcn.spines.values():
+            spine.set_color("black")
+
+        # BAF row: chrname labels shown, no title.
+        plot_1d(
+            ax_baf,
+            sample,
+            bi,
+            bi["BAF"],
+            regions,
+            chrom_sizes,
+            exp_colname="exp-BAF",
+            exp_groups=d["cnp_ids"],
+            val_type="BAF",
+            colors=sample_g0[sample],
+            hue=None,
+            palette=None,
+            alphas=d["alphas"],
+            ylim=d["lim_baf"],
+            ylab="mhBAF",
+            plot_chrname=True,
+            ignore_gap=ignore_gap,
+            show_legend=False,
+            chr_shift=0,
+        )
+        ax_baf.set_ylim(-0.05, 1.05)
+        ax_baf.grid(False)
+        ax_baf.tick_params(axis="x", bottom=True, length=4)
+        ax_baf.tick_params(axis="y", left=True, length=4)
+        plt.setp(ax_baf.get_xticklabels(), fontweight="bold", fontsize=chrname_fs)
+        ax_baf.yaxis.label.set_fontweight("bold")
+        ax_baf.yaxis.label.set_fontsize(ylabel_fs)
+        for spine in ax_baf.spines.values():
+            spine.set_color("black")
+
+    # Shared CNP profile + legend at the bottom (clonal CN, identical across samples)
+    _profile_fn = plot_ascn_profile if args["plot_ascn"] else plot_cnv_profile
+    _profile_fn(
+        ax_cnp,
+        per_sample[samples[0]]["seg_info"],
+        regions,
+        width=row_width,
+        height=1,
+        plot_chrname=False,
+        show_clone_name=True,
+        show_prop=False,
+    )
+    plt.setp(ax_cnp.get_xticklabels(), fontweight="bold", fontsize=cnp_label_fs)
+    plt.setp(ax_cnp.get_yticklabels(), fontweight="bold", fontsize=cnp_label_fs)
+    plt.setp(ax_cnp.get_yticklabels(minor=True), fontweight="bold", fontsize=cnp_ab_fs)
+    if args["plot_ascn"]:
+        plot_ascn_legend(
+            ax_leg,
+            box_w=args["plot_legend_box_w"],
+            box_h=args["plot_legend_box_h"],
+            tick_len=args["plot_legend_tick_len"],
+            label_fontsize=args["plot_legend_label_fontsize"],
+        )
+    else:
+        plot_cnv_legend(ax_leg)
+
+    logging.info(f"writing combined 1D PDF: {out_1d}")
+    fig_1d.savefig(out_1d, dpi=dpi, bbox_inches="tight", transparent=transparent)
+    plt.close(fig_1d)
     return

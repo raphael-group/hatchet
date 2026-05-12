@@ -444,17 +444,24 @@ def get_cn_colors():
 
 
 def get_ascn_colors():
-    """Return (state_style, tcn_states) for allele-CN coloring."""
+    """Return (state_style, tcn_states) for allele-CN coloring.
+
+    cn=0 → white, cn=1 → gray, cn=2..6 → plasma colormap evenly spaced from
+    warm red to dark purple; cn≥7 → state_style["default"] (darkest plasma).
+    Plasma is perceptually uniform and colorblind-friendly. Sample positions:
+    np.linspace(0.70, 0.05, 6) → cn=2..6 and "default".
+    Use state_style.get(cn, state_style["default"]) at call sites.
+    """
     state_style = {
         0: "#FFFFFF",  # white
         1: "#BDBDBD",  # gray
-        2: "#FEE5D9",  # red, lightest
-        3: "#FCAE91",
-        4: "#FB6A4A",
-        5: "#DE2D26",
-        6: "#A50F15",  # red, darkest
+        2: "#F2844B",  # plasma 0.70 (warm red / orange)
+        3: "#DA5B69",  # plasma 0.57 (pink-red)
+        4: "#BC3587",  # plasma 0.44 (magenta)
+        5: "#9410A2",  # plasma 0.31 (purple)
+        6: "#6300A7",  # plasma 0.18 (dark purple)
     }
-    state_style["default"] = "#67000D"  # 7+: extra-dark red beyond cn=6
+    state_style["default"] = "#2A0593"  # plasma 0.05 (very dark purple)
     tcn_states = sorted(k for k in state_style if isinstance(k, int))
     return state_style, tcn_states
 
@@ -482,7 +489,10 @@ def plot_ascn_profile(
     state_style, _ = get_ascn_colors()
     num_clones = len(str(bin_info.iloc[0]["CNP"]).split(";")) - 1
     h = height / num_clones
-    h_sub = h / 2
+    clone_gap = 0.10 * h  # vertical gap between adjacent clone slots
+    h_pair = h - clone_gap  # height taken by A+B pair within a slot
+    h_sub = h_pair / 2
+    y_gap = clone_gap / 2  # padding above & below A/B pair
 
     bulk_props = np.array([float(v) for v in str(bin_info["PROPS"].iloc[0]).split(";")])
 
@@ -524,10 +534,10 @@ def plot_ascn_profile(
                     clone_cn = bin_cnvs[num_clones - k - 1]
                     cna_str, cnb_str = clone_cn.split("|")
                     cna, cnb = int(cna_str), int(cnb_str)
-                    y0 = k * h
-                    # B allele (bottom half)
+                    y_b = k * h + y_gap  # B allele (bottom half within slot)
+                    y_a = y_b + h_sub  # A allele (top half within slot)
                     rect_b = Rectangle(
-                        (x0, y0),
+                        (x0, y_b),
                         w,
                         h_sub,
                         facecolor=state_style.get(cnb, state_style["default"]),
@@ -536,9 +546,8 @@ def plot_ascn_profile(
                         linewidth=0,
                     )
                     ax.add_patch(rect_b)
-                    # A allele (top half)
                     rect_a = Rectangle(
-                        (x0, y0 + h_sub),
+                        (x0, y_a),
                         w,
                         h_sub,
                         facecolor=state_style.get(cna, state_style["default"]),
@@ -549,15 +558,17 @@ def plot_ascn_profile(
                     ax.add_patch(rect_a)
 
             if si < len(regions_ch) - 1:
-                ax.vlines(
-                    ch_offset,
-                    ymin=0,
-                    ymax=1,
-                    transform=ax.get_xaxis_transform(),
-                    linewidth=0.5,
-                    colors=BLACK,
-                    linestyles="dashed",
-                )
+                # Dashed centromere line, drawn per-clone so it doesn't cross gaps
+                for k in range(num_clones):
+                    ax.vlines(
+                        ch_offset,
+                        ymin=k * h + y_gap,
+                        ymax=k * h + y_gap + h_pair,
+                        transform=ax.get_xaxis_transform(),
+                        linewidth=0.5,
+                        colors=BLACK,
+                        linestyles="dashed",
+                    )
         if ch != chs[-1]:
             line = ax.vlines(
                 ch_offset,
@@ -570,20 +581,28 @@ def plot_ascn_profile(
             line.set_clip_on(False)
     ch_coords.append(ch_offset)
 
-    # clone separation lines
-    if num_clones > 1:
-        ax.hlines(
-            y=[h * (i + 1) for i in range(num_clones - 1)],
-            xmin=0,
-            xmax=ch_offset,
-            colors=BLACK,
-            linewidth=1,
-            transform=ax.get_xaxis_transform(),
-        )
+    # Outline each clone's A and B rows with a single black border
+    for k in range(num_clones):
+        y_b_k = k * h + y_gap
+        y_a_k = y_b_k + h_sub
+        for y0 in (y_b_k, y_a_k):
+            ax.add_patch(
+                Rectangle(
+                    (0, y0),
+                    ch_offset,
+                    h_sub,
+                    facecolor="none",
+                    edgecolor="black",
+                    linewidth=0.5,
+                    transform=ax.get_xaxis_transform(),
+                )
+            )
 
     ax.grid(False)
     ax.set_xlim(0, ch_offset)
     ax.set_xlabel("")
+    for spine in ax.spines.values():
+        spine.set_visible(False)
     if plot_chrname:
         ax.set_xticks(
             [
@@ -618,20 +637,20 @@ def plot_ascn_profile(
         ylabels.append("\n".join(lines))
     ax.set_yticklabels(ylabels, fontsize=8, va="center")
 
-    # A/B sub-labels via minor ticks
+    # A/B sub-labels via minor ticks (centered on each sub-bar)
     minor_positions = []
     minor_labels = []
     for k in range(num_clones):
-        minor_positions.append(k * h + h_sub * 0.5)
+        minor_positions.append(k * h + y_gap + h_sub * 0.5)
         minor_labels.append("B")
-        minor_positions.append(k * h + h_sub * 1.5)
+        minor_positions.append(k * h + y_gap + h_sub * 1.5)
         minor_labels.append("A")
     ax.set_yticks(minor_positions, minor=True)
     ax.set_yticklabels(minor_labels, minor=True, fontsize=6)
     ax.tick_params(axis="y", which="minor", left=False, right=False, pad=2)
 
     ax.set_ylim(0, num_clones * h)
-    ax.tick_params(axis="y", which="major", left=True, right=False, length=4)
+    ax.tick_params(axis="y", which="major", left=True, right=False, length=4, pad=20)
 
     if ylabel is not None:
         ax.set_ylabel(ylabel, rotation=0, ha="right", va="center")
@@ -640,14 +659,17 @@ def plot_ascn_profile(
     return ax
 
 
-def plot_ascn_legend(ax: plt.Axes):
+def plot_ascn_legend(
+    ax: plt.Axes,
+    box_w: float = 1.2,
+    box_h: float = 0.4,
+    tick_len: float = 0.08,
+    label_fontsize: int = 12,
+):
     """Draw a horizontal color bar legend for allele CN values."""
     state_style, tcn_states = get_ascn_colors()
     boxes = list(tcn_states) + ["7+"]
     ax.axis("off")
-
-    box_w = 2.0
-    box_h = 0.6
     x0 = 0.0
 
     for i, label in enumerate(boxes):
@@ -660,21 +682,31 @@ def plot_ascn_legend(ax: plt.Axes):
             edgecolor="black",
         )
         ax.add_patch(rect)
+        # tick mark below each box
+        xc = x0 + i * box_w + box_w / 2.0
+        ax.plot([xc, xc], [-tick_len, 0.0], color="black", linewidth=0.8)
         ax.text(
-            x0 + i * box_w + box_w / 2.0,
-            -0.15,
+            xc,
+            -tick_len - 0.04,
             str(label),
             ha="center",
             va="top",
-            fontsize=9,
+            fontsize=label_fontsize,
+            fontweight="bold",
         )
 
     total_w = len(boxes) * box_w
     ax.text(
-        -0.5, box_h / 2.0, "Allele copy number", fontsize=12, ha="right", va="center"
+        -0.3,
+        box_h / 2.0,
+        "Allele copy number",
+        fontsize=label_fontsize,
+        fontweight="bold",
+        ha="right",
+        va="center",
     )
 
-    ax.set_xlim(-2.0, total_w + 1.0)
-    ax.set_ylim(-0.6, box_h + 0.4)
+    ax.set_xlim(-2.0, total_w + 0.5)
+    ax.set_ylim(-0.5, box_h + 0.2)
     ax.set_aspect("auto")
     return ax

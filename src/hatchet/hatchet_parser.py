@@ -760,6 +760,13 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         choices=["diploid", "tetraploid"],
         help="Ploidy of the solution (selects gamma column from gamma file).",
     )
+    parser.add_argument(
+        "--patient_id",
+        required=False,
+        default=argparse.SUPPRESS,
+        type=str,
+        help="Output filename prefix for combined plots (e.g. 'LuCaP173')",
+    )
     return parser
 
 
