@@ -45,8 +45,14 @@ class Random:
             np.random.set_state(_random_states.pop())
 
 
-def create_solver(solver_type, threads=None):
-    """Create a Pyomo solver with suppressed output."""
+def create_solver(solver_type, threads=None, timelimit=None):
+    """Create a Pyomo solver with suppressed output.
+
+    NOTE: Pyomo's legacy GurobiDirect (solver_io="python") silently drops the
+    `timelimit=` kwarg passed to solver.solve(). We set Gurobi's TimeLimit
+    parameter via the options dict instead, which GurobiDirect *does* forward
+    to the underlying gurobipy Model via setParam.
+    """
     if solver_type in ("gurobipy", "gurobi"):
         solver = pe.SolverFactory("gurobi", solver_io="python")
         solver.options["OutputFlag"] = 0
@@ -54,6 +60,8 @@ def create_solver(solver_type, threads=None):
         solver.options["LogFile"] = ""
         if threads is not None:
             solver.options["Threads"] = threads
+        if timelimit is not None:
+            solver.options["TimeLimit"] = int(timelimit)
     else:
         solver = pe.SolverFactory(solver_type)
     return solver
@@ -128,7 +136,7 @@ def run_full_ilp(
     """
     model = build_model("FULL", params, inputs)
 
-    solver = create_solver(solver_type)
+    solver = create_solver(solver_type, timelimit=timelimit)
 
     if warm_start_cA is not None:
         hot_start(model, params, inputs, warm_start_cA, warm_start_cB)
@@ -183,7 +191,9 @@ def _get_solver(solver_type):
     global _cd_solver_cache
     if _cd_solver_cache is None:
         _cd_solver_cache = create_solver(
-            solver_type, threads=_cd_global["solver_threads"]
+            solver_type,
+            threads=_cd_global["solver_threads"],
+            timelimit=_cd_global.get("timelimit"),
         )
     return _cd_solver_cache
 
@@ -396,6 +406,7 @@ def run_coordinate_descent(
         "inputs": inputs,
         "solver_threads": solver_threads,
         "cd_tol": cd_tol,
+        "timelimit": timelimit,
     }
 
     if mode == "cnt_cd":
