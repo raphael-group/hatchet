@@ -200,6 +200,100 @@ def plot_cnv_profile(
     return ax
 
 
+def _draw_mirror_swatches(
+    ax: plt.Axes,
+    leg_x: float,
+    fontsize: int = 10,
+    alpha: float = 1.0,
+    mirror_w: float = 1.25,
+    mirror_y0: float = 0.0,
+):
+    """Draw the two mirror-CNA arrow swatches (a,b right-pointing, b,a left-pointing).
+
+    Shared between plot_cnv_legend and plot_ascn_legend so both use the same
+    style. Returns the x-position after the last swatch.
+    """
+    # label text right-aligned, ending just before the first symbol
+    ax.text(
+        leg_x,
+        mirror_y0 + mirror_w / 2.0,
+        "Mirrored CNA",
+        ha="right",
+        va="center",
+        fontsize=fontsize,
+        fontweight="bold",
+    )
+    leg_x += 0.3  # small gap between text and first symbol
+
+    # right triangle box (a, b)
+    ax.add_patch(
+        Rectangle(
+            (leg_x, mirror_y0),
+            mirror_w,
+            mirror_w,
+            facecolor="white",
+            edgecolor="black",
+        )
+    )
+    ax.add_patch(
+        Polygon(
+            [
+                [leg_x, mirror_y0 + mirror_w],
+                [leg_x + mirror_w, mirror_y0 + mirror_w - mirror_w / 4.0],
+                [leg_x, mirror_y0 + mirror_w - mirror_w / 2.0],
+            ],
+            linewidth=0,
+            closed=True,
+            facecolor="black",
+            alpha=alpha,
+        )
+    )
+    ax.text(
+        leg_x + mirror_w / 2.0,
+        mirror_y0 - 0.2,
+        "(a,b)",
+        ha="center",
+        va="top",
+        fontsize=fontsize,
+        fontweight="bold",
+    )
+    leg_x += mirror_w + 0.5
+
+    # left triangle box (b, a)
+    ax.add_patch(
+        Rectangle(
+            (leg_x, mirror_y0),
+            mirror_w,
+            mirror_w,
+            facecolor="white",
+            edgecolor="black",
+        )
+    )
+    ax.add_patch(
+        Polygon(
+            [
+                [leg_x, mirror_y0 + mirror_w / 4.0],
+                [leg_x + mirror_w, mirror_y0 + mirror_w - mirror_w / 2.0],
+                [leg_x + mirror_w, mirror_y0],
+            ],
+            linewidth=0,
+            closed=True,
+            facecolor="black",
+            alpha=alpha,
+        )
+    )
+    ax.text(
+        leg_x + mirror_w / 2.0,
+        mirror_y0 - 0.2,
+        "(b,a)",
+        ha="center",
+        va="top",
+        fontsize=fontsize,
+        fontweight="bold",
+    )
+    return leg_x + mirror_w
+
+
 def plot_cnv_legend(ax: plt.Axes):
     state_style, tcn_states = get_cn_colors()
     ax.axis("off")
@@ -276,84 +370,7 @@ def plot_cnv_legend(ax: plt.Axes):
     leg_x = group_x0 + pair_w + gap_groups
 
     # --- mirrored CNA symbol on the right ------------------------------------
-    # leave a clear gap after the last CN group
-    leg_x += 3.0
-
-    mirror_y0 = 0.0
-    mirror_w = 1.25
-
-    # label text
-    ax.text(
-        leg_x,
-        mirror_y0 + mirror_w / 2.0,
-        "Mirrored CNA",
-        ha="left",  # text grows to the right, away from CN=7 group
-        va="center",
-        fontsize=10,
-    )
-
-    # start symbol a bit to the right of the text
-    leg_x += 4.0  # adjust if you change fontsize
-
-    # right triangle box (a,b)
-    rect = Rectangle(
-        (leg_x, mirror_y0),
-        mirror_w,
-        mirror_w,
-        facecolor="white",
-        edgecolor="black",
-    )
-    ax.add_patch(rect)
-    trig = Polygon(
-        [
-            [leg_x, mirror_y0 + mirror_w],
-            [leg_x + mirror_w, mirror_y0 + mirror_w - mirror_w / 4.0],
-            [leg_x, mirror_y0 + mirror_w - mirror_w / 2.0],
-        ],
-        linewidth=0,
-        closed=True,
-        facecolor="black",
-    )
-    ax.add_patch(trig)
-    ax.text(
-        leg_x + mirror_w / 2.0,
-        mirror_y0 - 0.2,
-        "(a,b)",
-        ha="center",
-        va="top",
-        fontsize=10,
-    )
-    leg_x += mirror_w + 0.5
-
-    # left triangle box (b,a)
-    rect = Rectangle(
-        (leg_x, mirror_y0),
-        mirror_w,
-        mirror_w,
-        facecolor="white",
-        edgecolor="black",
-    )
-    ax.add_patch(rect)
-    trig = Polygon(
-        [
-            [leg_x, mirror_y0 + mirror_w / 4.0],
-            [leg_x + mirror_w, mirror_y0 + mirror_w - mirror_w / 2.0],
-            [leg_x + mirror_w, mirror_y0],
-        ],
-        linewidth=0,
-        closed=True,
-        facecolor="black",
-    )
-    ax.add_patch(trig)
-    ax.text(
-        leg_x + mirror_w / 2.0,
-        mirror_y0 - 0.2,
-        "(b,a)",
-        ha="center",
-        va="top",
-        fontsize=10,
-    )
-    leg_x += mirror_w + 3.0
+    leg_x = _draw_mirror_swatches(ax, leg_x + 3.0, fontsize=10, alpha=1.0) + 3.0
 
     # main title on the left
     ax.text(-0.5, pair_h / 2.0, "Copy numbers", fontsize=12, ha="right", va="center")
@@ -446,22 +463,21 @@ def get_cn_colors():
 def get_ascn_colors():
     """Return (state_style, tcn_states) for allele-CN coloring.
 
-    cn=0 → white, cn=1 → gray, cn=2..6 → plasma colormap evenly spaced from
-    warm red to dark purple; cn≥7 → state_style["default"] (darkest plasma).
-    Plasma is perceptually uniform and colorblind-friendly. Sample positions:
-    np.linspace(0.70, 0.05, 6) → cn=2..6 and "default".
-    Use state_style.get(cn, state_style["default"]) at call sites.
+    cn=0 → white, cn=1 → black, cn=2..6 + 7+ → inferno (orange→pale yellow)
+    evenly spaced. Inferno is colorblind-safe and perceptually uniform.
+    All non-zero CN colors are drawn at alpha=0.5 at the call site.
+    Sample positions: np.linspace(0.65, 0.97, 6) on inferno → cn=2..6, 7+.
     """
     state_style = {
         0: "#FFFFFF",  # white
-        1: "#BDBDBD",  # gray
-        2: "#F2844B",  # plasma 0.70 (warm red / orange)
-        3: "#DA5B69",  # plasma 0.57 (pink-red)
-        4: "#BC3587",  # plasma 0.44 (magenta)
-        5: "#9410A2",  # plasma 0.31 (purple)
-        6: "#6300A7",  # plasma 0.18 (dark purple)
+        1: "#000000",  # black (rendered at alpha=0.5 → mid gray)
+        2: "#EA632A",  # inferno 0.65 (orange)
+        3: "#F57D15",  # inferno 0.71
+        4: "#FB9B06",  # inferno 0.78 (amber)
+        5: "#FBBA1F",  # inferno 0.84
+        6: "#F5D949",  # inferno 0.91 (yellow)
     }
-    state_style["default"] = "#2A0593"  # plasma 0.05 (very dark purple)
+    state_style["default"] = "#F3F68A"  # inferno 0.97 (pale yellow) for cn >= 7
     tcn_states = sorted(k for k in state_style if isinstance(k, int))
     return state_style, tcn_states
 
@@ -530,10 +546,21 @@ def plot_ascn_profile(
                 x0, bin_end = bin_starts[bi], bin_ends[bi]
                 w = bin_end - x0
                 bin_cnvs = bins_seg["CNP"].iloc[bi].split(";")[1:]
+                clone_states = [
+                    (int(cn.split("|")[0]), int(cn.split("|")[1])) for cn in bin_cnvs
+                ]
+                # Mirrored LOH: every clone state is LOH (a==0 or b==0),
+                # AND the bin contains BOTH an A-LOH clone (a>0,b=0) and a
+                # B-LOH clone (a=0,b>0).
+                any_non_loh = any(a > 0 and b > 0 for a, b in clone_states)
+                dirs = [
+                    (1 if (a > 0 and b == 0) else (-1 if (a == 0 and b > 0) else 0))
+                    for a, b in clone_states
+                ]
+                has_mirror = (not any_non_loh) and (1 in dirs) and (-1 in dirs)
                 for k in range(num_clones):
-                    clone_cn = bin_cnvs[num_clones - k - 1]
-                    cna_str, cnb_str = clone_cn.split("|")
-                    cna, cnb = int(cna_str), int(cnb_str)
+                    cna, cnb = clone_states[num_clones - k - 1]
+                    direction = dirs[num_clones - k - 1]
                     y_b = k * h + y_gap  # B allele (bottom half within slot)
                     y_a = y_b + h_sub  # A allele (top half within slot)
                     rect_b = Rectangle(
@@ -544,6 +571,7 @@ def plot_ascn_profile(
                         edgecolor="none",
                         transform=ax.get_xaxis_transform(),
                         linewidth=0,
+                        alpha=1.0 if cnb == 0 else 0.5,
                     )
                     ax.add_patch(rect_b)
                     rect_a = Rectangle(
@@ -554,8 +582,38 @@ def plot_ascn_profile(
                         edgecolor="none",
                         transform=ax.get_xaxis_transform(),
                         linewidth=0,
+                        alpha=1.0 if cna == 0 else 0.5,
                     )
                     ax.add_patch(rect_a)
+
+                    # Mirrored-LOH symbol: ≪ / ≫ — two horizontal chevrons placed
+                    # side-by-side, spanning the full clone height.
+                    # A-LOH → ≫ (apex right), B-LOH → ≪ (apex left).
+                    if has_mirror and direction != 0:
+                        n_chev = 2
+                        chev_unit = w * 0.12
+                        gap = w * 0.04
+                        total_w = n_chev * chev_unit + (n_chev - 1) * gap
+                        x_start = x0 + (w - total_w) / 2.0
+                        y_high = y_b + 2 * h_sub
+                        y_low = y_b
+                        y_mid = (y_high + y_low) / 2.0
+                        for i in range(n_chev):
+                            cx_left = x_start + i * (chev_unit + gap)
+                            cx_right = cx_left + chev_unit
+                            if direction > 0:
+                                xs = [cx_left, cx_right, cx_left]
+                            else:
+                                xs = [cx_right, cx_left, cx_right]
+                            ax.plot(
+                                xs,
+                                [y_high, y_mid, y_low],
+                                color="black",
+                                linewidth=1.2,
+                                alpha=0.5,
+                                solid_capstyle="round",
+                                transform=ax.get_xaxis_transform(),
+                            )
 
             if si < len(regions_ch) - 1:
                 # Dashed centromere line, drawn per-clone so it doesn't cross gaps
@@ -680,6 +738,7 @@ def plot_ascn_legend(
             box_h,
             facecolor=color,
             edgecolor="black",
+            alpha=1.0 if label == 0 else 0.5,
         )
         ax.add_patch(rect)
         # tick mark below each box
@@ -706,7 +765,47 @@ def plot_ascn_legend(
         va="center",
     )
 
-    ax.set_xlim(-2.0, total_w + 0.5)
+    # Mirrored-LOH swatch: ≫ inside a small bordered box.
+    swatch_w = box_w * 0.7
+    chev_box_x = total_w + 1.0
+    ax.add_patch(
+        Rectangle(
+            (chev_box_x, 0.0),
+            swatch_w,
+            box_h,
+            facecolor="white",
+            edgecolor="black",
+        )
+    )
+    n_chev = 2
+    chev_unit = swatch_w * 0.30
+    gap = swatch_w * 0.10
+    chev_total_w = n_chev * chev_unit + (n_chev - 1) * gap
+    chev_x_start = chev_box_x + (swatch_w - chev_total_w) / 2.0
+    y_high = box_h
+    y_low = 0.0
+    y_mid = (y_high + y_low) / 2.0
+    for i in range(n_chev):
+        cx_left = chev_x_start + i * (chev_unit + gap)
+        cx_right = cx_left + chev_unit
+        ax.plot(
+            [cx_left, cx_right, cx_left],
+            [y_high, y_mid, y_low],
+            color="black",
+            linewidth=1.2,
+            alpha=0.5,
+            solid_capstyle="round",
+        )
+    ax.text(
+        chev_box_x + swatch_w / 2.0,
+        -tick_len - 0.04,
+        "Mirrored LOH",
+        ha="center",
+        va="top",
+        fontsize=label_fontsize,
+        fontweight="bold",
+    )
+    ax.set_xlim(-2.0, chev_box_x + swatch_w + 0.5)
     ax.set_ylim(-0.5, box_h + 0.2)
     ax.set_aspect("auto")
     return ax
