@@ -34,6 +34,7 @@ from hatchet.compute_cn.solve.inference import (
     run_coordinate_descent,
 )
 from hatchet.plot.plot_pool import plot_pool_cnp
+from hatchet.plot.plot_scaling_2d import plot_scaling_2d
 
 
 def run(args=None):
@@ -75,6 +76,10 @@ def run(args=None):
     )
     gamma_outfile = os.path.join(out_dir, "gammas.tsv")
     store_gammas(gamma_outfile, scaling, samples)
+
+    plot_scaling_2d(
+        samples, bbcs, segs, scaling, os.path.join(plot_dir, "scaling_2d.pdf")
+    )
 
     solve_mode = args["mode"]
     input_data = build_data(bbcs, segs, segment=(solve_mode == "cnt_cd"))
