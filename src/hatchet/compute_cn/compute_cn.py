@@ -189,6 +189,7 @@ def run(args=None):
                 title=f"{ploidy} n={n}",
                 solve_mode=solve_mode,
                 sample_names=fcn_data["sample_ids"],
+                plot_ascn=args["plot_ascn"],
             )
 
     summary_df = (

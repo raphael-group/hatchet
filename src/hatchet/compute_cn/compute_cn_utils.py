@@ -501,6 +501,7 @@ def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy):
             "onetail_area": 0.025,
             "maxlim_fcn": 30,
             "ploidy": ploidy,
+            "plot_ascn": args["plot_ascn"],
         }
     )
 

@@ -606,6 +606,13 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         type=str,
         help="Reference chromosome BED file",
     )
+    parser.add_argument(
+        "--plot_ascn",
+        required=False,
+        action=argparse.BooleanOptionalAction,
+        default=argparse.SUPPRESS,
+        help="plot allele-specific CN profile; use --no-plot_ascn for total CN (default: True)",
+    )
     return parser
 
 
@@ -766,6 +773,13 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         default=argparse.SUPPRESS,
         type=str,
         help="Output filename prefix for combined plots (e.g. 'LuCaP173')",
+    )
+    parser.add_argument(
+        "--plot_ascn",
+        required=False,
+        action=argparse.BooleanOptionalAction,
+        default=argparse.SUPPRESS,
+        help="plot allele-specific CN profile; use --no-plot_ascn for total CN (default: True)",
     )
     return parser
 
