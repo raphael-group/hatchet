@@ -165,6 +165,7 @@ def run(args=None):
                     "center_alpha": 1.0,
                     "onetail_area": 0.025,
                     "maxlim_fcn": 30,
+                    "plot_ascn": args["plot_ascn"],
                 }
             )
 

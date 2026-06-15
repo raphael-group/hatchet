@@ -875,6 +875,13 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         help="emit per-sample tumor purity + ploidy barplots; one page per "
         "metric per cancer_type (or single page per metric if column absent)",
     )
+    parser.add_argument(
+        "--plot_ascn",
+        required=False,
+        action=argparse.BooleanOptionalAction,
+        default=argparse.SUPPRESS,
+        help="plot allele-specific CN profile; use --no-plot_ascn for total CN (default: True)",
+    )
     return parser
 
 
