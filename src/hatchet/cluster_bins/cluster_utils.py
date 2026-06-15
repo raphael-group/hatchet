@@ -48,35 +48,27 @@ def mle_BB_dispersion(
 def estimate_BB_dispersion_normal(
     X_alphas_normal: np.ndarray,
     X_betas_normal: np.ndarray,
-    M: int,
     min_tau=50,
     max_tau=500,
 ):
-    """Estimate BB dispersion tau from the normal sample, shared by all tumor samples.
+    """Estimate BB dispersion tau from a single normal sample (BAF ≈ 0.5).
 
-    The normal sample is diploid (BAF ≈ 0.5 genome-wide), so it provides a
-    clean estimate of the sequencing/technical dispersion without copy-number
-    confounding.  A single tau is estimated from the normal and broadcast to
-    all M tumor samples.
+    The normal sample is diploid genome-wide, so it provides a clean estimate
+    of the sequencing/technical dispersion without copy-number confounding.
 
     Args:
         X_alphas_normal: (N,) A-allele counts for the normal sample.
         X_betas_normal:  (N,) B-allele counts for the normal sample.
-        M:               Number of tumor samples (for output shape).
         min_tau, max_tau: Bounds passed to mle_BB_dispersion.
 
     Returns:
-        bb_taus: (M,) float32 array with the same tau for every sample.
+        tau: float dispersion estimate.
     """
-    logging.info(
-        "estimate BB dispersion from normal sample (shared across tumor samples)"
+    return float(
+        mle_BB_dispersion(
+            X_alphas_normal, X_betas_normal, p=0.5, min_tau=min_tau, max_tau=max_tau
+        )
     )
-    logging.info(f"tau bound=[{min_tau},{max_tau}]")
-    tau = mle_BB_dispersion(
-        X_alphas_normal, X_betas_normal, p=0.5, min_tau=min_tau, max_tau=max_tau
-    )
-    bb_taus = np.full(M, tau, dtype=np.float32)
-    return bb_taus
 
 
 def estimate_BB_dispersion_segment(

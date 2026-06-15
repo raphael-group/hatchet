@@ -94,25 +94,22 @@ def run(args=None):
 
     ##################################################
     logging.info("load arguments")
-    _, samples, no_normal = read_sample_file(sample_file)
-    tumor_sidx = 0 if no_normal else 1
-    tumor_samples = samples[tumor_sidx:]
+    sample_df, normal_idx, tumor_idx, assay2samples = read_sample_file(sample_file)
+    samples = sample_df["SAMPLE"].tolist()
+    tumor_samples = [samples[i] for i in tumor_idx]
 
     bbs = pd.read_table(bb_file, sep="\t")
 
     X_depths = np.load(depth_mfile)["mat"].astype(np.float32)
-    X_depths_tumor = X_depths[:, tumor_sidx:]
+    X_depths_tumor = X_depths[:, tumor_idx]
 
     X_rdrs = np.load(rdr_mfile)["mat"].astype(np.float32)
     X_alphas_all = np.load(a_mfile)["mat"].astype(np.int32)
     X_betas_all = np.load(b_mfile)["mat"].astype(np.int32)
     X_totals_all = np.load(t_mfile)["mat"].astype(np.int32)
-    if not no_normal:
-        X_alphas_normal = X_alphas_all[:, 0]
-        X_betas_normal = X_betas_all[:, 0]
-    X_alphas = X_alphas_all[:, tumor_sidx:]
-    X_betas = X_betas_all[:, tumor_sidx:]
-    X_totals = X_totals_all[:, tumor_sidx:]
+    X_alphas = X_alphas_all[:, tumor_idx]
+    X_betas = X_betas_all[:, tumor_idx]
+    X_totals = X_totals_all[:, tumor_idx]
     nbbs, ntumor_samples = X_rdrs.shape
     assert len(bbs) == nbbs, f"unmatched {len(bbs)} and {nbbs}"
 
@@ -174,25 +171,32 @@ def run(args=None):
         dpi=100,
     )
 
-    if not no_normal:
-        baf_taus0 = estimate_BB_dispersion_normal(
-            X_alphas_normal,
-            X_betas_normal,
-            ntumor_samples,
-            min_tau=min_tau,
-            max_tau=max_tau,
-        )
-    else:
-        baf_taus0 = estimate_BB_dispersion_segment(
-            X_alphas,
-            X_betas,
-            X_bafs,
-            X_lengths,
-            ntumor_samples,
-            min_tau=min_tau,
-            max_tau=max_tau,
-        )
+    baf_taus0 = np.zeros(ntumor_samples, dtype=np.float32)
+    tumor_pos = {ti: si for si, ti in enumerate(tumor_idx)}
+    for grp in assay2samples.values():
+        cols = [tumor_pos[ti] for ti in grp["tumor"]]
+        if not cols:
+            continue
+        if grp["normal"]:
+            ni = grp["normal"][0]
+            baf_taus0[cols] = estimate_BB_dispersion_normal(
+                X_alphas_all[:, ni],
+                X_betas_all[:, ni],
+                min_tau=min_tau,
+                max_tau=max_tau,
+            )
+        else:
+            baf_taus0[cols] = estimate_BB_dispersion_segment(
+                X_alphas[:, cols],
+                X_betas[:, cols],
+                X_bafs[:, cols],
+                X_lengths,
+                len(cols),
+                min_tau=min_tau,
+                max_tau=max_tau,
+            )
     logging.info("estimated BAF per-sample dispersion:      %s", np.round(baf_taus0, 3))
+
     rdr_vars0 = estimate_rdr_vars(X_hmm_rdrs, X_lengths, min_var=min_covar)
     logging.info("estimated RDR per-sample variance:      %s", np.round(rdr_vars0, 3))
 

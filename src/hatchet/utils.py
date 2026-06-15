@@ -75,10 +75,28 @@ def sort_df_chr(df: pd.DataFrame, ch="#CHR", pos="POS"):
 
 def read_sample_file(sample_file: str):
     sample_df = pd.read_table(sample_file, sep="\t")
-    samples = sample_df["SAMPLE"].tolist()
     sample_types = sample_df["sample_type"].tolist()
-    no_normal = "normal" not in sample_types
-    return sample_df, samples, no_normal
+    if "normal" in sample_types:
+        normal_idx = [i for i, t in enumerate(sample_types) if t == "normal"]
+        tumor_idx = [i for i, t in enumerate(sample_types) if t == "tumor"]
+    else:
+        normal_idx = []
+        tumor_idx = list(range(len(sample_types)))
+
+    assays = (
+        sample_df["assay_type"].tolist()
+        if "assay_type" in sample_df.columns
+        else [None] * len(sample_df)
+    )
+    normal_set, tumor_set = set(normal_idx), set(tumor_idx)
+    assay2samples = {}
+    for i, a in enumerate(assays):
+        grp = assay2samples.setdefault(a, {"normal": [], "tumor": []})
+        if i in normal_set:
+            grp["normal"].append(i)
+        if i in tumor_set:
+            grp["tumor"].append(i)
+    return sample_df, normal_idx, tumor_idx, assay2samples
 
 
 def read_genome_sizes(sz_file: str):
