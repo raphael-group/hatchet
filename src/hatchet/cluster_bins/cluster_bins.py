@@ -475,7 +475,7 @@ def run(args=None):
 
         bbs["PHASE"] = k_phases
         bbs["PHASE_POSTS"] = best_sol["phase_posts"][:, 1]
-        bbs[["#CHR", "START", "END", "PHASE", "PHASE_POSTS"]].to_csv(
+        bbs[["#CHR", "START", "END", "PHASE", "PHASE_POSTS", "switchprobs"]].to_csv(
             os.path.join(label_dir, f"bulk{K}.bb.phased.tsv.gz"),
             sep="\t",
             header=True,
