@@ -29,7 +29,7 @@ def run(args=None):
         labels/bulkK.bbc|seg    — per-K results
         cluster_infos/          — per-K cluster-label TSVs
         plots/                  — ELBO traces, RDR-BAF scatter, model score
-        model_scores.tsv / .png — BIC or ICL scores across K
+        model_scores.tsv / .pdf — BIC and ICL scores across K
 
     Args:
         args: dict or Namespace of CLI arguments (see hatchet_parser.py).
@@ -337,21 +337,17 @@ def run(args=None):
             logging.info(
                 f"K={K} restart {it}: model_ll={model_ll:.6f} obj_ll={obj_ll:.6f}"
             )
-            if score_method == "bic":
-                score = score_BIC(
-                    model_ll, K, ntumor_samples, nbbs, share_tau=share_tau
-                )
-            else:
-                score = score_ICL(
-                    sol["cluster_posts"],
-                    model_ll,
-                    K,
-                    ntumor_samples,
-                    nbbs,
-                    share_tau=share_tau,
-                )
+            bic = score_BIC(model_ll, K, ntumor_samples, nbbs, share_tau=share_tau)
+            icl = score_ICL(
+                sol["cluster_posts"],
+                model_ll,
+                K,
+                ntumor_samples,
+                nbbs,
+                share_tau=share_tau,
+            )
             score_records.append(
-                {"K": K, "restart_it": it, "ll": model_ll, score_method: score}
+                {"K": K, "restart_it": it, "ll": model_ll, "bic": bic, "icl": icl}
             )
             if model_ll > best_ll:
                 best_ll = model_ll
@@ -531,7 +527,7 @@ def run(args=None):
     best_score = scores_df.loc[best_idx, score_method]
     logging.info(f"model selection: best K={best_K} {score_method}={best_score:.4f}")
     scores_df.to_csv(os.path.join(out_dir, "model_scores.tsv"), sep="\t", index=False)
-    plot_score(scores_df, score_method, os.path.join(plot_dir, "model_scores.png"))
+    plot_score(scores_df, score_method, os.path.join(plot_dir, "model_scores.pdf"))
 
     ##################################################
     # copy best-K results to top-level output

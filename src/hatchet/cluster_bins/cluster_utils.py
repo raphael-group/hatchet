@@ -496,54 +496,60 @@ def plot_elbo_traces(traces_per_k: list, out_file: str):
 
 
 def plot_score(scores_df: pd.DataFrame, score_method: str, out_file: str):
-    """Save a two-panel plot of BIC/ICL (top) and log-likelihood (bottom) vs K.
+    """Save a stacked plot of every score type (BIC, ICL) and log-likelihood vs K.
 
-    Each panel shows a line through the best restart per K and a shaded band
-    over the min-to-max range across restarts.  A dashed vertical line marks
-    the selected K (global minimum of the best-restart score line).
+    One panel per score column present in scores_df plus a log-likelihood panel.
+    Each panel shows a line through the best restart per K and a shaded band over
+    the min-to-max range across restarts.  A dashed vertical line marks the
+    selected K (minimum of the best-restart line for ``score_method``); the same
+    K is marked on every panel for reference.
     """
-    fig, (ax_score, ax_ll) = plt.subplots(
-        2,
+    score_cols = [c for c in ("bic", "icl") if c in scores_df.columns]
+    panels = score_cols + ["ll"]
+    colors = {"bic": "steelblue", "icl": "seagreen", "ll": "tomato"}
+
+    Ks = sorted(scores_df["K"].unique())
+
+    def _agg(col, higher_better):
+        best, lo, hi = [], [], []
+        for K in Ks:
+            v = scores_df.loc[scores_df["K"] == K, col].values
+            best.append(float(v.max() if higher_better else v.min()))
+            lo.append(float(v.min()))
+            hi.append(float(v.max()))
+        return np.array(best), lo, hi
+
+    # best K from the selection criterion (lower score is better)
+    sel_best, _, _ = _agg(score_method, higher_better=False)
+    best_K = Ks[int(np.argmin(sel_best))]
+
+    fig, axes = plt.subplots(
+        len(panels),
         1,
-        figsize=(6, 5),
+        figsize=(6, 2.5 * len(panels)),
         sharex=True,
         layout="constrained",
         gridspec_kw={"hspace": 0.08},
     )
+    axes = np.atleast_1d(axes)
 
-    Ks = sorted(scores_df["K"].unique())
-    best_score, lo_score, hi_score = [], [], []
-    best_ll, lo_ll, hi_ll = [], [], []
-    for K in Ks:
-        rows = scores_df.loc[scores_df["K"] == K]
-        sv = rows[score_method].values
-        lv = rows["ll"].values
-        best_score.append(float(sv.min()))
-        lo_score.append(float(sv.min()))
-        hi_score.append(float(sv.max()))
-        best_ll.append(float(lv.max()))  # higher LL is better
-        lo_ll.append(float(lv.min()))
-        hi_ll.append(float(lv.max()))
-
-    best_score = np.array(best_score)
-    best_ll = np.array(best_ll)
-    best_K = Ks[int(np.argmin(best_score))]
-
-    for ax, best, lo, hi, ylabel, color in [
-        (ax_score, best_score, lo_score, hi_score, score_method.upper(), "steelblue"),
-        (ax_ll, best_ll, lo_ll, hi_ll, "log-likelihood", "tomato"),
-    ]:
-        ax.fill_between(Ks, lo, hi, alpha=0.20, color=color, label="")
-        ax.plot(Ks, best, color=color, marker="o", ms=5, lw=1.5, label="best restart")
+    for ax, col in zip(axes, panels):
+        higher_better = col == "ll"
+        best, lo, hi = _agg(col, higher_better)
+        ylabel = "log-likelihood" if col == "ll" else col.upper()
+        ax.fill_between(Ks, lo, hi, alpha=0.20, color=colors[col], label="")
+        ax.plot(
+            Ks, best, color=colors[col], marker="o", ms=5, lw=1.5, label="best restart"
+        )
         ax.axvline(
-            best_K, color=color, linestyle="--", alpha=0.7, label=f"best K={best_K}"
+            best_K, color="black", linestyle="--", alpha=0.7, label=f"best K={best_K}"
         )
         ax.set_ylabel(ylabel)
         ax.legend(fontsize=7)
 
-    ax_ll.set_xlabel("K")
-    ax_ll.set_xticks(Ks)
-    ax_score.set_title(f"Model selection ({score_method.upper()})")
+    axes[-1].set_xlabel("K")
+    axes[-1].set_xticks(Ks)
+    axes[0].set_title(f"Model selection (criterion: {score_method.upper()})")
 
     plt.savefig(out_file)
     plt.close()
