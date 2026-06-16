@@ -107,7 +107,16 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         required=False,
         choices=["bic", "icl"],
         type=str,
-        help="Model selection criterion (default: icl)",
+        help="Model selection score (default: icl)",
+        default=argparse.SUPPRESS,
+    )
+
+    parser.add_argument(
+        "--score_criteria",
+        required=False,
+        type=str,
+        help="How to pick K from the score curve: min | elbow | margin-<int> "
+        "(e.g. margin-5 = 5%% diminishing-returns threshold) (default: min)",
         default=argparse.SUPPRESS,
     )
     parser.add_argument(

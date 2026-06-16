@@ -57,8 +57,10 @@ cluster_bins:
 
   # HMM decoding method: viterbi | map
   decode_method: "map"
-  # Model selection criterion: bic | icl
+  # Model selection score: bic | icl
   score_method: "icl"
+  # How to pick K from the score curve: min | elbow | margin-<int>
+  score_criteria: "min"
   # HMM initialization method: cna_plus_plus | kmeans_plus_plus
   init_method: "cna_plus_plus"
 

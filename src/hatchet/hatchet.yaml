@@ -20,6 +20,8 @@ niters: 50
 decode_method: map
 # score_method: bic | icl
 score_method: icl
+# score_criteria: min | elbow | margin-<int>  (how to pick K from the score curve)
+score_criteria: min
 # init_method: cna_plus_plus | kmeans_plus_plus
 init_method: cna_plus_plus
 free_baf_c0: false

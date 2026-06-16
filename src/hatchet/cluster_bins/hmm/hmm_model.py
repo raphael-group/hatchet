@@ -12,7 +12,7 @@ import numpy as np
 from hatchet.cluster_bins.hmm.hmm_fwd_bwd import forward_backward
 from hatchet.cluster_bins.hmm.hmm_likelihoods import compute_loglik
 from hatchet.cluster_bins.hmm.hmm_decode import map_decoding, run_viterbi, decode_hmm  # noqa: F401
-from hatchet.cluster_bins.hmm.hmm_utils import score_model  # noqa: F401
+from hatchet.cluster_bins.hmm.hmm_utils import score_model, model_select_K  # noqa: F401
 from hatchet.cluster_bins.hmm.hmm_m_steps import do_mstep
 from hatchet.cluster_bins.cluster_utils import count_multimodal_clusters
 from hatchet.cluster_bins.hmm import _USE_CPP, _cpp_run_hmm

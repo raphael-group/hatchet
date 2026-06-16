@@ -3,6 +3,50 @@
 import numpy as np
 
 
+def model_select_K(score_df, score_criteria="min", score_method="icl"):
+    """Select the number of clusters K from per-restart model scores.
+
+    score_df:      DataFrame with columns K and the score_method (bic/icl); the
+                   best restart per K (minimum score) is used.
+    score_criteria:
+        "min"        -> global argmin of the score (default).
+        "elbow"      -> kneedle knee of the decreasing/convex score curve.
+        "margin-<p>" -> diminishing-returns elbow: the last K whose marginal
+                        improvement Delta(K)=s(K-1)-s(K) is >= (p/100)*max Delta.
+                        e.g. "margin-5" uses a 5% threshold.
+    Returns the selected K (int).
+    """
+    g = score_df.groupby("K")[score_method].min()  # best restart per K
+    Ks = list(g.index)
+    vals = g.tolist()
+
+    if score_criteria == "min":
+        return int(g.idxmin())
+
+    if score_criteria == "elbow":
+        from kneed import KneeLocator
+
+        knee = KneeLocator(Ks, vals, curve="convex", direction="decreasing").knee
+        return int(knee) if knee is not None else int(g.idxmin())
+
+    if score_criteria.startswith("margin-"):
+        try:
+            frac = int(score_criteria.split("-", 1)[1]) / 100.0
+        except ValueError:
+            raise ValueError(f"invalid score_criteria '{score_criteria}'; expected margin-<int>")
+        drops = [vals[i - 1] - vals[i] for i in range(1, len(vals))]
+        if not drops or max(drops) <= 0:
+            return int(Ks[0])
+        thr = frac * max(drops)
+        best = Ks[0]
+        for i, d in enumerate(drops, start=1):
+            if d >= thr:
+                best = Ks[i]
+        return int(best)
+
+    raise ValueError(f"unknown score_criteria '{score_criteria}'; expected min|elbow|margin-<int>")
+
+
 def score_model(
     posts: np.ndarray, ll: float, K: int, M: int, N: int,
     share_tau: bool = True, eps=1e-15,

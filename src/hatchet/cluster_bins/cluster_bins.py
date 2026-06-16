@@ -81,6 +81,7 @@ def run(args=None):
     seed = args["seed"]
     decode_method = args["decode_method"]
     score_method = args["score_method"]
+    score_criteria = args["score_criteria"]
     log_rdr = args["log_rdr"]
     init_method = args["init_method"]
     training_method = args["training_method"]
@@ -521,10 +522,11 @@ def run(args=None):
     plot_elbo_traces(elbo_data, os.path.join(plot_dir, "elbo_traces.pdf"))
 
     scores_df = pd.DataFrame(score_records)
-    best_idx = scores_df[score_method].idxmin()
-    best_K = int(scores_df.loc[best_idx, "K"])
-    best_score = scores_df.loc[best_idx, score_method]
-    logging.info(f"model selection: best K={best_K} {score_method}={best_score:.4f}")
+    best_K = model_select_K(scores_df, score_criteria, score_method)
+    best_score = scores_df.groupby("K")[score_method].min()[best_K]
+    logging.info(
+        f"model selection ({score_criteria}): best K={best_K} {score_method}={best_score:.4f}"
+    )
     scores_df.to_csv(os.path.join(out_dir, "model_scores.tsv"), sep="\t", index=False)
     plot_score(scores_df, score_method, os.path.join(plot_dir, "model_scores.pdf"))
 
