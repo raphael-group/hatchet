@@ -69,7 +69,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         required=False,
         default=argparse.SUPPRESS,
         type=int,
-        help="#restarts per K (default: 30)",
+        help="#restarts per K (default: 10)",
     )
     parser.add_argument(
         "--top_restarts",

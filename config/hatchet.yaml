@@ -31,7 +31,7 @@ cluster_bins:
   # Initial off-diagonal transition mass
   t: 1e-6
   # Number of random restarts per K
-  restarts: 30
+  restarts: 10
   # Number of top-scoring inits to run full EM on (null = same as restarts)
   top_restarts:
   # EM iterations per restart

@@ -12,7 +12,7 @@ force: false
 minK: 3
 maxK: 30
 t: 1.0e-6
-restarts: 30
+restarts: 10
 top_restarts: null
 n_local_trials: 3
 niters: 50
