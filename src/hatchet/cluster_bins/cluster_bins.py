@@ -337,8 +337,7 @@ def run(args=None):
             logging.info(
                 f"K={K} restart {it}: model_ll={model_ll:.6f} obj_ll={obj_ll:.6f}"
             )
-            bic = score_BIC(model_ll, K, ntumor_samples, nbbs, share_tau=share_tau)
-            icl = score_ICL(
+            scores = score_model(
                 sol["cluster_posts"],
                 model_ll,
                 K,
@@ -347,7 +346,7 @@ def run(args=None):
                 share_tau=share_tau,
             )
             score_records.append(
-                {"K": K, "restart_it": it, "ll": model_ll, "bic": bic, "icl": icl}
+                {"K": K, "restart_it": it, "ll": model_ll, **scores}
             )
             if model_ll > best_ll:
                 best_ll = model_ll
