@@ -33,7 +33,7 @@ void compute_loglik_cpp(
     const double* baf_taus,
     double*       lls0,
     double*       lls1,
-    int N, int K, int M)
+    int N, int K, int M, bool share_tau)
 {
     // Precompute per-(k,m) constants: bb_alpha, bb_beta, bb_delta, log_norm_const.
     // These are small (K*M) and shared across all bins.
@@ -57,9 +57,11 @@ void compute_loglik_cpp(
 
     // Precompute per-(n,m) k-invariant log binomial constant:
     //   log_bc_nm[n*M+m] = lgamma(total+1) - lgamma(alpha+1) - lgamma(beta+1)
-    // The betaln denominator lgamma(total + tau) is now k-dependent (per-cluster
-    // tau), so it is computed inline in the main loop rather than precomputed.
+    // When tau is shared across clusters, the betaln denominator lgamma(total+tau)
+    // is also k-invariant and precomputed here; with per-cluster tau it is
+    // computed inline in the main loop instead.
     std::vector<double> log_bc_nm(N * M);
+    std::vector<double> lgamma_total_tau_nm(share_tau ? (size_t)N * M : 0);
     for (int n = 0; n < N; ++n) {
         for (int m = 0; m < M; ++m) {
             double alpha_nm = X_alphas[(long)n * M + m];
@@ -68,6 +70,9 @@ void compute_loglik_cpp(
             log_bc_nm[(long)n * M + m] = (std::lgamma(total_nm + 1.0)
                                           - std::lgamma(alpha_nm + 1.0)
                                           - std::lgamma(beta_nm  + 1.0));
+            if (share_tau)  // tau row-invariant: use row 0 (baf_taus[m])
+                lgamma_total_tau_nm[(long)n * M + m] =
+                    std::lgamma(total_nm + baf_taus[m]);
         }
     }
 
@@ -99,7 +104,9 @@ void compute_loglik_cpp(
                 double a     = bb_alpha[(long)k * M + m];
                 double b     = bb_beta[(long)k * M + m];
                 double delta = bb_delta[(long)k * M + m];
-                double lg_tot_tau = std::lgamma(total_nm + baf_taus[(long)k * M + m]);
+                double lg_tot_tau = share_tau
+                    ? lgamma_total_tau_nm[(long)n * M + m]
+                    : std::lgamma(total_nm + baf_taus[(long)k * M + m]);
 
                 ll_baf_h0 += log_bc + std::lgamma(alpha_nm + a) + std::lgamma(beta_nm  + b) - lg_tot_tau - delta;
                 ll_baf_h1 += log_bc + std::lgamma(beta_nm  + a) + std::lgamma(alpha_nm + b) - lg_tot_tau - delta;

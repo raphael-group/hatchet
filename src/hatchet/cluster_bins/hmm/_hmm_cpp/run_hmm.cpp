@@ -162,7 +162,7 @@ RunHMMResult run_hmm_cpp(
         compute_loglik_cpp(
             X_rdrs, X_alphas, X_betas, X_totals,
             rdr_means.data(), rdr_vars.data(), baf_means.data(), baf_taus.data(),
-            lls0.data(), lls1.data(), N, K, M);
+            lls0.data(), lls1.data(), N, K, M, share_tau);
 
         // E-step: forward-backward
         loglik = forward_backward_cpp(
@@ -236,7 +236,7 @@ RunHMMResult run_hmm_cpp(
     compute_loglik_cpp(
         X_rdrs, X_alphas, X_betas, X_totals,
         rdr_means.data(), rdr_vars.data(), baf_means.data(), baf_taus.data(),
-        lls0.data(), lls1.data(), N, K, M);
+        lls0.data(), lls1.data(), N, K, M, share_tau);
 
     RunHMMResult result;
     result.rdr_means      = std::move(rdr_means);

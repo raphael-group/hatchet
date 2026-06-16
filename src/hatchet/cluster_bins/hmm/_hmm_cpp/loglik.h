@@ -31,5 +31,5 @@ void compute_loglik_cpp(
     const double* baf_taus,
     double*       lls0,
     double*       lls1,
-    int N, int K, int M
+    int N, int K, int M, bool share_tau = true
 );
