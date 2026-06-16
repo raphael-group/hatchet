@@ -27,6 +27,8 @@ xargs = ["--verbosity", int(config["verbosity"])]
 cluster_bins_extra = []
 if bool(config["cluster_bins"].get("log_rdr", False)):
     cluster_bins_extra.append("--log_rdr")
+if not bool(config["cluster_bins"].get("share_tau", True)):
+    cluster_bins_extra.append("--no-share_tau")
 if config["cluster_bins"].get("top_restarts") is not None:
     cluster_bins_extra.extend(["--top_restarts", int(config["cluster_bins"]["top_restarts"])])
 cluster_bins_args = " ".join(shlex.quote(str(x)) for x in xargs + cluster_bins_extra)

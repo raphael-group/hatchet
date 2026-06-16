@@ -109,6 +109,7 @@ RunHMMResult run_hmm_cpp(
     int    tau_iters,
     double min_tau,
     double max_tau,
+    bool   share_tau,
     double baf_eps,
     double ig_alpha,
     const double* ig_beta,
@@ -131,7 +132,7 @@ RunHMMResult run_hmm_cpp(
     std::vector<double> rdr_means(rdr_means0, rdr_means0 + K * M);
     std::vector<double> rdr_vars(rdr_vars0,   rdr_vars0  + K * M);
     std::vector<double> baf_means(baf_means0, baf_means0 + K * M);
-    std::vector<double> baf_taus(baf_taus0,   baf_taus0  + M);
+    std::vector<double> baf_taus(baf_taus0,   baf_taus0  + (long)K * M);
 
     // ---- Uniform log start probs: log(1 / (2K)) ----
     std::vector<double> log_startprobs(K * 2, std::log(1.0 / (2 * K)));
@@ -191,10 +192,11 @@ RunHMMResult run_hmm_cpp(
             loglik_penalized += ig_log_prior;
         }
 
-        // Convergence check
+        // Convergence check (delta normalized to mean per-bin units, so tol_ll
+        // is independent of dataset size; matches scikit-learn's mean lower-bound)
         double delta_ll = loglik_penalized - elbo_trace.back();
         elbo_trace.push_back(loglik_penalized);
-        if (std::abs(delta_ll) < tol_ll) {
+        if (std::abs(delta_ll) / N < tol_ll) {
             n_done = it + 1;
             break;
         }
@@ -214,7 +216,7 @@ RunHMMResult run_hmm_cpp(
         if (it < tau_iters) {
             update_baf_tau_cpp(
                 X_alphas, X_betas, posts.data(), baf_means.data(),
-                baf_taus.data(), N, K, M, min_tau, max_tau);
+                baf_taus.data(), N, K, M, min_tau, max_tau, share_tau);
         }
 
         // M-step: BAF means (Brent per (k,m), uses possibly updated tau)

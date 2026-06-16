@@ -22,7 +22,7 @@ def compute_loglik(
         rdr_means: (K, M) per-cluster per-sample Gaussian RDR means.
         rdr_vars:  (K, M) per-cluster per-sample Gaussian RDR variances.
         baf_means: (K, M) per-cluster per-sample Beta-Binomial BAF means.
-        baf_taus:  (M,)  per-sample Beta-Binomial dispersion parameters.
+        baf_taus:  (K, M) or (M,) Beta-Binomial dispersion parameters.
 
     Returns:
         lls0: (N, K) log-likelihoods under haplotype orientation h=0.
@@ -31,8 +31,9 @@ def compute_loglik(
     log_binom_const = (
         gammaln(X_totals + 1) - gammaln(X_betas + 1) - gammaln(X_alphas + 1)
     )  # (N, M)
-    bb_alpha = baf_taus[None, None, :] * baf_means[None, :, :]  # (1, K, M)
-    bb_beta = baf_taus[None, None, :] * (1 - baf_means[None, :, :])
+    bt = baf_taus[None, :, :] if baf_taus.ndim == 2 else baf_taus[None, None, :]
+    bb_alpha = bt * baf_means[None, :, :]  # (1, K, M)
+    bb_beta = bt * (1 - baf_means[None, :, :])
     bb_delta = betaln(bb_alpha, bb_beta)
     lnB_h0 = betaln(X_alphas[:, None, :] + bb_alpha, X_betas[:, None, :] + bb_beta)
     lnB_h1 = betaln(X_betas[:, None, :] + bb_alpha, X_alphas[:, None, :] + bb_beta)

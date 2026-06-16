@@ -10,7 +10,7 @@ struct RunHMMResult {
     std::vector<double> rdr_means;       // (K, M)
     std::vector<double> rdr_vars;        // (K, M)
     std::vector<double> baf_means;       // (K, M)
-    std::vector<double> baf_taus;        // (M,)
+    std::vector<double> baf_taus;        // (K, M)
     std::vector<double> log_startprobs;  // (K, 2)
     std::vector<double> posts;           // (N, K, 2)
     std::vector<double> lls0;            // (N, K)
@@ -20,7 +20,7 @@ struct RunHMMResult {
     std::vector<double> trace_rdr_means;  // flat (n_iters+1) * K * M
     std::vector<double> trace_rdr_vars;
     std::vector<double> trace_baf_means;
-    std::vector<double> trace_baf_taus;   // flat (n_iters+1) * M
+    std::vector<double> trace_baf_taus;   // flat (n_iters+1) * K * M
     double loglik;
     double data_loglik;
     int    n_iters_done;
@@ -44,7 +44,7 @@ struct RunHMMResult {
  *   rdr_means0    (K, M) — initial RDR means
  *   rdr_vars0     (K, M) — initial RDR variances
  *   baf_means0    (K, M) — initial BAF means
- *   baf_taus0     (M,)   — initial BB dispersion
+ *   baf_taus0     (K, M) — initial BB dispersion
  */
 RunHMMResult run_hmm_cpp(
     int K, int N, int M, int S,
@@ -67,6 +67,7 @@ RunHMMResult run_hmm_cpp(
     int    tau_iters,
     double min_tau,
     double max_tau,
+    bool   share_tau,
     double baf_eps,
     double ig_alpha = 10.0,
     const double* ig_beta = nullptr,

@@ -17,10 +17,11 @@ def do_mstep(
     X_alphas,  # (N, M)
     X_betas,  # (N, M)
     posts,  # (N, K, 2) — posteriors from E-step
-    baf_taus,  # (M,)
+    baf_taus,  # (K, M)
     baf_means_init,  # (K, M) — warm start
     X_lengths,  # (S,) segment lengths
     update_tau=False,
+    share_tau=True,
     min_covar=1e-3,
     tol=1e-6,
     min_tau=50,
@@ -42,7 +43,7 @@ def do_mstep(
         rdr_means:      (K, M) numpy array.
         rdr_vars:       (K, M) numpy array.
         baf_means:      (K, M) numpy array.
-        baf_taus:       (M,)   numpy array.
+        baf_taus:       (K, M) numpy array.
         log_startprobs: (K, 2) numpy array.
     """
     N, K, _ = posts.shape
@@ -83,6 +84,7 @@ def do_mstep(
             baf_taus,
             min_tau=min_tau,
             max_tau=max_tau,
+            share_tau=share_tau,
         )
 
     # ---- BAF means (scipy Brent, uses possibly updated tau) ----
@@ -101,47 +103,83 @@ def do_mstep(
 
 
 def _update_baf_tau(
-    X_alphas, X_betas, posts, baf_means, baf_taus, min_tau=50, max_tau=500
+    X_alphas,
+    X_betas,
+    posts,
+    baf_means,
+    baf_taus,
+    min_tau=50,
+    max_tau=500,
+    share_tau=True,
 ):
     """MLE for BAF tau via Brent in log-tau space, maximising Q_BAF.
+
+    With share_tau=True a single tau per sample (pooling all clusters) is fit
+    and broadcast to all K rows; with share_tau=False tau is fit independently
+    per (cluster, sample).
 
     Args:
         X_alphas:  (N, M) A-allele counts.
         X_betas:   (N, M) B-allele counts.
         posts:     (N, K, 2) full posteriors.
         baf_means: (K, M) current BAF means.
-        baf_taus:  (M,) current tau values.
+        baf_taus:  (K, M) current tau values.
         min_tau, max_tau: search bounds.
+        share_tau: tie tau across clusters within a sample.
 
     Returns:
-        (M,) updated tau values.
+        (K, M) updated tau values.
     """
     N, K, _ = posts.shape
     M = X_alphas.shape[1]
     taus_new = baf_taus.copy()
+    lo, hi = np.log(min_tau), np.log(max_tau)
+
+    def neg_Q_km(log_tau, alpha, beta, w0, w1, p):
+        tau = np.exp(log_tau)
+        a, b = tau * p, tau * (1 - p)
+        norm = betaln(a, b)
+        ll0 = betaln(alpha + a, beta + b) - norm
+        ll1 = betaln(beta + a, alpha + b) - norm
+        return -(w0 @ ll0 + w1 @ ll1)
 
     for m in range(M):
         alpha_m = X_alphas[:, m]
         beta_m = X_betas[:, m]
 
-        def neg_Q(
-            log_tau, _alpha=alpha_m, _beta=beta_m, _posts=posts, _baf=baf_means[:, m]
-        ):
-            tau = np.exp(log_tau)
-            total = 0.0
-            for k in range(K):
-                p = _baf[k]
-                a, b = tau * p, tau * (1 - p)
-                norm = betaln(a, b)
-                ll0 = betaln(_alpha + a, _beta + b) - norm
-                ll1 = betaln(_beta + a, _alpha + b) - norm
-                total += _posts[:, k, 0] @ ll0 + _posts[:, k, 1] @ ll1
-            return -total
+        if share_tau:
 
-        res = minimize_scalar(
-            neg_Q, bounds=(np.log(min_tau), np.log(max_tau)), method="bounded"
-        )
-        taus_new[m] = np.exp(res.x)
+            def neg_Q(
+                log_tau, _a=alpha_m, _b=beta_m, _posts=posts, _baf=baf_means[:, m]
+            ):
+                tau = np.exp(log_tau)
+                total = 0.0
+                for k in range(K):
+                    p = _baf[k]
+                    a, b = tau * p, tau * (1 - p)
+                    norm = betaln(a, b)
+                    ll0 = betaln(_a + a, _b + b) - norm
+                    ll1 = betaln(_b + a, _a + b) - norm
+                    total += _posts[:, k, 0] @ ll0 + _posts[:, k, 1] @ ll1
+                return -total
+
+            res = minimize_scalar(neg_Q, bounds=(lo, hi), method="bounded")
+            taus_new[:, m] = np.exp(res.x)
+        else:
+            for k in range(K):
+                res = minimize_scalar(
+                    neg_Q_km,
+                    bounds=(lo, hi),
+                    method="bounded",
+                    args=(
+                        alpha_m,
+                        beta_m,
+                        posts[:, k, 0],
+                        posts[:, k, 1],
+                        baf_means[k, m],
+                    ),
+                )
+                taus_new[k, m] = np.exp(res.x)
 
     return taus_new
 
@@ -159,7 +197,7 @@ def _update_baf_means(
         p0_km:     (K, M) — initial BAF means (preserved for k < k_start).
         alphas_mn: (M, N) — A-allele counts.
         betas_mn:  (M, N) — B-allele counts.
-        baf_taus:  (M,)   — dispersion params.
+        baf_taus:  (K, M) — dispersion params.
         posts_kn2: (K, N, 2) — posteriors.
         baf_eps:   float  — Brent search bounds [baf_eps, 1-baf_eps].
         k_start:   int    — first cluster index to update (default 0 = all).
@@ -174,10 +212,10 @@ def _update_baf_means(
     EPS = baf_eps
 
     for m in range(M):
-        tau = baf_taus[m]
         alpha_m = alphas_mn[m]  # (N,)
         beta_m = betas_mn[m]  # (N,)
         for k in range(k_start, K):
+            tau = baf_taus[k, m]
             w0 = posts0[k]  # (N,)
             w1 = posts1[k]  # (N,)
 

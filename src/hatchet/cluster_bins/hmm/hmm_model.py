@@ -18,19 +18,23 @@ from hatchet.cluster_bins.cluster_utils import count_multimodal_clusters
 from hatchet.cluster_bins.hmm import _USE_CPP, _cpp_run_hmm
 
 
-def _check_elbo_convergence(elbo_trace, tol_ll, prefix=""):
-    """Check elbo_trace for convergence and monotonicity; log warnings."""
+def _check_elbo_convergence(elbo_trace, tol_ll, N, prefix=""):
+    """Check elbo_trace for convergence and monotonicity; log warnings.
+
+    Deltas are normalized to mean per-bin units (divide by N) so tol_ll is
+    independent of dataset size, matching scikit-learn's mean lower-bound rule.
+    """
     trace = elbo_trace[1:]  # skip initial -inf
     if len(trace) < 2:
         return
-    final_delta = abs(trace[-1] - trace[-2])
+    final_delta = abs(trace[-1] - trace[-2]) / N
     if final_delta >= tol_ll:
         logging.warning(
             f"{prefix}EM did NOT converge: final delta_ll={final_delta:.6e} >= tol_ll={tol_ll:.6e}"
         )
     drops = []
     for i in range(1, len(trace)):
-        delta = trace[i] - trace[i - 1]
+        delta = (trace[i] - trace[i - 1]) / N
         if delta < -tol_ll:
             drops.append((i, delta))
     if drops:
@@ -62,6 +66,7 @@ def _run_hmm_cpp(
     tau_iters,
     min_tau,
     max_tau,
+    share_tau,
     baf_eps,
     _pfx,
     ig_alpha=10.0,
@@ -93,6 +98,7 @@ def _run_hmm_cpp(
         tau_iters,
         min_tau,
         max_tau,
+        share_tau,
         baf_eps,
         ig_alpha,
         ig_beta_arr,
@@ -105,7 +111,7 @@ def _run_hmm_cpp(
         f"{_pfx}HMM baum-welch (K={K}) finished after {n_done} iters | "
         f"loglik={res['model_ll']:.6f} | total={elapsed:.2f}s ({elapsed / n_done:.3f}s/it)"
     )
-    _check_elbo_convergence(res["elbo_trace"], tol_ll, _pfx)
+    _check_elbo_convergence(res["elbo_trace"], tol_ll, X_rdrs.shape[0], _pfx)
 
     full_posts = res["full_posts"]  # (N, K, 2)
     phase_posts = np.sum(full_posts, axis=1)  # (N, 2)
@@ -157,6 +163,7 @@ def run_baum_welch(
     tau_iters: int = 1,
     min_tau: float = 50,
     max_tau: float = 100,
+    share_tau: bool = True,
     baf_eps: float = 1e-3,
     log_rdr: bool = True,
     restart_id: int | None = None,
@@ -187,7 +194,7 @@ def run_baum_welch(
         rdr_means:         (K, M) float64 — initial RDR means.
         rdr_vars:          (K, M) float64 — initial RDR variances.
         baf_means:         (K, M) float64 — initial BAF means.
-        baf_taus:          (M,)   float64 — initial BB dispersion.
+        baf_taus:          (M,) or (K, M) float64 — initial BB dispersion.
         X_rdrs_orig:       (N, M) float64 — linear-scale RDR for multimodal diagnostic.
         X_totals_orig:     (N, M) float64 — total counts for multimodal diagnostic.
         n_iter:            Maximum EM iterations.
@@ -209,6 +216,9 @@ def run_baum_welch(
 
     _pfx = f"[r{restart_id}] " if restart_id is not None else ""
     N, M = X_rdrs.shape
+    baf_taus = np.ascontiguousarray(
+        np.broadcast_to(baf_taus, (K, M)), dtype=np.float64
+    )  # (K, M); rows equal when init is per-sample
 
     if _USE_CPP:
         return _run_hmm_cpp(
@@ -232,6 +242,7 @@ def run_baum_welch(
             tau_iters=tau_iters,
             min_tau=min_tau,
             max_tau=max_tau,
+            share_tau=share_tau,
             baf_eps=baf_eps,
             _pfx=_pfx,
             ig_alpha=ig_alpha,
@@ -330,7 +341,7 @@ def run_baum_welch(
                 )
                 logging.debug(f"  {k:3d}  {nk / total_nk:6.3f}  {per_sample}")
 
-        if abs(delta_ll) < tol_ll:
+        if abs(delta_ll) / N < tol_ll:
             logging.info(f"{_pfx}Converged at iteration {it}")
             break
 
@@ -343,6 +354,7 @@ def run_baum_welch(
             baf_means,
             X_lengths,
             update_tau=(it < tau_iters),
+            share_tau=share_tau,
             min_covar=min_covar,
             tol=tol,
             min_tau=min_tau,
@@ -367,7 +379,7 @@ def run_baum_welch(
         f"fwdbwd={t_fwdbwd_sum:.2f}s ({t_fwdbwd_sum / n_done:.3f}s/it) | "
         f"mstep={t_mstep_sum:.2f}s ({t_mstep_sum / n_done:.3f}s/it)"
     )
-    _check_elbo_convergence(elbo_trace, tol_ll, _pfx)
+    _check_elbo_convergence(elbo_trace, tol_ll, N, _pfx)
 
     obj_ll = elbo_trace[-1]
     model_ll = loglik
@@ -431,6 +443,7 @@ def run_viterbi_training(
     tau_iters: int = 1,
     min_tau: float = 50,
     max_tau: float = 100,
+    share_tau: bool = True,
     baf_eps: float = 1e-3,
     log_rdr: bool = True,
     restart_id: int | None = None,
@@ -447,6 +460,9 @@ def run_viterbi_training(
     assert n_iter > 1
     _pfx = f"[r{restart_id}] " if restart_id is not None else ""
     N, M = X_rdrs.shape
+    baf_taus = np.ascontiguousarray(
+        np.broadcast_to(baf_taus, (K, M)), dtype=np.float64
+    )  # (K, M); rows equal when init is per-sample
 
     log_startprobs = np.log(np.full((K, 2), 1.0 / (2 * K), dtype=np.float64))
 
@@ -506,7 +522,7 @@ def run_viterbi_training(
             f"{_pfx}ViterbiEM Iter {it:03d} | viterbi_score={viterbi_score: .6f} | delta={delta: .6f}"
         )
 
-        if abs(delta) < tol_ll:
+        if abs(delta) / N < tol_ll:
             logging.info(f"{_pfx}Converged at iteration {it}")
             break
 
@@ -519,6 +535,7 @@ def run_viterbi_training(
             baf_means,
             X_lengths,
             update_tau=(it < tau_iters),
+            share_tau=share_tau,
             min_covar=min_covar,
             tol=tol,
             min_tau=min_tau,

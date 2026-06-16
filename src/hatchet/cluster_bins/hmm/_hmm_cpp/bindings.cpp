@@ -38,6 +38,7 @@ static py::dict run_hmm_py(
     int    tau_iters,
     double min_tau,
     double max_tau,
+    bool   share_tau,
     double baf_eps,
     double ig_alpha,
     f64arr ig_beta_arr,
@@ -62,7 +63,7 @@ static py::dict run_hmm_py(
         baf_means0.data(),
         baf_taus0.data(),
         n_iter, min_covar, tol_ll, tol,
-        tau_iters, min_tau, max_tau, baf_eps,
+        tau_iters, min_tau, max_tau, share_tau, baf_eps,
         ig_alpha, ig_beta_arr.data(), baf_k_start);
 
     // Helper: copy a flat vector into a shaped numpy array.
@@ -77,17 +78,17 @@ static py::dict run_hmm_py(
     d["RDR_means"]      = make_arr(res.rdr_means,      {K, M});
     d["RDR_vars"]       = make_arr(res.rdr_vars,        {K, M});
     d["BAF_means"]      = make_arr(res.baf_means,       {K, M});
-    d["BAF_taus"]       = make_arr(res.baf_taus,        {M});
+    d["BAF_taus"]       = make_arr(res.baf_taus,        {K, M});
     d["log_startprobs"] = make_arr(res.log_startprobs,  {K, 2});
     d["full_posts"]     = make_arr(res.posts,            {N, K, 2});
     d["lls0"]           = make_arr(res.lls0,             {N, K});
     d["lls1"]           = make_arr(res.lls1,             {N, K});
     d["elbo_trace"]     = py::cast(res.elbo_trace);
-    int n_trace = (int)(res.trace_baf_taus.size() / M);  // init + actual M-steps
+    int n_trace = (int)(res.trace_baf_taus.size() / ((long)K * M));  // init + actual M-steps
     d["trace_rdr_means"]  = make_arr(res.trace_rdr_means,  {n_trace, K, M});
     d["trace_rdr_vars"]   = make_arr(res.trace_rdr_vars,   {n_trace, K, M});
     d["trace_baf_means"]  = make_arr(res.trace_baf_means,  {n_trace, K, M});
-    d["trace_baf_taus"]   = make_arr(res.trace_baf_taus,   {n_trace, M});
+    d["trace_baf_taus"]   = make_arr(res.trace_baf_taus,   {n_trace, K, M});
     d["obj_ll"]         = py::cast(res.loglik);
     d["model_ll"]       = py::cast(res.data_loglik);
     d["n_iters_done"]   = py::cast(res.n_iters_done);
@@ -120,6 +121,7 @@ PYBIND11_MODULE(_hmm_cpp, m) {
         py::arg("tau_iters") = 1,
         py::arg("min_tau")   = 50.0,
         py::arg("max_tau")   = 100.0,
+        py::arg("share_tau") = true,
         py::arg("baf_eps")   = 1e-6,
         py::arg("ig_alpha")  = 10.0,
         py::arg("ig_beta"),
@@ -142,13 +144,14 @@ log_transmat  : (K, K) float64
 rdr_means0 : (K, M) float64  initial RDR means
 rdr_vars0  : (K, M) float64  initial RDR variances
 baf_means0 : (K, M) float64  initial BAF means
-baf_taus0  : (M,) float64    initial BB dispersion
+baf_taus0  : (K, M) float64  initial BB dispersion
 n_iter     : int   max EM iterations
 min_covar  : float min RDR variance floor
 tol_ll     : float convergence threshold on log-likelihood delta
 tol        : float min effective cluster size / start-prob floor
 tau_iters  : int   iterations during which tau is updated
 min_tau, max_tau : float  Brent search bounds for tau
+share_tau  : bool  share tau across clusters within a sample
 baf_eps    : float  BAF mean search bounds [eps, 1-eps]
 
 Returns

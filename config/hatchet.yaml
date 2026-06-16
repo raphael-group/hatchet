@@ -38,9 +38,11 @@ cluster_bins:
   niters: 50
 
   # Minimum Beta-Binomial dispersion tau
-  min_tau: 50
+  min_tau: 1.0
   # Maximum Beta-Binomial dispersion tau
-  max_tau: 200
+  max_tau: 1.0e+6
+  # Share BB dispersion tau across clusters within a sample (false = per-cluster-per-sample)
+  share_tau: true
   # BAF mean Brent search bounds [baf_eps, 1-baf_eps]
   baf_eps: 1.0e-3
   # Minimum RDR variance floor applied after each M-step
@@ -48,7 +50,7 @@ cluster_bins:
   # Inverse-gamma prior shape for RDR variance
   ig_alpha: 10.0
   # Number of EM iterations that update tau
-  tau_iters: 1
+  tau_iters: 3
 
   # Use log(RDR) instead of RDR for Gaussian emission
   log_rdr: false

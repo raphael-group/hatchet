@@ -8,7 +8,7 @@
  * alphas_mn  (M, N) C-contiguous — A-allele counts
  * betas_mn   (M, N) C-contiguous — B-allele counts
  * posts_kn2  (K, N, 2) C-contiguous — posteriors: posts_kn2[k*N*2 + n*2 + h]
- * baf_taus   (M,) — per-sample dispersion
+ * baf_taus   (K, M) — per-cluster per-sample dispersion
  * p_km       (K, M) C-contiguous output — written in place
  * eps        — search bounds [eps, 1-eps]
  */
@@ -48,8 +48,9 @@ void update_rdr_params_cpp(
  * betas_nm   (N, M) C-contiguous — B-allele counts
  * posts_nk2  (N, K, 2) C-contiguous — full posteriors (h=0 and h=1)
  * baf_means  (K, M) C-contiguous — current BAF means
- * baf_taus   (M,)   — updated in place
+ * baf_taus   (K, M) — updated in place
  * min_tau, max_tau — Brent search bounds (optimisation in log-tau space)
+ * share_tau  — tie tau across clusters within a sample (write same value to all K rows)
  */
 void update_baf_tau_cpp(
     const double* alphas_nm,
@@ -58,5 +59,5 @@ void update_baf_tau_cpp(
     const double* baf_means,
     double*       baf_taus,
     int N, int K, int M,
-    double min_tau, double max_tau
+    double min_tau, double max_tau, bool share_tau
 );

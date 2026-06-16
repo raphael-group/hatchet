@@ -16,7 +16,7 @@
  * rdr_means (K, M) — per-cluster per-sample Gaussian RDR means
  * rdr_vars  (K, M) — per-cluster per-sample Gaussian RDR variances
  * baf_means (K, M) — per-cluster per-sample Beta-Binomial BAF means
- * baf_taus  (M,)   — per-sample Beta-Binomial dispersion parameters
+ * baf_taus  (K, M) — per-cluster per-sample Beta-Binomial dispersion parameters
  * lls0      (N, K) — output log-likelihoods under h=0
  * lls1      (N, K) — output log-likelihoods under h=1
  */

@@ -62,6 +62,7 @@ def run(args=None):
 
     min_tau = args["min_tau"]
     max_tau = args["max_tau"]
+    share_tau = args["share_tau"]
     baf_eps = args["baf_eps"]
     min_covar = args["min_covar"]
     ig_alpha = args["ig_alpha"]
@@ -322,6 +323,7 @@ def run(args=None):
                 tau_iters=tau_iters,
                 min_tau=min_tau,
                 max_tau=max_tau,
+                share_tau=share_tau,
                 baf_eps=baf_eps,
                 log_rdr=log_rdr,
                 restart_id=it,
@@ -390,7 +392,7 @@ def run(args=None):
         k_rdr_means = best_sol["RDR_means"][k_cids]
         k_rdr_vars = best_sol["RDR_vars"][k_cids]
         k_baf_means = best_sol["BAF_means"][k_cids]
-        k_baf_taus = best_sol["BAF_taus"]
+        k_baf_taus = best_sol["BAF_taus"][k_cids]  # (len(k_cids), M)
 
         # mhBAF fold: flip BAF means and phases for clusters with BAF > 0.5
         if not args["skip_mhbafs"]:

@@ -140,7 +140,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         required=False,
         default=argparse.SUPPRESS,
         type=float,
-        help="Minimum Beta-Binomial dispersion tau (default: 50)",
+        help="Minimum Beta-Binomial dispersion tau (default: 1)",
     )
 
     parser.add_argument(
@@ -148,7 +148,16 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         required=False,
         default=argparse.SUPPRESS,
         type=float,
-        help="Maximum Beta-Binomial dispersion tau (default: 200)",
+        help="Maximum Beta-Binomial dispersion tau (default: 1e6)",
+    )
+
+    parser.add_argument(
+        "--share_tau",
+        required=False,
+        action=argparse.BooleanOptionalAction,
+        default=argparse.SUPPRESS,
+        help="Share BB dispersion tau across clusters within a sample; "
+        "use --no-share_tau for per-cluster-per-sample tau (default: True)",
     )
 
     parser.add_argument(
@@ -180,7 +189,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         required=False,
         default=argparse.SUPPRESS,
         type=int,
-        help="Number of EM iterations during which BAF dispersion tau is updated (default: 0)",
+        help="Number of EM iterations during which BAF dispersion tau is updated (default: 3)",
     )
 
     parser.add_argument(

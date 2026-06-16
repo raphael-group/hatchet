@@ -44,7 +44,7 @@ void compute_loglik_cpp(
 
     for (int k = 0; k < K; ++k) {
         for (int m = 0; m < M; ++m) {
-            double tau  = baf_taus[m];
+            double tau  = baf_taus[(long)k * M + m];
             double mean = baf_means[(long)k * M + m];
             double a    = tau * mean;
             double b    = tau * (1.0 - mean);
@@ -55,12 +55,11 @@ void compute_loglik_cpp(
         }
     }
 
-    // Precompute per-(n,m) k-invariant quantities: log_bc and lgamma(total+tau).
-    // log_bc_nm[n*M+m]           = lgamma(total+1) - lgamma(alpha+1) - lgamma(beta+1)
-    // lgamma_total_tau_nm[n*M+m] = lgamma(total + tau_m)  [shared denominator in betaln]
+    // Precompute per-(n,m) k-invariant log binomial constant:
+    //   log_bc_nm[n*M+m] = lgamma(total+1) - lgamma(alpha+1) - lgamma(beta+1)
+    // The betaln denominator lgamma(total + tau) is now k-dependent (per-cluster
+    // tau), so it is computed inline in the main loop rather than precomputed.
     std::vector<double> log_bc_nm(N * M);
-    std::vector<double> lgamma_total_tau_nm(N * M);
-    // baf_taus indexed by m only — precompute once per call (cheap: N*M lgammas)
     for (int n = 0; n < N; ++n) {
         for (int m = 0; m < M; ++m) {
             double alpha_nm = X_alphas[(long)n * M + m];
@@ -69,7 +68,6 @@ void compute_loglik_cpp(
             log_bc_nm[(long)n * M + m] = (std::lgamma(total_nm + 1.0)
                                           - std::lgamma(alpha_nm + 1.0)
                                           - std::lgamma(beta_nm  + 1.0));
-            lgamma_total_tau_nm[(long)n * M + m] = std::lgamma(total_nm + baf_taus[m]);
         }
     }
 
@@ -86,9 +84,9 @@ void compute_loglik_cpp(
             for (int m = 0; m < M; ++m) {
                 double alpha_nm    = X_alphas[(long)n * M + m];
                 double beta_nm     = X_betas[(long)n * M + m];
+                double total_nm    = X_totals[(long)n * M + m];
                 double rdr_nm      = X_rdrs[(long)n * M + m];
                 double log_bc      = log_bc_nm[(long)n * M + m];
-                double lg_tot_tau  = lgamma_total_tau_nm[(long)n * M + m];
 
                 // Gaussian RDR contribution for sample m
                 double diff = rdr_nm - rdr_means[(long)k * M + m];
@@ -97,10 +95,11 @@ void compute_loglik_cpp(
 
                 // Beta-Binomial BAF contribution for sample m
                 // betaln(x+a, y+b) = lgamma(x+a) + lgamma(y+b) - lgamma(x+y+tau)
-                // lgamma(x+y+tau) = lg_tot_tau (k-invariant, precomputed above)
+                // lgamma(x+y+tau) is k-dependent (per-cluster tau) — computed inline
                 double a     = bb_alpha[(long)k * M + m];
                 double b     = bb_beta[(long)k * M + m];
                 double delta = bb_delta[(long)k * M + m];
+                double lg_tot_tau = std::lgamma(total_nm + baf_taus[(long)k * M + m]);
 
                 ll_baf_h0 += log_bc + std::lgamma(alpha_nm + a) + std::lgamma(beta_nm  + b) - lg_tot_tau - delta;
                 ll_baf_h1 += log_bc + std::lgamma(beta_nm  + a) + std::lgamma(alpha_nm + b) - lg_tot_tau - delta;

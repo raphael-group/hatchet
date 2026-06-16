@@ -25,12 +25,13 @@ init_method: cna_plus_plus
 free_baf_c0: false
 # training_method: baum_welch | viterbi
 training_method: baum_welch
-min_tau: 50.0
-max_tau: 200.0
+min_tau: 1.0
+max_tau: 1.0e+6
+share_tau: true
 baf_eps: 1.0e-3
 min_covar: 1.0e-3
 ig_alpha: 10.0
-tau_iters: 0
+tau_iters: 3
 seed: 42
 log_rdr: false
 bal_lrt_alpha: 0.05

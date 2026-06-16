@@ -29,7 +29,7 @@ void update_baf_means_cpp(
     const double* alphas_mn,   // (M, N)
     const double* betas_mn,    // (M, N)
     const double* posts_kn2,   // (K, N, 2)
-    const double* baf_taus,    // (M,)
+    const double* baf_taus,    // (K, M)
     double*       p_km,        // (K, M)
     int N, int K, int M, double eps,
     int k_start)
@@ -43,7 +43,7 @@ void update_baf_means_cpp(
             const double* beta_m  = betas_mn  + (long)m * N;
             // posts_kn2[k, n, h] = posts_kn2[k*N*2 + n*2 + h]
             const double* pkn2    = posts_kn2 + (long)k * N * 2;
-            double tau = baf_taus[m];
+            double tau = baf_taus[(long)k * M + m];
             double lgamma_tau = std::lgamma(tau);
 
             // Precompute per-n constants and aggregate weights
@@ -184,53 +184,87 @@ void update_baf_tau_cpp(
     const double* baf_means,
     double*       baf_taus,
     int N, int K, int M,
-    double min_tau, double max_tau)
+    double min_tau, double max_tau, bool share_tau)
 {
+    const double lo = std::log(min_tau), hi = std::log(max_tau);
+
+    if (share_tau) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)
 #endif
-    for (int m = 0; m < M; ++m) {
-        const double* alpha_m_base = alphas_nm + m;   // stride M
-        const double* beta_m_base  = betas_nm  + m;   // stride M
-        const double* p_m_base     = baf_means + m;   // stride M
+        for (int m = 0; m < M; ++m) {
+            const double* alpha_m_base = alphas_nm + m;   // stride M
+            const double* beta_m_base  = betas_nm  + m;   // stride M
+            const double* p_m_base     = baf_means + m;   // stride M
 
-        auto neg_Q_logtau = [&](double log_tau) -> double {
-            double tau = std::exp(log_tau);
-            double total = 0.0;
-
-            for (int k = 0; k < K; ++k) {
-                double p = p_m_base[(long)k * M];
-                double a = tau * p;
-                double b = tau * (1.0 - p);
-                double norm = std::lgamma(a) + std::lgamma(b)
-                            - std::lgamma(a + b);
-
-                for (int n = 0; n < N; ++n) {
-                    double alpha_n = alpha_m_base[(long)n * M];
-                    double beta_n  = beta_m_base[(long)n * M];
-                    double w0 = posts_nk2[(long)n * K * 2 + (long)k * 2 + 0];
-                    double w1 = posts_nk2[(long)n * K * 2 + (long)k * 2 + 1];
-                    double wn = w0 + w1;
-                    if (wn < 1e-12) continue;
-
-                    double lg_tot = std::lgamma(alpha_n + beta_n + tau);
-                    // h=0: lgamma(alpha+a) + lgamma(beta+b) - lgamma(total+tau) - norm
-                    double ll0 = std::lgamma(alpha_n + a)
-                               + std::lgamma(beta_n  + b)
-                               - lg_tot - norm;
-                    // h=1: lgamma(beta+a) + lgamma(alpha+b) - lgamma(total+tau) - norm
-                    double ll1 = std::lgamma(beta_n  + a)
-                               + std::lgamma(alpha_n + b)
-                               - lg_tot - norm;
-
-                    total += w0 * ll0 + w1 * ll1;
+            auto neg_Q_logtau = [&](double log_tau) -> double {
+                double tau = std::exp(log_tau);
+                double total = 0.0;
+                for (int k = 0; k < K; ++k) {
+                    double p = p_m_base[(long)k * M];
+                    double a = tau * p;
+                    double b = tau * (1.0 - p);
+                    double norm = std::lgamma(a) + std::lgamma(b)
+                                - std::lgamma(a + b);
+                    for (int n = 0; n < N; ++n) {
+                        double w0 = posts_nk2[(long)n * K * 2 + (long)k * 2 + 0];
+                        double w1 = posts_nk2[(long)n * K * 2 + (long)k * 2 + 1];
+                        if (w0 + w1 < 1e-12) continue;
+                        double alpha_n = alpha_m_base[(long)n * M];
+                        double beta_n  = beta_m_base[(long)n * M];
+                        double lg_tot = std::lgamma(alpha_n + beta_n + tau);
+                        double ll0 = std::lgamma(alpha_n + a)
+                                   + std::lgamma(beta_n  + b) - lg_tot - norm;
+                        double ll1 = std::lgamma(beta_n  + a)
+                                   + std::lgamma(alpha_n + b) - lg_tot - norm;
+                        total += w0 * ll0 + w1 * ll1;
+                    }
                 }
-            }
-            return -total;
-        };
+                return -total;
+            };
 
-        auto result = boost::math::tools::brent_find_minima(
-            neg_Q_logtau, std::log(min_tau), std::log(max_tau), 32);
-        baf_taus[m] = std::exp(result.first);
+            auto result = boost::math::tools::brent_find_minima(
+                neg_Q_logtau, lo, hi, 32);
+            double tau_m = std::exp(result.first);
+            for (int k = 0; k < K; ++k) baf_taus[(long)k * M + m] = tau_m;
+        }
+    } else {
+#ifdef _OPENMP
+#pragma omp parallel for collapse(2) schedule(dynamic)
+#endif
+        for (int k = 0; k < K; ++k) {
+            for (int m = 0; m < M; ++m) {
+                const double* alpha_m_base = alphas_nm + m;   // stride M
+                const double* beta_m_base  = betas_nm  + m;   // stride M
+                double p = baf_means[(long)k * M + m];
+
+                auto neg_Q_logtau = [&](double log_tau) -> double {
+                    double tau = std::exp(log_tau);
+                    double a = tau * p;
+                    double b = tau * (1.0 - p);
+                    double norm = std::lgamma(a) + std::lgamma(b)
+                                - std::lgamma(a + b);
+                    double total = 0.0;
+                    for (int n = 0; n < N; ++n) {
+                        double w0 = posts_nk2[(long)n * K * 2 + (long)k * 2 + 0];
+                        double w1 = posts_nk2[(long)n * K * 2 + (long)k * 2 + 1];
+                        if (w0 + w1 < 1e-12) continue;
+                        double alpha_n = alpha_m_base[(long)n * M];
+                        double beta_n  = beta_m_base[(long)n * M];
+                        double lg_tot = std::lgamma(alpha_n + beta_n + tau);
+                        double ll0 = std::lgamma(alpha_n + a)
+                                   + std::lgamma(beta_n  + b) - lg_tot - norm;
+                        double ll1 = std::lgamma(beta_n  + a)
+                                   + std::lgamma(alpha_n + b) - lg_tot - norm;
+                        total += w0 * ll0 + w1 * ll1;
+                    }
+                    return -total;
+                };
+
+                auto result = boost::math::tools::brent_find_minima(
+                    neg_Q_logtau, lo, hi, 32);
+                baf_taus[(long)k * M + m] = std::exp(result.first);
+            }
+        }
     }
 }

@@ -439,7 +439,7 @@ def plot_clusters(
         rdr_means:      (K, M) fitted RDR means (log-space if log_rdr).
         rdr_vars:       (K, M) fitted RDR variances (log-space if log_rdr).
         baf_means:      (K, M) fitted BAF means (one mixture component).
-        baf_taus:       (M,) fitted BAF dispersion per sample.
+        baf_taus:       (K, M) fitted BAF dispersion per cluster per sample.
         tumor_samples:  list of sample names.
         out_file:       output PDF path (used only when pdf is None).
         log_rdr:        if True, plot log(RDR) and overlay Gaussian in log-space.
@@ -502,7 +502,7 @@ def plot_clusters(
                 sigma_k = np.sqrt(max(var_k, 1e-12))
 
                 p_k = float(baf_means[ki, m])
-                tau_m = float(baf_taus[m])
+                tau_m = float(baf_taus[ki, m])
                 a_param = p_k * tau_m
                 b_param = (1.0 - p_k) * tau_m
 

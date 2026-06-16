@@ -237,7 +237,7 @@ def mat2segs(
         bbcs:         BBC DataFrame with columns CLUSTER, SAMPLE, START, END, #SNPS, ALPHA, BETA, COV, BAF, RD.
         tumor_samples: Ordered list of tumor sample names.
         baf_means:    (K, M) fitted BAF means.
-        baf_taus:     (M,)   fitted BAF dispersions (Beta-Binomial tau per sample).
+        baf_taus:     (K, M) fitted BAF dispersions (Beta-Binomial tau per cluster per sample).
         rdr_means:    (K, M) fitted RDR means.
         rdr_vars:     (K, M) fitted RDR variances.
         cluster_ids:  Ordered array of active cluster IDs (0-indexed).
@@ -269,7 +269,7 @@ def mat2segs(
                     cov,
                     baf_means[l, s],
                     k_baf_ses[l, s],
-                    baf_taus[s],
+                    baf_taus[l, s],
                     rdr_means[l, s],
                     k_rdr_ses[l, s],
                     rdr_vars[l, s],
@@ -356,7 +356,7 @@ def label_balanced_clusters(
         for si in range(X_betas.shape[1]):
             b = X_betas[mask, si].astype(np.float64)
             n = X_totals[mask, si].astype(np.float64)
-            tau = baf_taus[si]
+            tau = baf_taus[ci, si]
 
             obs_lrt = _interval_lrt(b, n, tau)
             if obs_lrt <= 0.0:
