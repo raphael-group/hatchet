@@ -338,7 +338,9 @@ def run(args=None):
                 f"K={K} restart {it}: model_ll={model_ll:.6f} obj_ll={obj_ll:.6f}"
             )
             if score_method == "bic":
-                score = score_BIC(model_ll, K, ntumor_samples, nbbs)
+                score = score_BIC(
+                    model_ll, K, ntumor_samples, nbbs, share_tau=share_tau
+                )
             else:
                 score = score_ICL(
                     sol["cluster_posts"],
@@ -346,6 +348,7 @@ def run(args=None):
                     K,
                     ntumor_samples,
                     nbbs,
+                    share_tau=share_tau,
                 )
             score_records.append(
                 {"K": K, "restart_it": it, "ll": model_ll, score_method: score}

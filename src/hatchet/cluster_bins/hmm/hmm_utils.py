@@ -3,18 +3,21 @@
 import numpy as np
 
 
-def score_BIC(ll: float, K: int, M: int, N: int):
+def score_BIC(ll: float, K: int, M: int, N: int, share_tau: bool = True):
     """Bayesian Information Criterion for the fitted HMM."""
     num_free_params = 3 * K * M  # RDR means + RDR vars + BAF means
-    num_free_params += M  # baf_taus
+    num_free_params += M if share_tau else K * M  # baf_taus
     num_free_params += 1  # transition diag
     num_free_params += 2 * K - 1  # start probabilities
     return -2.0 * ll + num_free_params * np.log(N)
 
 
-def score_ICL(posts: np.ndarray, ll: float, K: int, M: int, N: int, eps=1e-15):
+def score_ICL(
+    posts: np.ndarray, ll: float, K: int, M: int, N: int, share_tau: bool = True,
+    eps=1e-15,
+):
     """ICL = BIC + 2 * classification_entropy; posts: (N, K)"""
-    bic = score_BIC(ll, K, M, N)
+    bic = score_BIC(ll, K, M, N, share_tau=share_tau)
     entropy = -np.nansum(posts * np.log(posts + eps))
     return bic + 2.0 * entropy
 
