@@ -175,7 +175,7 @@ def render_cnt_tree(
     sample_names=None,
     min_prop=0.03,
     fontsize=10,
-    plot_ascn=True,
+    plot_ascn=False,
 ):
     """Render a LabeledCloneTree as a multi-page PDF.
 

@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Polygon
+from matplotlib.patches import Rectangle
 
 
 def plot_cnv_profile(
@@ -99,21 +99,21 @@ def plot_cnv_profile(
                     )
                     ax.add_patch(rect)
 
-                    # plot mirrored events: cnb > cna means B allele has more copies.
-                    # The right-pointing triangle marks the (a, b) orientation.
+                    # plot mirrored events: cnb > cna is the mirrored (b, a)
+                    # orientation, marked with a "/" hatch over the colored cell.
                     if cnb > cna:
-                        trig = Polygon(
-                            [
-                                [x0, y0 + h],
-                                [x0 + w, y0 + h / 2],
-                                [x0, y0],
-                            ],  # top-left → mid-right → bottom-left
-                            linewidth=0,
-                            closed=True,
-                            facecolor=BLACK,
-                            transform=ax.get_xaxis_transform(),
+                        ax.add_patch(
+                            Rectangle(
+                                (x0, y0),
+                                w,
+                                h,
+                                facecolor="none",
+                                edgecolor=BLACK,
+                                hatch="/",
+                                linewidth=0,
+                                transform=ax.get_xaxis_transform(),
+                            )
                         )
-                        ax.add_patch(trig)
 
                 # PI violation indicator: colored line at top of segment
                 if has_pi_viol:
@@ -200,100 +200,6 @@ def plot_cnv_profile(
     return ax
 
 
-def _draw_mirror_swatches(
-    ax: plt.Axes,
-    leg_x: float,
-    fontsize: int = 10,
-    alpha: float = 1.0,
-    mirror_w: float = 1.25,
-    mirror_y0: float = 0.0,
-):
-    """Draw the two mirror-CNA arrow swatches (a,b right-pointing, b,a left-pointing).
-
-    Shared between plot_cnv_legend and plot_ascn_legend so both use the same
-    style. Returns the x-position after the last swatch.
-    """
-    # label text right-aligned, ending just before the first symbol
-    ax.text(
-        leg_x,
-        mirror_y0 + mirror_w / 2.0,
-        "Mirrored CNA",
-        ha="right",
-        va="center",
-        fontsize=fontsize,
-        fontweight="bold",
-    )
-    leg_x += 0.3  # small gap between text and first symbol
-
-    # right triangle box (a, b)
-    ax.add_patch(
-        Rectangle(
-            (leg_x, mirror_y0),
-            mirror_w,
-            mirror_w,
-            facecolor="white",
-            edgecolor="black",
-        )
-    )
-    ax.add_patch(
-        Polygon(
-            [
-                [leg_x, mirror_y0 + mirror_w],
-                [leg_x + mirror_w, mirror_y0 + mirror_w - mirror_w / 4.0],
-                [leg_x, mirror_y0 + mirror_w - mirror_w / 2.0],
-            ],
-            linewidth=0,
-            closed=True,
-            facecolor="black",
-            alpha=alpha,
-        )
-    )
-    ax.text(
-        leg_x + mirror_w / 2.0,
-        mirror_y0 - 0.2,
-        "(a,b)",
-        ha="center",
-        va="top",
-        fontsize=fontsize,
-        fontweight="bold",
-    )
-    leg_x += mirror_w + 0.5
-
-    # left triangle box (b, a)
-    ax.add_patch(
-        Rectangle(
-            (leg_x, mirror_y0),
-            mirror_w,
-            mirror_w,
-            facecolor="white",
-            edgecolor="black",
-        )
-    )
-    ax.add_patch(
-        Polygon(
-            [
-                [leg_x, mirror_y0 + mirror_w / 4.0],
-                [leg_x + mirror_w, mirror_y0 + mirror_w - mirror_w / 2.0],
-                [leg_x + mirror_w, mirror_y0],
-            ],
-            linewidth=0,
-            closed=True,
-            facecolor="black",
-            alpha=alpha,
-        )
-    )
-    ax.text(
-        leg_x + mirror_w / 2.0,
-        mirror_y0 - 0.2,
-        "(b,a)",
-        ha="center",
-        va="top",
-        fontsize=fontsize,
-        fontweight="bold",
-    )
-    return leg_x + mirror_w
-
-
 def plot_cnv_legend(ax: plt.Axes):
     state_style, tcn_states = get_cn_colors()
     ax.axis("off")
@@ -369,8 +275,25 @@ def plot_cnv_legend(ax: plt.Axes):
     )
     leg_x = group_x0 + pair_w + gap_groups
 
-    # --- mirrored CNA symbol on the right ------------------------------------
-    leg_x = _draw_mirror_swatches(ax, leg_x + 3.0, fontsize=10, alpha=1.0) + 3.0
+    # --- mirrored CNA box: single CN-state-shaped box with a "/" hatch -------
+    rect = Rectangle(
+        (leg_x, 0.0),
+        pair_w,
+        pair_h,
+        facecolor="white",
+        edgecolor="black",
+        hatch="/",
+    )
+    ax.add_patch(rect)
+    ax.text(
+        leg_x + pair_w / 2.0,
+        -0.2,
+        "mirrored",
+        ha="center",
+        va="top",
+        fontsize=10,
+    )
+    leg_x += pair_w + gap_groups
 
     # main title on the left
     ax.text(-0.5, pair_h / 2.0, "Copy numbers", fontsize=12, ha="right", va="center")

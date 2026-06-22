@@ -99,7 +99,7 @@ tail_alpha: 0.8
 center_alpha: 1.0
 onetail_area: 0.025
 maxlim_fcn: 30
-plot_ascn: true
+plot_ascn: false
 patient_id: panel
 # combined 1D figure width (inches)
 plot_row_width: 25

@@ -44,7 +44,7 @@ def plot_pool_cnp(
     dpi=150,
     solve_mode=None,
     sample_names=None,
-    plot_ascn=True,
+    plot_ascn=False,
 ):
     """Plot pool CNP panel into out_dir.
 
@@ -88,6 +88,7 @@ def plot_pool_cnp(
                 out_file,
                 u=sol.get("u"),
                 sample_names=sample_names,
+                plot_ascn=plot_ascn,
             )
         return
 

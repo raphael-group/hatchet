@@ -629,7 +629,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         required=False,
         action=argparse.BooleanOptionalAction,
         default=argparse.SUPPRESS,
-        help="plot allele-specific CN profile; use --no-plot_ascn for total CN (default: True)",
+        help="plot CN profile with allele CN row scheme (default: False)",
     )
     return parser
 
@@ -797,7 +797,7 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         required=False,
         action=argparse.BooleanOptionalAction,
         default=argparse.SUPPRESS,
-        help="plot allele-specific CN profile; use --no-plot_ascn for total CN (default: True)",
+        help="plot CN profile with allele CN row scheme (default: False)",
     )
     return parser
 
@@ -898,7 +898,7 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         required=False,
         action=argparse.BooleanOptionalAction,
         default=argparse.SUPPRESS,
-        help="plot allele-specific CN profile; use --no-plot_ascn for total CN (default: True)",
+        help="plot CN profile with allele CN row scheme (default: False)",
     )
     return parser
 
