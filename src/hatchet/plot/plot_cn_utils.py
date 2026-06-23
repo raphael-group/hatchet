@@ -176,10 +176,11 @@ def plot_cnv_profile(
     ax.set_yticks([h * (i + 0.5) for i in range(num_clones)])
     ylabels = []
     for ci in range(num_clones, 0, -1):
-        prop = round(bulk_props[ci] * 100, 1)
+        prop = round(bulk_props[ci] * 100, 2)
         lines = []
         if show_clone_name:
             lines.append(f"Clone {ci}")
+            lines.append(f"({prop}%)")
         else:
             lines.append(str(ci))
         if clone_ploidies is not None:
@@ -211,7 +212,7 @@ def plot_cnv_legend(ax: plt.Axes):
 
     leg_x = 0.0  # running x position (data coords)
 
-    for total, states in sorted(tcn_states.items()):
+    for _total, states in sorted(tcn_states.items()):
         # merge mirrored pairs like (1,2),(2,1) -> (2,1)
         uniq_pairs = sorted({tuple(sorted(s, reverse=True)) for s in states})
         n_pairs = len(uniq_pairs)
@@ -242,16 +243,6 @@ def plot_cnv_legend(ax: plt.Axes):
                 fontsize=10,
             )
 
-        # group title above the boxes
-        ax.text(
-            group_x0 + group_w / 2.0,
-            pair_h + 0.1,
-            f"Total CN={total}",
-            ha="center",
-            va="bottom",
-            fontsize=10,
-        )
-
         leg_x = group_x0 + group_w + gap_groups
 
     # --- CN>7 default box ----------------------------------------------------
@@ -267,10 +258,10 @@ def plot_cnv_legend(ax: plt.Axes):
     ax.add_patch(rect)
     ax.text(
         group_x0 + pair_w / 2.0,
-        pair_h + 0.1,
-        "Total CN>7",
+        -0.2,
+        ">7",
         ha="center",
-        va="bottom",
+        va="top",
         fontsize=10,
     )
     leg_x = group_x0 + pair_w + gap_groups
@@ -296,7 +287,7 @@ def plot_cnv_legend(ax: plt.Axes):
     leg_x += pair_w + gap_groups
 
     # main title on the left
-    ax.text(-0.5, pair_h / 2.0, "Copy numbers", fontsize=12, ha="right", va="center")
+    ax.text(-0.5, pair_h / 2.0, "CNA", fontsize=12, fontweight="bold", ha="right", va="center")
 
     # nice limits + aspect
     ax.set_xlim(-2.0, leg_x)

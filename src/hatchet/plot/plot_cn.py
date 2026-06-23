@@ -173,14 +173,7 @@ def run(args=None):
             "alphas": alphas,
             "lim_fcn": lim_fcn,
             "lim_baf": lim_baf,
-            "title": (
-                f"{sample}; purity={tumor_purity}; ploidy={tumor_ploidy}; "
-                "prop="
-                + "|".join(
-                    "0" if round(c * 100, 2) == 0 else f"{round(c * 100, 2)}%"
-                    for c in clone_props
-                )
-            ),
+            "title": f"{sample}; purity={tumor_purity}; ploidy={tumor_ploidy}",
         }
 
     patient_id = args["patient_id"] or "panel"

@@ -110,7 +110,7 @@ plot_inter_sample_hspace: 0.35
 # vertical gap between FCN and BAF within a sample
 plot_intra_sample_hspace: 0.12
 # vertical gap between last BAF row and CNP profile
-plot_baf_cnp_hspace: 0.15
+plot_baf_cnp_hspace: 0.3
 # vertical gap between CNP profile and ASCN legend
 plot_cnp_legend_hspace: 0.15
 # font size of the per-sample title above each FCN row
