@@ -177,42 +177,57 @@ def run(args=None):
         }
 
     patient_id = args["patient_id"] or "panel"
-    out_1d = os.path.join(plot_dir, f"{patient_id}{solID and '.' + solID}.1D.pdf")
-    out_2d = os.path.join(plot_dir, f"{patient_id}{solID and '.' + solID}.2D.pdf")
+    ext = args["img_type"]
+    out_1d = os.path.join(plot_dir, f"{patient_id}{solID and '.' + solID}.1D.{ext}")
+    out_2d = os.path.join(plot_dir, f"{patient_id}{solID and '.' + solID}.2D.{ext}")
 
     ##################################################
-    # 2D scatter: one multi-page PDF, one page per sample. Capture g0_colors
-    # for the 1D expected-value overlay so we don't re-run plot_2d below.
-    logging.info(f"writing combined 2D PDF: {out_2d}")
+    # 2D scatter: one page per sample. For pdf, a single multi-page file; for
+    # other formats, one file per sample. Capture g0_colors for the 1D
+    # expected-value overlay so we don't re-run plot_2d below.
+    logging.info(f"writing combined 2D: {out_2d}")
     sample_g0 = {}
-    with PdfPages(out_2d) as pdf:
-        for sample in samples:
-            d = per_sample[sample]
-            bi = d["bin_info"]
-            fig_2d, g0c = plot_2d(
-                sample,
-                bi,
-                bi["BAF"].to_numpy(),
-                bi["FCN"].to_numpy(),
-                d["exp_bafs"],
-                d["exp_fcns"],
-                d["exp_labels"],
-                d["clone_props"],
-                alphas=d["alphas"],
-                hue=d["cnp_ids"],
-                palette=d["palette"],
-                label_clone=True,
-                xlab="Minor haplotype B-allele frequency (mhBAF)",
-                ylab="Fractional copy number (FCN)",
-                xlim=d["lim_baf"],
-                ylim=d["lim_fcn"],
-                title=d["title"],
-                dpi=dpi,
-                transparent=transparent,
-            )
-            sample_g0[sample] = g0c
+    pdf = PdfPages(out_2d) if ext == "pdf" else None
+    for sample in samples:
+        d = per_sample[sample]
+        bi = d["bin_info"]
+        fig_2d, g0c = plot_2d(
+            sample,
+            bi,
+            bi["BAF"].to_numpy(),
+            bi["FCN"].to_numpy(),
+            d["exp_bafs"],
+            d["exp_fcns"],
+            d["exp_labels"],
+            d["clone_props"],
+            alphas=d["alphas"],
+            hue=d["cnp_ids"],
+            palette=d["palette"],
+            label_clone=True,
+            xlab="Minor haplotype B-allele frequency (mhBAF)",
+            ylab="Fractional copy number (FCN)",
+            xlim=d["lim_baf"],
+            ylim=d["lim_fcn"],
+            title=d["title"],
+            dpi=dpi,
+            transparent=transparent,
+        )
+        sample_g0[sample] = g0c
+        if pdf is not None:
             pdf.savefig(fig_2d, dpi=dpi, bbox_inches="tight", transparent=transparent)
-            plt.close(fig_2d)
+        else:
+            path = (
+                out_2d
+                if len(samples) == 1
+                else os.path.join(
+                    plot_dir,
+                    f"{patient_id}{solID and '.' + solID}.2D.{sample}.{ext}",
+                )
+            )
+            fig_2d.savefig(path, dpi=dpi, bbox_inches="tight", transparent=transparent)
+        plt.close(fig_2d)
+    if pdf is not None:
+        pdf.close()
 
     ##################################################
     # Combined 1D PDF: per-sample (FCN, BAF) pairs + shared ASCN CNP + legend.
@@ -353,7 +368,7 @@ def run(args=None):
     else:
         plot_cnv_legend(ax_leg)
 
-    logging.info(f"writing combined 1D PDF: {out_1d}")
+    logging.info(f"writing combined 1D: {out_1d}")
     fig_1d.savefig(out_1d, dpi=dpi, bbox_inches="tight", transparent=transparent)
     plt.close(fig_1d)
     return
