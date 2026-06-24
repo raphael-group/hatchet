@@ -513,83 +513,79 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
 
     outfile = os.path.join(plot_dir, "model_selection.pdf")
     reg_col = reg_term if reg_term in summary_df.columns else "REG"
-    groups = sorted(summary_df.groupby(["ploidy", "n_clones"]))
+    ploidies = sorted(summary_df["ploidy"].unique())
+    cmap = plt.get_cmap("tab10")
 
+    n_pages = 0
     with PdfPages(outfile) as pdf:
-        for (ploidy, n_clones), grp in groups:
+        # One page per ploidy; overlay all n-clone solutions, each n a distinct color.
+        for ploidy in ploidies:
+            pdf_grp = summary_df[summary_df["ploidy"] == ploidy]
+            ns = sorted(pdf_grp["n_clones"].unique())
             fig, ax = plt.subplots(figsize=(7, 5))
 
-            pareto_mask = grp["is_pareto"]
-            non_pareto = grp[~pareto_mask]
-            pareto = grp[pareto_mask].sort_values(reg_col)
-
-            # Non-pareto: gray
+            # Non-pareto across all n: shared light-gray backdrop
+            non_pareto = pdf_grp[~pdf_grp["is_pareto"]]
             if len(non_pareto) > 0:
                 ax.scatter(
                     non_pareto[reg_col],
                     non_pareto["IMF"],
-                    c="0.75",
-                    s=25,
+                    c="0.8",
+                    s=15,
                     zorder=2,
-                    alpha=0.5,
-                    edgecolors="white",
-                    linewidths=0.3,
-                )
-
-            # Pareto points
-            if len(pareto) > 0:
-                ax.scatter(
-                    pareto[reg_col],
-                    pareto["IMF"],
-                    c="#1f77b4",
-                    s=50,
-                    zorder=4,
-                    label="Pareto",
-                    edgecolors="white",
-                    linewidths=0.5,
-                )
-                ax.plot(
-                    pareto[reg_col],
-                    pareto["IMF"],
-                    c="black",
-                    linewidth=1.5,
                     alpha=0.4,
-                    zorder=3,
+                    linewidths=0,
                 )
 
-            sel = grp[grp["selected"] == "*"]
-            if len(sel) > 0:
-                ax.scatter(
-                    sel[reg_col],
-                    sel["IMF"],
-                    c="gold",
-                    marker="*",
-                    s=250,
-                    zorder=5,
-                    edgecolors="black",
-                    linewidths=1,
-                    label="selected",
-                )
+            for ni, n_clones in enumerate(ns):
+                grp = pdf_grp[pdf_grp["n_clones"] == n_clones]
+                color = cmap(ni % 10)
+                pareto = grp[grp["is_pareto"]].sort_values(reg_col)
+                if len(pareto) > 0:
+                    ax.plot(
+                        pareto[reg_col],
+                        pareto["IMF"],
+                        "-o",
+                        color=color,
+                        markersize=5,
+                        linewidth=1.3,
+                        zorder=4,
+                        label=f"n={n_clones}",
+                    )
+                sel = grp[grp["selected"] == "*"]
+                if len(sel) > 0:
+                    ax.scatter(
+                        sel[reg_col],
+                        sel["IMF"],
+                        facecolors=color,
+                        marker="*",
+                        s=250,
+                        zorder=5,
+                        edgecolors="black",
+                        linewidths=1,
+                    )
 
             ax.set_xlabel(reg_col, fontsize=11)
             ax.set_ylabel("IMF", fontsize=11)
             ax.set_title(
-                f"{ploidy} n={n_clones} ({len(grp)} solutions)",
+                f"{ploidy} ({len(pdf_grp)} solutions)",
                 fontsize=13,
                 fontweight="bold",
             )
-            ax.legend(fontsize=9)
+            ax.legend(fontsize=9, title="clones")
             ax.grid(True, alpha=0.3)
             fig.tight_layout()
             pdf.savefig(fig)
             plt.close(fig)
+            n_pages += 1
 
         # Append elbow/BIC figure as last page
         if elbow_fig is not None:
             pdf.savefig(elbow_fig)
             plt.close(elbow_fig)
+            n_pages += 1
 
-    logging.info(f"wrote {outfile} ({len(groups) + (1 if elbow_fig else 0)} pages)")
+    logging.info(f"wrote {outfile} ({n_pages} pages)")
 
 
 def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):

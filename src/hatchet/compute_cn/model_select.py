@@ -221,46 +221,47 @@ def model_selection_ploidy(
     best_n = results[best_ploidy][0]
     logging.info(f"final selection ({method}): {best_ploidy}, n={best_n}")
 
-    # Plot
+    # Plot — stacked panels (cluster-bins style): loglik on top, BIC below
+    panels = ["ll", "bic"] if method == "bic" else ["ll"]
+    ylabels = {"ll": "Negative log-likelihood", "bic": "BIC"}
+    markers = {"ll": "o", "bic": "s"}
     fig, axes = plt.subplots(
-        1, 2 if method == "bic" else 1, figsize=(9 if method == "bic" else 4.5, 3.5)
+        len(panels),
+        1,
+        figsize=(6, 2.5 * len(panels)),
+        sharex=True,
+        layout="constrained",
+        gridspec_kw={"hspace": 0.08},
     )
-    if method != "bic":
-        axes = [axes]
+    axes = np.atleast_1d(axes)
     colors = {"diploid": "#1f77b4", "tetraploid": "#d62728"}
+    series_of = lambda neg_lls, bics: {"ll": neg_lls, "bic": bics}
     all_ns = []
     for ploidy, (chosen_n, ns, neg_lls, bics) in results.items():
         c = colors.get(ploidy, "gray")
-        axes[0].plot(
-            ns, neg_lls, "-o", color=c, markersize=5, label=ploidy.capitalize()
-        )
-        if method == "elbow":
-            idx = list(ns).index(chosen_n)
-            axes[0].plot(chosen_n, neg_lls[idx], "*", color=c, markersize=14, zorder=5)
         all_ns.extend(ns.tolist())
-        if method == "bic":
-            axes[1].plot(
-                ns, bics, "-s", color=c, markersize=5, label=ploidy.capitalize()
+        series = series_of(neg_lls, bics)
+        idx = list(ns).index(chosen_n)
+        for ax, col in zip(axes, panels):
+            ax.plot(
+                ns,
+                series[col],
+                "-",
+                marker=markers[col],
+                color=c,
+                markersize=5,
+                label=ploidy.capitalize(),
             )
-            idx = list(ns).index(chosen_n)
-            axes[1].plot(chosen_n, bics[idx], "*", color=c, markersize=14, zorder=5)
+            ax.plot(chosen_n, series[col][idx], "*", color=c, markersize=14, zorder=5)
 
-    axes[0].set_xticks(sorted(set(int(x) for x in all_ns)))
-    axes[0].set_xlabel("Number of clones")
-    axes[0].set_ylabel("Negative log-likelihood")
-    axes[0].legend(framealpha=0.9)
-    axes[0].grid(True, alpha=0.3)
-    if method == "bic":
-        axes[0].set_title("Log-likelihood")
-        axes[1].set_xticks(sorted(set(int(x) for x in all_ns)))
-        axes[1].set_xlabel("Number of clones")
-        axes[1].set_ylabel("BIC")
-        axes[1].set_title(f"BIC (best: {best_ploidy}, n={best_n})")
-        axes[1].legend(framealpha=0.9)
-        axes[1].grid(True, alpha=0.3)
-    else:
-        axes[0].set_title(f"Elbow (best: {best_ploidy}, n={best_n})")
-    fig.tight_layout()
+    for ax, col in zip(axes, panels):
+        ax.axvline(best_n, color="black", linestyle="--", alpha=0.7)
+        ax.set_ylabel(ylabels[col])
+        ax.legend(framealpha=0.9, fontsize=8)
+        ax.grid(True, alpha=0.3)
+    axes[-1].set_xlabel("Number of clones")
+    axes[-1].set_xticks(sorted(set(int(x) for x in all_ns)))
+    axes[0].set_title(f"Model selection ({method}): best {best_ploidy}, n={best_n}")
 
     chosen_n = {p: n for p, (n, _, _, _) in results.items()}
     return best_ploidy, best_n, chosen_n, fig
