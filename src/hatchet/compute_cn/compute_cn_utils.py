@@ -366,6 +366,25 @@ def store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode):
                     _json.dump(d, f, indent=2)
 
 
+def update_objectives_tsv(sols_dir, new_df):
+    """Merge per-restart objectives into a single sols/objectives.tsv.
+
+    new_df carries columns ploidy, n, sol_id, restart_id, imf_obj, reg_obj. Existing
+    rows for any (ploidy, n) present in new_df are replaced; rows for other (ploidy, n)
+    are kept so partial reruns (some n skipped) don't lose their objectives. Read back
+    by load_pool_from_disk to reconstruct pool objectives on rerun.
+    """
+    cols = ["ploidy", "n", "sol_id", "restart_id", "imf_obj", "reg_obj"]
+    new_df = new_df[cols]
+    path = os.path.join(sols_dir, "objectives.tsv")
+    if os.path.exists(path):
+        old = pd.read_csv(path, sep="\t")
+        keys = set(map(tuple, new_df[["ploidy", "n"]].itertuples(index=False)))
+        keep = ~old[["ploidy", "n"]].apply(tuple, axis=1).isin(keys)
+        new_df = pd.concat([old[keep], new_df], ignore_index=True)
+    new_df.to_csv(path, sep="\t", index=False)
+
+
 def compute_fractional_cn(input_data, gammas, alpha=0.05, min_ci_margin=0.1):
     """Compute fractional copy numbers and CI.
 
@@ -589,7 +608,24 @@ def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
 
 
 def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
-    """Read pool solution TSVs from sol_dir into {sol_id: {"imf_obj": ..., "cA": ..., ...}}."""
+    """Read pool solution TSVs from sol_dir into {sol_id: {"imf_obj": ..., "cA": ..., ...}}.
+
+    Per-solution objectives are reconstructed from the consolidated
+    sols/objectives.tsv: for this (ploidy, n) the best (min imf_obj) restart per
+    sol_id is taken, matching how the pool selects its representative at solve time.
+    """
+    ploidy, _, n = os.path.basename(sol_dir.rstrip("/")).rpartition("_n")
+    obj_path = os.path.join(os.path.dirname(sol_dir.rstrip("/")), "objectives.tsv")
+    obj_map = {}
+    if os.path.exists(obj_path) and ploidy:
+        odf = pd.read_csv(obj_path, sep="\t")
+        odf = odf[(odf["ploidy"] == ploidy) & (odf["n"] == int(n))]
+        best = odf.loc[odf.groupby("sol_id")["imf_obj"].idxmin()]
+        obj_map = {
+            str(r["sol_id"]): (float(r["imf_obj"]), float(r["reg_obj"]))
+            for _, r in best.iterrows()
+        }
+
     pool = {}
     for path in sorted(glob.glob(os.path.join(sol_dir, "*.tsv"))):
         basename = os.path.basename(path)
@@ -634,7 +670,14 @@ def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
             [float(sol[sol["SAMPLE"] == sid].iloc[0][uc]) for sid in sample_ids]
             for uc in u_cols
         ]
-        pool[sol_id] = {"imf_obj": 0.0, "reg_obj": 0.0, "cA": cA, "cB": cB, "u": u}
+        imf_obj, reg_obj = obj_map.get(sol_id, (0.0, 0.0))
+        pool[sol_id] = {
+            "imf_obj": imf_obj,
+            "reg_obj": reg_obj,
+            "cA": cA,
+            "cB": cB,
+            "u": u,
+        }
 
     if pool:
         logging.info(f"loaded {len(pool)} pool solutions from {sol_dir}")

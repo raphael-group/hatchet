@@ -132,7 +132,7 @@ def run_full_ilp(
 ):
     """Build model once, solve across regularization path.
 
-    Returns pool_instances dict.
+    Returns (pool_instances dict, per-solution objective DataFrame).
     """
     model = build_model("FULL", params, inputs)
 
@@ -164,7 +164,19 @@ def run_full_ilp(
             first_sol = sol
 
     pool_instances = dedup_pool_instances(pool_instances)
-    return pool_instances
+    obj_df = pd.DataFrame(
+        [
+            {
+                "sol_id": sid,
+                "restart_id": 0,
+                "imf_obj": sol["imf_obj"],
+                "reg_obj": sol["reg_obj"],
+            }
+            for sid, sol in pool_instances.items()
+        ],
+        columns=["sol_id", "restart_id", "imf_obj", "reg_obj"],
+    )
+    return pool_instances, obj_df
 
 
 # ── Coordinate descent (CD and CNT-CD) ─────────────────────────────────
@@ -373,7 +385,6 @@ def run_coordinate_descent(
     random_seed=None,
     timelimit=None,
     u0_tsv_path=None,
-    obj_tsv_path=None,
     tree_file=None,
 ):
     """Run coordinate descent with parallel restarts.
@@ -381,7 +392,7 @@ def run_coordinate_descent(
     mode="cd": ILP-based CD over a regularization path.
     mode="cnt_cd": tree-based CNT-CD over enumerated tree shapes.
 
-    Returns pool_instances dict.
+    Returns (pool_instances dict, per-restart objective DataFrame).
     """
     with Random(random_seed):
         seeds = [
@@ -449,6 +460,7 @@ def run_coordinate_descent(
 
     n_workers = min(j, len(seeds))
     pool_instances = {}
+    obj_rows = []
 
     executor = ProcessPoolExecutor(
         max_workers=n_workers,
@@ -494,18 +506,15 @@ def run_coordinate_descent(
                 logging.warning(f"{mode.upper()}: no feasible solution for {sol_id}")
                 continue
 
-            if obj_tsv_path is not None:
-                obj_keys = [
-                    "restart_id",
-                    "imf_obj",
-                    "reg_obj",
-                    "imf_obj_stage1",
-                    "tree_obj",
-                ]
-                rows = [
-                    {k: inst[k] for k in obj_keys if k in inst} for inst in instances
-                ]
-                pd.DataFrame(rows).to_csv(obj_tsv_path, sep="\t", index=False)
+            for inst in instances:
+                obj_rows.append(
+                    {
+                        "sol_id": sol_id,
+                        "restart_id": inst["restart_id"],
+                        "imf_obj": inst["imf_obj"],
+                        "reg_obj": inst.get("reg_obj", 0.0),
+                    }
+                )
 
             best = min(instances, key=lambda x: x["imf_obj"])
             sol_dict = {
@@ -539,4 +548,7 @@ def run_coordinate_descent(
 
     if mode != "cnt_cd":
         pool_instances = dedup_pool_instances(pool_instances)
-    return pool_instances
+    obj_df = pd.DataFrame(
+        obj_rows, columns=["sol_id", "restart_id", "imf_obj", "reg_obj"]
+    )
+    return pool_instances, obj_df

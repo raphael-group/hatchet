@@ -15,6 +15,7 @@ from hatchet.compute_cn.compute_cn_utils import (
     store_gammas,
     store_solve_input,
     store_instance_tofile,
+    update_objectives_tsv,
     build_data,
     compute_fractional_cn,
     load_pool_from_disk,
@@ -95,6 +96,7 @@ def run(args=None):
     whole_pool = {}
     chosen_sols = {}
     model_selection_df = []
+    obj_dfs = []
     for ploidy, run_it in run_ploidy.items():
         if not run_it or scaling[ploidy] is None:
             continue
@@ -137,7 +139,7 @@ def run(args=None):
                 )
             else:
                 os.makedirs(sol_dir, exist_ok=True)
-                pool_instances = solve(
+                pool_instances, obj_df = solve(
                     n,
                     clonals,
                     args,
@@ -148,6 +150,7 @@ def run(args=None):
                     sol_dir,
                     solve_mode=solve_mode,
                 )
+                obj_dfs.append(obj_df.assign(ploidy=ploidy, n=n))
             whole_pool[ploidy][n] = pool_instances
 
             selected_id, sel_df = model_select_elbow_from_regularization(pool_instances)
@@ -196,6 +199,9 @@ def run(args=None):
                 sample_names=fcn_data["sample_ids"],
                 plot_ascn=args["plot_ascn"],
             )
+
+    if obj_dfs:
+        update_objectives_tsv(sols_dir, pd.concat(obj_dfs, ignore_index=True))
 
     summary_df = (
         pd.concat(model_selection_df, ignore_index=True)
@@ -258,7 +264,7 @@ def solve(
     (CD warm-starting ILP) over a regularization path, selects the best
     instance via Pareto-elbow model selection, and writes BBC/SEG UCN output.
 
-    Returns (objective, IMF-objective, pool_dict) of the selected solution.
+    Returns (pool_instances dict, per-restart objective DataFrame).
     """
     logging.info(f"running {ploidy} with n={n}")
     cn_max = {"diploid": args["diploidcmax"], "tetraploid": args["tetraploidcmax"]}[
@@ -280,11 +286,6 @@ def solve(
     cd_instances = None
     pool_instances = {}
     u0_tsv_path = os.path.join(sol_dir, "u0_seeds.tsv") if sol_dir is not None else None
-    obj_tsv_path = (
-        os.path.join(sol_dir, "objectives_per_restart.tsv")
-        if sol_dir is not None
-        else None
-    )
     cd_run_kwargs = dict(
         solver_type=solver_type,
         max_iters=args["cd_niters"],
@@ -294,7 +295,6 @@ def solve(
         random_seed=args["cd_seed"],
         timelimit=timelimit,
         u0_tsv_path=u0_tsv_path,
-        obj_tsv_path=obj_tsv_path,
     )
 
     # Build SolverParams shared by both CD and ILP
@@ -341,7 +341,7 @@ def solve(
     )
 
     if solve_mode == "cnt_cd":
-        pool_instances = run_coordinate_descent(
+        pool_instances, obj_df = run_coordinate_descent(
             params=params,
             inputs=inputs,
             mode="cnt_cd",
@@ -358,11 +358,10 @@ def solve(
             u_bin_p=args["u_bin_p"],
             solver_threads=args["solver_threads"],
             u0_tsv_path=u0_tsv_path,
-            obj_tsv_path=obj_tsv_path,
         )
 
     elif solve_mode in ("cd", "both"):
-        cd_instances = run_coordinate_descent(
+        cd_instances, obj_df = run_coordinate_descent(
             params=params,
             inputs=inputs,
             reg_steps=reg_steps,
@@ -385,7 +384,7 @@ def solve(
             )
             warm_cA, warm_cB = best_cd["cA"], best_cd["cB"]
 
-        pool_instances = run_full_ilp(
+        pool_instances, obj_df = run_full_ilp(
             params=params,
             inputs=inputs,
             reg_steps=reg_steps,
@@ -397,4 +396,4 @@ def solve(
         )
 
     store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode)
-    return pool_instances
+    return pool_instances, obj_df
