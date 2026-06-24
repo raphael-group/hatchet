@@ -344,7 +344,7 @@ def plot_2d(
         texts = []
         vis_x, vis_y = [], []
         for ci, cid in enumerate(exp_labels):
-            if cid in filtered_ids:
+            if filtered_ids and cid in filtered_ids:
                 continue
             center_text = cid
             fontdict = {"fontsize": 10}
@@ -370,8 +370,8 @@ def plot_2d(
                 arrowprops=dict(arrowstyle="-", color="black", lw=0.5),
             )
         ex, ey = np.asarray(exp_xvals), np.asarray(exp_yvals)
-        is_vis = np.array([cid not in filtered_ids for cid in exp_labels])
-        is_bal = np.array([cid in balanced_ids for cid in exp_labels])
+        is_vis = np.array([not (filtered_ids and cid in filtered_ids) for cid in exp_labels])
+        is_bal = np.array([bool(balanced_ids and cid in balanced_ids) for cid in exp_labels])
         for mask, marker in [(is_vis & ~is_bal, "o"), (is_vis & is_bal, "s")]:
             if mask.any():
                 g0.ax_joint.scatter(
