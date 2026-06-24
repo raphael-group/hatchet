@@ -287,7 +287,15 @@ def plot_cnv_legend(ax: plt.Axes):
     leg_x += pair_w + gap_groups
 
     # main title on the left
-    ax.text(-0.5, pair_h / 2.0, "CNA", fontsize=12, fontweight="bold", ha="right", va="center")
+    ax.text(
+        -0.5,
+        pair_h / 2.0,
+        "CNA",
+        fontsize=12,
+        fontweight="bold",
+        ha="right",
+        va="center",
+    )
 
     # nice limits + aspect
     ax.set_xlim(-2.0, leg_x)

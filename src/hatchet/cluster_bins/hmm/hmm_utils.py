@@ -33,7 +33,9 @@ def model_select_K(score_df, score_criteria="min", score_method="icl"):
         try:
             frac = int(score_criteria.split("-", 1)[1]) / 100.0
         except ValueError:
-            raise ValueError(f"invalid score_criteria '{score_criteria}'; expected margin-<int>")
+            raise ValueError(
+                f"invalid score_criteria '{score_criteria}'; expected margin-<int>"
+            )
         drops = [vals[i - 1] - vals[i] for i in range(1, len(vals))]
         if not drops or max(drops) <= 0:
             return int(Ks[0])
@@ -44,12 +46,19 @@ def model_select_K(score_df, score_criteria="min", score_method="icl"):
                 best = Ks[i]
         return int(best)
 
-    raise ValueError(f"unknown score_criteria '{score_criteria}'; expected min|elbow|margin-<int>")
+    raise ValueError(
+        f"unknown score_criteria '{score_criteria}'; expected min|elbow|margin-<int>"
+    )
 
 
 def score_model(
-    posts: np.ndarray, ll: float, K: int, M: int, N: int,
-    share_tau: bool = True, eps=1e-15,
+    posts: np.ndarray,
+    ll: float,
+    K: int,
+    M: int,
+    N: int,
+    share_tau: bool = True,
+    eps=1e-15,
 ):
     """Return both model-selection scores as {"bic": ..., "icl": ...}.
 
