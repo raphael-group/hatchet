@@ -314,6 +314,8 @@ def plot_2d(
     transparent=False,
     out_file=None,
     rasterized=True,
+    filtered_ids=None,
+    balanced_ids=None,
 ):
     """2D RDR-vs-BAF joint plot with per-cluster KDE marginals.
 
@@ -337,8 +339,13 @@ def plot_2d(
     g0_colors = scatter.get_facecolors()
 
     if exp_labels is not None:
+        filtered_ids = filtered_ids or set()
+        balanced_ids = balanced_ids or set()
         texts = []
+        vis_x, vis_y = [], []
         for ci, cid in enumerate(exp_labels):
+            if cid in filtered_ids:
+                continue
             center_text = cid
             fontdict = {"fontsize": 10}
             if label_clone:
@@ -352,22 +359,30 @@ def plot_2d(
                 center_text = cid
             t = g0.ax_joint.text(exp_xvals[ci], exp_yvals[ci], center_text, **fontdict)
             texts.append(t)
+            vis_x.append(exp_xvals[ci])
+            vis_y.append(exp_yvals[ci])
         with open(os.devnull, "w") as _devnull, contextlib.redirect_stdout(_devnull):
             adjust_text(
                 texts,
-                x=exp_xvals,
-                y=exp_yvals,
+                x=np.asarray(vis_x),
+                y=np.asarray(vis_y),
                 ax=g0.ax_joint,
                 arrowprops=dict(arrowstyle="-", color="black", lw=0.5),
             )
-        g0.ax_joint.scatter(
-            x=exp_xvals,
-            y=exp_yvals,
-            facecolors="none",
-            edgecolors="black",
-            s=markersize_centroid,
-            linewidth=marker_bd_width,
-        )
+        ex, ey = np.asarray(exp_xvals), np.asarray(exp_yvals)
+        is_vis = np.array([cid not in filtered_ids for cid in exp_labels])
+        is_bal = np.array([cid in balanced_ids for cid in exp_labels])
+        for mask, marker in [(is_vis & ~is_bal, "o"), (is_vis & is_bal, "s")]:
+            if mask.any():
+                g0.ax_joint.scatter(
+                    x=ex[mask],
+                    y=ey[mask],
+                    facecolors="none",
+                    edgecolors="black",
+                    s=markersize_centroid,
+                    linewidth=marker_bd_width,
+                    marker=marker,
+                )
 
     if clone_props is not None:
         custom_handles = []
@@ -681,6 +696,7 @@ def plot_rdr_baf(
     baf_taus=None,
     log_rdr=False,
     filtered_ids=None,
+    balanced_ids=None,
 ):
     """
     Plot BAF-RDR scatter 1D and 2D.
@@ -753,6 +769,8 @@ def plot_rdr_baf(
             dpi=dpi,
             transparent=transparent,
             rasterized=rasterized,
+            filtered_ids=filtered_ids,
+            balanced_ids=balanced_ids,
         )
         pdf.savefig(fig_2d, dpi=dpi, bbox_inches="tight")
         plt.close(fig_2d)

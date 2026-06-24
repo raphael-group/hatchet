@@ -346,9 +346,7 @@ def run(args=None):
                 nbbs,
                 share_tau=share_tau,
             )
-            score_records.append(
-                {"K": K, "restart_it": it, "ll": model_ll, **scores}
-            )
+            score_records.append({"K": K, "restart_it": it, "ll": model_ll, **scores})
             if model_ll > best_ll:
                 best_ll = model_ll
                 best_it = it
@@ -476,6 +474,7 @@ def run(args=None):
             baf_taus=k_baf_taus,
             log_rdr=log_rdr,
             filtered_ids=filtered_ids,
+            balanced_ids=balanced_ids,
         )
 
         bbs["PHASE"] = k_phases
