@@ -87,22 +87,24 @@ def log_step_start():
         if sampler is not None:
             sampler.stop()
             peak = sampler.peak_bytes / 1e9  # psutil RSS is bytes
+            peak = max(
+                peak, peak_self
+            )  # sampler may miss instantaneous high-water mark
         else:
             peak = max(peak_self, peak_child)
-        logging.info(
-            f"{name} done: wall={wall:.1f}s, cpu={cpu:.1f}s, peak_rss={peak:.2f} GB"
-        )
+        rows = [
+            ("step", name),
+            ("wall_s", f"{wall:.3f}"),
+            ("cpu_self_s", f"{cpu:.3f}"),
+            ("cpu_children_s", f"{child_cpu:.3f}"),
+            ("peak_rss_tree_gb", f"{peak:.3f}"),
+            ("peak_rss_self_gb", f"{peak_self:.3f}"),
+            ("peak_rss_largest_child_gb", f"{peak_child:.3f}"),
+        ]
+        logging.info(f"{name} runtime:\n" + "\n".join(f"  {k}: {v}" for k, v in rows))
         if out_file is not None:
             with open(out_file, "w") as fh:
-                fh.write(
-                    f"step\t{name}\n"
-                    f"wall_s\t{wall:.3f}\n"
-                    f"cpu_self_s\t{cpu:.3f}\n"
-                    f"cpu_children_s\t{child_cpu:.3f}\n"
-                    f"peak_rss_tree_gb\t{peak:.3f}\n"
-                    f"peak_rss_self_gb\t{peak_self:.3f}\n"
-                    f"peak_rss_largest_child_gb\t{peak_child:.3f}\n"
-                )
+                fh.write("".join(f"{k}\t{v}\n" for k, v in rows))
 
     return finish
 

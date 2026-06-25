@@ -1,9 +1,11 @@
 import os
+import argparse
 import logging
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 from hatchet.utils import (
     add_file_logging,
@@ -30,8 +32,10 @@ from hatchet.plot.plot_cn_utils import (
 
 
 def run(args=None):
+    is_cli = isinstance(args, argparse.Namespace)
     args = normalize_args(args)
-    setup_logging(args)
+    if is_cli:
+        setup_logging(args)
     logging.info("run hatchet plot-cn one sample")
 
     ##################################################
@@ -45,7 +49,8 @@ def run(args=None):
     gamma_file = args["gamma_file"]
     plot_dir = args["plot_dir"]
     os.makedirs(plot_dir, exist_ok=True)
-    add_file_logging(plot_dir, "plot-cn")
+    if is_cli:
+        add_file_logging(plot_dir, "plot-cn")
 
     ##################################################
     # parameters (styling — defaults in hatchet.yaml)
@@ -341,6 +346,27 @@ def run(args=None):
         ax_baf.yaxis.label.set_fontsize(ylabel_fs)
         for spine in ax_baf.spines.values():
             spine.set_color("black")
+
+        # Clone-prop legend on the right of the BAF row (mirrors 2D scatter).
+        prop_handles = [
+            Line2D(
+                [0],
+                [0],
+                alpha=0,
+                label=(f"Normal: {p:.3f}" if i == 0 else f"Clone {i}: {p:.3f}"),
+            )
+            for i, p in enumerate(d["clone_props"])
+        ]
+        ax_baf.legend(
+            handles=prop_handles,
+            loc="center left",
+            bbox_to_anchor=(1.01, 0.5),
+            fontsize="small",
+            fancybox=True,
+            framealpha=0.7,
+            handlelength=0,
+            handletextpad=0,
+        )
 
     # Shared CNP profile + legend at the bottom (clonal CN, identical across samples)
     _profile_fn = plot_ascn_profile if args["plot_ascn"] else plot_cnv_profile

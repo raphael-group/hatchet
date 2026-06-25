@@ -180,7 +180,6 @@ def plot_cnv_profile(
         lines = []
         if show_clone_name:
             lines.append(f"Clone {ci}")
-            lines.append(f"({prop}%)")
         else:
             lines.append(str(ci))
         if clone_ploidies is not None:
