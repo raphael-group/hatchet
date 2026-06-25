@@ -54,7 +54,7 @@ def plot_scaling_2d(
         hue = sub["CLUSTER"].to_numpy()
 
         lim_baf = (0, 1) if np.max(bafs) > 0.5 else (0, 0.55)
-        lim_rdr = (0, min(max(3, int(np.ceil(np.max(rdrs)))), maxlim_rdr))
+        lim_rdr = (0, min(max(2, int(np.ceil(np.max(rdrs)))), maxlim_rdr))
 
         fig, axes = plt.subplots(
             1, len(panels), figsize=(7 * len(panels), 6), squeeze=False

@@ -7,6 +7,7 @@ import pandas as pd
 from hatchet.utils import (
     add_file_logging,
     log_arguments,
+    log_step_start,
     normalize_args,
     read_bbc_file,
     setup_logging,
@@ -42,6 +43,7 @@ def run(args=None):
     args = parse_arguments_compute_cn(normalize_args(args))
     setup_logging(args)
     logging.info("run hatchet compute cn")
+    _log_done = log_step_start()
 
     bbc_file = args["bbc"]
     seg_file = args["seg"]
@@ -249,6 +251,7 @@ def run(args=None):
         os.path.join(out_dir, "best.seg.ucn"),
     )
     logging.info(f"model-selected: {best_ploidy} n={best_n}")
+    _log_done("compute-cn", out_file=os.path.join(out_dir, "runtime.log"))
 
 
 def solve(

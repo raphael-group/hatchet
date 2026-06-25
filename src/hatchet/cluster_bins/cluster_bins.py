@@ -36,7 +36,6 @@ def run(args=None):
     """
     args = normalize_args(args)
     setup_logging(args)
-    log_arguments(args)
     logging.info("cluster bins")
     _log_done = log_step_start()
 
@@ -50,6 +49,9 @@ def run(args=None):
     t_mfile = os.path.join(bb_dir, "bb.Tallele.npz")
     genome_size = args["genome_size"]
     out_dir = args["bbc_dir"]
+    os.makedirs(out_dir, exist_ok=True)
+    add_file_logging(out_dir, "cluster-bins")
+    log_arguments(args)
 
     out_bbc = os.path.join(out_dir, "bulk.bbc")
     out_seg = os.path.join(out_dir, "bulk.seg")
@@ -57,7 +59,7 @@ def run(args=None):
         logging.info(
             f"skip cluster-bins: {out_bbc} and {out_seg} already exist (use --force to re-run)"
         )
-        _log_done("cluster-bins")
+        _log_done("cluster-bins", out_file=os.path.join(out_dir, "runtime.log"))
         return
 
     min_tau = args["min_tau"]
@@ -87,8 +89,6 @@ def run(args=None):
     training_method = args["training_method"]
     baf_k_start = 0 if args["free_baf_c0"] else 1
 
-    os.makedirs(out_dir, exist_ok=True)
-    add_file_logging(out_dir, "cluster-bins")
     label_dir = os.path.join(out_dir, "labels")
     plot_dir = os.path.join(out_dir, "plots")
     os.makedirs(label_dir, exist_ok=True)
@@ -545,5 +545,5 @@ def run(args=None):
         os.path.join(out_dir, f"bulk.K{best_K}.pdf"),
     )
 
-    _log_done("cluster-bins")
+    _log_done("cluster-bins", out_file=os.path.join(out_dir, "runtime.log"))
     return

@@ -151,7 +151,7 @@ def run(args=None):
             logging.warning(
                 f"{sample}: {num_exceeded} bins have FCN > maxlim_fcn={maxlim_fcn}"
             )
-        lim_fcn = (0, min(max(3, max_fcn), maxlim_fcn))
+        lim_fcn = (0, min(max(2, max_fcn), maxlim_fcn))
 
         alphas = get_transparency(
             bin_info,

@@ -733,8 +733,8 @@ def plot_rdr_baf(
     pdf = PdfPages(os.path.join(out_dir, f"{out_name}.pdf"))
 
     global_lim_baf = (0, 1) if np.max(baf_mat) > 0.5 else (0, 0.55)
-    global_max_rdr = np.round(np.max(rdr_mat)).astype(int)
-    global_lim_rdr = (0, min(max(3, global_max_rdr), maxlim_rdr))
+    global_max_rdr = int(np.ceil(np.max(rdr_mat)))
+    global_lim_rdr = (0, min(max(2, global_max_rdr), maxlim_rdr))
 
     for si, sample in enumerate(samples):
         logging.info(f"plot {sample}")
@@ -744,13 +744,13 @@ def plot_rdr_baf(
         exp_rdrs = expected_rdrs[:, si] if expected_rdrs is not None else None
 
         lim_baf = (0, 1) if np.max(bafs) > 0.5 else (0, 0.55)
-        max_rdr = np.round(np.max(rdrs)).astype(int)
+        max_rdr = int(np.ceil(np.max(rdrs)))
         if max_rdr > maxlim_rdr:
             num_exceeded = np.sum(rdrs >= maxlim_rdr)
             logging.warning(
                 f"there are {num_exceeded} bins having RDR exceed maxlim_rdr={maxlim_rdr}"
             )
-        lim_rdr = (0, min(max(3, max_rdr), maxlim_rdr))
+        lim_rdr = (0, min(max(2, max_rdr), maxlim_rdr))
 
         # Page 1: 2D plot
         fig_2d, g0_colors = plot_2d(

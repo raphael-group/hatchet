@@ -1,14 +1,21 @@
 import argparse
 import os
+import sys
 import time
 import logging
 import resource
+import threading
 from collections import OrderedDict
 from importlib.resources import files
 
 import pandas as pd
 import numpy as np
 import yaml
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 
 def load_defaults() -> dict:
@@ -24,27 +31,78 @@ def normalize_args(args) -> dict:
     return {**load_defaults(), **args}
 
 
+class _RSSSampler(threading.Thread):
+    """Track the peak summed RSS of this process and all descendants over time."""
+
+    def __init__(self, interval=0.2):
+        super().__init__(daemon=True)
+        self.interval = interval
+        self._stop = threading.Event()
+        self.peak_bytes = 0
+        self._proc = psutil.Process()
+
+    def run(self):
+        while not self._stop.is_set():
+            try:
+                total = self._proc.memory_info().rss
+                for c in self._proc.children(recursive=True):
+                    try:
+                        total += c.memory_info().rss
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                self.peak_bytes = max(self.peak_bytes, total)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+            self._stop.wait(self.interval)
+
+    def stop(self):
+        self._stop.set()
+        self.join(timeout=2 * self.interval)
+
+
 def log_step_start():
-    """Start a profiling step. Returns a callable that logs the summary.
+    """Start a profiling step; returns finish(name, out_file=None) that logs wall/cpu/peak_rss.
 
-    Usage::
-
-        log_done = log_step_start()
-        ...  # work
-        log_done("cluster-bins")
-        # logs: cluster-bins done: wall=12.3s, cpu=45.6s, peak_rss=1.23 GB
+    peak_rss is the concurrent peak of the whole process tree (workers, CBC
+    subprocess) sampled via psutil, falling back to rusage max(self, child).
     """
     t_wall = time.perf_counter()
     t_cpu = time.process_time()
+    # ru_maxrss: bytes on macOS, kibibytes on Linux
+    _rss_to_gb = (1 / 1e9) if sys.platform == "darwin" else (1024 / 1e9)
 
-    def finish(name):
+    sampler = None
+    if psutil is not None:
+        sampler = _RSSSampler()
+        sampler.start()
+
+    def finish(name, out_file=None):
         wall = time.perf_counter() - t_wall
         cpu = time.process_time() - t_cpu
-        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        rss_gb = rss / 1e9 if rss > 1e9 else rss / 1e6
+        ru_self = resource.getrusage(resource.RUSAGE_SELF)
+        ru_child = resource.getrusage(resource.RUSAGE_CHILDREN)
+        peak_self = ru_self.ru_maxrss * _rss_to_gb
+        peak_child = ru_child.ru_maxrss * _rss_to_gb  # largest single child
+        child_cpu = ru_child.ru_utime + ru_child.ru_stime
+        if sampler is not None:
+            sampler.stop()
+            peak = sampler.peak_bytes / 1e9  # psutil RSS is bytes
+        else:
+            peak = max(peak_self, peak_child)
         logging.info(
-            f"{name} done: wall={wall:.1f}s, cpu={cpu:.1f}s, peak_rss={rss_gb:.2f} GB"
+            f"{name} done: wall={wall:.1f}s, cpu={cpu:.1f}s, peak_rss={peak:.2f} GB"
         )
+        if out_file is not None:
+            with open(out_file, "w") as fh:
+                fh.write(
+                    f"step\t{name}\n"
+                    f"wall_s\t{wall:.3f}\n"
+                    f"cpu_self_s\t{cpu:.3f}\n"
+                    f"cpu_children_s\t{child_cpu:.3f}\n"
+                    f"peak_rss_tree_gb\t{peak:.3f}\n"
+                    f"peak_rss_self_gb\t{peak_self:.3f}\n"
+                    f"peak_rss_largest_child_gb\t{peak_child:.3f}\n"
+                )
 
     return finish
 
