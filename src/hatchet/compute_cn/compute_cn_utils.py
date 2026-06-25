@@ -499,7 +499,7 @@ def segmentation(
     return seg_df
 
 
-def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy):
+def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy, name=None):
     if not os.path.exists(bbc) or not os.path.exists(seg):
         return
     _plot_cn.run(
@@ -510,6 +510,7 @@ def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy):
             "region_bed": args["region_bed"],
             "gamma_file": gamma_file,
             "solfile": None,
+            "patient_id": name,
             "plot_dir": plot_dir,
             "dpi": 150,
             "img_type": "pdf",

@@ -45,6 +45,7 @@ def plot_pool_cnp(
     solve_mode=None,
     sample_names=None,
     plot_ascn=False,
+    out_name="pool.pdf",
 ):
     """Plot pool CNP panel into out_dir.
 
@@ -170,7 +171,7 @@ def plot_pool_cnp(
 
     if title:
         main_axes[0].set_title(title)
-    out_file = os.path.join(out_dir, "pool.pdf")
+    out_file = os.path.join(out_dir, out_name)
     plt.savefig(out_file, dpi=dpi, bbox_inches="tight")
     plt.close()
     logging.info(f"pool CNP panel saved to {out_file}")

@@ -631,6 +631,13 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         default=argparse.SUPPRESS,
         help="plot CN profile with allele CN row scheme (default: False)",
     )
+    parser.add_argument(
+        "--patient_id",
+        required=False,
+        default=argparse.SUPPRESS,
+        type=str,
+        help="Output filename prefix for per-(ploidy,n) plots (default: 'panel')",
+    )
     return parser
 
 

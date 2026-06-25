@@ -179,25 +179,29 @@ def run(args=None):
                     seg_out_file=seg_out,
                 )
 
+            pid = args["patient_id"] or "panel"
+            nplot_dir = os.path.join(plot_dir, f"{ploidy}_n{n}")
             run_plot_cn(
                 args,
                 out_bbc,
                 out_seg,
                 gamma_outfile,
-                os.path.join(plot_dir, f"{ploidy}_n{n}"),
+                nplot_dir,
                 ploidy,
+                name=f"{pid}.{ploidy}_n{n}",
             )
 
             plot_pool_cnp(
                 pool_instances,
                 args["region_bed"],
-                os.path.join(plot_dir, f"{ploidy}_n{n}_pool"),
+                nplot_dir,
                 sel_df=sel_df,
                 segs=cn_segs,
                 title=f"{ploidy} n={n}",
                 solve_mode=solve_mode,
                 sample_names=fcn_data["sample_ids"],
                 plot_ascn=args["plot_ascn"],
+                out_name=f"{pid}.pool_{ploidy}_n{n}.pdf",
             )
 
     if obj_dfs:
