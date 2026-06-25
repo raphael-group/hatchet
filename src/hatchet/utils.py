@@ -37,12 +37,12 @@ class _RSSSampler(threading.Thread):
     def __init__(self, interval=0.2):
         super().__init__(daemon=True)
         self.interval = interval
-        self._stop = threading.Event()
+        self._stop_event = threading.Event()
         self.peak_bytes = 0
         self._proc = psutil.Process()
 
     def run(self):
-        while not self._stop.is_set():
+        while not self._stop_event.is_set():
             try:
                 total = self._proc.memory_info().rss
                 for c in self._proc.children(recursive=True):
@@ -53,10 +53,10 @@ class _RSSSampler(threading.Thread):
                 self.peak_bytes = max(self.peak_bytes, total)
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
-            self._stop.wait(self.interval)
+            self._stop_event.wait(self.interval)
 
     def stop(self):
-        self._stop.set()
+        self._stop_event.set()
         self.join(timeout=2 * self.interval)
 
 
