@@ -46,7 +46,7 @@ skip_mhbafs: false
 ##################################################
 # compute-cn
 # mode: ilp | cd | both | cnt_cd
-mode: ilp
+mode: cd
 # model_select: elbow | bic
 model_select: bic
 # solver: gurobi | cbc
@@ -57,7 +57,7 @@ min_ci_margin: 0.1
 # obj_type: imf | ci
 obj_type: imf
 minClone: 2
-maxClone: 4
+maxClone: 6
 diploid: false
 tetraploid: false
 # reg_term: RAW | MAXCN | DBOX_L1 | DBOX_L0 | DROOT_SUM | DADJ_SUM

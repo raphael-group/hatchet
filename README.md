@@ -1,6 +1,6 @@
 # HATCHet3 (Under development)
 
-HATCHet3 infers subclonal and allele-specific integer copy number variations and clone proportions using multi-sample bulk sequencing data from various assay types: short-read/long-read Whole-genome/exome DNA sequencing data.
+HATCHet3 infers clone-specific and allele-specific copy number aberrations from multi-sample bulk DNA sequencing data includes short-read WES/WES and long-read.
 
 ### Quick Start
 ```bash
@@ -8,7 +8,8 @@ mamba env create -f ./environment.yaml -p /path/to/envs/hatchet_env
 conda activate /path/to/envs/hatchet_env
 pip install -e .
 
+# edit config/hatchet.yaml (bb_dir, genome_size, region_bed), then:
 snakemake -p --cores 4 -s ./Snakefile \
-    --configfile config/config.yaml \
+    --configfile config/hatchet.yaml \
     --directory <output_dir>
 ```

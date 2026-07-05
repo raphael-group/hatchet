@@ -5,6 +5,9 @@ old
 .DS_Store
 .claude
 
+# Snakemake
+.snakemake/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 **/__pycache__/

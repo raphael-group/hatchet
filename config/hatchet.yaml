@@ -1,185 +1,41 @@
 ##################################################
-# HATCHet3 YAML configuration file
+# HATCHet3 Snakemake configuration
 ##################################################
-# Inputs (absolute paths)
-# Directory of per-sample NPZ count matrices and bb.tsv.gz
-bb_dir: "/path/to/genotyped_dir/allele/bulkDNA"
 
+##################################################
+# Inputs / outputs
+bb_dir: "/path/to/bb"
 # Output paths (relative to snakemake --directory)
-# Per-bin BBC + SEG outputs from cluster-bins
 bbc_dir: "bbc"
-# Per-clone UCN outputs from compute-cn
 result_dir: "results"
-# Per-sample 1D/2D and panel plots
 plot_dir: "summary"
-# Run logs
 log_dir: "logs"
 
-##################################################
 # Reference
-# Tab-separated chromosome name -> length (e.g. hg38.chrom.sizes)
 genome_size: ""
-# BED file of whitelist regions (one per chromosome arm)
+# BED file of whitelist regions
 region_bed: ""
 
 ##################################################
-cluster_bins:
-  # Minimum number of HMM cluster states
-  minK: 3
-  # Maximum number of HMM cluster states
-  maxK: 30
-  # Initial off-diagonal transition mass
-  t: 1e-6
-  # Number of random restarts per K
-  restarts: 10
-  # Number of top-scoring inits to run full EM on (null = same as restarts)
-  top_restarts:
-  # EM iterations per restart
-  niters: 50
-
-  # Minimum Beta-Binomial dispersion tau
-  min_tau: 1.0
-  # Maximum Beta-Binomial dispersion tau
-  max_tau: 1.0e+6
-  # Share BB dispersion tau across clusters within a sample (false = per-cluster-per-sample)
-  share_tau: true
-  # BAF mean Brent search bounds [baf_eps, 1-baf_eps]
-  baf_eps: 1.0e-3
-  # Minimum RDR variance floor applied after each M-step
-  min_covar: 1.0e-3
-  # Inverse-gamma prior shape for RDR variance
-  ig_alpha: 10.0
-  # Number of EM iterations that update tau
-  tau_iters: 3
-
-  # Use log(RDR) instead of RDR for Gaussian emission
-  log_rdr: false
-
-  # HMM decoding method: viterbi | map
-  decode_method: "map"
-  # Model selection score: bic | icl
-  score_method: "icl"
-  # How to pick K from the score curve: min | elbow | margin-<int>
-  score_criteria: "min"
-  # HMM initialization method: cna_plus_plus | kmeans_plus_plus
-  init_method: "cna_plus_plus"
-
-  # Significance level for balanced-cluster interval LRT
-  bal_lrt_alpha: 0.05
-  # Half-width of neutral zone [0.5-d, 0.5+d] for balanced-cluster test
-  bal_margin: 0.03
-
-  # Variance-outlier filter: drop clusters whose variance deviates > filter_std * std
-  filter_std: 2.0
-  # Drop clusters with fewer than min_nbins bins
-  min_nbins: 10
-  # Variance-outlier filter only applies to clusters with #bins <= ub_nbins
-  ub_nbins: 50
-
-##################################################
-compute_cn:
-  # Manually select cluster_bins bbc/seg by cluster <k> (null = auto)
-  k: null
-
-
-  # Solver mode: ilp | cd | both
-  mode: cd
-  # ILP solver backend: gurobi | cbc
-  solver: gurobi
-  # ILP solver timelimit in seconds (null = unlimited)
-  timelimit: null
-
-  # Significance level for fractional CN confidence intervals
-  fcn_ci_alpha: 0.05
-  # Hard minimum CI half-width in FCN space
-  min_ci_margin: 0.1
-  # Fitting objective: imf (weighted L1) or ci (CI-violation hinge)
-  obj_type: imf
-  # Model selection method: elbow | bic
-  model_select: elbow
-
-  # Minimum number of tumor clones to solve for
-  minClone: 2
-  # Maximum number of tumor clones to solve for
-  maxClone: 4
-  # Solve under diploid assumption
-  diploid: false
-  # Solve under tetraploid/WGD assumption
-  tetraploid: false
-
-  # Regularization term: RAW | MAXCN | DBOX_L1 | DBOX_L0 | DROOT_SUM | DADJ_SUM
-  reg_term: "MAXCN"
-  # Number of steps along the regularization path
-  reg_steps: 15
-  # Maximum pparam value along the regularization path
-  reg_bound: 0.15
-
-  # Disable amp/del symmetry constraint
-  no_ampdel: false
-  # Max distinct CN states per clone (-1 = unconstrained)
-  num_cnstates: -1
-  # Max total copy number for diploid clones
-  diploidcmax: 8
-  # Max total copy number for tetraploid clones
-  tetraploidcmax: 12
-  # Minimum clone proportion
-  min_prop: 0.01
-  # Clusters with weight >= this fraction cannot have (0,0) CN
-  zero_cn_thres: 0.001
-
-  # Per-sample tumor purity override (format: "sample1:0.8;sample2:0.7", null = inferred)
-  purities:
-
-  # User-specified fixed diploid CN states (format: "cid:cA|cB;...", null = none)
-  fix_cn_dip:
-  # User-specified fixed tetraploid CN states (format: "cid:cA|cB;...", null = none)
-  fix_cn_tet:
-
-  # CD: max outer iterations per seed
-  cd_niters: 10
-  # CD: consecutive convergence iterations required to stop
-  cd_convergence_iters: 2
-  # CD: number of random restarts
-  cd_nseeds: 400
-  # CD: number of parallel worker processes
-  cd_njobs: 8
-  # CD: random seed for reproducibility
-  cd_seed: 42
-  # CD: convergence tolerance on U-step objective
-  cd_tol: 0.001
-  # U initialization method: dirichlet | bubble | bin_dir
-  u_init: "dirichlet"
-  # Dirichlet alpha for u_init; lower = sparser
-  u_dir_alpha: 0.3
-  # Max threads per solver call (Gurobi); set 1 for parallel CD workers
-  solver_threads:
-
-  # CNT-CD: Newick tree file (null = enumerate all unlabeled shapes)
-  tree_file:
-  # CNT-CD: fit tolerance for C-step lexicographic bound
-  eps_fit: 0.01
-
-##################################################
-plot_cn:
-  # Image resolution (DPI)
-  dpi: 500
-  # Output image format: png | pdf | svg
-  img_type: png
-  # Transparent background
-  transparent: false
-  # Keep regions outside whitelist (centromeres etc.) in the plot
-  keep_gap: false
-  # Transparency on the tail region per CN state
-  tail_alpha: 0.8
-  # Transparency on the center region per CN state
-  center_alpha: 1.0
-  # Area for each tail per CN state used to set transparency
-  onetail_area: 0.025
-  # FCN axis upper limit
-  maxlim_fcn: 30
-
-##################################################
-# Logging verbosity: 0 | 1 | 2
-verbosity: 0
-# Snakemake worker thread count
+# Resources
 threads: 4
+
+##################################################
+cluster-bins:
+  minK: 3
+  maxK: 30
+  restarts: 10
+  niters: 50
+  decode_method: map
+  score_method: icl
+  score_criteria: min
+  init_method: cna_plus_plus
+  seed: 42
+
+##################################################
+compute-cn:
+  k: null
+  diploid: true
+  tetraploid: true
+  minClone: 2
+  maxClone: 4
