@@ -4,6 +4,7 @@
 
 ##################################################
 # Inputs / outputs
+patient_id: sample
 bb_dir: "/path/to/bb"
 # Output paths (relative to snakemake --directory)
 bbc_dir: "bbc"
