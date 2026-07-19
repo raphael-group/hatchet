@@ -1,0 +1,6 @@
+# TODO
+
+_Last updated: 2026-07-19_
+
+- **Post-merge step after HMM decoding.** ICL/BIC scoring regularized likelihoods by parameter counts and posterior entropy but under-penalize when sample size is very large (the data log-likelihood scales with N while the penalty scales with log N). Thus, the model selected cluster results lead to over segmentation. A post-HMM merging strategy to merge statistically indistinguishable clusters may solve this problem.
+- **Joint CN deconvolution and CNT tree inference.** The `cnt_cd` mode couples integer-CN deconvolution with copy-number-tree inference: it alternates a per-chromosome copy-number-tree MILP C-step (lexicographic: minimize fit loss, then tree parsimony under a near-optimal-fit constraint) with a global U-step LP over enumerated clone-tree topologies (`solve_c_step`, [cnt_model.py:229](../src/hatchet/compute_cn/solve/cnt_model.py#L229); `run_coordinate_descent`, [inference.py:369](../src/hatchet/compute_cn/solve/inference.py#L369)). This is currently the throughput bottleneck: it enumerates clone-tree topologies x Dirichlet seeds and re-solves a per-chromosome MILP each iteration, scaling poorly with clone number and genome size. It needs tree-space pruning, MILP warm-starting/relaxation, or a cheaper C-step to be practical at scale.

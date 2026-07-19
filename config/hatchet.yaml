@@ -18,20 +18,9 @@ genome_size: ""
 region_bed: ""
 
 ##################################################
-# Resources
-threads: 4
-
-##################################################
 cluster-bins:
   minK: 3
   maxK: 30
-  restarts: 10
-  niters: 50
-  decode_method: map
-  score_method: icl
-  score_criteria: min
-  init_method: cna_plus_plus
-  seed: 42
 
 ##################################################
 compute-cn:
@@ -40,3 +29,7 @@ compute-cn:
   tetraploid: true
   minClone: 2
   maxClone: 4
+
+##################################################
+# Resources
+threads: 4

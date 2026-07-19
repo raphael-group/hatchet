@@ -93,6 +93,8 @@ rule run_cluster_bins:
         args=cluster_bins_args,
     log:
         os.path.join(config["log_dir"], "cluster_bins.log"),
+    benchmark:
+        os.path.join(config["log_dir"], "cluster_bins.benchmark.tsv")
     shell:
         r"""
         hatchet cluster-bins \
@@ -133,6 +135,8 @@ rule run_compute_cn:
         args=compute_cn_args,
     log:
         os.path.join(config["log_dir"], "compute_cn.log"),
+    benchmark:
+        os.path.join(config["log_dir"], "compute_cn.benchmark.tsv")
     shell:
         r"""
         hatchet compute-cn \
