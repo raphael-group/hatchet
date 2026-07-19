@@ -316,13 +316,26 @@ def plot_2d(
     rasterized=True,
     filtered_ids=None,
     balanced_ids=None,
+    display_min_clone_prop=None,
 ):
     """2D RDR-vs-BAF joint plot with per-cluster KDE marginals.
 
     Draws a scatter plot on the joint axes (colored by ``hue``) and
     unfilled KDE curves on the marginal axes — one line per cluster,
     colored to match the scatter palette.
+
+    Tumor clones whose proportion in ``clone_props`` is below
+    ``display_min_clone_prop`` are dropped from the per-state CN labels and the
+    clone-prop legend; ``None`` shows all clones.
     """
+
+    def _tumor_visible(j):
+        return (
+            display_min_clone_prop is None
+            or clone_props is None
+            or clone_props[j] >= display_min_clone_prop
+        )
+
     g0 = sns.JointGrid(x=xvals, y=yvals, hue=hue, palette=palette, xlim=xlim, ylim=ylim)
     g0.refline(x=0.50)
     g0.plot_joint(sns.scatterplot, s=markersize, legend=False, edgecolors="none")
@@ -343,18 +356,29 @@ def plot_2d(
         balanced_ids = balanced_ids or set()
         texts = []
         vis_x, vis_y = [], []
+        seen_labels = set()  # collapse centroids sharing the same visible-clone label
         for ci, cid in enumerate(exp_labels):
             if filtered_ids and cid in filtered_ids:
                 continue
             center_text = cid
             fontdict = {"fontsize": 10}
             if label_clone:
-                states = [f"({x[0]},{x[1]})" for x in cid][1:]
-                if len(set(states)) == 1:
+                states = [
+                    f"({cid[j][0]},{cid[j][1]})"
+                    for j in range(1, len(cid))
+                    if _tumor_visible(j)
+                ]
+                if not states:
+                    states = [f"({x[0]},{x[1]})" for x in cid][1:]
+                states = list(dict.fromkeys(states))  # dedupe within label, keep order
+                if len(states) == 1:
                     fontdict["fontweight"] = "bold"
                     center_text = states[0]
                 else:
                     center_text = ",".join(states)
+                if center_text in seen_labels:
+                    continue
+                seen_labels.add(center_text)
             else:
                 center_text = cid
             t = g0.ax_joint.text(exp_xvals[ci], exp_yvals[ci], center_text, **fontdict)
@@ -391,6 +415,8 @@ def plot_2d(
     if clone_props is not None:
         custom_handles = []
         for i, prop in enumerate(clone_props):
+            if i != 0 and not _tumor_visible(i):
+                continue
             lab = f"Normal: {prop:.3f}" if i == 0 else f"Clone {i}: {prop:.3f}"
             custom_handles.append(Line2D([0], [0], alpha=0, label=lab))
         g0.ax_joint.legend(

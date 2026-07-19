@@ -81,6 +81,9 @@ def run(args=None):
     # figure axis limits
     maxlim_fcn = args["maxlim_fcn"]
 
+    # tumor clones below this per-sample prop are hidden from legends/labels
+    display_min_clone_prop = args["min_prop"]
+
     ##################################################
     # load files
     segs, clones, clone_props = read_seg_ucn_file(seg_ucn)
@@ -209,6 +212,7 @@ def run(args=None):
             hue=d["cnp_ids"],
             palette=d["palette"],
             label_clone=True,
+            display_min_clone_prop=display_min_clone_prop,
             xlab="Minor haplotype B-allele frequency (mhBAF)",
             ylab="Fractional copy number (FCN)",
             xlim=d["lim_baf"],
@@ -348,6 +352,7 @@ def run(args=None):
             spine.set_color("black")
 
         # Clone-prop legend on the right of the BAF row (mirrors 2D scatter).
+        # Normal (i=0) is always shown; tumor clones below display_min_clone_prop are hidden.
         prop_handles = [
             Line2D(
                 [0],
@@ -356,6 +361,7 @@ def run(args=None):
                 label=(f"Normal: {p:.3f}" if i == 0 else f"Clone {i}: {p:.3f}"),
             )
             for i, p in enumerate(d["clone_props"])
+            if i == 0 or p >= display_min_clone_prop
         ]
         ax_baf.legend(
             handles=prop_handles,
