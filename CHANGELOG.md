@@ -1,7 +1,5 @@
 # Changelog
 
-HATCHet3 infers allele-specific and clone-specific CNAs from multiple tumor samples using short-read WGS/WES and long-read PacBio HiFi/ONT sequencing data.
-
 ## [3.0.0] - 2026-07-19
 
 **Changed**
