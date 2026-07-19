@@ -61,7 +61,7 @@ maxClone: 6
 diploid: false
 tetraploid: false
 # reg_term: RAW | MAXCN | DBOX_L1 | DBOX_L0 | DROOT_SUM | DADJ_SUM
-reg_term: MAXCN
+reg_term: DBOX_L1
 reg_steps: 15
 reg_bound: 0.15
 fix_cn_dip: null
