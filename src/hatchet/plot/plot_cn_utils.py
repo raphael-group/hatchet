@@ -1,17 +1,16 @@
 """
-Plot integer CN 1D heatmap and legend.
+Plot integer CN chrom-level heatmap and legend.
 Only segments within predefined whitelist segments will be plotted
 e.g., centromere regions are excluded in predefined segments and will
 be marked as dotted line.
-
-HATCHet will never only a CNV segments that interleaved with the complement
-region of predefined segments.
 """
 
 import pandas as pd
 import numpy as np
+import seaborn as sns
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.patches import Rectangle
 
 
@@ -313,7 +312,7 @@ def get_cn_colors():
         (1, 0): "lightblue",
         (1, 1): "lightgray",
         (2, 0): "dimgray",
-        (2, 1): "lightgoldenrodyellow",
+        (2, 1): "khaki",
         (3, 0): "gold",
         (2, 2): "navajowhite",
         (3, 1): "orange",
@@ -379,6 +378,101 @@ def get_cn_colors():
         state_style[(minor, major)] = color
     state_style["default"] = default_color
     return state_style, tcn_states
+
+
+def build_cnp_palette(clone_states, clone_props=None, display_min_clone_prop=None):
+    """Map each joint-clone CNP string to a scatter color.
+
+    Sample-clonal states (all visible tumor clones share one (a, b)) take the
+    integer copy number color from get_cn_colors, matching the CNP profile and
+    legend. Other states take distinct subclonal colors. A clone is visible
+    when its proportion is at least display_min_clone_prop; the clonal check
+    falls back to all tumor clones when none are visible, mirroring the 2D
+    label logic.
+
+    Args:
+        clone_states: list of CNP strings "n|n;a|b;..." (normal first).
+        clone_props: per-clone proportions aligned to the CNP fields (index 0
+            is normal); None treats every clone as visible.
+        display_min_clone_prop: minimum proportion for a tumor clone to count
+            toward the clonal check; None treats every clone as visible.
+
+    Returns:
+        dict mapping each CNP string to an RGB(A) color.
+    """
+    state_style, _ = get_cn_colors()
+
+    def visible(j):
+        return (
+            display_min_clone_prop is None
+            or clone_props is None
+            or clone_props[j] >= display_min_clone_prop
+        )
+
+    palette = {}
+    subclonal = []
+    for cs in clone_states:
+        tumor = [
+            (int(x.split("|")[0]), int(x.split("|")[1])) for x in str(cs).split(";")[1:]
+        ]
+        vis = [tumor[j - 1] for j in range(1, len(tumor) + 1) if visible(j)]
+        if not vis:
+            vis = tumor
+        if vis and all(p == vis[0] for p in vis):
+            palette[cs] = state_style.get(vis[0], state_style["default"])
+        else:
+            subclonal.append(cs)
+
+    cn_rgb = np.array([mcolors.to_rgb(c) for c in set(state_style.values())])
+    for cs, color in zip(subclonal, _distinct_subclonal_colors(len(subclonal), cn_rgb)):
+        palette[cs] = color
+    return palette
+
+
+def _distinct_subclonal_colors(n, avoid_rgb, min_dist=0.22):
+    """Pick n subclonal colors kept away from the integer-CN palette.
+
+    Greedily selects from a dense husl pool, rejecting candidates within
+    min_dist (RGB Euclidean) of any avoid_rgb color or of an already-picked
+    color, then relaxes to the most-distant remaining candidates if the pool
+    runs short.
+
+    Args:
+        n: number of colors to return.
+        avoid_rgb: (C, 3) array of integer-CN palette RGB colors to avoid.
+        min_dist: minimum RGB Euclidean distance from avoided/picked colors.
+
+    Returns:
+        list of n RGB tuples.
+    """
+    if n <= 0:
+        return []
+    pool = sns.color_palette("husl", n_colors=max(3 * n, 24))
+    cand = np.array([mcolors.to_rgb(c) for c in pool])
+
+    def min_dist_to(rgb, ref):
+        if len(ref) == 0:
+            return np.inf
+        return float(np.sqrt(((ref - rgb) ** 2).sum(axis=1)).min())
+
+    picked, picked_rgb = [], np.empty((0, 3))
+    for i in range(len(cand)):
+        if min_dist_to(cand[i], avoid_rgb) >= min_dist and (
+            min_dist_to(cand[i], picked_rgb) >= min_dist
+        ):
+            picked.append(pool[i])
+            picked_rgb = np.vstack([picked_rgb, cand[i]])
+            if len(picked) == n:
+                return picked
+    remaining = sorted(
+        (i for i in range(len(cand)) if pool[i] not in picked),
+        key=lambda i: -min_dist_to(cand[i], avoid_rgb),
+    )
+    for i in remaining:
+        picked.append(pool[i])
+        if len(picked) == n:
+            break
+    return picked
 
 
 def get_ascn_colors():

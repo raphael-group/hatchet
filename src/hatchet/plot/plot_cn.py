@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 
 from hatchet.utils import (
     add_file_logging,
@@ -20,15 +19,11 @@ from hatchet.plot.plot_utils import (
     get_expected_baf_fcn,
     load_gammas,
     override_solution,
-    set_palette,
+    plot_combined_1d,
+    _row_def,
 )
-from hatchet.plot.plot_1d2d import get_transparency, plot_1d, plot_2d
-from hatchet.plot.plot_cn_utils import (
-    plot_ascn_legend,
-    plot_ascn_profile,
-    plot_cnv_legend,
-    plot_cnv_profile,
-)
+from hatchet.plot.plot_1d2d import get_transparency, plot_2d
+from hatchet.plot.plot_cn_utils import build_cnp_palette
 
 
 def run(args=None):
@@ -128,9 +123,12 @@ def run(args=None):
         cnp_ids = bin_info["CNP"].to_numpy()
         clone_states = bin_info["CNP"].unique().tolist()
         clone_props = bin_info.iloc[0][[f"u_{clone}" for clone in clones]].to_numpy()
-        palette = dict(zip(clone_states, set_palette(num_colors=len(clone_states))))
+        palette = build_cnp_palette(clone_states, clone_props, display_min_clone_prop)
 
         bin_info["FCN"] = bin_info["RD"] * gammas[sample]
+        # Allele-specific observed FCN: minor mhBAF splits total FCN into B (minor) and A (major).
+        bin_info["FCN-B"] = bin_info["FCN"] * bin_info["BAF"]
+        bin_info["FCN-A"] = bin_info["FCN"] * (1.0 - bin_info["BAF"])
         tumor_purity = round(np.sum(clone_props[1:]), 3)
         tumor_ploidy = round(
             compute_tumor_ploidy(seg_info, clones, np.sum(clone_props[1:])), 3
@@ -139,6 +137,8 @@ def run(args=None):
 
         bin_info["exp-BAF"] = 0.0
         bin_info["exp-FCN"] = 0.0
+        bin_info["exp-FCN-A"] = 0.0
+        bin_info["exp-FCN-B"] = 0.0
         exp_bafs = np.zeros(len(clone_states), dtype=np.float32)
         exp_fcns = np.zeros(len(clone_states), dtype=np.float32)
         exp_labels = []
@@ -148,9 +148,14 @@ def run(args=None):
                 for x in clone_state.split(";")
             ]
             exp_labels.append(states)
-            _, _, exp_fcns[i], exp_bafs[i] = get_expected_baf_fcn(states, clone_props)
-            bin_info.loc[bin_info["CNP"] == clone_state, "exp-BAF"] = exp_bafs[i]
-            bin_info.loc[bin_info["CNP"] == clone_state, "exp-FCN"] = exp_fcns[i]
+            fcn_a, fcn_b, exp_fcns[i], exp_bafs[i] = get_expected_baf_fcn(
+                states, clone_props
+            )
+            mask = bin_info["CNP"] == clone_state
+            bin_info.loc[mask, "exp-BAF"] = exp_bafs[i]
+            bin_info.loc[mask, "exp-FCN"] = exp_fcns[i]
+            bin_info.loc[mask, "exp-FCN-A"] = fcn_a
+            bin_info.loc[mask, "exp-FCN-B"] = fcn_b
 
         lim_baf = (0, 1) if bin_info["BAF"].max() > 0.5 else (0, 0.55)
         max_fcn = int(np.ceil(bin_info["FCN"].max()))
@@ -159,7 +164,8 @@ def run(args=None):
             logging.warning(
                 f"{sample}: {num_exceeded} bins have FCN > maxlim_fcn={maxlim_fcn}"
             )
-        lim_fcn = (0, min(max(2, max_fcn), maxlim_fcn))
+        top_fcn = min(max(2, max_fcn), maxlim_fcn)
+        lim_fcn = (-0.05 * top_fcn, top_fcn)
 
         alphas = get_transparency(
             bin_info,
@@ -239,168 +245,65 @@ def run(args=None):
         pdf.close()
 
     ##################################################
-    # Combined 1D PDF: per-sample (FCN, BAF) pairs + shared ASCN CNP + legend.
-    # Layout mirrors copytyping plot_rdr_baf_1d_pseudobulk: nested GridSpec
-    # gives a tight FCN/BAF pairing within each sample and a larger gap
-    # between samples.
-    from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
-
-    k = len(samples)
-    cnp_h = max(1.5, n_tumors)
-    fig_h = row_height * k + cnp_h * 0.5 + 0.5
-    fig_1d = plt.figure(figsize=(row_width, fig_h))
-    # Two-section layout: samples_block above, cnp_block below.
-    # Inter-sample gap (large) and BAF↔CNP gap (small) are controlled separately.
-    outer = GridSpec(
-        2,
-        1,
-        figure=fig_1d,
-        height_ratios=[2 * k, cnp_h * 0.5 + 0.3],
-        hspace=baf_cnp_hspace,
-        top=0.97,
+    # Combined 1D figures: per-sample two-row pairs + shared CNP + legend.
+    # Row styling (title/chrname/prop-legend) is fixed by row position; the
+    # value/expected columns are supplied per figure via row_defs.
+    style = {
+        "row_width": row_width,
+        "row_height": row_height,
+        "inter_sample_hspace": inter_sample_hspace,
+        "intra_sample_hspace": intra_sample_hspace,
+        "baf_cnp_hspace": baf_cnp_hspace,
+        "cnp_legend_hspace": cnp_legend_hspace,
+        "title_fs": title_fs,
+        "ylabel_fs": ylabel_fs,
+        "chrname_fs": chrname_fs,
+        "cnp_label_fs": cnp_label_fs,
+        "cnp_ab_fs": cnp_ab_fs,
+    }
+    common = dict(
+        regions=regions,
+        chrom_sizes=chrom_sizes,
+        n_tumors=n_tumors,
+        style=style,
+        args=args,
+        dpi=dpi,
+        transparent=transparent,
+        ignore_gap=ignore_gap,
+        display_min_clone_prop=display_min_clone_prop,
     )
-    samples_gs = GridSpecFromSubplotSpec(
-        k,
-        1,
-        subplot_spec=outer[0],
-        height_ratios=[2] * k,
-        hspace=inter_sample_hspace,
+
+    # (FCN, BAF): total FCN over minor-haplotype BAF.
+    fcn_baf_rows = [
+        _row_def("FCN", "exp-FCN", "FCN", "FCN", "lim_fcn", top=True, href=2.0),
+        _row_def(
+            "BAF",
+            "exp-BAF",
+            "BAF",
+            "mhBAF",
+            "lim_baf",
+            top=False,
+            force_ylim=(-0.05, 1.05),
+        ),
+    ]
+    plot_combined_1d(out_1d, samples, per_sample, sample_g0, fcn_baf_rows, **common)
+
+    # (FCN-A, FCN-B): allele-specific observed vs CN-expected fractional copy number.
+    out_1d_ab = os.path.join(
+        plot_dir, f"{patient_id}{solID and '.' + solID}.1D.FCN_AB.{ext}"
     )
-    sample_axes = []
-    for si in range(k):
-        inner = GridSpecFromSubplotSpec(
-            2,
-            1,
-            subplot_spec=samples_gs[si],
-            height_ratios=[1, 1],
-            hspace=intra_sample_hspace,
-        )
-        sample_axes.append((fig_1d.add_subplot(inner[0]), fig_1d.add_subplot(inner[1])))
-    inner_bot = GridSpecFromSubplotSpec(
-        2, 1, subplot_spec=outer[1], height_ratios=[cnp_h, 1], hspace=cnp_legend_hspace
-    )
-    ax_cnp = fig_1d.add_subplot(inner_bot[0])
-    ax_leg = fig_1d.add_subplot(inner_bot[1])
-
-    for si, sample in enumerate(samples):
-        d = per_sample[sample]
-        bi = d["bin_info"]
-        ax_fcn, ax_baf = sample_axes[si]
-
-        # FCN row: title with sample info, no chrname, no x ticks.
-        plot_1d(
-            ax_fcn,
-            sample,
-            bi,
-            bi["FCN"],
-            regions,
-            chrom_sizes,
-            exp_colname="exp-FCN",
-            exp_groups=d["cnp_ids"],
-            val_type="FCN",
-            colors=sample_g0[sample],
-            hue=d["cnp_ids"],
-            palette=d["palette"],
-            alphas=d["alphas"],
-            ylim=d["lim_fcn"],
-            ylab="FCN",
-            plot_chrname=False,
-            ignore_gap=ignore_gap,
-            show_legend=False,
-            chr_shift=0,
-        )
-        ax_fcn.set_xticklabels([])
-        ax_fcn.tick_params(axis="x", bottom=False)
-        ax_fcn.tick_params(axis="y", left=True, length=4)
-        ax_fcn.set_title(d["title"], fontsize=title_fs, fontweight="bold", loc="left")
-        ax_fcn.grid(False)
-        ax_fcn.yaxis.label.set_fontweight("bold")
-        ax_fcn.yaxis.label.set_fontsize(ylabel_fs)
-        for spine in ax_fcn.spines.values():
-            spine.set_color("black")
-
-        # BAF row: chrname labels shown, no title.
-        plot_1d(
-            ax_baf,
-            sample,
-            bi,
-            bi["BAF"],
-            regions,
-            chrom_sizes,
-            exp_colname="exp-BAF",
-            exp_groups=d["cnp_ids"],
-            val_type="BAF",
-            colors=sample_g0[sample],
-            hue=None,
-            palette=None,
-            alphas=d["alphas"],
-            ylim=d["lim_baf"],
-            ylab="mhBAF",
-            plot_chrname=True,
-            ignore_gap=ignore_gap,
-            show_legend=False,
-            chr_shift=0,
-        )
-        ax_baf.set_ylim(-0.05, 1.05)
-        ax_baf.grid(False)
-        ax_baf.tick_params(axis="x", bottom=True, length=4)
-        ax_baf.tick_params(axis="y", left=True, length=4)
-        plt.setp(ax_baf.get_xticklabels(), fontweight="bold", fontsize=chrname_fs)
-        ax_baf.yaxis.label.set_fontweight("bold")
-        ax_baf.yaxis.label.set_fontsize(ylabel_fs)
-        for spine in ax_baf.spines.values():
-            spine.set_color("black")
-
-        # Clone-prop legend on the right of the BAF row (mirrors 2D scatter).
-        # Normal (i=0) is always shown; tumor clones below display_min_clone_prop are hidden.
-        prop_handles = [
-            Line2D(
-                [0],
-                [0],
-                alpha=0,
-                label=(f"Normal: {p:.3f}" if i == 0 else f"Clone {i}: {p:.3f}"),
-            )
-            for i, p in enumerate(d["clone_props"])
-            if i == 0 or p >= display_min_clone_prop
-        ]
-        ax_baf.legend(
-            handles=prop_handles,
-            loc="center left",
-            bbox_to_anchor=(1.01, 0.5),
-            fontsize="small",
-            fancybox=True,
-            framealpha=0.7,
-            handlelength=0,
-            handletextpad=0,
-        )
-
-    # Shared CNP profile + legend at the bottom (clonal CN, identical across samples)
-    _profile_fn = plot_ascn_profile if args["plot_ascn"] else plot_cnv_profile
-    _profile_fn(
-        ax_cnp,
-        per_sample[samples[0]]["seg_info"],
-        regions,
-        width=row_width,
-        height=1,
-        plot_chrname=False,
-        show_clone_name=True,
-        show_prop=False,
-    )
-    plt.setp(ax_cnp.get_xticklabels(), fontweight="bold", fontsize=cnp_label_fs)
-    plt.setp(ax_cnp.get_yticklabels(), fontweight="bold", fontsize=cnp_label_fs)
-    plt.setp(ax_cnp.get_yticklabels(minor=True), fontweight="bold", fontsize=cnp_ab_fs)
-    if args["plot_ascn"]:
-        plot_ascn_legend(
-            ax_leg,
-            box_w=args["plot_legend_box_w"],
-            box_h=args["plot_legend_box_h"],
-            tick_len=args["plot_legend_tick_len"],
-            label_fontsize=args["plot_legend_label_fontsize"],
-        )
-    else:
-        plot_cnv_legend(ax_leg)
-
-    logging.info(f"writing combined 1D: {out_1d}")
-    fig_1d.savefig(out_1d, dpi=dpi, bbox_inches="tight", transparent=transparent)
-    plt.close(fig_1d)
+    fcn_ab_rows = [
+        _row_def("FCN-A", "exp-FCN-A", "FCN", "FCN-A", "lim_fcn", top=True, href=1.0),
+        _row_def(
+            "FCN-B",
+            "exp-FCN-B",
+            "FCN",
+            "FCN-B",
+            "lim_fcn",
+            top=False,
+            href=1.0,
+            reverse_y=True,
+        ),
+    ]
+    plot_combined_1d(out_1d_ab, samples, per_sample, sample_g0, fcn_ab_rows, **common)
     return
