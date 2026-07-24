@@ -36,6 +36,7 @@ def cluster_bins_result(synthetic_data, tmp_path_factory):
         "bb_dir": bb_dir,
         "bbc_dir": bbc_dir,
         "genome_size": genome_sizes,
+        "region_bed": regions_bed,
         "maxK": 5,
         "restarts": 3,
         "top_restarts": 2,

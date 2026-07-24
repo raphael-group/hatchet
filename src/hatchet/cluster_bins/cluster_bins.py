@@ -6,11 +6,12 @@ import shutil
 import numpy as np
 import pandas as pd
 from hatchet.utils import *
+from hatchet.io_utils import read_genome_sizes, read_sample_file
 from hatchet.cluster_bins.cluster_utils import *
 from hatchet.cluster_bins.hmm.hmm_init import *
 from hatchet.cluster_bins.hmm.hmm_transitions import *
 from hatchet.cluster_bins.hmm.hmm_model import *
-from hatchet.plot.plot_1d2d import plot_rdr_baf
+from hatchet.plot.plot_cluster_bins import plot_rdr_baf
 
 
 def run(args=None):
@@ -48,6 +49,7 @@ def run(args=None):
     b_mfile = os.path.join(bb_dir, "bb.Ballele.npz")
     t_mfile = os.path.join(bb_dir, "bb.Tallele.npz")
     genome_size = args["genome_size"]
+    region_bed = args["region_bed"]
     out_dir = args["bbc_dir"]
     os.makedirs(out_dir, exist_ok=True)
     add_file_logging(out_dir, "cluster-bins")
@@ -166,6 +168,7 @@ def run(args=None):
         X_bafs,
         X_rdrs,
         genome_size,
+        region_bed,
         xlab="BAF",
         ylab="RDR",
         out_dir=plot_dir,
@@ -459,6 +462,7 @@ def run(args=None):
             k_bafs,
             X_rdrs,
             genome_size,
+            region_bed,
             cluster_labels=k_labels,
             expected_rdrs=k_rdr_means_nat,
             expected_bafs=k_baf_means,
