@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hatchet"
 version = "3.0.0"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 description = "HATCHet3: Holistic Allele-specific Tumor Copy-number Heterogeneity"
 dependencies = [
     "numpy>=1.22,<3",
@@ -25,6 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest>=8", "pytest-cov>=5"]
+workflow = ["snakemake>=9"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
