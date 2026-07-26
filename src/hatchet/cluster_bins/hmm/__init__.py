@@ -1,3 +1,4 @@
+import os
 import logging
 
 try:
@@ -6,11 +7,20 @@ try:
         run_hmm as _cpp_run_hmm,
     )
 
-    _USE_CPP = True
+    _CPP_IMPORTABLE = True
 except ImportError:
     _cpp_omp_get_max_threads = None
     _cpp_run_hmm = None
-    _USE_CPP = False
+    _CPP_IMPORTABLE = False
+
+
+def _cpp_disabled_by_env():
+    """True if HATCHET_DISABLE_CPP forces the Numba/scipy fallback."""
+    return os.environ.get("HATCHET_DISABLE_CPP", "0").lower() in ("1", "true", "yes")
+
+
+# Runtime-overridable so tests can force either backend via monkeypatch.
+_USE_CPP = _CPP_IMPORTABLE and not _cpp_disabled_by_env()
 
 if _USE_CPP:
     logging.info(

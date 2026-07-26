@@ -15,7 +15,7 @@ from hatchet.cluster_bins.hmm.hmm_decode import map_decoding, run_viterbi, decod
 from hatchet.cluster_bins.hmm.hmm_utils import score_model, model_select_K  # noqa: F401
 from hatchet.cluster_bins.hmm.hmm_m_steps import do_mstep
 from hatchet.cluster_bins.cluster_utils import count_multimodal_clusters
-from hatchet.cluster_bins.hmm import _USE_CPP, _cpp_run_hmm
+from hatchet.cluster_bins import hmm as _hmm_backend
 
 
 def _check_elbo_convergence(elbo_trace, tol_ll, N, prefix=""):
@@ -77,7 +77,7 @@ def _run_hmm_cpp(
     t0 = time.perf_counter()
 
     ig_beta_arr = np.atleast_1d(np.asarray(ig_beta, dtype=np.float64))
-    res = _cpp_run_hmm(
+    res = _hmm_backend._cpp_run_hmm(
         K,
         X_rdrs,
         X_alphas,
@@ -220,7 +220,7 @@ def run_baum_welch(
         np.broadcast_to(baf_taus, (K, M)), dtype=np.float64
     )  # (K, M); rows equal when init is per-sample
 
-    if _USE_CPP:
+    if _hmm_backend._USE_CPP:
         return _run_hmm_cpp(
             K=K,
             X_rdrs=X_rdrs,

@@ -334,7 +334,7 @@ class TestRecovery:
         inputs = _make_inputs(fa_obs, fb_obs)
         params = _make_params(n, cn_max=4, eps_fit=0.005)
 
-        pool = run_coordinate_descent(
+        pool, _obj_df = run_coordinate_descent(
             params=params,
             inputs=inputs,
             mode="cnt_cd",
