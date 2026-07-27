@@ -279,9 +279,14 @@ def solve(
     base = {"diploid": 1, "tetraploid": 2}[ploidy]
     if args["purities"] is not None:
         purities = args["purities"]
-        logging.info(f"purities overridden by user: {purities}")
+        logging.info("user-specified sample purity")
     elif purities is not None:
-        logging.info(f"purities: {purities}")
+        logging.info("pre-estimated sample purity")
+    else:
+        logging.info("infer sample purity directly from deconvolution step")
+    if purities is not None:
+        for s in sorted(purities):
+            logging.info(f"  {s}: {purities[s]:.3f}")
 
     reg_term = args["reg_term"]
     reg_steps = args["reg_steps"]
