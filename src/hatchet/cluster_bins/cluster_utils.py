@@ -250,7 +250,7 @@ def mat2segs(
     """
     bb_grps = bbcs.groupby(by="CLUSTER", sort=False)
     seg_rows = []
-    for l, label in enumerate(cluster_ids):
+    for li, label in enumerate(cluster_ids):
         bb_grp = bb_grps.get_group(label)
         for s, sample in enumerate(tumor_samples):
             bb_sample = bb_grp.loc[bb_grp["SAMPLE"] == sample, :]
@@ -267,12 +267,12 @@ def mat2segs(
                     bb_sample["ALPHA"].sum(),
                     bb_sample["BETA"].sum(),
                     cov,
-                    baf_means[l, s],
-                    k_baf_ses[l, s],
-                    baf_taus[l, s],
-                    rdr_means[l, s],
-                    k_rdr_ses[l, s],
-                    rdr_vars[l, s],
+                    baf_means[li, s],
+                    k_baf_ses[li, s],
+                    baf_taus[li, s],
+                    rdr_means[li, s],
+                    k_rdr_ses[li, s],
+                    rdr_vars[li, s],
                 ]
             )
     segs = pd.DataFrame(

@@ -1,9 +1,7 @@
 """Integration tests for HATCHet3 cluster-bins step."""
 
 import os
-import numpy as np
 import pandas as pd
-import pytest
 
 
 class TestClusterBinsOutputFiles:

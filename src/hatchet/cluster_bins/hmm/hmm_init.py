@@ -8,7 +8,6 @@ from sklearn.cluster import kmeans_plusplus
 
 from hatchet.cluster_bins.hmm.hmm_likelihoods import compute_loglik_single_cluster_batch
 from hatchet.cluster_bins.hmm.hmm_utils import convert_mhbafs
-from hatchet.cluster_bins.hmm.hmm_init_utils import *
 
 
 ##################################################

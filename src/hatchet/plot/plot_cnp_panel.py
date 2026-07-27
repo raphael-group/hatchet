@@ -112,7 +112,9 @@ def run(args=None):
         for c in clones[1:]:
             if props0[f"u_{c}"] < min_prop:
                 continue  # hide clones below the display threshold
-            name = f"Clone {c[len('clone'):]}" if show_clone_name else c[len("clone") :]
+            name = (
+                f"Clone {c[len('clone') :]}" if show_clone_name else c[len("clone") :]
+            )
             if show_prop:
                 name = f"{name} ({props0[f'u_{c}'] * 100:.2f}%)"
             disp[c] = name

@@ -861,8 +861,7 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         required=False,
         default=argparse.SUPPRESS,
         type=float,
-        help="hide tumor clones below this proportion from the panel "
-        "(default: 0.01)",
+        help="hide tumor clones below this proportion from the panel (default: 0.01)",
     )
     parser.add_argument(
         "--dpi",

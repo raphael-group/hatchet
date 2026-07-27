@@ -82,9 +82,7 @@ def plot_pool_cnp(
     keep = set()
     for sdf in (segs or {}).values():
         keep.update(sdf["#CHR"].unique())
-    genome_axis = build_genome_axis(
-        region_bed, genome_size, keep_chroms=keep or None
-    )
+    genome_axis = build_genome_axis(region_bed, genome_size, keep_chroms=keep or None)
 
     if solve_mode == "cnt_cd":
         for sol_id, sol in pool_instances.items():

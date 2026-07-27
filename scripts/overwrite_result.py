@@ -2,7 +2,6 @@ import os
 import sys
 
 import pandas as pd
-import numpy as np
 
 from scripts_utils import sort_chroms
 
@@ -21,7 +20,9 @@ if __name__ == "__main__":
     cnp_cols = [c for pair in zip(cn_col_names, u_col_names) for c in pair]
 
     # Drop any pre-existing CN/u columns from bbcs to avoid merge conflicts
-    bbcs = bbcs.drop(columns=[c for c in cnp_cols if c in bbcs.columns], errors="ignore")
+    bbcs = bbcs.drop(
+        columns=[c for c in cnp_cols if c in bbcs.columns], errors="ignore"
+    )
 
     sol = sol[["CLUSTER", "SAMPLE"] + cnp_cols].drop_duplicates()
     bbcs = bbcs.merge(sol, on=["CLUSTER", "SAMPLE"], how="left")
