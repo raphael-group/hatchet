@@ -29,11 +29,17 @@ def read_sample_file(sample_file: str):
         normal_idx = []
         tumor_idx = list(range(len(sample_types)))
 
-    assays = (
-        sample_df["assay_type"].tolist()
-        if "assay_type" in sample_df.columns
-        else [None] * len(sample_df)
-    )
+    if "assay_type" in sample_df.columns:
+        assays = sample_df["assay_type"].tolist()
+    else:
+        logging.warning(
+            "sequencing platform information on `assay_type` column is not provided; "
+            "all samples are treated as one assay group, so a single normal's BAF "
+            "dispersion is applied to every tumor. This leads to bias when samples span "
+            "multiple platforms (e.g. short-read vs long-read). Add an `assay_type` "
+            "column to sample_ids.tsv to estimate dispersion per matched-normal assay."
+        )
+        assays = [None] * len(sample_df)
     normal_set, tumor_set = set(normal_idx), set(tumor_idx)
     assay2samples = {}
     for i, a in enumerate(assays):
