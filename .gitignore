@@ -85,6 +85,9 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# HATCHet2 reference doc captures (kept locally, not tracked)
+docs/hatchet2/
+
 # PyBuilder
 .pybuilder/
 target/
