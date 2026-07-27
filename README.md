@@ -1,7 +1,7 @@
 # HATCHet: Holistic Allele-specific Tumor Copy-number Heterogeneity
 
-<!-- [![CI](https://github.com/raphael-group/hatchet/actions/workflows/ci.yml/badge.svg?branch=hatchet3-dev)](https://github.com/raphael-group/hatchet/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/raphael-group/hatchet/branch/hatchet3-dev/graph/badge.svg)](https://codecov.io/gh/raphael-group/hatchet) -->
+[![CI](https://github.com/RunpengLuo/hatchet-long-read/actions/workflows/ci.yml/badge.svg?branch=hatchet3-dev)](https://github.com/RunpengLuo/hatchet-long-read/actions/workflows/ci.yml)
+<!-- [![codecov](https://codecov.io/gh/RunpengLuo/hatchet-long-read/branch/hatchet3-dev/graph/badge.svg)](https://codecov.io/gh/RunpengLuo/hatchet-long-read) -->
 [![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
@@ -31,7 +31,7 @@ mamba install -c conda-forge -c bioconda hatchet3
 ```
 
 > [!IMPORTANT]
-> TODO: HATCHet3 is not yet published on bioconda. Use Option 2 instead.
+> TODO: HATCHet (v3) is not yet published on bioconda. Use Option 2 instead.
 
 ### Option 2. Manual Install
 
@@ -48,7 +48,7 @@ pip install --no-build-isolation .
 
 ### Setup ILP Solver
 
-HATCHet3 needs to use a [Pyomo](https://pyomo.readthedocs.io/) supported solver for integer copy-number factorization step (`compute-cn`, via option `--solver`).
+HATCHet requires a [Pyomo](https://pyomo.readthedocs.io/) supported solver for integer copy-number factorization step (`compute-cn`, via option `--solver`).
 
 > [!NOTE]
 > the conda environment already includes both `cbc>=2.10` and `gurobi>=13.0.0`.
@@ -77,10 +77,10 @@ export GRB_LICENSE_FILE="/path/to/gurobi.lic"
 
 
 ## Usage
-HATCHet3 inputs genomic bin by sample read-depth ratio (RDR), phased B-allele counts, and total-allele count matrices preprocessed by [Universal-Genotyping-Pipeline](https://github.com/raphael-group/Universal-Genotyping-Pipeline), see [tutorial](https://github.com/raphael-group/Universal-Genotyping-Pipeline/docs/bulk_genotyping.md) for preprocessing details and [Input](./docs/reference.md#input) for input data formats.
+HATCHet (v3) inputs genomic bin by sample read-depth ratio (RDR), phased B-allele counts, and total-allele count matrices preprocessed by [Universal-Genotyping-Pipeline](https://github.com/raphael-group/Universal-Genotyping-Pipeline), see [tutorial](https://github.com/raphael-group/Universal-Genotyping-Pipeline/docs/bulk_genotyping.md) for preprocessing details and [Input](./docs/reference.md#input) for input data formats.
 
 ### Running Snakemake Pipeline
-We include a [Snakemake](https://snakemake.readthedocs.io/) pipeline (version 9 or newer) that runs the full HATCHet3 pipeline for a single patient. First, copy and modify the Snakemake configuration file from [config/snakemake-hatchet.yaml](config/snakemake-hatchet.yaml):
+We include a [Snakemake](https://snakemake.readthedocs.io/) pipeline (version 9 or newer) that runs the full HATCHet (v3) pipeline for a single patient. First, copy and modify the Snakemake configuration file from [config/snakemake-hatchet.yaml](config/snakemake-hatchet.yaml):
 ```yaml
 patient_id: sample                # output filename prefix
 bb_dir: "/path/to/bb"             # input directory of preprocessed matrices (see Input)
@@ -119,7 +119,6 @@ snakemake -p --cores <ncores> -s ./Snakefile \
 
 | Document | Description |
 |----------|-------------|
-| [docs/tutorials/tutorial.md](docs/tutorials/tutorial.md) | End-to-end walkthrough: input format, solver choice, parameter tuning. |
 | [docs/reference.md](docs/reference.md) | Output directory structure and (hyper-)parameter reference |
 | [CHANGELOG.md](CHANGELOG.md) | Change logs |
 | [config/snakemake-hatchet.yaml](config/snakemake-hatchet.yaml) | Snakemake pipeline configuration |
