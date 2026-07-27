@@ -30,7 +30,7 @@ bb_dir/
 Copy and edit the config template:
 
 ```bash
-cp config/hatchet.yaml config/my_config.yaml
+cp config/snakemake-hatchet.yaml config/my_config.yaml
 ```
 
 Key settings to update:

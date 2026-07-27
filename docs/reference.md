@@ -1,48 +1,49 @@
 # Reference
 
-## Output Structure
+## Table of Contents
+1. [Input](#input)
+2. [Environment variables](#environment-variables)
+3. [Parameters](#parameters)
+    - [cluster-bins](#cluster-bins)
+    - [compute-cn](#compute-cn)
+    - [plot-cn](#plot-cn)
+    - [plot-panel](#plot-panel)
+4. [Output](#output)
 
+## Input
 ```
-output/my_sample/
-  bbc/                             # cluster-bins output
-    bulk.bbc                       # per-bin cluster assignments (optimal K)
-    bulk.seg                       # per-cluster summary statistics (optimal K)
-    labels/
-      bulk<K>.bbc                  # per-bin assignments for each swept K
-      bulk<K>.seg                  # per-cluster summary for each swept K
-    cluster_infos/                 # per-K cluster-label TSVs
-    plots/                         # ELBO traces, RDR-BAF scatter, model score
-    model_scores.tsv               # BIC and ICL scores across K
-  results/                         # compute-cn output
-    best.bbc.ucn                   # model-selected CN solution (per-bin)
-    best.seg.ucn                   # model-selected CN solution (per-cluster)
-    chosen.<ploidy>.bbc.ucn        # best-n solution per ploidy (per-bin)
-    chosen.<ploidy>.seg.ucn        # best-n solution per ploidy (per-cluster)
-    results.<ploidy>.n*.bbc.ucn.tsv  # every (ploidy, n) solution (per-bin)
-    results.<ploidy>.n*.seg.ucn.tsv  # every (ploidy, n) solution (per-cluster)
-    gammas.tsv                     # RDR scaling factors per sample and ploidy
-    summary.tsv                    # fit/regularization metrics per solution
-    plots/
-      scaling_2d.pdf               # RDR-vs-BAF scaling diagnostic
-      model_selection.pdf          # Pareto front + elbow/BIC selection page
-      <ploidy>_n*/                 # per-solution CN plots
-  logs/                            # Snakemake log_dir
-    cluster_bins.log
-    compute_cn.log
-    cluster_bins.benchmark.tsv     # wall time, CPU, peak memory
-    compute_cn.benchmark.tsv
+<bb_dir>/
+  bb.tsv.gz         # BED format bin meta-informations, one row per bin, aligned with matrix rows.
+                    #   columns: #CHR, START, END, region_id, switchprobs, #SNPS
+  sample_ids.tsv    # dataset meta-informations, one row per sample, aligned with matrix columns.
+                    #   columns: SAMPLE, sample_type (normal|tumor), [assay_type]
+  bb.rdr.npz        # (bins, tumor samples) float  - NumPy format, read-depth ratio, tumor samples only
+  bb.depth.npz      # (bins, samples) float        - NumPy format, read depth, all samples
+  bb.Aallele.npz    # (bins, samples) int          - NumPy format, A-haplotype allele counts
+  bb.Ballele.npz    # (bins, samples) int          - NumPy format, B-haplotype allele counts
+  bb.Tallele.npz    # (bins, samples) int          - NumPy format, total allele counts
 ```
 
-The final model-selected outputs are `results/best.bbc.ucn` and `results/best.seg.ucn`
-(these are the Snakemake workflow targets). `compute-cn` produces its own plots under
-`results/plots/`; the standalone `hatchet plot-cn` command can regenerate or customize them.
+`sample_ids.tsv` columns (one row per sample; row order defines the matrix column order):
 
-## Parameter Reference
+| Column | Required | Description |
+|---|---|---|
+| `SAMPLE` | yes | Sample name; also the matrix column label |
+| `sample_type` | yes | `normal` or `tumor`; the tumor-only `bb.rdr.npz` holds just the `tumor` columns |
+| `assay_type` | no | Optional sequencing-assay label; samples are grouped by assay |
+
+## Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `HATCHET_DISABLE_CPP` | `0` | When set to `1`, `true`, or `yes` (case-insensitive), `cluster-bins` uses the pure-Python (Numba) HMM backend instead of the compiled C++ extension (`_hmm_cpp`). Useful for debugging or when the extension fails to build. Example: `HATCHET_DISABLE_CPP=1 hatchet cluster-bins ...` |
+
+## Parameters
 
 Defaults below are the CLI defaults from `hatchet_parser.py`. Use
 `hatchet <command> --help` for the authoritative list.
 
-## cluster-bins
+### cluster-bins
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -80,7 +81,7 @@ Defaults below are the CLI defaults from `hatchet_parser.py`. Use
 | `--skip_mhbafs` | False | Skip minor-haplotype BAF folding after decoding |
 | `--verbosity` | 0 | Verbose level: 0, 1, or 2 |
 
-## compute-cn
+### compute-cn
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -89,7 +90,7 @@ Defaults below are the CLI defaults from `hatchet_parser.py`. Use
 | `--result_dir` | *(required)* | Output directory for computed CN results |
 | `--genome_size` | *(required)* | Reference chromosome sizes file |
 | `--region_bed` | *(required)* | Reference chromosome BED file |
-| `--mode` | `ilp` | Solver mode: `ilp`, `cd`, `both`, or `cnt_cd` |
+| `--mode` | `cd` | Solver mode: `cd`, `ilp`, `both`, or `cnt_cd` (**Experimental**) |
 | `--solver` | `gurobi` | ILP solver backend: `gurobi` or `cbc` |
 | `--model_select` | `bic` | Clone-number/ploidy selection: `elbow` or `bic` |
 | `--force` | False | Re-solve even if results already exist (default: skip existing) |
@@ -101,7 +102,7 @@ Defaults below are the CLI defaults from `hatchet_parser.py`. Use
 | `--maxClone` | 4 | Maximum number of tumor clones |
 | `--diploid` | False | Solve under diploid assumption |
 | `--tetraploid` | False | Solve under tetraploid/WGD assumption |
-| `--reg_term` | `MAXCN` | Regularizer: `RAW`, `MAXCN`, `DBOX_L1`, `DBOX_L0`, `DROOT_SUM`, or `DADJ_SUM` |
+| `--reg_term` | `DBOX_L1` | Regularizer: `RAW`, `MAXCN`, `DBOX_L1`, `DBOX_L0`, `DROOT_SUM`, or `DADJ_SUM` |
 | `--reg_steps` | 15 | Number of steps in the regularization path |
 | `--reg_bound` | 0.15 | Maximum penalty weight for the regularization path |
 | `--fix_cn_dip` | None | Fix diploid cluster CN states, e.g. `6:2|0;8:3|1` |
@@ -123,13 +124,13 @@ Defaults below are the CLI defaults from `hatchet_parser.py`. Use
 | `--u_dir_alpha` | *(solver default)* | Dirichlet alpha for U initialization; lower = sparser |
 | `--u_bin_p` | *(solver default)* | `bin_dir`: per-cell Bernoulli presence probability |
 | `--solver_threads` | *(solver default)* | Max threads per solver call (Gurobi); set to 1 for parallel CD workers |
-| `--tree_file` | None | `cnt_cd`: Newick tree file; if omitted, enumerate all unlabeled shapes |
-| `--eps_fit` | 0.01 | `cnt_cd`: fit tolerance for the C-step CNT lexicographic bound |
+| `--tree_file` | None | **Experimental** (`cnt_cd`): Newick tree file; if omitted, enumerate all unlabeled shapes |
+| `--eps_fit` | 0.01 | **Experimental** (`cnt_cd`): fit tolerance for the C-step CNT lexicographic bound |
 | `--plot_ascn` | False | Plot CN profile with the allele-CN row scheme |
 | `--patient_id` | `panel` | Output filename prefix for per-(ploidy, n) plots |
 | `--verbosity` | 0 | Verbose level: 0, 1, or 2 |
 
-## plot-cn
+### plot-cn
 
 Standalone plotting command. `compute-cn` already emits plots under `results/plots/`;
 use `plot-cn` to regenerate or customize a specific solution.
@@ -154,3 +155,63 @@ use `plot-cn` to regenerate or customize a specific solution.
 | `--maxlim_fcn` | 30 | Figure axis limit for FCN |
 | `--plot_ascn` | False | Plot CN profile with the allele-CN row scheme |
 | `--patient_id` | *(none)* | Output filename prefix for combined plots |
+
+### plot-panel
+
+Composes a multi-sample CN panel from several per-sample BBC UCN solutions listed in
+a panel TSV (`--panel_file`).
+
+| Parameter | Default | Description |
+|---|---|---|
+| `--panel_file` | *(required)* | Panel TSV listing per-sample BBC UCN paths |
+| `--genome_size` | *(required)* | Reference chromosome sizes file |
+| `--region_bed` | *(required)* | Reference chromosome BED file |
+| `-o` / `--out_file` | *(required)* | Output figure path (e.g., `panel.svg`) |
+| `--width` | 20 | Panel image width |
+| `--height` | 1 | Panel image height per row |
+| `--show_clone_name` | False | Draw clone names on the CN profile |
+| `--show_prop` | False | Draw clone proportions on the CN profile |
+| `--show_ploidy` | False | Draw per-clone ploidy on the CN profile |
+| `--min_prop` | 0.01 | Hide tumor clones below this proportion from the panel |
+| `--dpi` | 300 | Image resolution |
+| `--transparent` | False | Transparent background |
+| `--title` | `panel` | Plot title |
+| `--plot_1d2d` | False | Also run `plot-cn` per panel row (requires a `PATH_TO_BBC` column) |
+| `--plot_summary` | False | Emit per-sample purity + ploidy barplots (one page per metric per `cancer_type`) |
+
+## Output
+
+```
+output/my_sample/
+  bbc/                             # cluster-bins output
+    bulk.bbc                       # per-bin cluster assignments (optimal K)
+    bulk.seg                       # per-cluster summary statistics (optimal K)
+    labels/
+      bulk<K>.bbc                  # per-bin assignments for each swept K
+      bulk<K>.seg                  # per-cluster summary for each swept K
+    cluster_infos/                 # per-K cluster-label TSVs
+    plots/                         # ELBO traces, RDR-BAF scatter, model score
+    model_scores.tsv               # BIC and ICL scores across K
+  results/                         # compute-cn output
+    best.bbc.ucn                   # model-selected CN solution (per-bin)
+    best.seg.ucn                   # model-selected CN solution (per-cluster)
+    chosen.<ploidy>.bbc.ucn        # best-n solution per ploidy (per-bin)
+    chosen.<ploidy>.seg.ucn        # best-n solution per ploidy (per-cluster)
+    results.<ploidy>.n*.bbc.ucn.tsv  # every (ploidy, n) solution (per-bin)
+    results.<ploidy>.n*.seg.ucn.tsv  # every (ploidy, n) solution (per-cluster)
+    gammas.tsv                     # RDR scaling factors per sample and ploidy
+    summary.tsv                    # fit/regularization metrics per solution
+    plots/
+      scaling_2d.pdf               # RDR-vs-BAF scaling diagnostic
+      model_selection.pdf          # Pareto front + elbow/BIC selection page
+      <ploidy>_n*/                 # per-solution CN plots
+  logs/                            # Snakemake log_dir
+    cluster_bins.log
+    compute_cn.log
+    cluster_bins.benchmark.tsv     # wall time, CPU, peak memory
+    compute_cn.benchmark.tsv
+```
+
+The final model-selected outputs are `results/best.bbc.ucn` and `results/best.seg.ucn`
+(these are the Snakemake workflow targets). `compute-cn` produces its own plots under
+`results/plots/`; the standalone `hatchet plot-cn` command can regenerate or customize them.
