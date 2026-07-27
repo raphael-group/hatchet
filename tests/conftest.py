@@ -43,7 +43,6 @@ def cluster_bins_result(synthetic_data, tmp_path_factory):
         "n_local_trials": 2,
         "niters": 5,
         "tau_iters": 1,
-        "decode_method": "viterbi",
         "force": True,
         "verbosity": 1,
     }

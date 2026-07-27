@@ -28,7 +28,6 @@ def _run_cluster_bins(bb_dir, genome_sizes, regions_bed, out_dir):
         "n_local_trials": 2,
         "niters": 5,
         "tau_iters": 1,
-        "decode_method": "viterbi",
         "force": True,
         "verbosity": 1,
     }
