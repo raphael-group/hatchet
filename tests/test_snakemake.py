@@ -7,7 +7,6 @@ import yaml
 import pandas as pd
 import pytest
 
-pytest.importorskip("snakemake", reason="snakemake is an optional workflow dependency")
 from snakemake.api import SnakemakeApi
 from snakemake.settings.types import (
     ConfigSettings,
