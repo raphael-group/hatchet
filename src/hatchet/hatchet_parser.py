@@ -315,7 +315,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         required=False,
         choices=["both", "cd", "ilp", "cnt_cd"],
         type=str,
-        help="Solver mode (default: ilp)",
+        help="Solver mode (default: cd)",
         default=argparse.SUPPRESS,
     )
 
@@ -420,7 +420,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
             "DADJ_SUM",
         ],
         type=str,
-        help="regularization term (default: MAXCN)",
+        help="regularization term (default: DBOX_L1)",
         default=argparse.SUPPRESS,
     )
     parser.add_argument(
