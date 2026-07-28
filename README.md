@@ -118,6 +118,5 @@ snakemake -p --cores <ncores> -s ./Snakefile \
 
 | Document | Description |
 |----------|-------------|
-| [docs/reference.md](docs/reference.md) | Output directory structure and (hyper-)parameter reference |
+| [docs/reference.md](docs/reference.md) | Reference manual |
 | [CHANGELOG.md](CHANGELOG.md) | Change logs |
-| [config/snakemake-hatchet.yaml](config/snakemake-hatchet.yaml) | Snakemake pipeline configuration |
