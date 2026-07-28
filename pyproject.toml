@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61", "pybind11>=2.11"]
+requires = ["setuptools>=77", "pybind11>=2.11"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,8 @@ name = "hatchet"
 dynamic = ["version"]
 requires-python = ">=3.11"
 description = "HATCHet3: Holistic Allele-specific Tumor Copy-number Heterogeneity"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 dependencies = [
     "numpy>=1.22,<3",
     "scipy>=1.15",
@@ -21,7 +23,7 @@ dependencies = [
     "pyyaml>=6",
     "psutil>=5.9",
     "snakemake>=9",
-    "cnplot @ git+https://github.com/raphael-group/cnplot.git@v0.1.0",
+    "cnplot @ git+https://github.com/raphael-group/cnplot.git@main",
 ]
 
 [project.optional-dependencies]
