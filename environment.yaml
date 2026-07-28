@@ -24,4 +24,4 @@ dependencies:
   - adjusttext>=1.3
   - pip
   - pip:
-      - git+https://github.com/raphael-group/cnplot.git@v0.1.0
+      - git+https://github.com/raphael-group/cnplot.git@main
