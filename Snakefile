@@ -84,6 +84,7 @@ rule run_cluster_bins:
         b_mfile=os.path.join(bb_dir, "bb.Ballele.npz"),
         t_mfile=os.path.join(bb_dir, "bb.Tallele.npz"),
         genome_size=config["genome_size"],
+        region_bed=config["region_bed"],
     output:
         bbc_dir=directory(bbc_dir),
         bbc=os.path.join(bbc_dir, "bulk.bbc"),
@@ -93,12 +94,15 @@ rule run_cluster_bins:
         args=cluster_bins_args,
     log:
         os.path.join(config["log_dir"], "cluster_bins.log"),
+    benchmark:
+        os.path.join(config["log_dir"], "cluster_bins.benchmark.tsv")
     shell:
         r"""
         hatchet cluster-bins \
             --bb_dir {input.bb_dir} \
             --bbc_dir {output.bbc_dir} \
             --genome_size {input.genome_size} \
+            --region_bed {input.region_bed} \
             {params.args} > {log} 2>&1
         """
 
@@ -133,6 +137,8 @@ rule run_compute_cn:
         args=compute_cn_args,
     log:
         os.path.join(config["log_dir"], "compute_cn.log"),
+    benchmark:
+        os.path.join(config["log_dir"], "compute_cn.benchmark.tsv")
     shell:
         r"""
         hatchet compute-cn \

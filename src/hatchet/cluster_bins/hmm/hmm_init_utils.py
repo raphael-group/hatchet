@@ -11,8 +11,9 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from adjustText import adjust_text
 
-logging.getLogger("adjustText").setLevel(logging.WARNING)
 from hatchet.utils import sort_chroms
+
+logging.getLogger("adjustText").setLevel(logging.WARNING)
 
 
 def _clamp_texts(texts, xlim, ylim):

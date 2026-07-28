@@ -235,7 +235,10 @@ def model_selection_ploidy(
     )
     axes = np.atleast_1d(axes)
     colors = {"diploid": "#1f77b4", "tetraploid": "#d62728"}
-    series_of = lambda neg_lls, bics: {"ll": neg_lls, "bic": bics}
+
+    def series_of(neg_lls, bics):
+        return {"ll": neg_lls, "bic": bics}
+
     all_ns = []
     for ploidy, (chosen_n, ns, neg_lls, bics) in results.items():
         c = colors.get(ploidy, "gray")

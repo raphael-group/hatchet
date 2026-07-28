@@ -107,7 +107,7 @@ def snakemake_result(tmp_path_factory):
             "dpi": 100,
             "img_type": "png",
             "transparent": False,
-            "keep_gap": False,
+            "show_gap": False,
             "tail_alpha": 0.8,
             "center_alpha": 1.0,
             "onetail_area": 0.025,

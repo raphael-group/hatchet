@@ -9,9 +9,9 @@ from hatchet.utils import (
     log_arguments,
     log_step_start,
     normalize_args,
-    read_bbc_file,
     setup_logging,
 )
+from hatchet.io_utils import read_bbc_file
 from hatchet.compute_cn.compute_cn_utils import (
     store_gammas,
     store_solve_input,
@@ -35,8 +35,7 @@ from hatchet.compute_cn.solve.inference import (
     run_full_ilp,
     run_coordinate_descent,
 )
-from hatchet.plot.plot_pool import plot_pool_cnp
-from hatchet.plot.plot_scaling_2d import plot_scaling_2d
+from hatchet.plot.plot_compute_cn import plot_pool_cnp, plot_scaling_2d
 
 
 def run(args=None):
@@ -195,6 +194,7 @@ def run(args=None):
 
             plot_pool_cnp(
                 pool_instances,
+                args["genome_size"],
                 args["region_bed"],
                 nplot_dir,
                 sel_df=sel_df,
@@ -202,7 +202,6 @@ def run(args=None):
                 title=f"{ploidy} n={n}",
                 solve_mode=solve_mode,
                 sample_names=fcn_data["sample_ids"],
-                plot_ascn=args["plot_ascn"],
                 out_name=f"{pid}.pool_{ploidy}_n{n}.pdf",
             )
 
@@ -280,9 +279,14 @@ def solve(
     base = {"diploid": 1, "tetraploid": 2}[ploidy]
     if args["purities"] is not None:
         purities = args["purities"]
-        logging.info(f"purities overridden by user: {purities}")
+        logging.info("user-specified sample purity")
     elif purities is not None:
-        logging.info(f"purities: {purities}")
+        logging.info("pre-estimated sample purity")
+    else:
+        logging.info("infer sample purity directly from deconvolution step")
+    if purities is not None:
+        for s in sorted(purities):
+            logging.info(f"  {s}: {purities[s]:.3f}")
 
     reg_term = args["reg_term"]
     reg_steps = args["reg_steps"]

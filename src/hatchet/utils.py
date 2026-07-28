@@ -5,7 +5,6 @@ import time
 import logging
 import resource
 import threading
-from collections import OrderedDict
 from importlib.resources import files
 
 import pandas as pd
@@ -16,6 +15,11 @@ try:
     import psutil
 except ImportError:
     psutil = None
+
+
+# =============================================================================
+# Configuration and argument defaults
+# =============================================================================
 
 
 def load_defaults() -> dict:
@@ -29,6 +33,13 @@ def normalize_args(args) -> dict:
     if isinstance(args, argparse.Namespace):
         args = vars(args)
     return {**load_defaults(), **args}
+
+
+# =============================================================================
+# Logging and runtime profiling
+# =============================================================================
+
+_NOISY_LOGGERS = ["adjustText", "fontTools", "matplotlib", "numba", "pyomo"]
 
 
 class _RSSSampler(threading.Thread):
@@ -109,6 +120,54 @@ def log_step_start():
     return finish
 
 
+def setup_logging(args) -> None:
+    d = vars(args) if hasattr(args, "__dict__") else args
+    verbosity = d.get("verbosity", 1)
+    level = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}.get(
+        verbosity, logging.DEBUG
+    )
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
+    )
+    for name in _NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
+def add_file_logging(out_dir: str, command: str = "hatchet") -> None:
+    """Attach a FileHandler to the root logger so logs are also written to *out_dir/<command>.log*."""
+    os.makedirs(out_dir, exist_ok=True)
+    level = (
+        logging.root.level if logging.root.level != logging.WARNING else logging.INFO
+    )
+    fh = logging.FileHandler(os.path.join(out_dir, f"{command}.log"), mode="w")
+    fh.setLevel(level)
+    fh.setFormatter(
+        logging.Formatter(
+            "%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    logging.root.addHandler(fh)
+    if logging.root.level > level:
+        logging.root.setLevel(level)
+    for name in _NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
+def log_arguments(args) -> None:
+    d = vars(args) if hasattr(args, "__dict__") else args
+    lines = "\n".join(f"  {k}: {v}" for k, v in sorted(d.items()) if k != "func")
+    logging.info(f"parsed arguments:\n{lines}")
+
+
+# =============================================================================
+# Chromosome ordering
+# =============================================================================
+
+
 def get_chr2ord(ch):
     chr2ord = {}
     for i in range(1, 23):
@@ -133,80 +192,9 @@ def sort_df_chr(df: pd.DataFrame, ch="#CHR", pos="POS"):
     return df
 
 
-def read_sample_file(sample_file: str):
-    sample_df = pd.read_table(sample_file, sep="\t")
-    sample_types = sample_df["sample_type"].tolist()
-    if "normal" in sample_types:
-        normal_idx = [i for i, t in enumerate(sample_types) if t == "normal"]
-        tumor_idx = [i for i, t in enumerate(sample_types) if t == "tumor"]
-    else:
-        normal_idx = []
-        tumor_idx = list(range(len(sample_types)))
-
-    assays = (
-        sample_df["assay_type"].tolist()
-        if "assay_type" in sample_df.columns
-        else [None] * len(sample_df)
-    )
-    normal_set, tumor_set = set(normal_idx), set(tumor_idx)
-    assay2samples = {}
-    for i, a in enumerate(assays):
-        grp = assay2samples.setdefault(a, {"normal": [], "tumor": []})
-        if i in normal_set:
-            grp["normal"].append(i)
-        if i in tumor_set:
-            grp["tumor"].append(i)
-    return sample_df, normal_idx, tumor_idx, assay2samples
-
-
-def read_genome_sizes(sz_file: str):
-    chr_sizes = OrderedDict()
-    with open(sz_file, "r") as rfd:
-        for line in rfd.readlines():
-            ch, sizes = line.strip().split()
-            chr_sizes[ch] = int(sizes)
-        rfd.close()
-    return chr_sizes
-
-
-def read_bbc_file(bbc_file: str):
-    df = pd.read_table(bbc_file, sep="\t")
-    df = sort_df_chr(df, pos="START")
-    return df
-
-
-def read_seg_ucn_file(seg_ucn_file: str):
-    segs_df = pd.read_table(seg_ucn_file, sep="\t")
-    return prepare_seg_ucn(segs_df)
-
-
-def prepare_seg_ucn(segs_df: pd.DataFrame):
-    """Add CNP/PROPS columns to a seg UCN DataFrame and return (df, clones, clone_props)."""
-    segs_df = sort_df_chr(segs_df, pos="START")
-
-    n_clones = len([cname for cname in segs_df.columns if cname.startswith("cn_")])
-    clones = ["normal"] + [f"clone{c}" for c in range(1, n_clones)]
-    segs_df.loc[:, "CNP"] = segs_df.apply(
-        func=lambda r: ";".join(r[f"cn_{c}"] for c in clones), axis=1
-    )
-    segs_df["PROPS"] = segs_df.apply(
-        func=lambda r: ";".join(str(r[f"u_{c}"]) for c in clones), axis=1
-    )
-
-    # Clone proportions are read from the first row; all rows share the same
-    # per-sample proportions for a given clone, so any row gives the same result.
-    clone_props = segs_df[[f"u_{clone}" for clone in clones]].iloc[0].tolist()
-    return segs_df, clones, clone_props
-
-
-def read_region_bed(bed_file: str, names=["#CHR", "START", "END", "NAME"]):
-    regions = pd.read_table(
-        bed_file,
-        sep="\t",
-        header=None,
-        names=names,
-    )
-    return regions
+# =============================================================================
+# Segment construction
+# =============================================================================
 
 
 def build_seg_from_bbc(df: pd.DataFrame, regions: pd.DataFrame) -> pd.DataFrame:
@@ -283,6 +271,11 @@ def build_seg_from_bbc(df: pd.DataFrame, regions: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+# =============================================================================
+# Copy-number ploidy
+# =============================================================================
+
+
 def compute_clone_ploidies(segs: pd.DataFrame, clones: list):
     """Length-weighted average total CN per clone.
 
@@ -320,47 +313,23 @@ def compute_tumor_ploidy(segs: pd.DataFrame, clones: list, tumor_purity: float):
     return rho
 
 
-_NOISY_LOGGERS = ["adjustText", "fontTools", "matplotlib", "numba", "pyomo"]
+def compute_expected_baf_fcn(cns, props):
+    """Expected fractional copy numbers for one joint copy-number state.
 
+    Args:
+        cns: List of per-clone (a, b) allele copy numbers.
+        props: Per-clone proportions aligned to ``cns``.
 
-def setup_logging(args) -> None:
-    d = vars(args) if hasattr(args, "__dict__") else args
-    verbosity = d.get("verbosity", 1)
-    level = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}.get(
-        verbosity, logging.DEBUG
-    )
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        force=True,
-    )
-    for name in _NOISY_LOGGERS:
-        logging.getLogger(name).setLevel(logging.WARNING)
-
-
-def add_file_logging(out_dir: str, command: str = "hatchet") -> None:
-    """Attach a FileHandler to the root logger so logs are also written to *out_dir/<command>.log*."""
-    os.makedirs(out_dir, exist_ok=True)
-    level = (
-        logging.root.level if logging.root.level != logging.WARNING else logging.INFO
-    )
-    fh = logging.FileHandler(os.path.join(out_dir, f"{command}.log"), mode="w")
-    fh.setLevel(level)
-    fh.setFormatter(
-        logging.Formatter(
-            "%(asctime)s.%(msecs)03d %(levelname)s %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-    )
-    logging.root.addHandler(fh)
-    if logging.root.level > level:
-        logging.root.setLevel(level)
-    for name in _NOISY_LOGGERS:
-        logging.getLogger(name).setLevel(logging.WARNING)
-
-
-def log_arguments(args) -> None:
-    d = vars(args) if hasattr(args, "__dict__") else args
-    lines = "\n".join(f"  {k}: {v}" for k, v in sorted(d.items()) if k != "func")
-    logging.info(f"parsed arguments:\n{lines}")
+    Returns:
+        (y_fcn_a, y_fcn_b, y_fcn, y_baf): the expected fractional copy number of
+        allele A, of allele B, the total fractional copy number, and the B-allele
+        frequency.
+    """
+    assert len(cns) == len(props)
+    A = np.array([x[0] for x in cns])
+    B = np.array([x[1] for x in cns])
+    y_fcn_a = np.sum(A * props)
+    y_fcn_b = np.sum(B * props)
+    y_fcn = y_fcn_a + y_fcn_b
+    y_baf = np.sum(B * props) / y_fcn
+    return y_fcn_a, y_fcn_b, y_fcn, y_baf

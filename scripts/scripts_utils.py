@@ -1,11 +1,6 @@
-import gzip
-import subprocess
-from io import StringIO
 from collections import OrderedDict
 
 import pandas as pd
-import numpy as np
-import pysam
 
 
 def get_ord2chr(ch="chr"):

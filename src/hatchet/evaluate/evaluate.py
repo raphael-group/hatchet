@@ -6,11 +6,9 @@ import pandas as pd
 
 from hatchet.utils import (
     normalize_args,
-    read_seg_ucn_file,
-    read_genome_sizes,
-    read_region_bed,
     setup_logging,
 )
+from hatchet.io_utils import read_seg_ucn_file
 from hatchet.evaluate.evaluate_utils import (
     read_snv_vcf,
     read_snv_tsv,
@@ -68,7 +66,8 @@ def run(args=None):
         if result_dir is None:
             raise ValueError("Either --seg or --result_dir must be provided")
         seg_file = os.path.join(result_dir, "best.seg.ucn")
-    segs, clones, clone_props = read_seg_ucn_file(seg_file)
+    segs, clones = read_seg_ucn_file(seg_file)
+    clone_props = segs[[f"u_{c}" for c in clones]].iloc[0].tolist()
 
     samples = segs["SAMPLE"].unique().tolist()
 
@@ -121,10 +120,20 @@ def run(args=None):
         genome_size = args["genome_size"]
         region_bed = args["region_bed"]
         if genome_size is not None:
-            from hatchet.plot.plot_utils import get_expected_baf_fcn
+            from hatchet.utils import compute_expected_baf_fcn
+            from cnplot import GenomeAxis, read_chr_sizes
 
-            chrom_sizes = read_genome_sizes(genome_size)
-            regions = read_region_bed(region_bed)
+            # Axis restricted to the chromosomes present in the segmentation.
+            seg_chrs = segs["#CHR"].unique().tolist()
+            axis_excluded = [
+                c for c in read_chr_sizes(genome_size) if c not in seg_chrs
+            ]
+            genome_axis = GenomeAxis(
+                region_bed,
+                genome_size,
+                excluded_chroms=axis_excluded,
+                collapse_gaps=True,
+            )
             for sample in samples:
                 sample_df = all_df[all_df["SAMPLE"] == sample]
                 if len(sample_df) == 0:
@@ -139,10 +148,10 @@ def run(args=None):
                 for idx, seg in segs_plot.iterrows():
                     a_b = [seg[col].split("|") for col in cn_cols]
                     states = [(int(a), int(b)) for a, b in a_b]
-                    _, _, _, exp_baf = get_expected_baf_fcn(states, clone_props)
+                    _, _, _, exp_baf = compute_expected_baf_fcn(states, clone_props)
                     segs_plot.at[idx, "predicted_VAF"] = exp_baf
                 out_plot = os.path.join(out_dir, f"{sample}.vaf_1d.pdf")
-                plot_vaf_1d(sample_df, segs_plot, chrom_sizes, regions, out_plot)
+                plot_vaf_1d(sample_df, segs_plot, genome_axis, out_plot)
 
     if summary_rows:
         summary_df = pd.DataFrame(summary_rows)

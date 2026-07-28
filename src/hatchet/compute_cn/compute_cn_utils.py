@@ -5,7 +5,8 @@ import logging
 import pandas as pd
 import numpy as np
 
-from hatchet.utils import read_region_bed, build_seg_from_bbc
+from hatchet.utils import build_seg_from_bbc
+from hatchet.io_utils import read_region_bed
 from hatchet.plot import plot_cn as _plot_cn
 
 
@@ -515,13 +516,12 @@ def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy, name=None):
             "dpi": 150,
             "img_type": "pdf",
             "transparent": False,
-            "keep_gap": False,
+            "show_gap": False,
             "tail_alpha": 0.8,
             "center_alpha": 1.0,
             "onetail_area": 0.025,
             "maxlim_fcn": 30,
             "ploidy": ploidy,
-            "plot_ascn": args["plot_ascn"],
         }
     )
 

@@ -147,7 +147,7 @@ def evaluate_snvs(segs, clones, clone_props, snv_df, gamma=0.05):
     for _, row in snv_df.iterrows():
         seg_idx = int(row["SEG_IDX"])
         seg = segs.iloc[seg_idx]
-        cns = seg["CNP"].split(";")
+        cns = [str(seg[f"cn_{c}"]) for c in clones]
         obs_vaf = row["observed_VAF"]
 
         best, pred_vaf, ccf, allele = estimate_vaf(obs_vaf, clones, cns, clone_props)
@@ -175,7 +175,7 @@ def evaluate_snvs(segs, clones, clone_props, snv_df, gamma=0.05):
                 "mutated_copies": ",".join(map(str, best)),
                 "allele": allele,
                 "CCF": round(ccf, 4),
-                "CNP": seg["CNP"],
+                "CNP": ";".join(cns),
                 "is_subclonal": is_subclonal,
                 "is_explained": explained,
             }
@@ -184,85 +184,26 @@ def evaluate_snvs(segs, clones, clone_props, snv_df, gamma=0.05):
     return pd.DataFrame(results)
 
 
-def _prepare_seg_for_cnp(segs):
-    """Build CNP and PROPS columns from cn_*/u_* columns in seg.ucn format."""
-    cn_cols = sorted(
-        [c for c in segs.columns if c.startswith("cn_")],
-        key=lambda c: (0 if c == "cn_normal" else 1, c),
-    )
-    u_cols = sorted(
-        [c for c in segs.columns if c.startswith("u_")],
-        key=lambda c: (0 if c == "u_normal" else 1, c),
-    )
-    seg_plot = segs.copy()
-    seg_plot["CNP"] = seg_plot.apply(
-        lambda r: ";".join(str(r[c]) for c in cn_cols), axis=1
-    )
-    seg_plot["PROPS"] = seg_plot.apply(
-        lambda r: ";".join(str(r[c]) for c in u_cols), axis=1
-    )
-    return seg_plot
+def plot_vaf_1d(snv_result, segs, genome_axis, out_file, dpi=500, transparent=False):
+    """Plot observed VAF along the genome with segment-level expected VAF bars and CNP profile.
 
-
-def _compute_abs_coords(regions, chrs):
-    """Compute absolute coordinates using the same system as plot_cnv_profile (start from 0)."""
-    regions_chs = regions.groupby(by="#CHR", sort=False)
-    ch_offset = 0
-    ch_coords = []
-    seg_coords = []
-    # For each chromosome, map (wl_start, wl_end) → (abs_start, abs_end)
-    intervals = {}  # {chr: [(wl_start, wl_end, abs_start, abs_end), ...]}
-    for ch in chrs:
-        ch_coords.append(ch_offset)
-        regions_ch = regions_chs.get_group(ch)
-        ch_intervals = []
-        for si in range(len(regions_ch)):
-            wl = regions_ch.iloc[si]
-            wl_start, wl_end = wl["START"], wl["END"]
-            abs_start = ch_offset
-            abs_end = ch_offset + (wl_end - wl_start)
-            ch_intervals.append((wl_start, wl_end, abs_start))
-            ch_offset = abs_end
-            if si < len(regions_ch) - 1:
-                seg_coords.append(ch_offset)
-        intervals[ch] = ch_intervals
-    ch_coords.append(ch_offset)
-    return intervals, ch_coords, seg_coords, ch_offset
-
-
-def plot_vaf_1d(
-    snv_result, segs, chrom_sizes, regions, out_file, dpi=500, transparent=False
-):
-    """Plot observed VAF along the genome with segment-level expected VAF bars and CNP profile."""
+    The SNV scatter, the expected-VAF bars, and the CNP profile are all placed
+    through ``genome_axis``, so they share one coordinate system by construction.
+    """
     import matplotlib.pyplot as plt
     from matplotlib.collections import LineCollection
-    from hatchet.plot.plot_cn_utils import plot_cnv_profile, plot_cnv_legend
+    from cnplot import draw_chr_boundaries, draw_segment_boundaries, plot_cnv_profile
 
     seg_chrs = segs["#CHR"].unique().tolist()
+    segs = segs.reset_index(drop=True)
 
     snv = snv_result.copy()
     snv = snv[snv["#CHR"].isin(seg_chrs)].reset_index(drop=True)
-    chr_rank = {c: i for i, c in enumerate(seg_chrs)}
-    snv["_chr_rank"] = snv["#CHR"].map(chr_rank)
-    snv = (
-        snv.sort_values(["_chr_rank", "POS"])
-        .drop(columns=["_chr_rank"])
-        .reset_index(drop=True)
-    )
 
-    # Compute absolute coordinates matching plot_cnv_profile
-    intervals, ch_coords, seg_coords, genome_end = _compute_abs_coords(
-        regions, seg_chrs
-    )
-
-    def pos_to_abs(chrom, pos):
-        for wl_start, wl_end, abs_start in intervals.get(chrom, []):
-            if wl_start <= pos < wl_end:
-                return abs_start + (pos - wl_start)
-        return None
-
-    snv["abs_pos"] = snv.apply(lambda r: pos_to_abs(r["#CHR"], r["POS"]), axis=1)
+    # Place SNV sites on the shared axis; drop those outside a drawn segment.
+    snv["abs_pos"] = genome_axis.build_coordinates(snv[["#CHR", "POS"]]).positions
     snv = snv.dropna(subset=["abs_pos"]).reset_index(drop=True)
+    genome_end = genome_axis.chr_end
 
     # Color: clonal explained (blue), subclonal explained (green), unexplained (red)
     def _snv_color(row):
@@ -334,20 +275,16 @@ def plot_vaf_1d(
     # Draw segment-level expected VAF bars
     exp_col = "predicted_VAF" if "predicted_VAF" in segs.columns else None
     if exp_col is not None:
+        seg_bc = genome_axis.build_coordinates(segs[["#CHR", "START", "END"]])
         seg_lines = []
         seg_lines_comp = []
-        for _, seg in segs.iterrows():
-            ch = seg["#CHR"]
-            for wl_start, wl_end, abs_start in intervals.get(ch, []):
-                s0 = max(seg["START"], wl_start)
-                s1 = min(seg["END"], wl_end)
-                if s0 >= s1:
-                    continue
-                x0 = abs_start + (s0 - wl_start)
-                x1 = abs_start + (s1 - wl_start)
-                baf = seg[exp_col]
-                seg_lines.append([(x0, baf), (x1, baf)])
-                seg_lines_comp.append([(x0, 1.0 - baf), (x1, 1.0 - baf)])
+        for i in range(len(segs)):
+            x0, x1 = seg_bc.starts[i], seg_bc.ends[i]
+            if not (np.isfinite(x0) and np.isfinite(x1)) or x0 >= x1:
+                continue
+            baf = segs.iloc[i][exp_col]
+            seg_lines.append([(x0, baf), (x1, baf)])
+            seg_lines_comp.append([(x0, 1.0 - baf), (x1, 1.0 - baf)])
         if seg_lines:
             ax_vaf.add_collection(
                 LineCollection(
@@ -366,19 +303,11 @@ def plot_vaf_1d(
                 )
             )
 
-    # Chromosome boundaries and labels
-    ax_vaf.vlines(
-        ch_coords,
-        ymin=0,
-        ymax=1,
-        transform=ax_vaf.get_xaxis_transform(),
-        linewidth=1,
-        colors="k",
-    )
-    for sc in seg_coords:
-        ax_vaf.axvline(sc, color="k", linewidth=1, linestyle="dashed", ymin=0, ymax=1)
+    # Chromosome boundaries and interior (collapsed-gap) markers
+    draw_chr_boundaries(ax_vaf, genome_axis, color="k", linewidth=1)
+    draw_segment_boundaries(ax_vaf, genome_axis, color="k", linewidth=1, alpha=1.0)
 
-    ax_vaf.set_xlim(0, genome_end)
+    ax_vaf.set_xlim(genome_axis.ch_coords[0], genome_end)
     ax_vaf.set_ylim(-0.01, 1.05)
     ax_vaf.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
     ax_vaf.set_ylabel("VAF")
@@ -386,18 +315,14 @@ def plot_vaf_1d(
     ax_vaf.grid(False)
 
     # CNP profile below (same coordinate system, starts from 0)
-    seg_plot = _prepare_seg_for_cnp(segs)
     plot_cnv_profile(
         ax_cnp,
-        seg_plot,
-        regions,
-        width=20,
-        height=1,
+        segs,
+        genome_axis,
+        ax_leg=ax_leg,
         plot_chrname=True,
-        show_clone_name=True,
         show_prop=True,
     )
-    plot_cnv_legend(ax_leg)
 
     n_explained = int(snv["is_explained"].sum())
     n_total = len(snv)
@@ -427,12 +352,9 @@ def pool_sol_to_seg(pool_tsv, bbc_df):
     )
     clones = [c.replace("cn_", "") for c in cn_cols]
 
-    # Build CNP string per cluster per sample
-    pool["CNP"] = pool.apply(lambda row: ";".join(str(row[c]) for c in cn_cols), axis=1)
-
-    # Merge with BBC to get per-bin coordinates
+    # Merge the per-cluster cn_/u_ columns onto the BBC's per-bin coordinates
     merged = bbc_df[["#CHR", "START", "END", "SAMPLE", "CLUSTER"]].merge(
-        pool[["CLUSTER", "SAMPLE", "CNP"] + u_cols],
+        pool[["CLUSTER", "SAMPLE"] + cn_cols + u_cols],
         on=["CLUSTER", "SAMPLE"],
         how="inner",
     )

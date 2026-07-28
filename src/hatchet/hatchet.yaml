@@ -61,7 +61,7 @@ maxClone: 6
 diploid: false
 tetraploid: false
 # reg_term: RAW | MAXCN | DBOX_L1 | DBOX_L0 | DROOT_SUM | DADJ_SUM
-reg_term: MAXCN
+reg_term: DBOX_L1
 reg_steps: 15
 reg_bound: 0.15
 fix_cn_dip: null
@@ -94,12 +94,11 @@ dpi: 300
 # img_type: pdf | png | svg
 img_type: png
 transparent: false
-keep_gap: false
+show_gap: false
 tail_alpha: 0.8
 center_alpha: 1.0
 onetail_area: 0.025
 maxlim_fcn: 30
-plot_ascn: false
 patient_id: panel
 # combined 1D figure width (inches)
 plot_row_width: 25
@@ -111,26 +110,6 @@ plot_inter_sample_hspace: 0.35
 plot_intra_sample_hspace: 0.12
 # vertical gap between last BAF row and CNP profile
 plot_baf_cnp_hspace: 0.3
-# vertical gap between CNP profile and ASCN legend
-plot_cnp_legend_hspace: 0.15
-# font size of the per-sample title above each FCN row
-plot_title_fontsize: 14
-# font size of FCN / mhBAF y-axis labels
-plot_ylabel_fontsize: 12
-# font size of chromosome name labels on BAF row
-plot_chrname_fontsize: 13
-# font size of clone-name and chrname on CNP profile
-plot_cnp_label_fontsize: 11
-# font size of A / B sublabel on CNP minor y-ticks
-plot_cnp_ab_fontsize: 9
-# ASCN legend: per-state box width (axis units)
-plot_legend_box_w: 1.2
-# ASCN legend: per-state box height (axis units)
-plot_legend_box_h: 0.4
-# ASCN legend: tick mark length below each box
-plot_legend_tick_len: 0.08
-# ASCN legend: label font size
-plot_legend_label_fontsize: 12
 
 ##################################################
 # plot-panel
@@ -138,6 +117,7 @@ width: 20
 height: 1
 show_clone_name: false
 show_prop: false
+show_ploidy: false
 title: panel
 plot_1d2d: false
 plot_summary: false

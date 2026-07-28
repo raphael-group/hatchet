@@ -1,0 +1,42 @@
+##################################################
+# HATCHet3 Snakmake YAML configuration file
+#
+# See docs/reference.md for full descriptions
+##################################################
+
+# Output paths (relative to snakemake --directory)
+bbc_dir: "bbc"
+result_dir: "results"
+plot_dir: "summary"
+log_dir: "logs"
+
+##################################################
+# Inputs
+patient_id: sample
+bb_dir: "/path/to/bb"
+
+##################################################
+# Reference, see data/reference.
+genome_size: /path/to/genome.sizes
+region_bed: /path/to/regions.bed
+
+##################################################
+cluster-bins:
+  minK: 3
+  maxK: 30
+  t: 1.0e-6
+
+##################################################
+compute-cn:
+  # cluster-bins K to use: null = model-selected bulk.bbc/seg, or an int for labels/bulk<k>
+  k: null
+  # solver mode: ilp | cd | both | cnt_cd
+  mode: cd
+  diploid: true
+  tetraploid: true
+  minClone: 2
+  maxClone: 4
+
+##################################################
+# Resources
+threads: 4

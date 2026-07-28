@@ -1,26 +1,36 @@
 [build-system]
-requires = ["setuptools>=61", "pybind11>=2.11"]
+requires = ["setuptools>=77", "pybind11>=2.11"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hatchet"
-version = "3.0.0"
-requires-python = ">=3.10"
+dynamic = ["version"]
+requires-python = ">=3.11"
 description = "HATCHet3: Holistic Allele-specific Tumor Copy-number Heterogeneity"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 dependencies = [
-    "numpy",
-    "scipy",
-    "pandas",
-    "matplotlib",
-    "seaborn",
-    "scikit-learn",
-    "numba",
-    "kneed",
-    "pyomo",
-    "adjustText",
-    "pyyaml",
-    "psutil",
+    "numpy>=1.22,<3",
+    "scipy>=1.15",
+    "pandas>=2,<3",
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "scikit-learn>=1.6",
+    "numba>=0.61",
+    "kneed>=0.8",
+    "pyomo>=6.9",
+    "adjustText>=1.3",
+    "pyyaml>=6",
+    "psutil>=5.9",
+    "snakemake>=9",
+    "cnplot @ git+https://github.com/raphael-group/cnplot.git@main",
 ]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-cov>=5"]
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -33,3 +43,8 @@ hatchet = ["hatchet.yaml"]
 
 [project.scripts]
 hatchet = "hatchet.__main__:main"
+
+[tool.ruff.lint]
+# Pin the classic default rule set so lint is deterministic across ruff versions
+# (newer ruff releases expand the implicit default select).
+select = ["E4", "E7", "E9", "F"]

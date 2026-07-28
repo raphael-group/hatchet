@@ -1,12 +1,10 @@
 import os
 import sys
-import argparse
 import subprocess
 
 import pandas as pd
-import numpy as np
 
-from scripts_utils import *
+from scripts_utils import read_seg_ucn_file
 
 """
 Liftover HATCHet3 copy-number profile seg.ucn/bbc.ucn to different reference version

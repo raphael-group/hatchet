@@ -3,25 +3,25 @@ channels:
   - conda-forge
   - bioconda
   - gurobi
-  - defaults
-  - dranew
+  - nodefaults
 dependencies:
-  - python>=3.10
-  - snakemake
-  - numpy
-  - scipy
-  - pandas
-  - scikit-learn
-  - matplotlib-base
-  - seaborn
-  - pyomo
-  - coincbc
+  - python>=3.11,<3.13
+  - snakemake>=9
+  - numpy>=1.22
+  - scipy>=1.15
+  - pandas>=2,<3
+  - scikit-learn>=1.6
+  - matplotlib-base>=3.9
+  - seaborn>=0.13
+  - pyomo>=6.9
+  - coincbc>=2.10
   - gurobi>=13.0.0
+  - kneed>=0.8
+  - numba>=0.61
+  - pybind11>=2.11
+  - boost-cpp>=1.85
+  - cxx-compiler>=1.7
+  - adjusttext>=1.3
   - pip
-  - kneed
-  - numba
-  - pybind11
-  - boost-cpp
-  - llvm-openmp
-  - cxx-compiler
-  - adjusttext
+  - pip:
+      - git+https://github.com/raphael-group/cnplot.git@main

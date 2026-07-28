@@ -57,8 +57,8 @@ class CloneTree:
         def _prop(v):
             if v in props:
                 return props[v]
-            l, r = self.children[v]
-            props[v] = _prop(l) + _prop(r)
+            lc, rc = self.children[v]
+            props[v] = _prop(lc) + _prop(rc)
             return props[v]
 
         for v in self.internal_nodes:
@@ -270,7 +270,7 @@ def enumerate_binary_trees(n_leaves: int) -> list[CloneTree]:
         if tumor_root != target_tumor_root:
             # Swap tumor_root and target in the children dict
             swapped = {}
-            for p, (l, r) in tumor_children.items():
+            for p, (lc, rc) in tumor_children.items():
                 pp = (
                     target_tumor_root
                     if p == tumor_root
@@ -278,13 +278,13 @@ def enumerate_binary_trees(n_leaves: int) -> list[CloneTree]:
                 )
                 ll = (
                     target_tumor_root
-                    if l == tumor_root
-                    else (tumor_root if l == target_tumor_root else l)
+                    if lc == tumor_root
+                    else (tumor_root if lc == target_tumor_root else lc)
                 )
                 rr = (
                     target_tumor_root
-                    if r == tumor_root
-                    else (tumor_root if r == target_tumor_root else r)
+                    if rc == tumor_root
+                    else (tumor_root if rc == target_tumor_root else rc)
                 )
                 swapped[pp] = (ll, rr)
             tumor_children = swapped
@@ -298,11 +298,11 @@ def enumerate_binary_trees(n_leaves: int) -> list[CloneTree]:
         # Build parent map and edge list
         parent = {}
         edges = []
-        for p, (l, r) in children.items():
-            parent[l] = p
-            parent[r] = p
-            edges.append((p, l))
-            edges.append((p, r))
+        for p, (lc, rc) in children.items():
+            parent[lc] = p
+            parent[rc] = p
+            edges.append((p, lc))
+            edges.append((p, rc))
 
         leaves = list(range(1, n + 1))
         tumor_leaves = list(range(2, n + 1))
@@ -431,10 +431,10 @@ def parse_newick(newick_str: str) -> CloneTree:
     target = 2 * n - 2
     if tumor_root != target:
         swapped = {}
-        for p, (l, r) in _children.items():
+        for p, (lc, rc) in _children.items():
             pp = target if p == tumor_root else (tumor_root if p == target else p)
-            ll = target if l == tumor_root else (tumor_root if l == target else l)
-            rr = target if r == tumor_root else (tumor_root if r == target else r)
+            ll = target if lc == tumor_root else (tumor_root if lc == target else lc)
+            rr = target if rc == tumor_root else (tumor_root if rc == target else rc)
             swapped[pp] = (ll, rr)
         _children = swapped
         tumor_root = target
@@ -446,11 +446,11 @@ def parse_newick(newick_str: str) -> CloneTree:
 
     parent = {}
     edges = []
-    for p, (l, r) in children.items():
-        parent[l] = p
-        parent[r] = p
-        edges.append((p, l))
-        edges.append((p, r))
+    for p, (lc, rc) in children.items():
+        parent[lc] = p
+        parent[rc] = p
+        edges.append((p, lc))
+        edges.append((p, rc))
 
     return CloneTree(
         n=n,

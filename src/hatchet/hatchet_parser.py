@@ -225,6 +225,12 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         help="Reference chromosome sizes file (e.g., hg19.chrom.sizes)",
     )
     parser.add_argument(
+        "--region_bed",
+        required=True,
+        type=str,
+        help="Reference chromosome BED file",
+    )
+    parser.add_argument(
         "--verbosity",
         required=False,
         default=argparse.SUPPRESS,
@@ -309,7 +315,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         required=False,
         choices=["both", "cd", "ilp", "cnt_cd"],
         type=str,
-        help="Solver mode (default: ilp)",
+        help="Solver mode (default: cd)",
         default=argparse.SUPPRESS,
     )
 
@@ -414,7 +420,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
             "DADJ_SUM",
         ],
         type=str,
-        help="regularization term (default: MAXCN)",
+        help="regularization term (default: DBOX_L1)",
         default=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -625,13 +631,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
         help="Reference chromosome BED file",
     )
     parser.add_argument(
-        "--plot_ascn",
-        required=False,
-        action=argparse.BooleanOptionalAction,
-        default=argparse.SUPPRESS,
-        help="plot CN profile with allele CN row scheme (default: False)",
-    )
-    parser.add_argument(
         "--patient_id",
         required=False,
         default=argparse.SUPPRESS,
@@ -752,11 +751,11 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         help="transparent background (default: False)",
     )
     parser.add_argument(
-        "--keep_gap",
+        "--show_gap",
         required=False,
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=argparse.SUPPRESS,
-        help="keep gap region in the plot (default: False)",
+        help="show gap regions (uncollapsed) in the plot (default: False)",
     )
     parser.add_argument(
         "--tail_alpha",
@@ -799,13 +798,6 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         type=str,
         help="Output filename prefix for combined plots (e.g. 'LuCaP173')",
     )
-    parser.add_argument(
-        "--plot_ascn",
-        required=False,
-        action=argparse.BooleanOptionalAction,
-        default=argparse.SUPPRESS,
-        help="plot CN profile with allele CN row scheme (default: False)",
-    )
     return parser
 
 
@@ -846,16 +838,30 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--show_clone_name",
         required=False,
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=argparse.SUPPRESS,
         help="plot clone name (default: False)",
     )
     parser.add_argument(
         "--show_prop",
         required=False,
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         default=argparse.SUPPRESS,
         help="plot clone proportion (default: False)",
+    )
+    parser.add_argument(
+        "--show_ploidy",
+        required=False,
+        action=argparse.BooleanOptionalAction,
+        default=argparse.SUPPRESS,
+        help="plot per-clone ploidy on the CNP profile (default: False)",
+    )
+    parser.add_argument(
+        "--min_prop",
+        required=False,
+        default=argparse.SUPPRESS,
+        type=float,
+        help="hide tumor clones below this proportion from the panel (default: 0.01)",
     )
     parser.add_argument(
         "--dpi",
@@ -899,13 +905,6 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         default=argparse.SUPPRESS,
         help="emit per-sample tumor purity + ploidy barplots; one page per "
         "metric per cancer_type (or single page per metric if column absent)",
-    )
-    parser.add_argument(
-        "--plot_ascn",
-        required=False,
-        action=argparse.BooleanOptionalAction,
-        default=argparse.SUPPRESS,
-        help="plot CN profile with allele CN row scheme (default: False)",
     )
     return parser
 
