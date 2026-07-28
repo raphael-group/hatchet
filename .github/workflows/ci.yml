@@ -29,8 +29,6 @@ jobs:
             label: linux-x86_64
           - os: macos-14
             label: macos-arm64
-          - os: macos-13
-            label: macos-x86_64
     steps:
       - uses: actions/checkout@v4
 
