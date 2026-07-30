@@ -33,14 +33,12 @@ def run(args=None):
     plot_1d2d = args["plot_1d2d"]
     plot_summary = args["plot_summary"]
 
-    row_width = args["width"]
-    row_height = args["height"]
+    row_width = args["plot_panel_width"]
+    row_height = args["plot_panel_height"]
     show_clone_name = args["show_clone_name"]
-    show_prop = args["show_prop"]
     show_ploidy = args["show_ploidy"]
-    min_prop = args["min_prop"]
-    dpi = args["dpi"]
-    transparent = args["transparent"]
+    dpi = args["plot_dpi"]
+    transparent = args["plot_transparent"]
 
     use_editable_fonts()
 
@@ -103,21 +101,10 @@ def run(args=None):
             summary_rows.append((cancer_type, label, sid, purity, ploidy))
             logging.info(f"{label} / {sid}: purity={purity}, ploidy={ploidy}")
 
-        # Display clone names passed to cnplot via `clones=`: "Clone i" / "i", with
-        # the per-sample proportion inlined as "i (xx.xx%)" when show_prop so the
-        # label stays one line and aligns with its y-tick. cnplot reads the cn_/u_
-        # columns by that name, so rename them (and the ploidy keys) to match.
-        props0 = seg_info[[f"u_{c}" for c in clones]].iloc[0]
-        disp = {}
-        for c in clones[1:]:
-            if props0[f"u_{c}"] < min_prop:
-                continue  # hide clones below the display threshold
-            name = (
-                f"Clone {c[len('clone') :]}" if show_clone_name else c[len("clone") :]
-            )
-            if show_prop:
-                name = f"{name} ({props0[f'u_{c}'] * 100:.2f}%)"
-            disp[c] = name
+        disp = {
+            c: f"Clone {c[len('clone') :]}" if show_clone_name else c[len("clone") :]
+            for c in clones[1:]
+        }
         seg_disp = seg_info.rename(
             columns={f"cn_{c}": f"cn_{d}" for c, d in disp.items()}
             | {f"u_{c}": f"u_{d}" for c, d in disp.items()}
@@ -133,7 +120,7 @@ def run(args=None):
             ax_leg=(ax_leg if i == nrows - 1 else None),
             plot_chrname=(i == 0),
             clones=list(disp.values()),
-            show_prop=False,  # proportion is inlined into the clone name
+            show_prop=False,
             clone_ploidies=clone_ploidies,
         )
         main_axes[i].set_ylabel(label, rotation=0, ha="right", va="center")
@@ -149,6 +136,7 @@ def run(args=None):
         from hatchet.plot.plot_cn import run as run_plot_cn
 
         base_dir = os.path.dirname(os.path.abspath(out_file)) or "."
+        style_args = {k: v for k, v in args.items() if k.startswith("plot_")}
         for _, row in panel.iterrows():
             bbc_path = row["PATH_TO_BBC"]
             seg_path = row["PATH_TO_SEG"]
@@ -174,14 +162,7 @@ def run(args=None):
                     "region_bed": region_bed,
                     "plot_dir": plot_dir,
                     "ploidy": ploidy,
-                    "dpi": dpi,
-                    "img_type": "png",
-                    "transparent": transparent,
-                    "show_gap": False,
-                    "tail_alpha": 0.8,
-                    "center_alpha": 1.0,
-                    "onetail_area": 0.025,
-                    "maxlim_fcn": 30,
+                    **style_args,
                 }
             )
 

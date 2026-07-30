@@ -20,8 +20,6 @@ from hatchet.compute_cn.compute_cn_utils import (
     build_data,
     compute_fractional_cn,
     load_pool_from_disk,
-    plot_pareto_pdf,
-    run_plot_cn,
     segmentation,
 )
 from hatchet.compute_cn.model_select import (
@@ -35,7 +33,12 @@ from hatchet.compute_cn.solve.inference import (
     run_full_ilp,
     run_coordinate_descent,
 )
-from hatchet.plot.plot_compute_cn import plot_pool_cnp, plot_scaling_2d
+from hatchet.plot.plot_compute_cn import (
+    plot_pareto_curve,
+    plot_pool_cnp,
+    plot_scaling_2d,
+    run_plot_cn,
+)
 
 
 def run(args=None):
@@ -224,7 +227,7 @@ def run(args=None):
         segs,
         method=args["model_select"],
     )
-    plot_pareto_pdf(summary_df, plot_dir, args["reg_term"], elbow_fig)
+    plot_pareto_curve(summary_df, plot_dir, args["reg_term"], elbow_fig)
 
     # Write chosen per-ploidy
     for ploidy, n in chosen_n.items():

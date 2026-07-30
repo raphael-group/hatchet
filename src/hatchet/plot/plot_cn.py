@@ -28,7 +28,11 @@ from hatchet.io_utils import (
     read_region_bed,
     read_seg_ucn_file,
 )
-from hatchet.plot.plot_utils import build_genome_axis, use_editable_fonts
+from hatchet.plot.plot_utils import (
+    get_plot_style,
+    build_genome_axis,
+    use_editable_fonts,
+)
 
 
 def run(args=None):
@@ -54,23 +58,25 @@ def run(args=None):
 
     ##################################################
     # parameters (styling — defaults in hatchet.yaml)
-    row_width = args["plot_row_width"]
-    row_height = args["plot_row_height"]
-    inter_sample_hspace = args["plot_inter_sample_hspace"]
-    intra_sample_hspace = args["plot_intra_sample_hspace"]
-    baf_cnp_hspace = args["plot_baf_cnp_hspace"]
+    style = get_plot_style(args)
+    row_width = style["row_width"]
+    row_height = style["row_height"]
+    inter_sample_hspace = style["inter_sample_hspace"]
+    intra_sample_hspace = style["intra_sample_hspace"]
+    baf_cnp_hspace = style["baf_cnp_hspace"]
+    markersize = style["markersize"]
 
     use_editable_fonts()
 
-    ignore_gap = not args["show_gap"]
-    dpi = args["dpi"]
-    transparent = args["transparent"]
+    ignore_gap = not style["show_gap"]
+    dpi = style["dpi"]
+    transparent = style["transparent"]
 
-    tail_alpha = args["tail_alpha"]
-    center_alpha = args["center_alpha"]
-    onetail_area = args["onetail_area"]
+    tail_alpha = style["tail_alpha"]
+    center_alpha = style["center_alpha"]
+    onetail_area = style["onetail_area"]
 
-    maxlim_fcn = args["maxlim_fcn"]
+    maxlim_fcn = style["maxlim_fcn"]
 
     # tumor clones below this per-sample prop are hidden from legends/labels
     display_min_clone_prop = args["min_prop"]
@@ -202,7 +208,7 @@ def run(args=None):
 
     ##################################################
     patient_id = args["patient_id"] or "panel"
-    ext = args["img_type"]
+    ext = style["img_type"]
     tag = solID and "." + solID
     out_1d = os.path.join(plot_dir, f"{patient_id}{tag}.1D.{ext}")
     out_1d_ab = os.path.join(plot_dir, f"{patient_id}{tag}.1D.FCN_AB.{ext}")
@@ -225,7 +231,7 @@ def run(args=None):
         intra_group_hspace=intra_sample_hspace,
         inter_group_hspace=inter_sample_hspace,
         profile_hspace=baf_cnp_hspace,
-        markersize=2.0,
+        markersize=markersize,
     )
 
     # (FCN, BAF): total FCN over minor-haplotype BAF.
@@ -278,7 +284,7 @@ def run(args=None):
             title=titles[sample],
             refline_x=0.5,
             display_min_clone_prop=display_min_clone_prop,
-            markersize=2.0,
+            markersize=markersize,
         )
         fig_2d = grid.figure
         if pdf is not None:

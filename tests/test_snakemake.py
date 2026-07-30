@@ -43,7 +43,7 @@ def snakemake_result(tmp_path_factory):
         "log_dir": "logs",
         "verbosity": 1,
         "threads": 1,
-        "cluster_bins": {
+        "cluster-bins": {
             "minK": 3,
             "maxK": 5,
             "t": 1e-6,
@@ -66,7 +66,7 @@ def snakemake_result(tmp_path_factory):
             "min_nbins": 10,
             "ub_nbins": 50,
         },
-        "compute_cn": {
+        "compute-cn": {
             "k": None,
             "mode": "ilp",
             "solver": "cbc",
@@ -102,16 +102,6 @@ def snakemake_result(tmp_path_factory):
             "model_select": "bic",
             "tree_file": None,
             "eps_fit": 0.01,
-        },
-        "plot_cn": {
-            "dpi": 100,
-            "img_type": "png",
-            "transparent": False,
-            "show_gap": False,
-            "tail_alpha": 0.8,
-            "center_alpha": 1.0,
-            "onetail_area": 0.025,
-            "maxlim_fcn": 30,
         },
     }
 

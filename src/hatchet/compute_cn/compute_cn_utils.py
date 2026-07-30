@@ -7,26 +7,9 @@ import numpy as np
 
 from hatchet.utils import build_seg_from_bbc
 from hatchet.io_utils import read_region_bed
-from hatchet.plot import plot_cn as _plot_cn
 
 
-def store_gammas(out_file, scaling, samples):
-    """Write per-sample gamma values for all ploidies.
-
-    Args:
-        out_file: output TSV path.
-        scaling: dict from get_scaling_factor with 'diploid', 'tetraploid' keys.
-        samples: ordered sample list.
-    """
-    with open(out_file, "w") as fd:
-        for sample in samples:
-            g_dip = scaling["diploid"]["gammas"].get(sample, 0)
-            g_tet = (
-                scaling["tetraploid"]["gammas"].get(sample, 0)
-                if scaling["tetraploid"]
-                else 0
-            )
-            fd.write(f"{sample}\t{g_dip}\t{g_tet}\n")
+# === Data preparation ===
 
 
 def build_data(bbcs, segs, segment=False):
@@ -156,100 +139,65 @@ def build_data(bbcs, segs, segment=False):
     }
 
 
-def filtering(
-    bbc: pd.DataFrame,
-    seg: pd.DataFrame,
-    samples: list,
-    clusters: list,
-    fstd=2.0,
-    min_nbins=10,
-    ub_nbins=50,
-):
-    """Filter clusters before the optimization step using variance outlier detection.
+def compute_fractional_cn(input_data, gammas, alpha=0.05, min_ci_margin=0.1):
+    """Compute fractional copy numbers and CI.
 
-    Steps:
-        0. Remove any cluster with fewer than ``min_nbins`` bins.
-        1. Compute per-sample, per-cluster RD and BAF variance (SCV).
-        2. Compute per-sample mean variance (MV) and standard deviation (STDV)
-           across clusters that passed step 0.
-        3. Mark a cluster as an outlier if, across all samples, its SCV deviates
-           from MV by more than ``fstd`` standard deviations, AND the cluster
-           has at most ``ub_nbins`` bins.
+    Returns a new dict containing all fields from input_data plus
+    fcn, fa, fb, fa_lo, fa_hi, fb_lo, fb_hi. input_data is not modified.
 
     Args:
-        bbc: Bin-level DataFrame with columns ``SAMPLE``, ``CLUSTER``, ``RD``, ``BAF``.
-        seg: Segment-level DataFrame with columns ``SAMPLE``, ``#ID``, ``RD``, ``BAF``,
-            ``#BINS``.
-        samples: Ordered list of sample identifiers.
-        clusters: Ordered list of cluster identifiers.
-        fstd: Number of standard deviations used as the outlier threshold.
-        min_nbins: Clusters with fewer bins than this are always removed.
-        ub_nbins: Outlier detection only applies to clusters with at most this
-            many bins (large clusters are kept regardless of variance).
-
-    Returns:
-        A tuple ``(good_clusters, bad_clusters)`` where each element is a list
-        of cluster IDs.
+        input_data: dict from build_data with rdr, baf, rdr_se.
+        gammas: dict or Series of per-sample gamma values.
+        alpha: significance level (default 0.05 → 95% CI).
+        min_ci_margin: hard minimum CI half-width in FCN space.
     """
-    logging.info("preprocessing, filtering clusters")
+    from scipy.stats import norm
 
-    var_rd_matrix = np.zeros((len(clusters), len(samples)), dtype=np.float64)
-    var_baf_matrix = np.zeros((len(clusters), len(samples)), dtype=np.float64)
+    rdr = input_data["rdr"]
+    baf = input_data["baf"]
+    rdr_se = input_data["rdr_se"]
 
-    for i, cluster in enumerate(clusters):
-        for j, sample in enumerate(samples):
-            bbc_ = bbc[(bbc["SAMPLE"] == sample) & (bbc["CLUSTER"] == cluster)]
-            seg_ = seg[(seg["SAMPLE"] == sample) & (seg["#ID"] == cluster)]
-            seg_baf = seg_["BAF"].iloc[0]
-            seg_rdr = seg_["RD"].iloc[0]
-            var_rd_matrix[i, j] = np.linalg.norm(bbc_["RD"] - seg_rdr, 2) / len(bbc_)
-            var_baf_matrix[i, j] = np.linalg.norm(bbc_["BAF"] - seg_baf, 2) / len(bbc_)
+    gammas = pd.Series(gammas).sort_index()
+    fcn = rdr * gammas
+    fb = fcn * baf
+    fa = fcn - fb
 
-    cluster_filtered = np.zeros(len(clusters), dtype=bool)
-    for i, cluster in enumerate(clusters):
-        cluster_filtered[i] = seg[seg["#ID"] == cluster]["#BINS"].iloc[0] < min_nbins
+    z = norm.ppf(1 - alpha / 2)
+    margin_fa = np.maximum(z * gammas * (1 - baf) * rdr_se, min_ci_margin)
+    margin_fb = np.maximum(z * gammas * baf * rdr_se, min_ci_margin)
 
-    mv_rd = np.mean(var_rd_matrix[~cluster_filtered, :], axis=0)
-    stdv_rd = np.std(var_rd_matrix[~cluster_filtered, :], axis=0, ddof=1)
-    mv_baf = np.mean(var_baf_matrix[~cluster_filtered, :], axis=0)
-    stdv_baf = np.std(var_baf_matrix[~cluster_filtered, :], axis=0, ddof=1)
-    for j, sample in enumerate(samples):
-        lb_rd = mv_rd[j] - fstd * stdv_rd[j]
-        ub_rd = mv_rd[j] + fstd * stdv_rd[j]
-        lb_baf = mv_baf[j] - fstd * stdv_baf[j]
-        ub_baf = mv_baf[j] + fstd * stdv_baf[j]
-        logging.debug(
-            f"{sample} RD-var bound=({lb_rd:.6f}, {ub_rd:.6f}) BAF-var bound=({lb_baf:.6f}, {ub_baf:.6f})"
-        )
+    return {
+        **input_data,
+        "fcn": fcn,
+        "fa": fa,
+        "fb": fb,
+        "fa_lo": fa - margin_fa,
+        "fa_hi": fa + margin_fa,
+        "fb_lo": fb - margin_fb,
+        "fb_hi": fb + margin_fb,
+    }
 
-    good_clusters = []
-    bad_clusters = []
-    for i, cluster in enumerate(clusters):
-        nbins = seg[seg["#ID"] == cluster]["#BINS"].iloc[0]
-        dv_rd = np.abs(var_rd_matrix[i, :] - mv_rd)
-        dv_baf = np.abs(var_baf_matrix[i, :] - mv_baf)
-        z_rd = dv_rd / stdv_rd
-        z_baf = dv_baf / stdv_baf
-        is_outlier = (
-            np.all(dv_rd > (fstd * stdv_rd))
-            or np.all(dv_baf > (fstd * stdv_baf))
-            or cluster_filtered[i]
-        ) and (nbins <= ub_nbins)
-        status = "REMOVED" if is_outlier else "kept"
-        for j, sample in enumerate(samples):
-            logging.debug(
-                f"z={cluster} {sample} #bins={nbins} "
-                f"RD-var={var_rd_matrix[i, j]:.6f} Z(RD)={z_rd[j]:.4f} "
-                f"BAF-var={var_baf_matrix[i, j]:.6f} Z(BAF)={z_baf[j]:.4f} "
-                f"{status}"
+
+# === Solver input ===
+
+
+def store_gammas(out_file, scaling, samples):
+    """Write per-sample gamma values for all ploidies.
+
+    Args:
+        out_file: output TSV path.
+        scaling: dict from get_scaling_factor with 'diploid', 'tetraploid' keys.
+        samples: ordered sample list.
+    """
+    with open(out_file, "w") as fd:
+        for sample in samples:
+            g_dip = scaling["diploid"]["gammas"].get(sample, 0)
+            g_tet = (
+                scaling["tetraploid"]["gammas"].get(sample, 0)
+                if scaling["tetraploid"]
+                else 0
             )
-        if is_outlier:
-            bad_clusters.append(cluster)
-        else:
-            good_clusters.append(cluster)
-
-    logging.info(f"remaining clusters: {good_clusters}")
-    return good_clusters, bad_clusters
+            fd.write(f"{sample}\t{g_dip}\t{g_tet}\n")
 
 
 def store_solve_input(out_file, input_data):
@@ -268,6 +216,9 @@ def store_solve_input(out_file, input_data):
                 fd.write(
                     f"{cid}\t{sample}\t{nb}\t" + "\t".join(vals) + f"\t{weights[cid]}\n"
                 )
+
+
+# === Solution persistence ===
 
 
 def _write_solution_tsv(fd, input_data, cA, cB, u, n, cluster_ids, sample_ids, header):
@@ -386,228 +337,6 @@ def update_objectives_tsv(sols_dir, new_df):
     new_df.to_csv(path, sep="\t", index=False)
 
 
-def compute_fractional_cn(input_data, gammas, alpha=0.05, min_ci_margin=0.1):
-    """Compute fractional copy numbers and CI.
-
-    Returns a new dict containing all fields from input_data plus
-    fcn, fa, fb, fa_lo, fa_hi, fb_lo, fb_hi. input_data is not modified.
-
-    Args:
-        input_data: dict from build_data with rdr, baf, rdr_se.
-        gammas: dict or Series of per-sample gamma values.
-        alpha: significance level (default 0.05 → 95% CI).
-        min_ci_margin: hard minimum CI half-width in FCN space.
-    """
-    from scipy.stats import norm
-
-    rdr = input_data["rdr"]
-    baf = input_data["baf"]
-    rdr_se = input_data["rdr_se"]
-
-    gammas = pd.Series(gammas).sort_index()
-    fcn = rdr * gammas
-    fb = fcn * baf
-    fa = fcn - fb
-
-    z = norm.ppf(1 - alpha / 2)
-    margin_fa = np.maximum(z * gammas * (1 - baf) * rdr_se, min_ci_margin)
-    margin_fb = np.maximum(z * gammas * baf * rdr_se, min_ci_margin)
-
-    return {
-        **input_data,
-        "fcn": fcn,
-        "fa": fa,
-        "fb": fb,
-        "fa_lo": fa - margin_fa,
-        "fa_hi": fa + margin_fa,
-        "fb_lo": fb - margin_fb,
-        "fb_hi": fb + margin_fb,
-    }
-
-
-def segmentation(
-    cA,
-    cB,
-    u,
-    input_data: dict,
-    bbcs: pd.DataFrame,
-    region_file: str,
-    bbc_out_file=None,
-    seg_out_file=None,
-):
-    """Annotate bins with inferred CN states and build a segment-level DataFrame.
-
-    Args:
-        cA: (num_clusters, num_clones) allele-A CN.
-        cB: (num_clusters, num_clones) allele-B CN.
-        u: (num_clones, num_samples) clone proportions.
-        input_data: dict from build_data with cluster_ids, sample_ids.
-        bbcs: Bin-level DataFrame.
-        region_file: Path to region BED file.
-        bbc_out_file: If provided, write annotated bin-level TSV.
-        seg_out_file: If provided, write segment-level TSV.
-
-    Returns:
-        Segment-level DataFrame.
-    """
-    cluster_ids = input_data["cluster_ids"]
-    sample_ids = input_data["sample_ids"]
-    seg_to_cluster = input_data.get("seg_to_cluster")
-    df = bbcs.copy()
-
-    n_clone = len(cA[0])
-    cN = pd.DataFrame(
-        np.array(cA).astype(str) + "|" + np.array(cB).astype(str),
-        index=cluster_ids,
-        columns=["cn_normal"] + [f"cn_clone{i}" for i in range(1, n_clone)],
-    )
-    u_df = pd.DataFrame(u, index=range(n_clone), columns=sample_ids).T
-    u_df.columns = ["u_normal"] + [f"u_clone{i}" for i in range(1, n_clone)]
-    extra_columns = [col for pair in zip(cN.columns, u_df.columns) for col in pair]
-
-    if seg_to_cluster is not None:
-        # Segment mode: assign each bin its segment ID, merge CN by segment.
-        df = df.sort_values(["SAMPLE", "#CHR", "START", "END"]).reset_index(drop=True)
-        samples_sorted = sorted(df["SAMPLE"].unique())
-        first_mask = df["SAMPLE"] == samples_sorted[0]
-        first_df = df.loc[first_mask].reset_index(drop=True)
-        seg_boundary = (first_df["CLUSTER"] != first_df["CLUSTER"].shift()) | (
-            first_df["#CHR"] != first_df["#CHR"].shift()
-        )
-        seg_int = (seg_boundary.cumsum() - 1).values
-        df["_seg_int"] = np.tile(seg_int, len(samples_sorted))
-        # Map integer seg index to string seg ID (same logic as build_data)
-        seg_id_list = cluster_ids  # already in segment order
-        int_to_seg = {i: seg_id_list[i] for i in range(len(seg_id_list))}
-        df["_seg_id"] = df["_seg_int"].map(int_to_seg)
-        df = df.merge(cN, left_on="_seg_id", right_index=True)
-        df = df.drop(columns=["_seg_int", "_seg_id"])
-    else:
-        df = df.merge(cN, left_on="CLUSTER", right_index=True)
-
-    df = df.merge(u_df, left_on="SAMPLE", right_index=True)
-    df = df.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
-
-    if bbc_out_file is not None:
-        orig_cols = df.columns[: -2 * n_clone].tolist()
-        df[orig_cols + extra_columns].to_csv(bbc_out_file, sep="\t", index=False)
-
-    regions = read_region_bed(region_file)
-    seg_df = build_seg_from_bbc(df, regions)
-    if seg_out_file is not None:
-        seg_df.to_csv(seg_out_file, sep="\t", index=False)
-
-    return seg_df
-
-
-def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy, name=None):
-    if not os.path.exists(bbc) or not os.path.exists(seg):
-        return
-    _plot_cn.run(
-        {
-            "bbc": bbc,
-            "seg": seg,
-            "genome_size": args["genome_size"],
-            "region_bed": args["region_bed"],
-            "gamma_file": gamma_file,
-            "solfile": None,
-            "patient_id": name,
-            "plot_dir": plot_dir,
-            "dpi": 150,
-            "img_type": "pdf",
-            "transparent": False,
-            "show_gap": False,
-            "tail_alpha": 0.8,
-            "center_alpha": 1.0,
-            "onetail_area": 0.025,
-            "maxlim_fcn": 30,
-            "ploidy": ploidy,
-        }
-    )
-
-
-def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
-    """Plot REG vs IMF Pareto curves + elbow/BIC page as a multi-page PDF."""
-    import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_pdf import PdfPages
-
-    outfile = os.path.join(plot_dir, "model_selection.pdf")
-    reg_col = reg_term if reg_term in summary_df.columns else "REG"
-    ploidies = sorted(summary_df["ploidy"].unique())
-    cmap = plt.get_cmap("tab10")
-
-    n_pages = 0
-    with PdfPages(outfile) as pdf:
-        # One page per ploidy; overlay all n-clone solutions, each n a distinct color.
-        for ploidy in ploidies:
-            pdf_grp = summary_df[summary_df["ploidy"] == ploidy]
-            ns = sorted(pdf_grp["n_clones"].unique())
-            fig, ax = plt.subplots(figsize=(7, 5))
-
-            # Non-pareto across all n: shared light-gray backdrop
-            non_pareto = pdf_grp[~pdf_grp["is_pareto"]]
-            if len(non_pareto) > 0:
-                ax.scatter(
-                    non_pareto[reg_col],
-                    non_pareto["IMF"],
-                    c="0.8",
-                    s=15,
-                    zorder=2,
-                    alpha=0.4,
-                    linewidths=0,
-                )
-
-            for ni, n_clones in enumerate(ns):
-                grp = pdf_grp[pdf_grp["n_clones"] == n_clones]
-                color = cmap(ni % 10)
-                pareto = grp[grp["is_pareto"]].sort_values(reg_col)
-                if len(pareto) > 0:
-                    ax.plot(
-                        pareto[reg_col],
-                        pareto["IMF"],
-                        "-o",
-                        color=color,
-                        markersize=5,
-                        linewidth=1.3,
-                        zorder=4,
-                        label=f"n={n_clones}",
-                    )
-                sel = grp[grp["selected"] == "*"]
-                if len(sel) > 0:
-                    ax.scatter(
-                        sel[reg_col],
-                        sel["IMF"],
-                        facecolors=color,
-                        marker="*",
-                        s=250,
-                        zorder=5,
-                        edgecolors="black",
-                        linewidths=1,
-                    )
-
-            ax.set_xlabel(reg_col, fontsize=11)
-            ax.set_ylabel("IMF", fontsize=11)
-            ax.set_title(
-                f"{ploidy} ({len(pdf_grp)} solutions)",
-                fontsize=13,
-                fontweight="bold",
-            )
-            ax.legend(fontsize=9, title="clones")
-            ax.grid(True, alpha=0.3)
-            fig.tight_layout()
-            pdf.savefig(fig)
-            plt.close(fig)
-            n_pages += 1
-
-        # Append elbow/BIC figure as last page
-        if elbow_fig is not None:
-            pdf.savefig(elbow_fig)
-            plt.close(elbow_fig)
-            n_pages += 1
-
-    logging.info(f"wrote {outfile} ({n_pages} pages)")
-
-
 def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
     """Read pool solution TSVs from sol_dir into {sol_id: {"imf_obj": ..., "cA": ..., ...}}.
 
@@ -683,3 +412,81 @@ def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
     if pool:
         logging.info(f"loaded {len(pool)} pool solutions from {sol_dir}")
     return pool
+
+
+# === Segmentation ===
+
+
+def segmentation(
+    cA,
+    cB,
+    u,
+    input_data: dict,
+    bbcs: pd.DataFrame,
+    region_file: str,
+    bbc_out_file=None,
+    seg_out_file=None,
+):
+    """Annotate bins with inferred CN states and build a segment-level DataFrame.
+
+    Args:
+        cA: (num_clusters, num_clones) allele-A CN.
+        cB: (num_clusters, num_clones) allele-B CN.
+        u: (num_clones, num_samples) clone proportions.
+        input_data: dict from build_data with cluster_ids, sample_ids.
+        bbcs: Bin-level DataFrame.
+        region_file: Path to region BED file.
+        bbc_out_file: If provided, write annotated bin-level TSV.
+        seg_out_file: If provided, write segment-level TSV.
+
+    Returns:
+        Segment-level DataFrame.
+    """
+    cluster_ids = input_data["cluster_ids"]
+    sample_ids = input_data["sample_ids"]
+    seg_to_cluster = input_data.get("seg_to_cluster")
+    df = bbcs.copy()
+
+    n_clone = len(cA[0])
+    cN = pd.DataFrame(
+        np.array(cA).astype(str) + "|" + np.array(cB).astype(str),
+        index=cluster_ids,
+        columns=["cn_normal"] + [f"cn_clone{i}" for i in range(1, n_clone)],
+    )
+    u_df = pd.DataFrame(u, index=range(n_clone), columns=sample_ids).T
+    u_df.columns = ["u_normal"] + [f"u_clone{i}" for i in range(1, n_clone)]
+    extra_columns = [col for pair in zip(cN.columns, u_df.columns) for col in pair]
+
+    if seg_to_cluster is not None:
+        # Segment mode: assign each bin its segment ID, merge CN by segment.
+        df = df.sort_values(["SAMPLE", "#CHR", "START", "END"]).reset_index(drop=True)
+        samples_sorted = sorted(df["SAMPLE"].unique())
+        first_mask = df["SAMPLE"] == samples_sorted[0]
+        first_df = df.loc[first_mask].reset_index(drop=True)
+        seg_boundary = (first_df["CLUSTER"] != first_df["CLUSTER"].shift()) | (
+            first_df["#CHR"] != first_df["#CHR"].shift()
+        )
+        seg_int = (seg_boundary.cumsum() - 1).values
+        df["_seg_int"] = np.tile(seg_int, len(samples_sorted))
+        # Map integer seg index to string seg ID (same logic as build_data)
+        seg_id_list = cluster_ids  # already in segment order
+        int_to_seg = {i: seg_id_list[i] for i in range(len(seg_id_list))}
+        df["_seg_id"] = df["_seg_int"].map(int_to_seg)
+        df = df.merge(cN, left_on="_seg_id", right_index=True)
+        df = df.drop(columns=["_seg_int", "_seg_id"])
+    else:
+        df = df.merge(cN, left_on="CLUSTER", right_index=True)
+
+    df = df.merge(u_df, left_on="SAMPLE", right_index=True)
+    df = df.sort_values(["#CHR", "START", "END", "SAMPLE"]).reset_index(drop=True)
+
+    if bbc_out_file is not None:
+        orig_cols = df.columns[: -2 * n_clone].tolist()
+        df[orig_cols + extra_columns].to_csv(bbc_out_file, sep="\t", index=False)
+
+    regions = read_region_bed(region_file)
+    seg_df = build_seg_from_bbc(df, regions)
+    if seg_out_file is not None:
+        seg_df.to_csv(seg_out_file, sep="\t", index=False)
+
+    return seg_df

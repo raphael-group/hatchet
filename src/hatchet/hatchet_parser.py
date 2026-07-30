@@ -285,6 +285,7 @@ def add_arguments_cluster_bins(parser: argparse.ArgumentParser):
         help="Skip mhBAF folding after decoding. By default, clusters with BAF > 0.5 "
         "have their BAF means and per-bin phases flipped to enforce the minor-allele convention.",
     )
+    add_arguments_plot_style(parser)
     return parser
 
 
@@ -681,6 +682,77 @@ def parse_arguments_compute_cn(args):
 
 
 ##################################################
+def add_arguments_plot_style(parser: argparse.ArgumentParser):
+    """Register every ``plot_*`` styling knob as a hidden CLI override.
+
+    All flags use ``default=argparse.SUPPRESS`` (so the hatchet.yaml value is the effective
+    default) and ``help=argparse.SUPPRESS`` (so they stay out of ``-h``). Shared by every plot
+    subcommand (cluster-bins, plot-cn, plot-panel); each reads only the keys it needs, so a key
+    unused by one command is simply an inert override there.
+    """
+    float_keys = [
+        "plot_row_width",
+        "plot_row_height",
+        "plot_inter_sample_hspace",
+        "plot_intra_sample_hspace",
+        "plot_baf_cnp_hspace",
+        "plot_markersize",
+        "plot_legend_markersize",
+        "plot_tail_alpha",
+        "plot_center_alpha",
+        "plot_onetail_area",
+        "plot_diag_col_width",
+        "plot_diag_page_height",
+        "plot_diag_scatter_size",
+        "plot_diag_scatter_alpha",
+    ]
+    int_keys = [
+        "plot_dpi",
+        "plot_maxlim_fcn",
+        "plot_maxlim_rdr",
+        "plot_legend_fontsize",
+        "plot_diag_hist_bins",
+        "plot_diag_contour_levels",
+        "plot_diag_suptitle_fontsize",
+        "plot_diag_title_fontsize",
+        "plot_diag_label_fontsize",
+        "plot_diag_legend_fontsize",
+    ]
+    bool_keys = ["plot_transparent", "plot_show_gap"]
+    for key in float_keys:
+        parser.add_argument(
+            f"--{key}",
+            type=float,
+            required=False,
+            default=argparse.SUPPRESS,
+            help=argparse.SUPPRESS,
+        )
+    for key in int_keys:
+        parser.add_argument(
+            f"--{key}",
+            type=int,
+            required=False,
+            default=argparse.SUPPRESS,
+            help=argparse.SUPPRESS,
+        )
+    for key in bool_keys:
+        parser.add_argument(
+            f"--{key}",
+            action="store_true",
+            default=argparse.SUPPRESS,
+            help=argparse.SUPPRESS,
+        )
+    parser.add_argument(
+        "--plot_img_type",
+        type=str,
+        choices=["pdf", "png", "svg"],
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
+    )
+    return parser
+
+
+##################################################
 def add_arguments_plot_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--bbc",
@@ -729,63 +801,6 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         help="Directory for output files",
     )
     parser.add_argument(
-        "--dpi",
-        required=False,
-        type=int,
-        help="image resolution (default: 500)",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--img_type",
-        required=False,
-        choices=["pdf", "png", "svg"],
-        type=str,
-        help="file format (default: png)",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--transparent",
-        required=False,
-        action="store_true",
-        default=argparse.SUPPRESS,
-        help="transparent background (default: False)",
-    )
-    parser.add_argument(
-        "--show_gap",
-        required=False,
-        action=argparse.BooleanOptionalAction,
-        default=argparse.SUPPRESS,
-        help="show gap regions (uncollapsed) in the plot (default: False)",
-    )
-    parser.add_argument(
-        "--tail_alpha",
-        required=False,
-        type=float,
-        help="transparency on the tail region per CN state (default: 0.8)",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--center_alpha",
-        required=False,
-        type=float,
-        help="transparency on the center region per CN state (default: 1.0)",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--onetail_area",
-        required=False,
-        type=float,
-        help="area for each tail per CN state to set transparency (default: 0.025)",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--maxlim_fcn",
-        required=False,
-        type=int,
-        help="figure axis limit for FCN (default: 30)",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "--ploidy",
         required=True,
         choices=["diploid", "tetraploid"],
@@ -798,6 +813,7 @@ def add_arguments_plot_cn(parser: argparse.ArgumentParser):
         type=str,
         help="Output filename prefix for combined plots (e.g. 'LuCaP173')",
     )
+    add_arguments_plot_style(parser)
     return parser
 
 
@@ -822,14 +838,14 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         help="Reference chromosome BED file (e.g., hg19.chrom.bed)",
     )
     parser.add_argument(
-        "--width",
+        "--plot_panel_width",
         required=False,
         type=int,
         help="panel image width (default: 20)",
         default=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--height",
+        "--plot_panel_height",
         required=False,
         type=int,
         help="panel image height per row (default: 1)",
@@ -841,13 +857,6 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         action=argparse.BooleanOptionalAction,
         default=argparse.SUPPRESS,
         help="plot clone name (default: False)",
-    )
-    parser.add_argument(
-        "--show_prop",
-        required=False,
-        action=argparse.BooleanOptionalAction,
-        default=argparse.SUPPRESS,
-        help="plot clone proportion (default: False)",
     )
     parser.add_argument(
         "--show_ploidy",
@@ -862,20 +871,6 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         default=argparse.SUPPRESS,
         type=float,
         help="hide tumor clones below this proportion from the panel (default: 0.01)",
-    )
-    parser.add_argument(
-        "--dpi",
-        required=False,
-        type=int,
-        help="image resolution (default: 300)",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "--transparent",
-        required=False,
-        action="store_true",
-        default=argparse.SUPPRESS,
-        help="transparent background (default: False)",
     )
     parser.add_argument(
         "--title",
@@ -906,6 +901,7 @@ def add_arguments_plot_panel(parser: argparse.ArgumentParser):
         help="emit per-sample tumor purity + ploidy barplots; one page per "
         "metric per cancer_type (or single page per metric if column absent)",
     )
+    add_arguments_plot_style(parser)
     return parser
 
 

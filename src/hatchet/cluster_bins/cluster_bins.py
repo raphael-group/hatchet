@@ -42,6 +42,7 @@ from hatchet.cluster_bins.hmm.hmm_model import (
     score_model,
 )
 from hatchet.plot.plot_cluster_bins import plot_rdr_baf
+from hatchet.plot.plot_utils import get_plot_style
 
 
 def run(args=None):
@@ -69,6 +70,8 @@ def run(args=None):
     setup_logging(args)
     logging.info("cluster bins")
     _log_done = log_step_start()
+
+    plot_style = get_plot_style(args)
 
     bb_dir = args["bb_dir"]
     bb_file = os.path.join(bb_dir, "bb.tsv.gz")
@@ -203,7 +206,7 @@ def run(args=None):
         ylab="RDR",
         out_dir=plot_dir,
         out_prefix="raw_",
-        dpi=100,
+        style=plot_style,
     )
 
     baf_taus0 = np.zeros(ntumor_samples, dtype=np.float32)
@@ -502,13 +505,13 @@ def run(args=None):
             ylab="RDR",
             out_dir=plot_dir,
             out_prefix=f"K{K}_",
-            dpi=100,
             rdr_means=k_rdr_means,
             rdr_vars=k_rdr_vars,
             baf_taus=k_baf_taus,
             log_rdr=log_rdr,
             filtered_ids=filtered_ids,
             balanced_ids=balanced_ids,
+            style=plot_style,
         )
 
         bbs["PHASE"] = k_phases
