@@ -314,7 +314,7 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--mode",
         required=False,
-        choices=["both", "cd", "ilp", "cnt_cd"],
+        choices=["both", "cd", "ilp"],
         type=str,
         help="Solver mode (default: cd)",
         default=argparse.SUPPRESS,
@@ -565,10 +565,10 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--u_init",
         required=False,
-        choices=["dirichlet", "bubble", "bin_dir"],
+        choices=["dirichlet", "bubble"],
         default=argparse.SUPPRESS,
         type=str,
-        help="U initialization method: dirichlet | bubble | bin_dir",
+        help="U initialization method: dirichlet | bubble",
     )
 
     parser.add_argument(
@@ -580,14 +580,6 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
-        "--u_bin_p",
-        required=False,
-        default=argparse.SUPPRESS,
-        type=float,
-        help="bin_dir: per-cell Bernoulli presence probability (anchor sample always 1)",
-    )
-
-    parser.add_argument(
         "--solver_threads",
         required=False,
         default=argparse.SUPPRESS,
@@ -596,20 +588,20 @@ def add_arguments_compute_cn(parser: argparse.ArgumentParser):
     )
 
     ##################################################
-    # CNT-CD parameters
+    # CNT-CD parameters (Experimental)
     parser.add_argument(
         "--tree_file",
         required=False,
         default=None,
         type=str,
-        help="CNT-CD: Newick tree file. If not provided, enumerate all unlabeled shapes.",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--eps_fit",
         required=False,
         default=argparse.SUPPRESS,
         type=float,
-        help="CNT-CD: fit tolerance for C-step CNT stage lexicographic bound (default: 0.01)",
+        help=argparse.SUPPRESS,  # cnt_cd only; not user-selectable pre-release
     )
 
     parser.add_argument(

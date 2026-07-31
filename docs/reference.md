@@ -90,7 +90,7 @@ Defaults below are the CLI defaults from `hatchet_parser.py`. Use
 | `--result_dir` | *(required)* | Output directory for computed CN results |
 | `--genome_size` | *(required)* | Reference chromosome sizes file |
 | `--region_bed` | *(required)* | Reference chromosome BED file |
-| `--mode` | `cd` | Solver mode: `cd`, `ilp`, `both`, or `cnt_cd` (**Experimental**) |
+| `--mode` | `cd` | Solver mode: `cd`, `ilp`, or `both` |
 | `--solver` | `gurobi` | ILP solver backend: `gurobi` or `cbc` |
 | `--model_select` | `bic` | Clone-number/ploidy selection: `elbow` or `bic` |
 | `--force` | False | Re-solve even if results already exist (default: skip existing) |
@@ -120,12 +120,9 @@ Defaults below are the CLI defaults from `hatchet_parser.py`. Use
 | `--cd_nseeds` | 400 | CD: number of random restarts |
 | `--cd_njobs` | 8 | CD: number of parallel worker processes |
 | `--cd_seed` | 42 | CD: random seed for reproducibility |
-| `--u_init` | `dirichlet` | U initialization: `dirichlet`, `bubble`, or `bin_dir` |
+| `--u_init` | `dirichlet` | U initialization: `dirichlet` or `bubble` |
 | `--u_dir_alpha` | *(solver default)* | Dirichlet alpha for U initialization; lower = sparser |
-| `--u_bin_p` | *(solver default)* | `bin_dir`: per-cell Bernoulli presence probability |
 | `--solver_threads` | *(solver default)* | Max threads per solver call (Gurobi); set to 1 for parallel CD workers |
-| `--tree_file` | None | **Experimental** (`cnt_cd`): Newick tree file; if omitted, enumerate all unlabeled shapes |
-| `--eps_fit` | 0.01 | **Experimental** (`cnt_cd`): fit tolerance for the C-step CNT lexicographic bound |
 | `--plot_ascn` | False | Plot CN profile with the allele-CN row scheme |
 | `--patient_id` | `panel` | Output filename prefix for per-(ploidy, n) plots |
 | `--verbosity` | 0 | Verbose level: 0, 1, or 2 |

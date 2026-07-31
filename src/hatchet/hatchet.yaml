@@ -45,7 +45,7 @@ skip_mhbafs: false
 
 ##################################################
 # compute-cn
-# mode: ilp | cd | both | cnt_cd
+# mode: ilp | cd | both
 mode: cd
 # model_select: elbow | bic
 model_select: bic
@@ -80,11 +80,9 @@ cd_convergence_iters: 2
 cd_nseeds: 400
 cd_njobs: 8
 cd_seed: 42
-# u_init: dirichlet | bubble | bin_dir
+# u_init: dirichlet | bubble
 u_init: dirichlet
 u_dir_alpha: 0.3
-# bin_dir only: Bernoulli presence prob for non-anchor cells
-u_bin_p: 0.5
 solver_threads: null
 eps_fit: 0.01
 

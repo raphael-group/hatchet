@@ -1,5 +1,5 @@
 ##################################################
-# HATCHet3 Snakmake YAML configuration file
+# HATCHet Snakmake YAML configuration file
 #
 # See docs/reference.md for full descriptions
 ##################################################
@@ -30,7 +30,7 @@ cluster-bins:
 compute-cn:
   # cluster-bins K to use: null = model-selected bulk.bbc/seg, or an int for labels/bulk<k>
   k: null
-  # solver mode: ilp | cd | both | cnt_cd
+  # solver mode: ilp | cd | both
   mode: cd
   diploid: true
   tetraploid: true

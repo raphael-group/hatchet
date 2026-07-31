@@ -372,7 +372,6 @@ def solve(
             timelimit=timelimit,
             tree_file=args["tree_file"],
             u_dir_alpha=args["u_dir_alpha"],
-            u_bin_p=args["u_bin_p"],
             solver_threads=args["solver_threads"],
             u0_tsv_path=u0_tsv_path,
         )
@@ -385,7 +384,6 @@ def solve(
             reg_bound=args["reg_bound"],
             u_init_method=args["u_init"],
             u_dir_alpha=args["u_dir_alpha"],
-            u_bin_p=args["u_bin_p"],
             solver_threads=args["solver_threads"],
             cd_tol=args["cd_tol"],
             **cd_run_kwargs,
