@@ -1,4 +1,4 @@
-"""Integration test for the full HATCHet3 Snakemake pipeline."""
+"""Integration test for the full HATCHet Snakemake pipeline."""
 
 import os
 from pathlib import Path

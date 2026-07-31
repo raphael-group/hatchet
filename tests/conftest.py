@@ -1,4 +1,4 @@
-"""Pytest fixtures for HATCHet3 integration tests."""
+"""Pytest fixtures for HATCHet integration tests."""
 
 import json
 import os

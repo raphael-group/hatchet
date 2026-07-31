@@ -1,4 +1,4 @@
-"""Simulate a synthetic bb_dir for HATCHet3 integration tests.
+"""Simulate a synthetic bb_dir for HATCHet integration tests.
 
 Generates NPZ count matrices and metadata files that match the exact format
 expected by cluster-bins (see cluster_bins.py:84-141).
@@ -227,7 +227,7 @@ def simulate_bb_dir(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Simulate synthetic bb_dir for HATCHet3"
+        description="Simulate synthetic bb_dir for HATCHet"
     )
     parser.add_argument(
         "--output_dir",

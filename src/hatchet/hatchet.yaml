@@ -1,4 +1,4 @@
-# HATCHet3 default parameter values for all subcommands.
+# HATCHet default parameter values for all subcommands.
 # Loaded by hatchet.utils.normalize_args at the top of each run().
 
 ##################################################

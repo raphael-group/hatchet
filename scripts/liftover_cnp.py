@@ -7,7 +7,7 @@ import pandas as pd
 from scripts_utils import read_seg_ucn_file
 
 """
-Liftover HATCHet3 copy-number profile seg.ucn/bbc.ucn to different reference version
+Liftover HATCHet copy-number profile seg.ucn/bbc.ucn to different reference version
 """
 
 
