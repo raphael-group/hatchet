@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from hatchet.evaluate.vaf_utils import estimate_vaf, is_explained_mut, relative_error
+from hatchet import filenames as fn
 
 
 def read_snv_vcf(vcf_path, sample="tumor"):
@@ -367,9 +368,9 @@ def evaluate_pool_solutions(result_dir, snv_df, gamma=0.05):
     Returns a DataFrame with one row per pool solution: ploidy, n_clones, tag,
     IMF/REG objectives (from summary.tsv), and VAF evaluation metrics.
     """
-    summary_path = os.path.join(result_dir, "summary.tsv")
-    bbc_path = os.path.join(result_dir, "bulk.good.bbc")
-    sols_dir = os.path.join(result_dir, "sols")
+    summary_path = os.path.join(result_dir, fn.SUMMARY_TSV)
+    bbc_path = os.path.join(result_dir, "bulk.good.bbc")  # legacy: no current producer
+    sols_dir = os.path.join(result_dir, fn.SOLS_DIR)
 
     summary = pd.read_csv(summary_path, sep="\t")
     bbc_df = pd.read_csv(bbc_path, sep="\t")
@@ -386,8 +387,10 @@ def evaluate_pool_solutions(result_dir, snv_df, gamma=0.05):
         if not m:
             continue
         pparam, pidx = m.group(1), m.group(2)
-        sol_subdir = os.path.join(sols_dir, f"{ploidy}_n{n_clones}")
-        sol_file = os.path.join(sol_subdir, f"cd_sol{pparam}_pool{pidx}.tsv")
+        sol_subdir = os.path.join(sols_dir, fn.ploidy_n_subdir(ploidy, n_clones))
+        sol_file = os.path.join(
+            sol_subdir, f"cd_sol{pparam}_pool{pidx}.tsv"
+        )  # legacy format
         if not os.path.exists(sol_file):
             logging.warning(f"sol file not found: {sol_file}")
             continue

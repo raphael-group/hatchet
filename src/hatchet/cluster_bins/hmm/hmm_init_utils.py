@@ -12,6 +12,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from adjustText import adjust_text
 
 from hatchet.utils import sort_chroms
+from hatchet import filenames as fn
 
 logging.getLogger("adjustText").setLevel(logging.WARNING)
 
@@ -86,7 +87,7 @@ def plot_init_sampling_probs(
         bar_width = (bin_edges_1d[1] - bin_edges_1d[0]) * 0.9
         rdr_ylim_1d = float(np.nanpercentile(X_rdrs, 99)) * 1.1
 
-    out = os.path.join(plot_dir, f"{name}_init.pdf")
+    out = os.path.join(plot_dir, fn.init_pdf(name))
     pdf_pages = PdfPages(out)
     prev_summed = None
 

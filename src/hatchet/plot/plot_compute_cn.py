@@ -18,6 +18,7 @@ from matplotlib.collections import LineCollection
 
 from cnplot import annotate_landmarks, plot_cnv_profile, plot_scatter_2d, set_palette
 from hatchet.utils import sort_df_chr
+from hatchet import filenames as fn
 from hatchet.plot import plot_cn as _plot_cn
 from hatchet.plot.plot_utils import build_genome_axis, use_editable_fonts
 
@@ -28,7 +29,7 @@ def _clones_from_cn(df):
     return ["normal"] + [f"clone{i}" for i in range(1, n)]
 
 
-def _format_pool_label(tag):
+def _fmt_pool_label(tag):
     """Convert 'pool_p0.05_s1' to 'p=0.05,s=1'."""
     m = re.match(r"pool_p([^_]+)_s(\d+)", tag)
     if m:
@@ -55,7 +56,7 @@ def plot_pool_cnp(
     dpi=150,
     solve_mode=None,
     sample_names=None,
-    out_name="pool.pdf",
+    out_name=fn.POOL_PDF,
 ):
     """Plot pool CNP panel into out_dir.
 
@@ -157,7 +158,7 @@ def plot_pool_cnp(
             show_prop=False,
         )
 
-        short_label = _format_pool_label(str(label))
+        short_label = _fmt_pool_label(str(label))
         if is_selected:
             short_label += " *"
         prop_lines = []
@@ -617,7 +618,7 @@ def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy, name=None):
 
 def plot_pareto_curve(summary_df, plot_dir, reg_term, elbow_fig=None):
     """Plot REG vs IMF Pareto curves + elbow/BIC page as a multi-page PDF."""
-    outfile = os.path.join(plot_dir, "model_selection.pdf")
+    outfile = os.path.join(plot_dir, fn.MODEL_SELECTION_PDF)
     reg_col = reg_term if reg_term in summary_df.columns else "REG"
     ploidies = sorted(summary_df["ploidy"].unique())
     cmap = plt.get_cmap("tab10")

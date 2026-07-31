@@ -7,6 +7,7 @@ import numpy as np
 
 from hatchet.utils import build_seg_from_bbc
 from hatchet.io_utils import read_region_bed
+from hatchet import filenames as fn
 
 
 # === Data preparation ===
@@ -288,7 +289,7 @@ def store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode):
     header = "\t".join(cols)
 
     for sol_id, sol in pool_instances.items():
-        path = os.path.join(sol_dir, f"{solve_mode}_{sol_id}.tsv")
+        path = os.path.join(sol_dir, fn.solution_tsv(solve_mode, sol_id))
         with open(path, "w") as fd:
             _write_solution_tsv(
                 fd,
@@ -307,7 +308,7 @@ def store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode):
 
             tree = sol.get("tree")
             if tree is not None and isinstance(tree, LabeledCloneTree):
-                prefix = os.path.join(sol_dir, f"{solve_mode}_{sol_id}")
+                prefix = os.path.join(sol_dir, fn.solution_stem(solve_mode, sol_id))
                 with open(f"{prefix}.nwk", "w") as f:
                     f.write(tree.to_newick() + "\n")
                 d = tree.to_dict()
@@ -328,7 +329,7 @@ def update_objectives_tsv(sols_dir, new_df):
     """
     cols = ["ploidy", "n", "sol_id", "restart_id", "imf_obj", "reg_obj"]
     new_df = new_df[cols]
-    path = os.path.join(sols_dir, "objectives.tsv")
+    path = os.path.join(sols_dir, fn.OBJECTIVES_TSV)
     if os.path.exists(path):
         old = pd.read_csv(path, sep="\t")
         keys = set(map(tuple, new_df[["ploidy", "n"]].itertuples(index=False)))
@@ -345,7 +346,7 @@ def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
     sol_id is taken, matching how the pool selects its representative at solve time.
     """
     ploidy, _, n = os.path.basename(sol_dir.rstrip("/")).rpartition("_n")
-    obj_path = os.path.join(os.path.dirname(sol_dir.rstrip("/")), "objectives.tsv")
+    obj_path = os.path.join(os.path.dirname(sol_dir.rstrip("/")), fn.OBJECTIVES_TSV)
     obj_map = {}
     if os.path.exists(obj_path) and ploidy:
         odf = pd.read_csv(obj_path, sep="\t")
