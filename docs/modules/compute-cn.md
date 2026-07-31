@@ -10,9 +10,9 @@ The BBC and SEG tables produced by `cluster-bins` (`--bbc`, `--seg`; e.g. `bbc/b
 ```console
 $ hatchet compute-cn --help
 usage: hatchet compute-cn [-h] --result_dir RESULT_DIR --bbc BBC --seg SEG
-                          [--mode {both,cd,ilp,cnt_cd}]
-                          [--model_select {elbow,bic}] [--force]
-                          [--solver {gurobi,cbc}] [--timelimit TIMELIMIT]
+                          [--mode {both,cd,ilp}] [--model_select {elbow,bic}]
+                          [--force] [--solver {gurobi,cbc}]
+                          [--timelimit TIMELIMIT]
                           [--fcn_ci_alpha FCN_CI_ALPHA]
                           [--min_ci_margin MIN_CI_MARGIN]
                           [--obj_type {imf,ci}] [--minClone MINCLONE]
@@ -27,11 +27,9 @@ usage: hatchet compute-cn [-h] --result_dir RESULT_DIR --bbc BBC --seg SEG
                           [--cd_niters CD_NITERS]
                           [--cd_convergence_iters CD_CONVERGENCE_ITERS]
                           [--cd_nseeds CD_NSEEDS] [--cd_njobs CD_NJOBS]
-                          [--cd_seed CD_SEED]
-                          [--u_init {dirichlet,bubble,bin_dir}]
-                          [--u_dir_alpha U_DIR_ALPHA] [--u_bin_p U_BIN_P]
+                          [--cd_seed CD_SEED] [--u_init {dirichlet,bubble}]
+                          [--u_dir_alpha U_DIR_ALPHA]
                           [--solver_threads SOLVER_THREADS]
-                          [--tree_file TREE_FILE] [--eps_fit EPS_FIT]
                           [--verbosity VERBOSITY] --genome_size GENOME_SIZE
                           --region_bed REGION_BED [--patient_id PATIENT_ID]
 ```

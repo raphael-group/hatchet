@@ -9,6 +9,7 @@ from hatchet.utils import (
     setup_logging,
 )
 from hatchet.io_utils import read_seg_ucn_file
+from hatchet import filenames as fn
 from hatchet.evaluate.evaluate_utils import (
     read_snv_vcf,
     read_snv_tsv,
@@ -55,7 +56,7 @@ def run(args=None):
     if eval_all and result_dir is not None:
         logging.info("evaluating all pool solutions")
         pool_eval = evaluate_pool_solutions(result_dir, snv_df, gamma=gamma)
-        out_path = os.path.join(out_dir, "pool_eval.tsv")
+        out_path = os.path.join(out_dir, fn.POOL_EVAL_TSV)
         pool_eval.to_csv(out_path, sep="\t", index=False)
         logging.info(f"wrote {out_path} ({len(pool_eval)} solutions)")
         return
@@ -65,7 +66,7 @@ def run(args=None):
     if seg_file is None:
         if result_dir is None:
             raise ValueError("Either --seg or --result_dir must be provided")
-        seg_file = os.path.join(result_dir, "best.seg.ucn")
+        seg_file = os.path.join(result_dir, fn.BEST_SEG_UCN)
     segs, clones = read_seg_ucn_file(seg_file)
     clone_props = segs[[f"u_{c}" for c in clones]].iloc[0].tolist()
 
@@ -112,7 +113,7 @@ def run(args=None):
 
     if all_results:
         all_df = pd.concat(all_results, ignore_index=True)
-        out_snv = os.path.join(out_dir, "somatic_snvs.tsv")
+        out_snv = os.path.join(out_dir, fn.SOMATIC_SNVS_TSV)
         all_df.to_csv(out_snv, sep="\t", index=False)
         logging.info(f"wrote {out_snv} ({len(all_df)} SNVs)")
 
@@ -150,11 +151,11 @@ def run(args=None):
                     states = [(int(a), int(b)) for a, b in a_b]
                     _, _, _, exp_baf = compute_expected_baf_fcn(states, clone_props)
                     segs_plot.at[idx, "predicted_VAF"] = exp_baf
-                out_plot = os.path.join(out_dir, f"{sample}.vaf_1d.pdf")
+                out_plot = os.path.join(out_dir, fn.vaf_1d_pdf(sample))
                 plot_vaf_1d(sample_df, segs_plot, genome_axis, out_plot)
 
     if summary_rows:
         summary_df = pd.DataFrame(summary_rows)
-        out_summary = os.path.join(out_dir, "eval_summary.tsv")
+        out_summary = os.path.join(out_dir, fn.EVAL_SUMMARY_TSV)
         summary_df.to_csv(out_summary, sep="\t", index=False)
         logging.info(f"wrote {out_summary}")

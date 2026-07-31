@@ -13,6 +13,7 @@ from hatchet.utils import (
     setup_logging,
 )
 from hatchet.io_utils import read_genome_sizes, read_sample_file
+from hatchet import filenames as fn
 from hatchet.cluster_bins.cluster_utils import (
     compute_baf_se,
     compute_rdr_se,
@@ -42,6 +43,7 @@ from hatchet.cluster_bins.hmm.hmm_model import (
     score_model,
 )
 from hatchet.plot.plot_cluster_bins import plot_rdr_baf
+from hatchet.plot.plot_utils import get_plot_style
 
 
 def run(args=None):
@@ -70,14 +72,16 @@ def run(args=None):
     logging.info("cluster bins")
     _log_done = log_step_start()
 
+    plot_style = get_plot_style(args)
+
     bb_dir = args["bb_dir"]
-    bb_file = os.path.join(bb_dir, "bb.tsv.gz")
-    sample_file = os.path.join(bb_dir, "sample_ids.tsv")
-    rdr_mfile = os.path.join(bb_dir, "bb.rdr.npz")
-    depth_mfile = os.path.join(bb_dir, "bb.depth.npz")
-    a_mfile = os.path.join(bb_dir, "bb.Aallele.npz")
-    b_mfile = os.path.join(bb_dir, "bb.Ballele.npz")
-    t_mfile = os.path.join(bb_dir, "bb.Tallele.npz")
+    bb_file = os.path.join(bb_dir, fn.BB_TSV_GZ)
+    sample_file = os.path.join(bb_dir, fn.SAMPLE_IDS)
+    rdr_mfile = os.path.join(bb_dir, fn.BB_RDR_NPZ)
+    depth_mfile = os.path.join(bb_dir, fn.BB_DEPTH_NPZ)
+    a_mfile = os.path.join(bb_dir, fn.BB_A_ALLELE_NPZ)
+    b_mfile = os.path.join(bb_dir, fn.BB_B_ALLELE_NPZ)
+    t_mfile = os.path.join(bb_dir, fn.BB_T_ALLELE_NPZ)
     genome_size = args["genome_size"]
     region_bed = args["region_bed"]
     out_dir = args["bbc_dir"]
@@ -85,13 +89,13 @@ def run(args=None):
     add_file_logging(out_dir, "cluster-bins")
     log_arguments(args)
 
-    out_bbc = os.path.join(out_dir, "bulk.bbc")
-    out_seg = os.path.join(out_dir, "bulk.seg")
+    out_bbc = os.path.join(out_dir, fn.BULK_BBC)
+    out_seg = os.path.join(out_dir, fn.BULK_SEG)
     if not args["force"] and os.path.exists(out_bbc) and os.path.exists(out_seg):
         logging.info(
             f"skip cluster-bins: {out_bbc} and {out_seg} already exist (use --force to re-run)"
         )
-        _log_done("cluster-bins", out_file=os.path.join(out_dir, "runtime.log"))
+        _log_done("cluster-bins", out_file=os.path.join(out_dir, fn.RUNTIME_LOG))
         return
 
     min_tau = args["min_tau"]
@@ -121,8 +125,8 @@ def run(args=None):
     training_method = args["training_method"]
     baf_k_start = 0 if args["free_baf_c0"] else 1
 
-    label_dir = os.path.join(out_dir, "labels")
-    plot_dir = os.path.join(out_dir, "plots")
+    label_dir = os.path.join(out_dir, fn.LABELS_DIR)
+    plot_dir = os.path.join(out_dir, fn.PLOTS_DIR)
     os.makedirs(label_dir, exist_ok=True)
     os.makedirs(plot_dir, exist_ok=True)
 
@@ -203,7 +207,7 @@ def run(args=None):
         ylab="RDR",
         out_dir=plot_dir,
         out_prefix="raw_",
-        dpi=100,
+        style=plot_style,
     )
 
     baf_taus0 = np.zeros(ntumor_samples, dtype=np.float32)
@@ -278,7 +282,7 @@ def run(args=None):
         inits_maxK,
         ntumor_samples,
         maxK,
-        os.path.join(plot_dir, "hmm_init.pdf"),
+        os.path.join(plot_dir, fn.HMM_INIT_PDF),
         baf_taus=baf_taus0,
         log_rdr=log_rdr,
         bbs=bbs,
@@ -295,7 +299,7 @@ def run(args=None):
     inits_run = dict(sorted_inits[:top_restarts])
 
     if DEBUG and inits_diag:
-        init_diag_dir = os.path.join(plot_dir, "init_diag")
+        init_diag_dir = os.path.join(plot_dir, fn.INIT_DIAG_DIR)
         os.makedirs(init_diag_dir, exist_ok=True)
         for it in inits_run:
             diag = inits_diag[it]
@@ -391,10 +395,10 @@ def run(args=None):
         elbo_data.append((K, all_elbo_traces, best_it))
 
         # Save EM parameter trace for best restart
-        trace_dir = os.path.join(out_dir, "traces")
+        trace_dir = os.path.join(out_dir, fn.TRACES_DIR)
         os.makedirs(trace_dir, exist_ok=True)
         np.savez_compressed(
-            os.path.join(trace_dir, f"K{K}.em_trace.npz"),
+            os.path.join(trace_dir, fn.k_em_trace(K)),
             elbo_trace=np.array(best_sol["elbo_trace"]),
             rdr_means=best_sol["trace_rdr_means"],
             rdr_vars=best_sol["trace_rdr_vars"],
@@ -502,19 +506,19 @@ def run(args=None):
             ylab="RDR",
             out_dir=plot_dir,
             out_prefix=f"K{K}_",
-            dpi=100,
             rdr_means=k_rdr_means,
             rdr_vars=k_rdr_vars,
             baf_taus=k_baf_taus,
             log_rdr=log_rdr,
             filtered_ids=filtered_ids,
             balanced_ids=balanced_ids,
+            style=plot_style,
         )
 
         bbs["PHASE"] = k_phases
         bbs["PHASE_POSTS"] = best_sol["phase_posts"][:, 1]
         bbs[["#CHR", "START", "END", "PHASE", "PHASE_POSTS", "switchprobs"]].to_csv(
-            os.path.join(label_dir, f"bulk{K}.bb.phased.tsv.gz"),
+            os.path.join(label_dir, fn.bulk_k_phased(K)),
             sep="\t",
             header=True,
             index=False,
@@ -540,19 +544,19 @@ def run(args=None):
         k_segs["is_balanced"] = k_segs["#ID"].isin(balanced_ids)
         k_segs["is_filtered"] = k_segs["#ID"].isin(filtered_ids)
         bbcs.to_csv(
-            os.path.join(label_dir, f"bulk{K}.bbc"),
+            os.path.join(label_dir, fn.bulk_k_bbc(K)),
             sep="\t",
             header=True,
             index=False,
         )
         k_segs.to_csv(
-            os.path.join(label_dir, f"bulk{K}.seg"),
+            os.path.join(label_dir, fn.bulk_k_seg(K)),
             sep="\t",
             header=True,
             index=False,
         )
 
-    plot_elbo_traces(elbo_data, os.path.join(plot_dir, "elbo_traces.pdf"))
+    plot_elbo_traces(elbo_data, os.path.join(plot_dir, fn.ELBO_TRACES_PDF))
 
     scores_df = pd.DataFrame(score_records)
     best_K = model_select_K(scores_df, score_criteria, score_method)
@@ -560,24 +564,27 @@ def run(args=None):
     logging.info(
         f"model selection ({score_criteria}): best K={best_K} {score_method}={best_score:.4f}"
     )
-    scores_df.to_csv(os.path.join(out_dir, "model_scores.tsv"), sep="\t", index=False)
-    plot_score(scores_df, score_method, os.path.join(plot_dir, "model_scores.pdf"))
+    scores_df.to_csv(os.path.join(out_dir, fn.MODEL_SCORES_TSV), sep="\t", index=False)
+    plot_score(scores_df, score_method, os.path.join(plot_dir, fn.MODEL_SCORES_PDF))
 
     ##################################################
     # copy best-K results to top-level output
-    for suffix in ["bbc", "seg"]:
+    for src_name, dst_name in (
+        (fn.bulk_k_bbc(best_K), fn.BULK_BBC),
+        (fn.bulk_k_seg(best_K), fn.BULK_SEG),
+    ):
         shutil.copy2(
-            os.path.join(label_dir, f"bulk{best_K}.{suffix}"),
-            os.path.join(out_dir, f"bulk.{suffix}"),
+            os.path.join(label_dir, src_name),
+            os.path.join(out_dir, dst_name),
         )
     shutil.copy2(
-        os.path.join(label_dir, f"bulk{best_K}.bb.phased.tsv.gz"),
-        os.path.join(out_dir, "bb.phased.tsv.gz"),
+        os.path.join(label_dir, fn.bulk_k_phased(best_K)),
+        os.path.join(out_dir, fn.BB_PHASED_TSV_GZ),
     )
     shutil.copy2(
-        os.path.join(plot_dir, f"K{best_K}.pdf"),
-        os.path.join(out_dir, f"bulk.K{best_K}.pdf"),
+        os.path.join(plot_dir, fn.k_plot(best_K)),
+        os.path.join(out_dir, fn.bulk_k_plot(best_K)),
     )
 
-    _log_done("cluster-bins", out_file=os.path.join(out_dir, "runtime.log"))
+    _log_done("cluster-bins", out_file=os.path.join(out_dir, fn.RUNTIME_LOG))
     return

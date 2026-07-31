@@ -7,6 +7,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.special import betaln, gammaln
 
+from hatchet import filenames as fn
+
 
 def _ll_gauss(obs_rdrs, exp_rdr, rdr_var, floor_var=1e-12):
     """Gaussian log-likelihood in RDR space with fixed variance."""
@@ -148,9 +150,7 @@ def model_selection_ploidy(
     def _compute_scores(ploidy):
         gammas = scaling[ploidy]["gammas"]
         ns_sorted = sorted(chosen_sols[ploidy].keys())
-        first_ucn = os.path.join(
-            out_dir, f"results.{ploidy}.n{ns_sorted[0]}.bbc.ucn.tsv"
-        )
+        first_ucn = os.path.join(out_dir, fn.results_bbc_ucn(ploidy, ns_sorted[0]))
         ll_n1, nobs_n1, n_clusters, n_samples = _compute_loglik_from_ucn(
             first_ucn, 1, gammas, segs
         )
@@ -159,7 +159,7 @@ def model_selection_ploidy(
         ns_all = [1] + ns_sorted
         lls = [ll_n1]
         for clone_n in ns_sorted:
-            ucn_file = os.path.join(out_dir, f"results.{ploidy}.n{clone_n}.bbc.ucn.tsv")
+            ucn_file = os.path.join(out_dir, fn.results_bbc_ucn(ploidy, clone_n))
             ll, nobs, n_clusters, n_samples = _compute_loglik_from_ucn(
                 ucn_file, clone_n, gammas, segs
             )

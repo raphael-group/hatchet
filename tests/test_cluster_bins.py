@@ -1,4 +1,4 @@
-"""Integration tests for HATCHet3 cluster-bins step."""
+"""Integration tests for HATCHet cluster-bins step."""
 
 import os
 import pandas as pd

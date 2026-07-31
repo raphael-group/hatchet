@@ -374,7 +374,6 @@ def run_coordinate_descent(
     reg_bound=0.3,
     u_init_method="dirichlet",
     u_dir_alpha=0.3,
-    u_bin_p=0.5,
     solver_threads=None,
     cd_tol=0.001,
     solver_type="gurobi",
@@ -396,9 +395,7 @@ def run_coordinate_descent(
     """
     with Random(random_seed):
         seeds = [
-            build_random_u(
-                params, inputs, method=u_init_method, alpha=u_dir_alpha, p_bin=u_bin_p
-            )
+            build_random_u(params, inputs, method=u_init_method, alpha=u_dir_alpha)
             for _ in range(n_seed)
         ]
 

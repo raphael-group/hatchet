@@ -1,4 +1,4 @@
-# HATCHet3 default parameter values for all subcommands.
+# HATCHet default parameter values for all subcommands.
 # Loaded by hatchet.utils.normalize_args at the top of each run().
 
 ##################################################
@@ -45,7 +45,7 @@ skip_mhbafs: false
 
 ##################################################
 # compute-cn
-# mode: ilp | cd | both | cnt_cd
+# mode: ilp | cd | both
 mode: cd
 # model_select: elbow | bic
 model_select: bic
@@ -80,43 +80,59 @@ cd_convergence_iters: 2
 cd_nseeds: 400
 cd_njobs: 8
 cd_seed: 42
-# u_init: dirichlet | bubble | bin_dir
+# u_init: dirichlet | bubble
 u_init: dirichlet
 u_dir_alpha: 0.3
-# bin_dir only: Bernoulli presence prob for non-anchor cells
-u_bin_p: 0.5
 solver_threads: null
 eps_fit: 0.01
 
 ##################################################
-# plot-cn / plot-panel (shared --dpi default)
-dpi: 300
-# img_type: pdf | png | svg
-img_type: png
-transparent: false
-show_gap: false
-tail_alpha: 0.8
-center_alpha: 1.0
-onetail_area: 0.025
-maxlim_fcn: 30
+# plotting (shared: cluster-bins plot-rdr-baf + plot-cn + plot-panel)
+plot_dpi: 300
+# plot_img_type: pdf | png | svg
+plot_img_type: png
+plot_transparent: false
+plot_show_gap: false
+
+# transparent outlier dots
+plot_tail_alpha: 0.8
+plot_center_alpha: 1.0
+plot_onetail_area: 0.025
+plot_maxlim_fcn: 30
 patient_id: panel
 # combined 1D figure width (inches)
 plot_row_width: 25
 # per-sample vertical block height (inches)
-plot_row_height: 6
-# vertical gap between samples (GridSpec hspace)
-plot_inter_sample_hspace: 0.35
-# vertical gap between FCN and BAF within a sample
-plot_intra_sample_hspace: 0.12
-# vertical gap between last BAF row and CNP profile
-plot_baf_cnp_hspace: 0.3
+plot_row_height: 4
+# vertical gap between samples; fraction of a full (n_rows-tall) sample block
+plot_inter_sample_hspace: 0.15
+# vertical gap between the two rows within a sample; fraction of one row
+plot_intra_sample_hspace: 0.05
+# vertical gap between last BAF row and CNP profile (plot-cn only)
+plot_baf_cnp_hspace: 0.15
+# dot marker size
+plot_markersize: 5
+# legend marker size
+plot_legend_markersize: 5
+plot_legend_fontsize: 8
+plot_maxlim_rdr: 100
+# cluster-bins per-cluster diagnostic pages (plot_clusters)
+plot_diag_col_width: 7
+plot_diag_page_height: 12
+plot_diag_hist_bins: 80
+plot_diag_scatter_size: 4
+plot_diag_scatter_alpha: 0.3
+plot_diag_contour_levels: 6
+plot_diag_suptitle_fontsize: 14
+plot_diag_title_fontsize: 10
+plot_diag_label_fontsize: 9
+plot_diag_legend_fontsize: 7
 
 ##################################################
 # plot-panel
-width: 20
-height: 1
+plot_panel_width: 20
+plot_panel_height: 1
 show_clone_name: false
-show_prop: false
 show_ploidy: false
 title: panel
 plot_1d2d: false

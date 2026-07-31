@@ -11,12 +11,18 @@ from scipy.stats import norm, beta as beta_dist, gaussian_kde
 from scipy.signal import find_peaks
 
 from cnplot import (
-    plot_scatter_1d,
+    plot_scatter_1d_multisample,
     plot_scatter_2d,
+    make_row_spec,
     annotate_landmarks,
     set_palette,
 )
-from hatchet.plot.plot_utils import build_genome_axis, use_editable_fonts
+from hatchet.plot.plot_utils import (
+    get_plot_style,
+    build_genome_axis,
+    use_editable_fonts,
+)
+from hatchet.utils import load_defaults
 
 
 ##################################################
@@ -51,6 +57,7 @@ def plot_clusters(
     bin_info=None,
     lim_baf: tuple = None,
     lim_rdr: tuple = None,
+    style: dict = None,
 ):
     """Plot per-cluster joint BAF-vs-RDR scatter with marginals and QQ plots.
 
@@ -72,6 +79,18 @@ def plot_clusters(
     """
     import warnings
     from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
+
+    style = style or get_plot_style(load_defaults())
+    col_width = style["diag_col_width"]
+    page_height = style["diag_page_height"]
+    hist_bins = style["diag_hist_bins"]
+    scatter_size = style["diag_scatter_size"]
+    scatter_alpha = style["diag_scatter_alpha"]
+    contour_levels = style["diag_contour_levels"]
+    suptitle_fs = style["diag_suptitle_fontsize"]
+    title_fs = style["diag_title_fontsize"]
+    label_fs = style["diag_label_fontsize"]
+    legend_fs = style["diag_legend_fontsize"]
 
     K = rdr_means.shape[0]
     M = rdr_means.shape[1]
@@ -106,8 +125,8 @@ def plot_clusters(
             title = f"Cluster {k}  (n={n_bins}/{N_total})"
             title_color = "red" if is_multimodal else "black"
 
-            fig = plt.figure(figsize=(7 * M, 12))
-            fig.suptitle(title, fontsize=14, y=0.99, color=title_color)
+            fig = plt.figure(figsize=(col_width * M, page_height))
+            fig.suptitle(title, fontsize=suptitle_fs, y=0.99, color=title_color)
             outer = GridSpec(
                 2, M, figure=fig, height_ratios=[3, 2], wspace=0.35, hspace=0.35
             )
@@ -149,8 +168,8 @@ def plot_clusters(
                 ax_main.scatter(
                     baf_obs,
                     rdr_obs,
-                    s=4,
-                    alpha=0.3,
+                    s=scatter_size,
+                    alpha=scatter_alpha,
                     color=cluster_color,
                     rasterized=True,
                 )
@@ -165,20 +184,20 @@ def plot_clusters(
                         Xg,
                         Yg,
                         np.exp(log_joint),
-                        levels=6,
+                        levels=contour_levels,
                         colors="red",
                         linewidths=0.8,
                         alpha=0.7,
                     )
-                ax_main.set_xlabel("BAF", fontsize=9)
-                ax_main.set_ylabel(ylab, fontsize=9)
+                ax_main.set_xlabel("BAF", fontsize=label_fs)
+                ax_main.set_ylabel(ylab, fontsize=label_fs)
                 if lim_baf is not None:
                     ax_main.set_xlim(lim_baf)
                 if lim_rdr is not None:
                     ax_main.set_ylim(lim_rdr)
 
                 ax_top.hist(
-                    baf_obs, bins=80, density=True, alpha=0.6, color="steelblue"
+                    baf_obs, bins=hist_bins, density=True, alpha=0.6, color="steelblue"
                 )
                 if a_param > 0 and b_param > 0:
                     x_baf = np.linspace(0.001, 0.999, 300)
@@ -189,13 +208,13 @@ def plot_clusters(
                         lw=1.2,
                         label=f"p={p_k:.3f} tau={tau_m:.0f}",
                     )
-                    ax_top.legend(fontsize=7, loc="upper right")
+                    ax_top.legend(fontsize=legend_fs, loc="upper right")
                 ax_top.tick_params(labelbottom=False)
-                ax_top.set_title(tumor_samples[m], fontsize=10)
+                ax_top.set_title(tumor_samples[m], fontsize=title_fs)
 
                 ax_right.hist(
                     rdr_obs,
-                    bins=80,
+                    bins=hist_bins,
                     density=True,
                     alpha=0.6,
                     color="salmon",
@@ -209,7 +228,7 @@ def plot_clusters(
                     lw=1.2,
                     label=f"mu={mu_k:.3f}\nvar={var_k:.4f}",
                 )
-                ax_right.legend(fontsize=7, loc="upper right")
+                ax_right.legend(fontsize=legend_fs, loc="upper right")
                 ax_right.tick_params(labelleft=False)
 
                 inner_qq = GridSpecFromSubplotSpec(
@@ -239,13 +258,13 @@ def plot_clusters(
                         0.95,
                         f"$R^2$={r2_baf:.4f}",
                         transform=ax_baf_qq.transAxes,
-                        fontsize=9,
+                        fontsize=label_fs,
                         va="top",
                         ha="left",
                     )
-                ax_baf_qq.set_xlabel("Theoretical (Beta)", fontsize=9)
-                ax_baf_qq.set_ylabel("Observed", fontsize=9)
-                ax_baf_qq.set_title("BAF QQ", fontsize=10)
+                ax_baf_qq.set_xlabel("Theoretical (Beta)", fontsize=label_fs)
+                ax_baf_qq.set_ylabel("Observed", fontsize=label_fs)
+                ax_baf_qq.set_title("BAF QQ", fontsize=title_fs)
 
                 ax_rdr_qq = fig.add_subplot(inner_qq[0, 1])
                 rdr_sorted = np.sort(rdr_obs)
@@ -262,13 +281,13 @@ def plot_clusters(
                     0.95,
                     f"$R^2$={r2_rdr:.4f}",
                     transform=ax_rdr_qq.transAxes,
-                    fontsize=9,
+                    fontsize=label_fs,
                     va="top",
                     ha="left",
                 )
-                ax_rdr_qq.set_xlabel("Theoretical (Gaussian)", fontsize=9)
-                ax_rdr_qq.set_ylabel("Observed", fontsize=9)
-                ax_rdr_qq.set_title(f"{ylab} QQ", fontsize=10)
+                ax_rdr_qq.set_xlabel("Theoretical (Gaussian)", fontsize=label_fs)
+                ax_rdr_qq.set_ylabel("Observed", fontsize=label_fs)
+                ax_rdr_qq.set_title(f"{ylab} QQ", fontsize=title_fs)
 
             fig.subplots_adjust(top=0.95)
             pdf.savefig(fig)
@@ -296,11 +315,7 @@ def plot_rdr_baf(
     ylab="RDR",
     out_dir=None,
     out_prefix="",
-    dpi=300,
-    transparent=False,
-    row_width=20,
-    row_height=4,
-    maxlim_rdr=100,
+    style: dict = None,
     rasterized=True,
     rdr_means=None,
     rdr_vars=None,
@@ -321,6 +336,7 @@ def plot_rdr_baf(
         genome_file: Chromosome-sizes file path for the genome axis.
         region_bed: Plotted-regions BED path for the genome axis.
     """
+    style = style or get_plot_style(load_defaults())
     use_editable_fonts()
 
     bin_info = bin_info.copy(deep=True)
@@ -335,7 +351,10 @@ def plot_rdr_baf(
     pal_dict = None  # {str(cluster): color} for cnplot hue
     lbl_to_idx = None
     if cluster_labels is not None:
-        palette = set_palette(num_colors=len(np.unique(cluster_labels)))
+        # rc_context reverts set_palette's global whitegrid style leak
+        # (axes.edgecolor -> gray) so 1D/2D panels keep a black axes box.
+        with plt.rc_context():
+            palette = set_palette(num_colors=len(np.unique(cluster_labels)))
         lbl_to_idx = np.empty(int(cluster_labels.max()) + 1, dtype=int)
         for i, lbl in enumerate(unique_labels):
             lbl_to_idx[lbl] = i
@@ -350,9 +369,16 @@ def plot_rdr_baf(
     pdf = PdfPages(os.path.join(out_dir, f"{out_name}.pdf"))
 
     global_lim_baf = (0, 1) if np.max(baf_mat) > 0.5 else (0, 0.55)
+    global_lim_baf_1d = (global_lim_baf[0] - 0.05, global_lim_baf[1] + 0.05)
     global_max_rdr = int(np.ceil(np.max(rdr_mat)))
-    global_lim_rdr = (0, min(max(2, global_max_rdr), maxlim_rdr))
+    top_rdr = min(max(2, global_max_rdr), style["maxlim_rdr"])
+    global_lim_rdr = (-0.05 * top_rdr, top_rdr)
 
+    hue = "cluster" if cluster_labels is not None else None
+    xlab_2d = "Minor haplotype B-allele frequency (mhBAF)" if xlab == "mhBAF" else xlab
+    obs_parts = []
+    exp_parts = []
+    titles = {}
     for si, sample in enumerate(samples):
         logging.info(f"plot {sample}")
         bafs = baf_mat[:, si]
@@ -360,26 +386,27 @@ def plot_rdr_baf(
 
         lim_baf = (0, 1) if np.max(bafs) > 0.5 else (0, 0.55)
         max_rdr = int(np.ceil(np.max(rdrs)))
-        if max_rdr > maxlim_rdr:
-            num_exceeded = np.sum(rdrs >= maxlim_rdr)
+        if max_rdr > style["maxlim_rdr"]:
+            num_exceeded = np.sum(rdrs >= style["maxlim_rdr"])
             logging.warning(
-                f"there are {num_exceeded} bins having RDR exceed maxlim_rdr={maxlim_rdr}"
+                f"there are {num_exceeded} bins having RDR exceed maxlim_rdr={style['maxlim_rdr']}"
             )
-        lim_rdr = (0, min(max(2, max_rdr), maxlim_rdr))
+        lim_rdr = (0, min(max(2, max_rdr), style["maxlim_rdr"]))
 
         obs = bin_info[["#CHR", "START", "END"]].copy()
         obs["BAF"] = bafs
         obs["RD"] = rdrs
-        exp = None
-        hue = None
+        obs["SAMPLE"] = sample
         if cluster_labels is not None:
             obs["cluster"] = [str(c) for c in cluster_labels]
-            hue = "cluster"
             exp = bin_info[["#CHR", "START", "END"]].copy()
             exp[f"exp_RD_{sample}"] = expected_rdrs[lbl_to_idx[cluster_labels], si]
             exp[f"exp_BAF_{sample}"] = expected_bafs[lbl_to_idx[cluster_labels], si]
+            exp_parts.append(exp)
+        obs_parts.append(obs)
+        titles[sample] = sample
 
-        # Page 1: 2D plot
+        # 2D page (one per sample)
         grid = plot_scatter_2d(
             obs,
             xcol="BAF",
@@ -389,11 +416,12 @@ def plot_rdr_baf(
             palette=pal_dict,
             xlim=lim_baf,
             ylim=lim_rdr,
-            xlabel=xlab,
+            xlabel=xlab_2d,
             ylabel=ylab,
-            title=f"sample={sample}",
+            title=sample,
             show_marginals=True,
             show_props=False,
+            markersize=style["markersize"],
             rasterized=rasterized,
         )
         if cluster_labels is not None:
@@ -410,71 +438,73 @@ def plot_rdr_baf(
             ]
             if landmarks:
                 annotate_landmarks(grid.ax_joint, landmarks)
-        pdf.savefig(grid.figure, dpi=dpi, bbox_inches="tight", transparent=transparent)
+        pdf.savefig(
+            grid.figure,
+            dpi=style["dpi"],
+            bbox_inches="tight",
+            transparent=style["transparent"],
+        )
         plt.close(grid.figure)
 
-        # Page 2: 1D plot
-        fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(row_width, row_height))
-        plot_scatter_1d(
-            axes[0],
-            obs,
-            genome_axis,
-            "RD",
-            expected_df=exp,
-            group=sample,
-            hue=hue,
-            palette=pal_dict,
-            ylim=lim_rdr,
-            ylabel=ylab,
-            plot_chrname=False,
-            show_legend=False,
-            rasterized=rasterized,
-        )
-        plot_scatter_1d(
-            axes[1],
-            obs,
-            genome_axis,
-            "BAF",
-            expected_df=exp,
-            group=sample,
-            hue=hue,
-            palette=pal_dict,
-            ylim=lim_baf,
-            ylabel=xlab,
-            href=0.5,
-            plot_chrname=True,
-            rasterized=rasterized,
-        )
-        fig.suptitle(f"sample={sample}")
-        if cluster_labels is not None:
-            handles = [
-                Line2D(
-                    [0],
-                    [0],
-                    marker="o",
-                    linestyle="",
-                    markersize=5,
-                    color=pal_dict[str(lbl)],
-                    label=str(lbl),
-                )
-                for lbl in unique_labels
-            ]
-            ncol = max(1, int(np.ceil(len(unique_labels) / 10)))
-            axes[0].legend(
-                handles=handles,
-                loc="center left",
-                bbox_to_anchor=(1.01, 0.5),
-                frameon=False,
-                title=None,
-                ncol=ncol,
-                fontsize=8,
+    # Combined 1D page: all samples stacked, RDR + BAF rows per sample
+    obs_all = pd.concat(obs_parts, ignore_index=True)
+    exp_1d = None
+    if exp_parts:
+        exp_1d = exp_parts[0]
+        for part in exp_parts[1:]:
+            exp_1d = exp_1d.merge(part, on=["#CHR", "START", "END"], how="outer")
+    fig = plot_scatter_1d_multisample(
+        obs_df=obs_all,
+        genome_axis=genome_axis,
+        row_specs=[
+            make_row_spec("RD", ylabel=ylab, ylim=global_lim_rdr),
+            make_row_spec("BAF", ylabel=xlab, ylim=global_lim_baf_1d, href=0.5),
+        ],
+        groups=samples,
+        group_col="SAMPLE",
+        expected_df=exp_1d,
+        hue=hue,
+        palette=pal_dict,
+        seg_df=None,
+        titles=titles,
+        row_width=style["row_width"],
+        row_height=style["row_height"],
+        intra_group_hspace=style["intra_sample_hspace"],
+        inter_group_hspace=style["inter_sample_hspace"],
+        markersize=style["markersize"],
+        rasterized=rasterized,
+    )
+    if cluster_labels is not None:
+        handles = [
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                linestyle="",
+                markersize=style["legend_markersize"],
+                color=pal_dict[str(lbl)],
+                label=str(lbl),
             )
-        fig.subplots_adjust(right=0.82)
-        fig.tight_layout(rect=[0, 0, 0.82, 1])
-        pdf.savefig(fig, dpi=dpi, bbox_inches="tight")
-        plt.close(fig)
+            for lbl in unique_labels
+        ]
+        ncol = max(1, int(np.ceil(len(unique_labels) / 10)))
+        # anchor to the top panel's top-right corner so the legend sits snug
+        # beside the axes rather than floating at the figure's right edge
+        fig.axes[0].legend(
+            handles=handles,
+            loc="upper left",
+            bbox_to_anchor=(1.01, 1.0),
+            frameon=False,
+            title=None,
+            ncol=ncol,
+            fontsize=style["legend_fontsize"],
+        )
+    pdf.savefig(fig, dpi=style["dpi"], bbox_inches="tight")
+    plt.close(fig)
 
-    # Cluster-level diagnostic pages
+    pdf.close()
+
+    # Cluster-level diagnostic pages -> separate {out_name}.diagnostic.pdf
     if rdr_means is not None:
         plot_clusters(
             cluster_labels,
@@ -485,13 +515,13 @@ def plot_rdr_baf(
             expected_bafs,
             baf_taus,
             samples,
+            out_file=os.path.join(out_dir, f"{out_name}.diagnostic.pdf"),
             cluster_ids=unique_labels,
             log_rdr=log_rdr,
-            pdf=pdf,
             palette=palette,
             bin_info=bin_info,
             lim_baf=global_lim_baf,
             lim_rdr=global_lim_rdr,
+            style=style,
         )
-    pdf.close()
     return

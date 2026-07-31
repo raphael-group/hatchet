@@ -47,7 +47,7 @@ jobs:
 
       # --no-build-isolation compiles _hmm_cpp against the conda toolchain
       # (pybind11, cxx-compiler, and the platform OpenMP) instead of a PyPI copy.
-      - name: Build and install HATCHet3 with test extra
+      - name: Build and install HATCHet with test extra
         run: pip install --no-build-isolation ".[test]"
 
       - name: Report backend and solvers

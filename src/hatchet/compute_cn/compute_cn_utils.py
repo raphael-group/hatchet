@@ -7,26 +7,10 @@ import numpy as np
 
 from hatchet.utils import build_seg_from_bbc
 from hatchet.io_utils import read_region_bed
-from hatchet.plot import plot_cn as _plot_cn
+from hatchet import filenames as fn
 
 
-def store_gammas(out_file, scaling, samples):
-    """Write per-sample gamma values for all ploidies.
-
-    Args:
-        out_file: output TSV path.
-        scaling: dict from get_scaling_factor with 'diploid', 'tetraploid' keys.
-        samples: ordered sample list.
-    """
-    with open(out_file, "w") as fd:
-        for sample in samples:
-            g_dip = scaling["diploid"]["gammas"].get(sample, 0)
-            g_tet = (
-                scaling["tetraploid"]["gammas"].get(sample, 0)
-                if scaling["tetraploid"]
-                else 0
-            )
-            fd.write(f"{sample}\t{g_dip}\t{g_tet}\n")
+# === Data preparation ===
 
 
 def build_data(bbcs, segs, segment=False):
@@ -156,100 +140,65 @@ def build_data(bbcs, segs, segment=False):
     }
 
 
-def filtering(
-    bbc: pd.DataFrame,
-    seg: pd.DataFrame,
-    samples: list,
-    clusters: list,
-    fstd=2.0,
-    min_nbins=10,
-    ub_nbins=50,
-):
-    """Filter clusters before the optimization step using variance outlier detection.
+def compute_fractional_cn(input_data, gammas, alpha=0.05, min_ci_margin=0.1):
+    """Compute fractional copy numbers and CI.
 
-    Steps:
-        0. Remove any cluster with fewer than ``min_nbins`` bins.
-        1. Compute per-sample, per-cluster RD and BAF variance (SCV).
-        2. Compute per-sample mean variance (MV) and standard deviation (STDV)
-           across clusters that passed step 0.
-        3. Mark a cluster as an outlier if, across all samples, its SCV deviates
-           from MV by more than ``fstd`` standard deviations, AND the cluster
-           has at most ``ub_nbins`` bins.
+    Returns a new dict containing all fields from input_data plus
+    fcn, fa, fb, fa_lo, fa_hi, fb_lo, fb_hi. input_data is not modified.
 
     Args:
-        bbc: Bin-level DataFrame with columns ``SAMPLE``, ``CLUSTER``, ``RD``, ``BAF``.
-        seg: Segment-level DataFrame with columns ``SAMPLE``, ``#ID``, ``RD``, ``BAF``,
-            ``#BINS``.
-        samples: Ordered list of sample identifiers.
-        clusters: Ordered list of cluster identifiers.
-        fstd: Number of standard deviations used as the outlier threshold.
-        min_nbins: Clusters with fewer bins than this are always removed.
-        ub_nbins: Outlier detection only applies to clusters with at most this
-            many bins (large clusters are kept regardless of variance).
-
-    Returns:
-        A tuple ``(good_clusters, bad_clusters)`` where each element is a list
-        of cluster IDs.
+        input_data: dict from build_data with rdr, baf, rdr_se.
+        gammas: dict or Series of per-sample gamma values.
+        alpha: significance level (default 0.05 → 95% CI).
+        min_ci_margin: hard minimum CI half-width in FCN space.
     """
-    logging.info("preprocessing, filtering clusters")
+    from scipy.stats import norm
 
-    var_rd_matrix = np.zeros((len(clusters), len(samples)), dtype=np.float64)
-    var_baf_matrix = np.zeros((len(clusters), len(samples)), dtype=np.float64)
+    rdr = input_data["rdr"]
+    baf = input_data["baf"]
+    rdr_se = input_data["rdr_se"]
 
-    for i, cluster in enumerate(clusters):
-        for j, sample in enumerate(samples):
-            bbc_ = bbc[(bbc["SAMPLE"] == sample) & (bbc["CLUSTER"] == cluster)]
-            seg_ = seg[(seg["SAMPLE"] == sample) & (seg["#ID"] == cluster)]
-            seg_baf = seg_["BAF"].iloc[0]
-            seg_rdr = seg_["RD"].iloc[0]
-            var_rd_matrix[i, j] = np.linalg.norm(bbc_["RD"] - seg_rdr, 2) / len(bbc_)
-            var_baf_matrix[i, j] = np.linalg.norm(bbc_["BAF"] - seg_baf, 2) / len(bbc_)
+    gammas = pd.Series(gammas).sort_index()
+    fcn = rdr * gammas
+    fb = fcn * baf
+    fa = fcn - fb
 
-    cluster_filtered = np.zeros(len(clusters), dtype=bool)
-    for i, cluster in enumerate(clusters):
-        cluster_filtered[i] = seg[seg["#ID"] == cluster]["#BINS"].iloc[0] < min_nbins
+    z = norm.ppf(1 - alpha / 2)
+    margin_fa = np.maximum(z * gammas * (1 - baf) * rdr_se, min_ci_margin)
+    margin_fb = np.maximum(z * gammas * baf * rdr_se, min_ci_margin)
 
-    mv_rd = np.mean(var_rd_matrix[~cluster_filtered, :], axis=0)
-    stdv_rd = np.std(var_rd_matrix[~cluster_filtered, :], axis=0, ddof=1)
-    mv_baf = np.mean(var_baf_matrix[~cluster_filtered, :], axis=0)
-    stdv_baf = np.std(var_baf_matrix[~cluster_filtered, :], axis=0, ddof=1)
-    for j, sample in enumerate(samples):
-        lb_rd = mv_rd[j] - fstd * stdv_rd[j]
-        ub_rd = mv_rd[j] + fstd * stdv_rd[j]
-        lb_baf = mv_baf[j] - fstd * stdv_baf[j]
-        ub_baf = mv_baf[j] + fstd * stdv_baf[j]
-        logging.debug(
-            f"{sample} RD-var bound=({lb_rd:.6f}, {ub_rd:.6f}) BAF-var bound=({lb_baf:.6f}, {ub_baf:.6f})"
-        )
+    return {
+        **input_data,
+        "fcn": fcn,
+        "fa": fa,
+        "fb": fb,
+        "fa_lo": fa - margin_fa,
+        "fa_hi": fa + margin_fa,
+        "fb_lo": fb - margin_fb,
+        "fb_hi": fb + margin_fb,
+    }
 
-    good_clusters = []
-    bad_clusters = []
-    for i, cluster in enumerate(clusters):
-        nbins = seg[seg["#ID"] == cluster]["#BINS"].iloc[0]
-        dv_rd = np.abs(var_rd_matrix[i, :] - mv_rd)
-        dv_baf = np.abs(var_baf_matrix[i, :] - mv_baf)
-        z_rd = dv_rd / stdv_rd
-        z_baf = dv_baf / stdv_baf
-        is_outlier = (
-            np.all(dv_rd > (fstd * stdv_rd))
-            or np.all(dv_baf > (fstd * stdv_baf))
-            or cluster_filtered[i]
-        ) and (nbins <= ub_nbins)
-        status = "REMOVED" if is_outlier else "kept"
-        for j, sample in enumerate(samples):
-            logging.debug(
-                f"z={cluster} {sample} #bins={nbins} "
-                f"RD-var={var_rd_matrix[i, j]:.6f} Z(RD)={z_rd[j]:.4f} "
-                f"BAF-var={var_baf_matrix[i, j]:.6f} Z(BAF)={z_baf[j]:.4f} "
-                f"{status}"
+
+# === Solver input ===
+
+
+def store_gammas(out_file, scaling, samples):
+    """Write per-sample gamma values for all ploidies.
+
+    Args:
+        out_file: output TSV path.
+        scaling: dict from get_scaling_factor with 'diploid', 'tetraploid' keys.
+        samples: ordered sample list.
+    """
+    with open(out_file, "w") as fd:
+        for sample in samples:
+            g_dip = scaling["diploid"]["gammas"].get(sample, 0)
+            g_tet = (
+                scaling["tetraploid"]["gammas"].get(sample, 0)
+                if scaling["tetraploid"]
+                else 0
             )
-        if is_outlier:
-            bad_clusters.append(cluster)
-        else:
-            good_clusters.append(cluster)
-
-    logging.info(f"remaining clusters: {good_clusters}")
-    return good_clusters, bad_clusters
+            fd.write(f"{sample}\t{g_dip}\t{g_tet}\n")
 
 
 def store_solve_input(out_file, input_data):
@@ -268,6 +217,9 @@ def store_solve_input(out_file, input_data):
                 fd.write(
                     f"{cid}\t{sample}\t{nb}\t" + "\t".join(vals) + f"\t{weights[cid]}\n"
                 )
+
+
+# === Solution persistence ===
 
 
 def _write_solution_tsv(fd, input_data, cA, cB, u, n, cluster_ids, sample_ids, header):
@@ -337,7 +289,7 @@ def store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode):
     header = "\t".join(cols)
 
     for sol_id, sol in pool_instances.items():
-        path = os.path.join(sol_dir, f"{solve_mode}_{sol_id}.tsv")
+        path = os.path.join(sol_dir, fn.solution_tsv(solve_mode, sol_id))
         with open(path, "w") as fd:
             _write_solution_tsv(
                 fd,
@@ -356,7 +308,7 @@ def store_instance_tofile(pool_instances, input_data, sol_dir, solve_mode):
 
             tree = sol.get("tree")
             if tree is not None and isinstance(tree, LabeledCloneTree):
-                prefix = os.path.join(sol_dir, f"{solve_mode}_{sol_id}")
+                prefix = os.path.join(sol_dir, fn.solution_stem(solve_mode, sol_id))
                 with open(f"{prefix}.nwk", "w") as f:
                     f.write(tree.to_newick() + "\n")
                 d = tree.to_dict()
@@ -377,7 +329,7 @@ def update_objectives_tsv(sols_dir, new_df):
     """
     cols = ["ploidy", "n", "sol_id", "restart_id", "imf_obj", "reg_obj"]
     new_df = new_df[cols]
-    path = os.path.join(sols_dir, "objectives.tsv")
+    path = os.path.join(sols_dir, fn.OBJECTIVES_TSV)
     if os.path.exists(path):
         old = pd.read_csv(path, sep="\t")
         keys = set(map(tuple, new_df[["ploidy", "n"]].itertuples(index=False)))
@@ -386,43 +338,84 @@ def update_objectives_tsv(sols_dir, new_df):
     new_df.to_csv(path, sep="\t", index=False)
 
 
-def compute_fractional_cn(input_data, gammas, alpha=0.05, min_ci_margin=0.1):
-    """Compute fractional copy numbers and CI.
+def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
+    """Read pool solution TSVs from sol_dir into {sol_id: {"imf_obj": ..., "cA": ..., ...}}.
 
-    Returns a new dict containing all fields from input_data plus
-    fcn, fa, fb, fa_lo, fa_hi, fb_lo, fb_hi. input_data is not modified.
-
-    Args:
-        input_data: dict from build_data with rdr, baf, rdr_se.
-        gammas: dict or Series of per-sample gamma values.
-        alpha: significance level (default 0.05 → 95% CI).
-        min_ci_margin: hard minimum CI half-width in FCN space.
+    Per-solution objectives are reconstructed from the consolidated
+    sols/objectives.tsv: for this (ploidy, n) the best (min imf_obj) restart per
+    sol_id is taken, matching how the pool selects its representative at solve time.
     """
-    from scipy.stats import norm
+    ploidy, _, n = os.path.basename(sol_dir.rstrip("/")).rpartition("_n")
+    obj_path = os.path.join(os.path.dirname(sol_dir.rstrip("/")), fn.OBJECTIVES_TSV)
+    obj_map = {}
+    if os.path.exists(obj_path) and ploidy:
+        odf = pd.read_csv(obj_path, sep="\t")
+        odf = odf[(odf["ploidy"] == ploidy) & (odf["n"] == int(n))]
+        best = odf.loc[odf.groupby("sol_id")["imf_obj"].idxmin()]
+        obj_map = {
+            str(r["sol_id"]): (float(r["imf_obj"]), float(r["reg_obj"]))
+            for _, r in best.iterrows()
+        }
 
-    rdr = input_data["rdr"]
-    baf = input_data["baf"]
-    rdr_se = input_data["rdr_se"]
+    pool = {}
+    for path in sorted(glob.glob(os.path.join(sol_dir, "*.tsv"))):
+        basename = os.path.basename(path)
+        # Match old format (sol*_pool*) or new format (mode_solid)
+        m = re.match(r".*_sol([\d.]+)_pool(\d+)\.tsv", basename)
+        if m:
+            sol_id = f"p{m.group(1)}_s{m.group(2)}"
+        else:
+            m2 = re.match(r"(?:cd|ilp|cnt_cd)_(.+)\.tsv", basename)
+            if m2:
+                sol_id = m2.group(1)
+            else:
+                continue
 
-    gammas = pd.Series(gammas).sort_index()
-    fcn = rdr * gammas
-    fb = fcn * baf
-    fa = fcn - fb
+        sol = pd.read_csv(path, sep="\t")
+        cn_cols = sorted(
+            [c for c in sol.columns if c.startswith("cn_")],
+            key=lambda c: (0 if c == "cn_normal" else 1, c),
+        )
+        u_cols = sorted(
+            [c for c in sol.columns if c.startswith("u_")],
+            key=lambda c: (0 if c == "u_normal" else 1, c),
+        )
 
-    z = norm.ppf(1 - alpha / 2)
-    margin_fa = np.maximum(z * gammas * (1 - baf) * rdr_se, min_ci_margin)
-    margin_fb = np.maximum(z * gammas * baf * rdr_se, min_ci_margin)
+        sol_s = (
+            sol[sol["SAMPLE"] == sample_ids[0]]
+            .sort_values("CLUSTER")
+            .reset_index(drop=True)
+        )
+        cA, cB = [], []
+        for _, row in sol_s.iterrows():
+            ca, cb = zip(
+                *(
+                    (int(a), int(b))
+                    for a, b in (str(row[c]).split("|") for c in cn_cols)
+                )
+            )
+            cA.append(list(ca))
+            cB.append(list(cb))
 
-    return {
-        **input_data,
-        "fcn": fcn,
-        "fa": fa,
-        "fb": fb,
-        "fa_lo": fa - margin_fa,
-        "fa_hi": fa + margin_fa,
-        "fb_lo": fb - margin_fb,
-        "fb_hi": fb + margin_fb,
-    }
+        u = [
+            [float(sol[sol["SAMPLE"] == sid].iloc[0][uc]) for sid in sample_ids]
+            for uc in u_cols
+        ]
+        imf_obj, reg_obj = obj_map.get(sol_id, (0.0, 0.0))
+        pool[sol_id] = {
+            "imf_obj": imf_obj,
+            "reg_obj": reg_obj,
+            "cA": cA,
+            "cB": cB,
+            "u": u,
+        }
+
+    if pool:
+        logging.info(f"loaded {len(pool)} pool solutions from {sol_dir}")
+    return pool
+
+
+# === Segmentation ===
 
 
 def segmentation(
@@ -498,188 +491,3 @@ def segmentation(
         seg_df.to_csv(seg_out_file, sep="\t", index=False)
 
     return seg_df
-
-
-def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy, name=None):
-    if not os.path.exists(bbc) or not os.path.exists(seg):
-        return
-    _plot_cn.run(
-        {
-            "bbc": bbc,
-            "seg": seg,
-            "genome_size": args["genome_size"],
-            "region_bed": args["region_bed"],
-            "gamma_file": gamma_file,
-            "solfile": None,
-            "patient_id": name,
-            "plot_dir": plot_dir,
-            "dpi": 150,
-            "img_type": "pdf",
-            "transparent": False,
-            "show_gap": False,
-            "tail_alpha": 0.8,
-            "center_alpha": 1.0,
-            "onetail_area": 0.025,
-            "maxlim_fcn": 30,
-            "ploidy": ploidy,
-        }
-    )
-
-
-def plot_pareto_pdf(summary_df, plot_dir, reg_term, elbow_fig=None):
-    """Plot REG vs IMF Pareto curves + elbow/BIC page as a multi-page PDF."""
-    import matplotlib.pyplot as plt
-    from matplotlib.backends.backend_pdf import PdfPages
-
-    outfile = os.path.join(plot_dir, "model_selection.pdf")
-    reg_col = reg_term if reg_term in summary_df.columns else "REG"
-    ploidies = sorted(summary_df["ploidy"].unique())
-    cmap = plt.get_cmap("tab10")
-
-    n_pages = 0
-    with PdfPages(outfile) as pdf:
-        # One page per ploidy; overlay all n-clone solutions, each n a distinct color.
-        for ploidy in ploidies:
-            pdf_grp = summary_df[summary_df["ploidy"] == ploidy]
-            ns = sorted(pdf_grp["n_clones"].unique())
-            fig, ax = plt.subplots(figsize=(7, 5))
-
-            # Non-pareto across all n: shared light-gray backdrop
-            non_pareto = pdf_grp[~pdf_grp["is_pareto"]]
-            if len(non_pareto) > 0:
-                ax.scatter(
-                    non_pareto[reg_col],
-                    non_pareto["IMF"],
-                    c="0.8",
-                    s=15,
-                    zorder=2,
-                    alpha=0.4,
-                    linewidths=0,
-                )
-
-            for ni, n_clones in enumerate(ns):
-                grp = pdf_grp[pdf_grp["n_clones"] == n_clones]
-                color = cmap(ni % 10)
-                pareto = grp[grp["is_pareto"]].sort_values(reg_col)
-                if len(pareto) > 0:
-                    ax.plot(
-                        pareto[reg_col],
-                        pareto["IMF"],
-                        "-o",
-                        color=color,
-                        markersize=5,
-                        linewidth=1.3,
-                        zorder=4,
-                        label=f"n={n_clones}",
-                    )
-                sel = grp[grp["selected"] == "*"]
-                if len(sel) > 0:
-                    ax.scatter(
-                        sel[reg_col],
-                        sel["IMF"],
-                        facecolors=color,
-                        marker="*",
-                        s=250,
-                        zorder=5,
-                        edgecolors="black",
-                        linewidths=1,
-                    )
-
-            ax.set_xlabel(reg_col, fontsize=11)
-            ax.set_ylabel("IMF", fontsize=11)
-            ax.set_title(
-                f"{ploidy} ({len(pdf_grp)} solutions)",
-                fontsize=13,
-                fontweight="bold",
-            )
-            ax.legend(fontsize=9, title="clones")
-            ax.grid(True, alpha=0.3)
-            fig.tight_layout()
-            pdf.savefig(fig)
-            plt.close(fig)
-            n_pages += 1
-
-        # Append elbow/BIC figure as last page
-        if elbow_fig is not None:
-            pdf.savefig(elbow_fig)
-            plt.close(elbow_fig)
-            n_pages += 1
-
-    logging.info(f"wrote {outfile} ({n_pages} pages)")
-
-
-def load_pool_from_disk(sol_dir, cluster_ids, sample_ids):
-    """Read pool solution TSVs from sol_dir into {sol_id: {"imf_obj": ..., "cA": ..., ...}}.
-
-    Per-solution objectives are reconstructed from the consolidated
-    sols/objectives.tsv: for this (ploidy, n) the best (min imf_obj) restart per
-    sol_id is taken, matching how the pool selects its representative at solve time.
-    """
-    ploidy, _, n = os.path.basename(sol_dir.rstrip("/")).rpartition("_n")
-    obj_path = os.path.join(os.path.dirname(sol_dir.rstrip("/")), "objectives.tsv")
-    obj_map = {}
-    if os.path.exists(obj_path) and ploidy:
-        odf = pd.read_csv(obj_path, sep="\t")
-        odf = odf[(odf["ploidy"] == ploidy) & (odf["n"] == int(n))]
-        best = odf.loc[odf.groupby("sol_id")["imf_obj"].idxmin()]
-        obj_map = {
-            str(r["sol_id"]): (float(r["imf_obj"]), float(r["reg_obj"]))
-            for _, r in best.iterrows()
-        }
-
-    pool = {}
-    for path in sorted(glob.glob(os.path.join(sol_dir, "*.tsv"))):
-        basename = os.path.basename(path)
-        # Match old format (sol*_pool*) or new format (mode_solid)
-        m = re.match(r".*_sol([\d.]+)_pool(\d+)\.tsv", basename)
-        if m:
-            sol_id = f"p{m.group(1)}_s{m.group(2)}"
-        else:
-            m2 = re.match(r"(?:cd|ilp|cnt_cd)_(.+)\.tsv", basename)
-            if m2:
-                sol_id = m2.group(1)
-            else:
-                continue
-
-        sol = pd.read_csv(path, sep="\t")
-        cn_cols = sorted(
-            [c for c in sol.columns if c.startswith("cn_")],
-            key=lambda c: (0 if c == "cn_normal" else 1, c),
-        )
-        u_cols = sorted(
-            [c for c in sol.columns if c.startswith("u_")],
-            key=lambda c: (0 if c == "u_normal" else 1, c),
-        )
-
-        sol_s = (
-            sol[sol["SAMPLE"] == sample_ids[0]]
-            .sort_values("CLUSTER")
-            .reset_index(drop=True)
-        )
-        cA, cB = [], []
-        for _, row in sol_s.iterrows():
-            ca, cb = zip(
-                *(
-                    (int(a), int(b))
-                    for a, b in (str(row[c]).split("|") for c in cn_cols)
-                )
-            )
-            cA.append(list(ca))
-            cB.append(list(cb))
-
-        u = [
-            [float(sol[sol["SAMPLE"] == sid].iloc[0][uc]) for sid in sample_ids]
-            for uc in u_cols
-        ]
-        imf_obj, reg_obj = obj_map.get(sol_id, (0.0, 0.0))
-        pool[sol_id] = {
-            "imf_obj": imf_obj,
-            "reg_obj": reg_obj,
-            "cA": cA,
-            "cB": cB,
-            "u": u,
-        }
-
-    if pool:
-        logging.info(f"loaded {len(pool)} pool solutions from {sol_dir}")
-    return pool

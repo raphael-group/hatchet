@@ -1,4 +1,4 @@
-"""Integration tests for HATCHet3 compute-cn step."""
+"""Integration tests for HATCHet compute-cn step."""
 
 import os
 import numpy as np

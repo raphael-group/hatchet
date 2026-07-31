@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 import yaml
 
+from hatchet import filenames as fn
+
 try:
     import psutil
 except ImportError:
@@ -142,7 +144,7 @@ def add_file_logging(out_dir: str, command: str = "hatchet") -> None:
     level = (
         logging.root.level if logging.root.level != logging.WARNING else logging.INFO
     )
-    fh = logging.FileHandler(os.path.join(out_dir, f"{command}.log"), mode="w")
+    fh = logging.FileHandler(os.path.join(out_dir, fn.command_log(command)), mode="w")
     fh.setLevel(level)
     fh.setFormatter(
         logging.Formatter(

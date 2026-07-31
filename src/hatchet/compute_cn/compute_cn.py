@@ -12,6 +12,7 @@ from hatchet.utils import (
     setup_logging,
 )
 from hatchet.io_utils import read_bbc_file
+from hatchet import filenames as fn
 from hatchet.compute_cn.compute_cn_utils import (
     store_gammas,
     store_solve_input,
@@ -20,8 +21,6 @@ from hatchet.compute_cn.compute_cn_utils import (
     build_data,
     compute_fractional_cn,
     load_pool_from_disk,
-    plot_pareto_pdf,
-    run_plot_cn,
     segmentation,
 )
 from hatchet.compute_cn.model_select import (
@@ -35,7 +34,12 @@ from hatchet.compute_cn.solve.inference import (
     run_full_ilp,
     run_coordinate_descent,
 )
-from hatchet.plot.plot_compute_cn import plot_pool_cnp, plot_scaling_2d
+from hatchet.plot.plot_compute_cn import (
+    plot_pareto_curve,
+    plot_pool_cnp,
+    plot_scaling_2d,
+    run_plot_cn,
+)
 
 
 def run(args=None):
@@ -50,8 +54,8 @@ def run(args=None):
     os.makedirs(out_dir, exist_ok=True)
     add_file_logging(out_dir, "compute-cn")
     log_arguments(args)
-    plot_dir = os.path.join(out_dir, "plots")
-    sols_dir = os.path.join(out_dir, "sols")
+    plot_dir = os.path.join(out_dir, fn.PLOTS_DIR)
+    sols_dir = os.path.join(out_dir, fn.SOLS_DIR)
     os.makedirs(plot_dir, exist_ok=True)
     os.makedirs(sols_dir, exist_ok=True)
 
@@ -76,11 +80,11 @@ def run(args=None):
         maxcn=args["diploidcmax"],
         maxcn_wgd=args["tetraploidcmax"],
     )
-    gamma_outfile = os.path.join(out_dir, "gammas.tsv")
+    gamma_outfile = os.path.join(out_dir, fn.GAMMAS)
     store_gammas(gamma_outfile, scaling, samples)
 
     plot_scaling_2d(
-        samples, bbcs, segs, scaling, os.path.join(plot_dir, "scaling_2d.pdf")
+        samples, bbcs, segs, scaling, os.path.join(plot_dir, fn.SCALING_2D_PDF)
     )
 
     solve_mode = args["mode"]
@@ -118,14 +122,14 @@ def run(args=None):
             min_ci_margin=args["min_ci_margin"],
         )
         store_solve_input(
-            os.path.join(out_dir, "sols", f"solver_input.{ploidy}.tsv"),
+            os.path.join(out_dir, fn.SOLS_DIR, fn.solver_input(ploidy)),
             fcn_data,
         )
 
         for n in range(minClone, maxClone):
-            out_bbc = os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv")
-            out_seg = os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv")
-            sol_dir = os.path.join(out_dir, f"sols/{ploidy}_n{n}")
+            out_bbc = os.path.join(out_dir, fn.results_bbc_ucn(ploidy, n))
+            out_seg = os.path.join(out_dir, fn.results_seg_ucn(ploidy, n))
+            sol_dir = os.path.join(out_dir, fn.SOLS_DIR, fn.ploidy_n_subdir(ploidy, n))
             if (
                 not args["force"]
                 and os.path.exists(out_bbc)
@@ -181,7 +185,7 @@ def run(args=None):
                 )
 
             pid = args["patient_id"] or "panel"
-            nplot_dir = os.path.join(plot_dir, f"{ploidy}_n{n}")
+            nplot_dir = os.path.join(plot_dir, fn.ploidy_n_subdir(ploidy, n))
             run_plot_cn(
                 args,
                 out_bbc,
@@ -202,7 +206,7 @@ def run(args=None):
                 title=f"{ploidy} n={n}",
                 solve_mode=solve_mode,
                 sample_names=fcn_data["sample_ids"],
-                out_name=f"{pid}.pool_{ploidy}_n{n}.pdf",
+                out_name=fn.pool_pdf(pid, ploidy, n),
             )
 
     if obj_dfs:
@@ -213,7 +217,7 @@ def run(args=None):
         if model_selection_df
         else pd.DataFrame()
     )
-    summary_path = os.path.join(out_dir, "summary.tsv")
+    summary_path = os.path.join(out_dir, fn.SUMMARY_TSV)
     summary_df.to_csv(summary_path, sep="\t", index=False)
     logging.info(f"wrote {summary_path} ({len(summary_df)} solutions)")
 
@@ -224,33 +228,33 @@ def run(args=None):
         segs,
         method=args["model_select"],
     )
-    plot_pareto_pdf(summary_df, plot_dir, args["reg_term"], elbow_fig)
+    plot_pareto_curve(summary_df, plot_dir, args["reg_term"], elbow_fig)
 
     # Write chosen per-ploidy
     for ploidy, n in chosen_n.items():
         shutil.copy2(
-            os.path.join(out_dir, f"results.{ploidy}.n{n}.bbc.ucn.tsv"),
-            os.path.join(out_dir, f"chosen.{ploidy}.bbc.ucn"),
+            os.path.join(out_dir, fn.results_bbc_ucn(ploidy, n)),
+            os.path.join(out_dir, fn.chosen_bbc_ucn(ploidy)),
         )
         shutil.copy2(
-            os.path.join(out_dir, f"results.{ploidy}.n{n}.seg.ucn.tsv"),
-            os.path.join(out_dir, f"chosen.{ploidy}.seg.ucn"),
+            os.path.join(out_dir, fn.results_seg_ucn(ploidy, n)),
+            os.path.join(out_dir, fn.chosen_seg_ucn(ploidy)),
         )
         logging.info(
-            f"chosen {ploidy} n={n}: {os.path.join(out_dir, f'chosen.{ploidy}.bbc.ucn')}"
+            f"chosen {ploidy} n={n}: {os.path.join(out_dir, fn.chosen_bbc_ucn(ploidy))}"
         )
 
     # Write best (across ploidies)
     shutil.copy2(
-        os.path.join(out_dir, f"chosen.{best_ploidy}.bbc.ucn"),
-        os.path.join(out_dir, "best.bbc.ucn"),
+        os.path.join(out_dir, fn.chosen_bbc_ucn(best_ploidy)),
+        os.path.join(out_dir, fn.BEST_BBC_UCN),
     )
     shutil.copy2(
-        os.path.join(out_dir, f"chosen.{best_ploidy}.seg.ucn"),
-        os.path.join(out_dir, "best.seg.ucn"),
+        os.path.join(out_dir, fn.chosen_seg_ucn(best_ploidy)),
+        os.path.join(out_dir, fn.BEST_SEG_UCN),
     )
     logging.info(f"model-selected: {best_ploidy} n={best_n}")
-    _log_done("compute-cn", out_file=os.path.join(out_dir, "runtime.log"))
+    _log_done("compute-cn", out_file=os.path.join(out_dir, fn.RUNTIME_LOG))
 
 
 def solve(
@@ -296,7 +300,9 @@ def solve(
 
     cd_instances = None
     pool_instances = {}
-    u0_tsv_path = os.path.join(sol_dir, "u0_seeds.tsv") if sol_dir is not None else None
+    u0_tsv_path = (
+        os.path.join(sol_dir, fn.U0_SEEDS_TSV) if sol_dir is not None else None
+    )
     cd_run_kwargs = dict(
         solver_type=solver_type,
         max_iters=args["cd_niters"],
@@ -366,7 +372,6 @@ def solve(
             timelimit=timelimit,
             tree_file=args["tree_file"],
             u_dir_alpha=args["u_dir_alpha"],
-            u_bin_p=args["u_bin_p"],
             solver_threads=args["solver_threads"],
             u0_tsv_path=u0_tsv_path,
         )
@@ -379,7 +384,6 @@ def solve(
             reg_bound=args["reg_bound"],
             u_init_method=args["u_init"],
             u_dir_alpha=args["u_dir_alpha"],
-            u_bin_p=args["u_bin_p"],
             solver_threads=args["solver_threads"],
             cd_tol=args["cd_tol"],
             **cd_run_kwargs,

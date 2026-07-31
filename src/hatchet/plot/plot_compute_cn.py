@@ -18,6 +18,8 @@ from matplotlib.collections import LineCollection
 
 from cnplot import annotate_landmarks, plot_cnv_profile, plot_scatter_2d, set_palette
 from hatchet.utils import sort_df_chr
+from hatchet import filenames as fn
+from hatchet.plot import plot_cn as _plot_cn
 from hatchet.plot.plot_utils import build_genome_axis, use_editable_fonts
 
 
@@ -27,7 +29,7 @@ def _clones_from_cn(df):
     return ["normal"] + [f"clone{i}" for i in range(1, n)]
 
 
-def _format_pool_label(tag):
+def _fmt_pool_label(tag):
     """Convert 'pool_p0.05_s1' to 'p=0.05,s=1'."""
     m = re.match(r"pool_p([^_]+)_s(\d+)", tag)
     if m:
@@ -54,7 +56,7 @@ def plot_pool_cnp(
     dpi=150,
     solve_mode=None,
     sample_names=None,
-    out_name="pool.pdf",
+    out_name=fn.POOL_PDF,
 ):
     """Plot pool CNP panel into out_dir.
 
@@ -156,7 +158,7 @@ def plot_pool_cnp(
             show_prop=False,
         )
 
-        short_label = _format_pool_label(str(label))
+        short_label = _fmt_pool_label(str(label))
         if is_selected:
             short_label += " *"
         prop_lines = []
@@ -593,3 +595,101 @@ def render_cnt_tree(
 
             pdf.savefig(fig2, bbox_inches="tight", dpi=150)
             plt.close(fig2)
+
+
+def run_plot_cn(args, bbc, seg, gamma_file, plot_dir, ploidy, name=None):
+    """Auto-run plot-cn on a compute-cn solution; styling falls through to hatchet.yaml."""
+    if not os.path.exists(bbc) or not os.path.exists(seg):
+        return
+    _plot_cn.run(
+        {
+            "bbc": bbc,
+            "seg": seg,
+            "genome_size": args["genome_size"],
+            "region_bed": args["region_bed"],
+            "gamma_file": gamma_file,
+            "solfile": None,
+            "patient_id": name,
+            "plot_dir": plot_dir,
+            "ploidy": ploidy,
+        }
+    )
+
+
+def plot_pareto_curve(summary_df, plot_dir, reg_term, elbow_fig=None):
+    """Plot REG vs IMF Pareto curves + elbow/BIC page as a multi-page PDF."""
+    outfile = os.path.join(plot_dir, fn.MODEL_SELECTION_PDF)
+    reg_col = reg_term if reg_term in summary_df.columns else "REG"
+    ploidies = sorted(summary_df["ploidy"].unique())
+    cmap = plt.get_cmap("tab10")
+
+    n_pages = 0
+    with PdfPages(outfile) as pdf:
+        # One page per ploidy; overlay all n-clone solutions, each n a distinct color.
+        for ploidy in ploidies:
+            pdf_grp = summary_df[summary_df["ploidy"] == ploidy]
+            ns = sorted(pdf_grp["n_clones"].unique())
+            fig, ax = plt.subplots(figsize=(7, 5))
+
+            # Non-pareto across all n: shared light-gray backdrop
+            non_pareto = pdf_grp[~pdf_grp["is_pareto"]]
+            if len(non_pareto) > 0:
+                ax.scatter(
+                    non_pareto[reg_col],
+                    non_pareto["IMF"],
+                    c="0.8",
+                    s=15,
+                    zorder=2,
+                    alpha=0.4,
+                    linewidths=0,
+                )
+
+            for ni, n_clones in enumerate(ns):
+                grp = pdf_grp[pdf_grp["n_clones"] == n_clones]
+                color = cmap(ni % 10)
+                pareto = grp[grp["is_pareto"]].sort_values(reg_col)
+                if len(pareto) > 0:
+                    ax.plot(
+                        pareto[reg_col],
+                        pareto["IMF"],
+                        "-o",
+                        color=color,
+                        markersize=5,
+                        linewidth=1.3,
+                        zorder=4,
+                        label=f"n={n_clones}",
+                    )
+                sel = grp[grp["selected"] == "*"]
+                if len(sel) > 0:
+                    ax.scatter(
+                        sel[reg_col],
+                        sel["IMF"],
+                        facecolors=color,
+                        marker="*",
+                        s=250,
+                        zorder=5,
+                        edgecolors="black",
+                        linewidths=1,
+                    )
+
+            ax.set_xlabel(reg_col, fontsize=11)
+            ax.set_ylabel("IMF", fontsize=11)
+            ax.set_title(
+                f"{ploidy} ({len(pdf_grp)} solutions)",
+                fontsize=13,
+                fontweight="bold",
+            )
+            ax.legend(fontsize=9, title="clones")
+            ax.grid(True, alpha=0.3)
+            fig.tight_layout()
+            pdf.savefig(fig)
+            plt.close(fig)
+            n_pages += 1
+
+        # Append elbow/BIC figure as last page
+        if elbow_fig is not None:
+            pdf.savefig(elbow_fig)
+            plt.close(elbow_fig)
+            n_pages += 1
+
+    logging.info(f"wrote {outfile} ({n_pages} pages)")
